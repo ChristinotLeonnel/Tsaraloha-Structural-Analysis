@@ -556,7 +556,12 @@ bool runSuite_MeshView(int& passed)
 
     // -------------------------------------------------------------------------
     // TEST 343 : affichage réel dans OccView — modes, étiquettes, résultats, légende
+    // Vue OCCT : contexte OpenGL sur une vraie fenêtre ; la plateforme Qt « offscreen » n'en fournit pas (arrêt du
+    // programme : 0xC0000409 sous Windows, BadWindow sous X11) : test annoncé comme sauté, jamais compté réussi.
     // -------------------------------------------------------------------------
+    if (QGuiApplication::platformName() == QLatin1String("offscreen"))
+        std::cout << "[SKIP] Test 343: vue 3D indisponible sur la plateforme Qt « offscreen » (lancer avec QT_QPA_PLATFORM=windows)" << std::endl;
+    else
     {
         OccView view;
         view.resize(900, 600);

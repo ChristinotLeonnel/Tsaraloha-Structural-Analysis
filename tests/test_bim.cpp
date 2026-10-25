@@ -294,7 +294,9 @@ bool runSuite_Bim(int& passed)
 
         const std::string dir = "./build/test_tsa_data/";
         std::filesystem::create_directories(dir);
-        TEST_CHECK(TSA::BIM::Ifc::IfcExporter::exportToFile(m, dir + "test_export.ifc", opt).ok, "Test 177: écriture du fichier .ifc");
+        std::filesystem::remove(dir + "test_export.ifc");   // pas de fichier d'une exécution précédente
+        const auto written = TSA::BIM::Ifc::IfcExporter::exportToFile(m, dir + "test_export.ifc", opt);
+        TEST_CHECK(written.ok, "Test 177: écriture du fichier .ifc — " << written.error);
         std::cout << "[PASS] Test 177: Test_IFCExport (" << r.summary() << ")" << std::endl;
         ++passed;
     }

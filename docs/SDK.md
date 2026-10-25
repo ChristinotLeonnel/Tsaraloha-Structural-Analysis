@@ -66,6 +66,11 @@ Un module est un dossier qui contient `module.json`. Le schéma JSON est `docs/s
 }
 ```
 
+Un même `module.json` sert sous Windows et sous Linux : `command` désigne le chemin déclaré s'il existe, sinon sa variante
+de la plateforme — `bin/xyz2tsa3d.exe` → `bin/xyz2tsa3d` hors Windows, `bin/xyz2tsa3d` → `bin/xyz2tsa3d.exe` sous Windows
+(`ConverterSpec::executable`, utilisée pour la validation et le lancement). Un paquet multi-plateforme livre les deux
+exécutables. `plugin` (DLL MSVC, même compilateur que l'hôte) reste propre à Windows.
+
 | Élément du contrat | Champ |
 |---|---|
 | Identifiant | `id` en minuscules avec au moins un point. Il préfixe tous les identifiants du module (convertisseurs) |

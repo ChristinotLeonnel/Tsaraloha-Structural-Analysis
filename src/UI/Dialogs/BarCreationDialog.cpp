@@ -2,7 +2,6 @@
 #include "UI/Theme/ThemedIcon.h"
 #include "../HelpLauncher.h"
 #include <QEvent>
-#include "App/ProductInfo.h"
 #include "SectionCustomizationDialog.h"
 #include "../../Library/LibraryManager.h"
 #include "../../Interaction/ElementCreation.h"
@@ -27,7 +26,6 @@
 #include <QInputDialog>
 #include <QIcon>
 #include <QKeyEvent>
-#include <cmath>
 #include <sstream>
 
 namespace TSA::UI

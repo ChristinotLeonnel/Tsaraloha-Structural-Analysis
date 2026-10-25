@@ -14,6 +14,15 @@ set(TSA_OCCT_VERSION "8.0.1" CACHE STRING "Version d'OpenCASCADE a utiliser")
 get_filename_component(TSA_DEPS_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
 function(setup_external_dependencies)
+    # Les SDK téléchargés ici (opencascade-*-vc14-64, 3rdparty-vc14-64) sont des binaires MSVC : hors Windows,
+    # OCCT est trouvé par find_package (OpenCASCADE_DIR ou CMAKE_PREFIX_PATH, voir docs/LINUX_BUILD.md).
+    if(NOT WIN32)
+        if(NOT OpenCASCADE_DIR)
+            message(STATUS "OpenCASCADE : recherche par find_package (OpenCASCADE_DIR ou CMAKE_PREFIX_PATH)")
+        endif()
+        return()
+    endif()
+
     set(OCCT_FOLDER_NAME "opencascade-${TSA_OCCT_VERSION}-vc14-64")
     set(LOCAL_OCCT_DIR "${TSA_DEPS_ROOT}/${OCCT_FOLDER_NAME}")
     set(LOCAL_OCCT_CMAKE "${LOCAL_OCCT_DIR}/cmake")

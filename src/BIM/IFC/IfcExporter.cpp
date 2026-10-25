@@ -16,7 +16,8 @@
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QSaveFile>
-#include <QTemporaryFile>
+#include <QFile>
+#include <QTemporaryDir>
 
 #include <array>
 #include <cctype>
@@ -655,11 +656,15 @@ IfcExportReport IfcExporter::exportToFile(const TSA::Model::Model& model, const 
     //    fichier illisible n'atteint jamais la cible (un fichier existant n'est pas remplacé) et la copie est supprimée.
     if (options.verifyAfterWrite)
     {
-        QTemporaryFile probe(QFileInfo(qpath).absolutePath() + "/.tsa-ifc-XXXXXX.ifc");
-        if (!probe.open() || probe.write(doc.data(), size) != size || !probe.flush())
+        //    Dossier temporaire + QFile ordinaire : sous Windows, QTemporaryFile garde le fichier verrouillé après
+        //    close() et le lecteur (_wfopen) ne peut pas l'ouvrir.
+        QTemporaryDir probeDir(QFileInfo(qpath).absolutePath() + "/.tsa-ifc-XXXXXX");
+        QFile probe(probeDir.filePath(QStringLiteral("probe.ifc")));
+        if (!probeDir.isValid() || !probe.open(QIODevice::WriteOnly) || probe.write(doc.data(), size) != size || !probe.flush())
         {
             r.ok = false;
-            r.error = QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "impossible d'écrire dans le dossier de « %1 » (%2)").arg(QString::fromStdString(path), probe.errorString()).toStdString();
+            const QString reason = probeDir.isValid() ? probe.errorString() : probeDir.errorString();
+            r.error = QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "impossible d'écrire dans le dossier de « %1 » (%2)").arg(QString::fromStdString(path), reason).toStdString();
             return r;
         }
         probe.close();
@@ -688,7 +693,7 @@ IfcExportReport IfcExporter::exportToFile(const TSA::Model::Model& model, const 
         }
         else
             r.verification = QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "relecture indépendante non faite (%1)").arg(QString::fromStdString(error)).toStdString();
-    }   // copie temporaire supprimée ici
+    }   // dossier temporaire et copie supprimés ici
 
     // 2. Écriture atomique du contenu vérifié : un fichier existant n'est remplacé qu'une fois le nouveau entièrement écrit.
     QSaveFile f(qpath);

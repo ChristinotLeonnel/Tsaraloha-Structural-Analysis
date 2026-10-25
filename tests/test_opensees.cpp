@@ -1,6 +1,9 @@
 #include "test_common.h"
 #include <limits>
 
+#include <QFile>
+#include <QTemporaryDir>
+
 #include "Analysis/OpenSeesManager.h"
 #include "Analysis/CalculationSnapshot.h"
 #include "Analysis/ResultsModel.h"
@@ -21,6 +24,85 @@ using namespace TSA::Model;
 
 bool runSuite_OpenSees(int& passed)
 {
+    // TEST 491: vérification d'un exécutable OpenSees (BUG-099) — la bannière seule ne prouve rien.
+    // Indépendant de toute installation : sorties réelles d'OpenSees 3.8.0, puis faux exécutables temporaires.
+    {
+        using S = OpenSeesCheckStatus;
+        const QString banner = QStringLiteral(
+            "\n\n         OpenSees -- Open System For Earthquake Engineering Simulation\n"
+            "                 Pacific Earthquake Engineering Research Center\n"
+            "        Version 3.8.0 64-Bit ()\n\n");
+
+        auto r = OpenSeesManager::interpretCheckOutput(banner + "\nOPENSEES_CHECK_OK_3.8.0\n", 0, false);
+        TEST_CHECK(r.ok() && r.version == "3.8.0", "Marqueur de contrôle 3.8.0 : opérationnel");
+
+        // Sortie constatée le 2026-10-24 sans lib/tcl8.6 : bannière, erreur Tcl, code 0.
+        r = OpenSeesManager::interpretCheckOutput(banner +
+            "application-specific initialization failed: Can't find a usable init.tcl in the following directories: \n"
+            "    //lib/tcl8.6\n\nThis probably means that Tcl wasn't installed properly.\n\ninvalid command name \"wipe\"\n", 0, false);
+        TEST_CHECK(r.status == S::TclInitFailed && !r.ok(), "Tcl non initialisé : refusé malgré la bannière « OpenSees »");
+        TEST_CHECK(r.version == "3.8.0", "Version de la bannière conservée pour le diagnostic");
+
+        r = OpenSeesManager::interpretCheckOutput(banner + "OPENSEES_CHECK_OK_3.2.0\n", 0, false);
+        TEST_CHECK(r.status == S::IncompatibleVersion && r.version == "3.2.0", "Version antérieure à 3.4.0 : incompatible");
+        r = OpenSeesManager::interpretCheckOutput("OPENSEES_CHECK_OK_3.10.0", 0, false);
+        TEST_CHECK(r.ok(), "Comparaison numérique des versions (3.10.0 >= 3.4.0)");
+
+        r = OpenSeesManager::interpretCheckOutput("puts [format \"OPENSEES_CHECK_OK_%s\" [version]]; exit OpenSees", 0, false);
+        TEST_CHECK(r.status == S::UnexpectedOutput, "Recopie de la commande (sans version) : refusée");
+        r = OpenSeesManager::interpretCheckOutput("error while loading shared libraries: libtcl8.6.so", 127, false);
+        TEST_CHECK(r.status == S::LaunchFailed, "Arrêt sur bibliothèque manquante (code 127) : lancement échoué");
+        r = OpenSeesManager::interpretCheckOutput(banner, 0, true);
+        TEST_CHECK(r.status == S::LaunchFailed, "Plantage après la bannière : lancement échoué");
+
+        const auto& mgr = OpenSeesManager::instance();
+        TEST_CHECK(mgr.checkExecutable(QString()).status == S::NotFound, "Chemin vide : introuvable");
+        QTemporaryDir tmp;
+        TEST_CHECK(tmp.isValid(), "Dossier temporaire");
+        TEST_CHECK(mgr.checkExecutable(tmp.filePath("absent/OpenSees")).status == S::NotFound, "Fichier absent : introuvable");
+
+        // Fichier présent mais non exécutable (sans droit d'exécution ; sous Windows, .exe non PE).
+#ifdef Q_OS_WIN
+        const QString junk = tmp.filePath("OpenSees.exe");
+#else
+        const QString junk = tmp.filePath("OpenSees");
+#endif
+        {
+            QFile f(junk);
+            TEST_CHECK(f.open(QIODevice::WriteOnly) && f.write("not an executable\n") > 0, "Écriture du faux exécutable");
+        }
+        QFile::setPermissions(junk, QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+        r = mgr.checkExecutable(junk);
+        TEST_CHECK(r.status == S::LaunchFailed && !r.message.isEmpty(), "Exécutable non lançable : lancement échoué");
+
+#ifndef Q_OS_WIN
+        // Faux OpenSees en script shell : chaque cas passe par le vrai lancement (QProcess, entrée standard, flux).
+        const auto fake = [&](const char* name, const QByteArray& body) {
+            const QString path = tmp.filePath(QString::fromLatin1(name));
+            QFile f(path);
+            if (f.open(QIODevice::WriteOnly)) f.write("#!/bin/sh\n" + body);
+            f.close();
+            QFile::setPermissions(path, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+            return mgr.checkExecutable(path);
+        };
+        const QByteArray bannerSh = "printf '\\n  OpenSees -- Open System For Earthquake Engineering Simulation\\n  Version 3.8.0 64-Bit ()\\n' >&2\n";
+        TEST_CHECK(fake("ok", bannerSh + "cat >/dev/null\necho OPENSEES_CHECK_OK_3.8.0 >&2\n").ok(),
+                   "Faux OpenSees opérationnel (marqueur sur stderr, comme OpenSees 3.8.0)");
+        r = fake("notcl", bannerSh + "cat >/dev/null\necho \"application-specific initialization failed: Can't find a usable init.tcl\" >&2\n"
+                                     "echo 'invalid command name \"wipe\"' >&2\nexit 0\n");
+        TEST_CHECK(r.status == S::TclInitFailed, "Faux OpenSees sans Tcl : initialisation Tcl échouée");
+        TEST_CHECK(fake("old", "cat >/dev/null\necho OPENSEES_CHECK_OK_3.2.0\n").status == S::IncompatibleVersion,
+                   "Faux OpenSees 3.2.0 : version incompatible");
+        TEST_CHECK(fake("nolib", "echo 'error while loading shared libraries' >&2\nexit 127\n").status == S::LaunchFailed,
+                   "Faux OpenSees sans bibliothèque : lancement échoué");
+        TEST_CHECK(fake("echo", "cat\n").status == S::UnexpectedOutput, "Programme qui recopie son entrée : refusé");
+        TEST_CHECK(fake("hang", "exec sleep 30\n").status == S::Timeout, "Programme bloqué : délai dépassé");
+#else
+        std::cout << "  [INFO] Test 491 : faux exécutables scriptés non exécutés sous Windows (cas couverts par l'analyse des sorties)" << std::endl;
+#endif
+        passed++;
+    }
+
     // TEST 65: OpenSees Manager Detection and Verification
     {
         auto& mgr = OpenSeesManager::instance();

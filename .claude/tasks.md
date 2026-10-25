@@ -1,6 +1,20 @@
 # Tasks
 
-Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-10-25. Uniquement des tâches réellement identifiées (voir known-issues.md).
+
+## Portage Linux (docs/LINUX_BUILD.md)
+
+- [x] OCCT 8.0.1 Linux, presets linux-debug/linux-release, scripts/linux/, build Debug + Release (2026-10-24).
+- [x] BUG-091 (locale numérique), BUG-092 (suites masquées), BUG-093 (OpenSees .exe sous Linux).
+- [x] libxcb-cursor0, lancement de TSA et suite complète en xcb (2026-10-24).
+- [x] OpenSees 3.8.0 Linux compilé et validé (docs/LINUX_BUILD.md §7).
+- [x] BUG-095 : Gmsh (BUG-100, BUG-101) et IfcOpenShell (BUG-103) sous Linux ; Release 489/490 (2026-10-25).
+- [x] BUG-099 : vérification de l'exécutable OpenSees (test 491) — comportement Windows encore à valider.
+- [ ] BUG-102 : réglage du chemin d'OpenSees dans l'interface (setCustomExecutablePath sans appelant).
+- [ ] BUG-104 : test 457 (seuil 50 ms) en Debug ; un échec masque les tests 458–463.
+- [x] BUG-094 : résolution du suffixe .exe (ConverterSpec::executable), BUG-096 textures, BUG-097 tests.
+- [x] BUG-098 : .ts à jour, 128 textes traduits (en, mg), 15 « vanished » retirés après reprise (6540/6540).
+- [ ] Vérifier la compilation Windows (MSVC) et TSA_TestSuite des modifications des 2026-10-24 et 25 (§8).
 
 ## BIM (ADR-020, docs/BIM_ARCHITECTURE.md)
 

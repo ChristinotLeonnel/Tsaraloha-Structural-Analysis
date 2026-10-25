@@ -67,6 +67,35 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "linux-base",
+      "hidden": true,
+      "description": "Ninja + GCC/Clang. Qt 6 et OCCT 8 trouvés par CMAKE_PREFIX_PATH (scripts/linux/configure.sh, docs/LINUX_BUILD.md).",
+      "generator": "Ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-debug",
+      "displayName": "Linux x64 Debug (Ninja)",
+      "inherits": "linux-base",
+      "binaryDir": "${sourceDir}/build-linux-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux x64 Release (Ninja)",
+      "inherits": "linux-base",
+      "binaryDir": "${sourceDir}/build-linux-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
@@ -87,6 +116,14 @@
     {
       "name": "ninja-release",
       "configurePreset": "ninja-release"
+    },
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug"
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release"
     }
   ]
 }

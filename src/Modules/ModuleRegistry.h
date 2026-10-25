@@ -41,6 +41,11 @@ struct ConverterSpec
     QStringList arguments;     ///< {input} et {output} remplacés
     QString moduleId;
     QString moduleDir;
+
+    /// Exécutable de la plateforme courante (chemin absolu), vide s'il est absent : `command` tel quel, sinon sa
+    /// variante de plateforme (« bin/x.exe » → « bin/x » hors Windows, « bin/x » → « bin/x.exe » sous Windows).
+    /// Un même manifeste sert ainsi sous Windows et sous Linux (BUG-094).
+    QString executable() const;
 };
 
 struct ModuleManifest

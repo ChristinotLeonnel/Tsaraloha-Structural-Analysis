@@ -685,7 +685,8 @@ bool runSuite_Model(int& passed)
         TEST_CHECK(!shapeRect.IsNull(), "Test 28.4: Rectangular 60x30 OCCT 3D shape built successfully");
 
         // Subtest 5: Sauvegarder puis recharger le projet (.tsa)
-        std::string filename = "test_custom_section.tsa";
+        std::filesystem::create_directories("./build/test_tsa_data");
+        std::string filename = "./build/test_tsa_data/test_custom_section.tsa";
         TSA::IO::TSAFileWriter writer;
         std::string err;
         bool saveOk = writer.saveToFile(filename, testModel, nullptr, "Test Custom Section", "TSA Unit Test", &err);
@@ -776,7 +777,8 @@ bool runSuite_Model(int& passed)
         TEST_CHECK(!shapeColMod.IsNull(), "Test 29.4: Modified Ø30 OCCT shape re-generated cleanly");
 
         // 5. Audit Sauvegarde / Chargement Fichier Native .tsa
-        std::string fn = "test_section_audit.tsa";
+        std::filesystem::create_directories("./build/test_tsa_data");
+        std::string fn = "./build/test_tsa_data/test_section_audit.tsa";
         TSA::IO::TSAFileWriter w;
         std::string e;
         bool sOk = w.saveToFile(fn, auditModel, nullptr, "Section Audit", "Unit Test", &e);

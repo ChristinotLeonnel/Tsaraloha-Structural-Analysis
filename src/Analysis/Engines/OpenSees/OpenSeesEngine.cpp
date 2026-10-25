@@ -58,8 +58,17 @@ EngineAvailability OpenSeesEngine::availability() const
 {
     EngineAvailability a;
     a.available = OpenSeesManager::instance().isAvailable();
-    a.canProvision = !a.available;
-    if (!a.available) a.message = QCoreApplication::translate("TSA::Analysis::OpenSeesEngine", "OpenSees.exe introuvable ou non vérifié.").toStdString();
+#ifdef Q_OS_WIN
+    a.canProvision = !a.available;   // téléchargement de l'exécutable Windows officiel (OpenSeesManager::downloadAndInstall)
+#else
+    a.canProvision = false;
+#endif
+    if (!a.available)
+    {
+        const QString cause = OpenSeesManager::instance().lastCheck().message;   // cause précise (BUG-099)
+        a.message = cause.isEmpty() ? QCoreApplication::translate("TSA::Analysis::OpenSeesEngine", "OpenSees.exe introuvable ou non vérifié.").toStdString()
+                                    : cause.toStdString();
+    }
     return a;
 }
 

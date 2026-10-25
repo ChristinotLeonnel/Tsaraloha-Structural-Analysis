@@ -9,3 +9,6 @@ docs/schemas/** text eol=lf
 # Fichiers IFC d'essai : conservés octet pour octet (non modifiés, CC BY 4.0, empreintes dans leur README)
 tests/data/ifc/**/*.ifc -text
 tests/data/ifc/**/LICENSE.txt -text
+
+# Scripts shell : LF obligatoire (bash refuse le CR), y compris dans une copie extraite sous Windows.
+*.sh text eol=lf

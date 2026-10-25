@@ -12,6 +12,7 @@
 #include <QThread>
 #include <QRegularExpression>
 #include <QEventLoop>
+#include <QVersionNumber>
 
 #include <iostream>
 
@@ -58,6 +59,7 @@ void OpenSeesManager::setCustomExecutablePath(const QString& path)
 {
     m_customPath = path;
     m_cachedPath.clear();
+    m_cachedVersion = {};
     m_isVerified = false;
     saveSettings();
 
@@ -79,10 +81,13 @@ QString OpenSeesManager::findExecutableInternal() const
 
     QString defaultDir = defaultSearchDirectory();
     QStringList candidateFiles = {
+#ifdef Q_OS_WIN
+        // Ailleurs, un .exe (exécutable Windows de thirdparty/OpenSees) n'est pas lançable.
         defaultDir + "/bin/OpenSees.exe",
         defaultDir + "/bin/gOpenSees.exe",
         defaultDir + "/OpenSees.exe",
         defaultDir + "/gOpenSees.exe",
+#endif
         defaultDir + "/bin/OpenSees",
         defaultDir + "/OpenSees"
     };
@@ -120,41 +125,63 @@ QString OpenSeesManager::executablePath() const
 
 bool OpenSeesManager::isAvailable() const
 {
-    QString path = executablePath();
-    if (path.isEmpty() || !QFile::exists(path))
-    {
-        return false;
-    }
-
     if (!m_isVerified)
     {
-        m_isVerified = verifyExecutable(path);
+        m_lastCheck = checkExecutable(executablePath());
+        m_isVerified = m_lastCheck.ok();
     }
 
     return m_isVerified;
 }
 
+OpenSeesCheckResult OpenSeesManager::lastCheck() const
+{
+    return m_lastCheck;
+}
+
+QString OpenSeesManager::minimumSupportedVersion()
+{
+    return QStringLiteral("3.4.0");
+}
+
 bool OpenSeesManager::verifyExecutable(const QString& exePath, QString* errorOutput) const
 {
-    QString path = exePath.isEmpty() ? executablePath() : exePath;
-    if (path.isEmpty() || !QFile::exists(path))
+    const OpenSeesCheckResult result = checkExecutable(exePath.isEmpty() ? executablePath() : exePath);
+    if (!result.ok() && errorOutput)
     {
-        if (errorOutput) *errorOutput = tr("Fichier OpenSees.exe introuvable.");
-        return false;
+        *errorOutput = result.output.isEmpty() ? result.message : result.message + "\n" + result.output;
+    }
+    return result.ok();
+}
+
+OpenSeesCheckResult OpenSeesManager::checkExecutable(const QString& exePath) const
+{
+    OpenSeesCheckResult result;
+    if (exePath.isEmpty())
+    {
+        result.message = tr("Exécutable OpenSees introuvable (ni dans %1, ni dans le PATH, ni au chemin enregistré "
+                            "« OpenSees/ExecutablePath »).").arg(QDir::toNativeSeparators(defaultSearchDirectory()));
+        return result;
+    }
+    if (!QFileInfo(exePath).isFile())
+    {
+        result.message = tr("Exécutable OpenSees introuvable : %1").arg(QDir::toNativeSeparators(exePath));
+        return result;
     }
 
     QProcess process;
-    process.setProgram(path);
-    process.setWorkingDirectory(QFileInfo(path).absolutePath());
+    process.setProgram(exePath);
+    process.setWorkingDirectory(QFileInfo(exePath).absolutePath());
 
     process.start();
     if (!process.waitForStarted(3000))
     {
-        if (errorOutput) *errorOutput = tr("Impossible de démarrer le processus OpenSees : %1").arg(process.errorString());
-        return false;
+        result.status = OpenSeesCheckStatus::LaunchFailed;
+        result.message = tr("Impossible de démarrer OpenSees (%1) : %2").arg(QDir::toNativeSeparators(exePath), process.errorString());
+        return result;
     }
 
-    // Envoyer une commande Tcl courte de test de version
+    // wipe et model n'existent que si l'interpréteur Tcl et les commandes OpenSees sont initialisés.
     const char testScript[] = "wipe; model BasicBuilder -ndm 2 -ndf 2; puts [format \"OPENSEES_CHECK_OK_%s\" [version]]; exit\n";
     process.write(testScript);
     process.closeWriteChannel();
@@ -162,68 +189,69 @@ bool OpenSeesManager::verifyExecutable(const QString& exePath, QString* errorOut
     if (!process.waitForFinished(5000))
     {
         process.kill();
-        if (errorOutput) *errorOutput = tr("Délai d'attente dépassé lors de la vérification d'OpenSees.");
-        return false;
+        process.waitForFinished(1000);
+        result.status = OpenSeesCheckStatus::Timeout;
+        result.message = tr("Délai d'attente dépassé lors de la vérification d'OpenSees.");
+        return result;
     }
 
-    QString out = QString::fromUtf8(process.readAllStandardOutput());
-    QString err = QString::fromUtf8(process.readAllStandardError());
-    QString combined = out + "\n" + err;
+    // OpenSees 3.8.0 écrit sa bannière, ses erreurs et ses « puts » sur l'un ou l'autre flux.
+    const QString combined = QString::fromUtf8(process.readAllStandardOutput()) + "\n"
+                           + QString::fromUtf8(process.readAllStandardError());
+    return interpretCheckOutput(combined, process.exitCode(), process.exitStatus() == QProcess::CrashExit);
+}
 
-    if (combined.contains("OPENSEES_CHECK_OK") || combined.contains("OpenSees"))
+OpenSeesCheckResult OpenSeesManager::interpretCheckOutput(const QString& output, int exitCode, bool crashed)
+{
+    OpenSeesCheckResult result;
+    result.output = output.trimmed();
+
+    // Chiffres exigés : un programme qui recopierait son entrée (« …_%s ») ne passe pas.
+    static const QRegularExpression rxCheck(QStringLiteral("OPENSEES_CHECK_OK_([0-9]+(?:\\.[0-9]+)*)"));
+    if (const auto check = rxCheck.match(output); check.hasMatch())
     {
-        return true;
+        result.version = check.captured(1);
+        if (QVersionNumber::fromString(result.version) < QVersionNumber::fromString(minimumSupportedVersion()))
+        {
+            result.status = OpenSeesCheckStatus::IncompatibleVersion;
+            result.message = tr("OpenSees %1 non pris en charge : version %2 ou ultérieure requise.")
+                                 .arg(result.version, minimumSupportedVersion());
+            return result;
+        }
+        result.status = OpenSeesCheckStatus::Operational;
+        result.message = tr("OpenSees %1 opérationnel.").arg(result.version);
+        return result;
     }
 
-    if (errorOutput)
+    // Diagnostic seulement : la bannière (« Version 3.8.0 64-Bit ») s'affiche avant l'initialisation de Tcl.
+    static const QRegularExpression rxBanner(QStringLiteral("Version\\s+([0-9]+(?:\\.[0-9]+)+)"));
+    if (const auto banner = rxBanner.match(output); banner.hasMatch()) result.version = banner.captured(1);
+
+    if (output.contains(QStringLiteral("init.tcl")) || output.contains(QStringLiteral("application-specific initialization failed")))
     {
-        *errorOutput = combined.trimmed();
+        result.status = OpenSeesCheckStatus::TclInitFailed;
+        result.message = tr("OpenSees démarre mais son interpréteur Tcl ne s'initialise pas (init.tcl introuvable) : "
+                            "la bibliothèque Tcl doit se trouver dans <dossier de l'exécutable>/../lib/tcl8.6.");
+        return result;
     }
-
-    return false;
+    if (crashed || exitCode != 0)
+    {
+        result.status = OpenSeesCheckStatus::LaunchFailed;
+        result.message = tr("OpenSees s'est arrêté anormalement (code %1) : bibliothèque manquante ou exécutable "
+                            "incompatible avec ce système.").arg(exitCode);
+        return result;
+    }
+    result.status = OpenSeesCheckStatus::UnexpectedOutput;
+    result.message = tr("Le programme ne répond pas comme OpenSees à la commande de contrôle.");
+    return result;
 }
 
 QString OpenSeesManager::detectVersion(const QString& exePath) const
 {
-    QString path = exePath.isEmpty() ? executablePath() : exePath;
-    if (path.isEmpty() || !QFile::exists(path)) return QString();
-
-    QProcess process;
-    process.setProgram(path);
-    process.setWorkingDirectory(QFileInfo(path).absolutePath());
-    process.start();
-
-    if (!process.waitForStarted(3000)) return QString();
-
-    process.write("wipe; puts [format \"__OPS_VER__%s\" [version]]; exit\n");
-    process.closeWriteChannel();
-
-    if (!process.waitForFinished(5000))
-    {
-        process.kill();
-        return QString();
-    }
-
-    QString out = QString::fromUtf8(process.readAllStandardOutput());
-    QString err = QString::fromUtf8(process.readAllStandardError());
-    QString combined = out + "\n" + err;
-
-    QRegularExpression rx("__OPS_VER__([0-9.]+)");
-    auto match = rx.match(combined);
-    if (match.hasMatch())
-    {
-        return match.captured(1);
-    }
-
-    // Essai d'extraction depuis la bannière standard ("Version 3.8.0 64-Bit")
-    QRegularExpression rxBanner("Version\\s+([0-9.]+)", QRegularExpression::CaseInsensitiveOption);
-    auto matchBanner = rxBanner.match(combined);
-    if (matchBanner.hasMatch())
-    {
-        return matchBanner.captured(1);
-    }
-
-    return "3.8.0";
+    // Version rendue par la commande « version », sinon celle de la bannière ; vide si aucune n'est lisible.
+    const QString path = exePath.isEmpty() ? executablePath() : exePath;
+    if (path.isEmpty()) return QString();
+    return checkExecutable(path).version;
 }
 
 OpenSeesVersionInfo OpenSeesManager::versionInfo() const
@@ -257,6 +285,13 @@ OpenSeesVersionInfo OpenSeesManager::versionInfo() const
 bool OpenSeesManager::downloadAndInstall(std::function<void(int, const QString&)> progressCallback,
                                         QString* errorMessage)
 {
+#ifndef Q_OS_WIN
+    // L'archive officielle (officialDownloadUrl) ne contient que l'exécutable Windows, installé par curl.exe et PowerShell.
+    Q_UNUSED(progressCallback);
+    if (errorMessage) *errorMessage = tr("Téléchargement automatique d'OpenSees disponible sous Windows uniquement : installer OpenSees et le placer dans le PATH.");
+    emit downloadCompleted(false, "", tr("Téléchargement automatique d'OpenSees disponible sous Windows uniquement : installer OpenSees et le placer dans le PATH."));
+    return false;
+#endif
     QString targetDir = defaultSearchDirectory();
     QDir dir(targetDir);
     if (!dir.exists())
@@ -324,6 +359,7 @@ bool OpenSeesManager::downloadAndInstall(std::function<void(int, const QString&)
     }
 
     m_cachedPath.clear();
+    m_cachedVersion = {};
     m_isVerified = false;
 
     if (isAvailable())
@@ -363,7 +399,13 @@ bool OpenSeesManager::ensureAvailable(QString* errorMessage)
         return true;
     }
 
+#ifdef Q_OS_WIN
     return downloadAndInstall(nullptr, errorMessage);
+#else
+    // Pas de téléchargement hors Windows : la cause constatée est plus utile que le refus de downloadAndInstall.
+    if (errorMessage) *errorMessage = m_lastCheck.message;
+    return false;
+#endif
 }
 
 } // namespace TSA::Analysis

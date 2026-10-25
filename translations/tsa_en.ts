@@ -2426,6 +2426,10 @@
         <translation>%1: %2 element(s)</translation>
     </message>
     <message>
+        <source>Structure Cube 3D</source>
+        <translation>3D cube structure</translation>
+    </message>
+    <message>
         <source>Structure Cube 3D créée entre Z = %1 m et Z = %2 m (8 nœuds, 4 poteaux, 8 poutres, 1 dalle)</source>
         <translation>3D cube structure created between Z = %1 m and Z = %2 m (8 nodes, 4 columns, 8 beams, 1 slab)</translation>
     </message>
@@ -5522,6 +5526,10 @@ Shift + click on a tool: use the other mode once.</translation>
         <translation>Number of panels N:</translation>
     </message>
     <message>
+        <source>Génération Treillis %1</source>
+        <translation>Truss generation %1</translation>
+    </message>
+    <message>
         <source>Treillis %1 généré : %2 nœuds, %3 barres (L = %4 m, H = %5 m, %6 panneaux)</source>
         <translation>%1 truss generated: %2 nodes, %3 members (L = %4 m, H = %5 m, %6 panels)</translation>
     </message>
@@ -5552,6 +5560,10 @@ Shift + click on a tool: use the other mode once.</translation>
     <message>
         <source>Épaisseur H (m) :</source>
         <translation>Thickness H (m):</translation>
+    </message>
+    <message>
+        <source>Génération Semelles Isolées</source>
+        <translation>Isolated footing generation</translation>
     </message>
     <message>
         <source>Génération de %1 semelle(s) isolée(s) BA (%2m x %3m, h=%4m) avec liaison au sol.</source>
@@ -7151,6 +7163,13 @@ Run the analysis?</translation>
     </message>
 </context>
 <context>
+    <name>TSA::Analysis</name>
+    <message>
+        <source> ; et %1 autre(s)</source>
+        <translation>; and %1 more</translation>
+    </message>
+</context>
+<context>
     <name>TSA::Analysis::AnalysisController</name>
     <message>
         <source>Un calcul est déjà en cours.</source>
@@ -7636,6 +7655,192 @@ Run the analysis?</translation>
     </message>
 </context>
 <context>
+    <name>TSA::Analysis::Fem3DEngine</name>
+    <message>
+        <source>Moteur éléments finis 3D de TSA (poutres d'Euler–Bernoulli exactes, rotules, appuis élastiques), validé contre OpenSees sur son périmètre. Moteur secondaire : OpenSees reste le moteur par défaut.</source>
+        <translation>TSA 3D finite element engine (exact Euler–Bernoulli beams, hinges, elastic supports), validated against OpenSees within its scope. Secondary engine: OpenSees remains the default engine.</translation>
+    </message>
+    <message>
+        <source>Hors du périmètre de Fem3D : %1. Calcul confié à OpenSees (secours choisi dans les options de Fem3D) : les résultats porteront l'identité d'OpenSees.</source>
+        <translation>Outside the scope of Fem3D: %1. Analysis handed over to OpenSees (fallback chosen in the Fem3D options): the results will carry the OpenSees identity.</translation>
+    </message>
+    <message>
+        <source>Hors du périmètre de Fem3D : %1. Choisir le moteur OpenSees, ou activer le secours OpenSees dans les options de Fem3D.</source>
+        <translation>Outside the scope of Fem3D: %1. Choose the OpenSees engine, or enable the OpenSees fallback in the Fem3D options.</translation>
+    </message>
+    <message>
+        <source>Comparaison impossible : Fem3D ne peut pas calculer ce modèle.</source>
+        <translation>Comparison impossible: Fem3D cannot analyse this model.</translation>
+    </message>
+    <message>
+        <source>OpenSees est requis (%1) mais indisponible : %2</source>
+        <translation>OpenSees is required (%1) but unavailable: %2</translation>
+    </message>
+    <message>
+        <source>comparaison</source>
+        <translation>comparison</translation>
+    </message>
+    <message>
+        <source>secours</source>
+        <translation>fallback</translation>
+    </message>
+    <message>
+        <source>Conversion du modèle pour Fem3D…</source>
+        <translation>Converting the model for Fem3D…</translation>
+    </message>
+    <message>
+        <source>Fem3D : données refusées : %1</source>
+        <translation>Fem3D: data rejected: %1</translation>
+    </message>
+    <message>
+        <source>Hors du périmètre de Fem3D : %1. Aucun calcul n'a été fait.</source>
+        <translation>Outside the scope of Fem3D: %1. No analysis was performed.</translation>
+    </message>
+    <message>
+        <source>Calcul fait par OpenSees (secours de Fem3D) — hors du périmètre de Fem3D : %1</source>
+        <translation>Analysis performed by OpenSees (Fem3D fallback) — outside the scope of Fem3D: %1</translation>
+    </message>
+    <message>
+        <source>Calcul OpenSees terminé (secours de Fem3D).</source>
+        <translation>OpenSees analysis completed (Fem3D fallback).</translation>
+    </message>
+    <message>
+        <source>Calcul annulé.</source>
+        <translation>Analysis cancelled.</translation>
+    </message>
+    <message>
+        <source>Assemblage et résolution Fem3D…</source>
+        <translation>Fem3D assembly and solution…</translation>
+    </message>
+    <message>
+        <source>Fem3D : %1</source>
+        <translation>Fem3D: %1</translation>
+    </message>
+    <message>
+        <source> Aucun moteur de secours n'est utilisé : un mécanisme est une propriété du modèle (appuis, rotules), pas une panne du moteur.</source>
+        <translation> No fallback engine is used: a mechanism is a property of the model (supports, hinges), not an engine failure.</translation>
+    </message>
+    <message>
+        <source>Remappage des résultats Fem3D…</source>
+        <translation>Mapping the Fem3D results back…</translation>
+    </message>
+    <message>
+        <source>Calcul Fem3D terminé.</source>
+        <translation>Fem3D analysis completed.</translation>
+    </message>
+    <message>
+        <source>Calcul de comparaison OpenSees…</source>
+        <translation>OpenSees comparison analysis…</translation>
+    </message>
+    <message>
+        <source>Comparaison Fem3D / OpenSees impossible : %1</source>
+        <translation>Fem3D / OpenSees comparison impossible: %1</translation>
+    </message>
+    <message>
+        <source>Comparaison OpenSees : %1 valeurs, %2 hors tolérance.</source>
+        <translation>OpenSees comparison: %1 values, %2 out of tolerance.</translation>
+    </message>
+    <message>
+        <source>Déplacements et rotations</source>
+        <translation>Displacements and rotations</translation>
+    </message>
+    <message>
+        <source>Réactions (appuis et ressorts)</source>
+        <translation>Reactions (supports and springs)</translation>
+    </message>
+    <message>
+        <source>Efforts aux extrémités des barres</source>
+        <translation>Member end forces</translation>
+    </message>
+    <message>
+        <source>Comparaison Fem3D / OpenSees (résultats affichés : Fem3D)</source>
+        <translation>Fem3D / OpenSees comparison (displayed results: Fem3D)</translation>
+    </message>
+    <message>
+        <source>Grandeur</source>
+        <translation>Quantity</translation>
+    </message>
+    <message>
+        <source>Valeurs comparées</source>
+        <translation>Compared values</translation>
+    </message>
+    <message>
+        <source>Hors tolérance</source>
+        <translation>Out of tolerance</translation>
+    </message>
+    <message>
+        <source>Écart absolu max</source>
+        <translation>Max absolute deviation</translation>
+    </message>
+    <message>
+        <source>Écart relatif max</source>
+        <translation>Max relative deviation</translation>
+    </message>
+    <message>
+        <source>Total (tolérance : max(1e-6·|réf|, 1e-9·échelle))</source>
+        <translation>Total (tolerance: max(1e-6·|ref|, 1e-9·scale))</translation>
+    </message>
+    <message>
+        <source>Comparaison Fem3D / OpenSees : %1 valeurs, %2 hors tolérance (écart relatif max %3).</source>
+        <translation>Fem3D / OpenSees comparison: %1 values, %2 out of tolerance (max relative deviation %3).</translation>
+    </message>
+    <message>
+        <source>ÉCART entre Fem3D et OpenSees : %1 Les résultats affichés sont ceux de Fem3D ; examiner la table de comparaison.</source>
+        <translation>DEVIATION between Fem3D and OpenSees: %1 The displayed results are those of Fem3D; check the comparison table.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::Fem3DIntegration</name>
+    <message>
+        <source>Fem3D calcule un cas, tous les cas superposés ou une combinaison : créez une combinaison pour calculer plusieurs cas ensemble.</source>
+        <translation>Fem3D analyses one case, all cases superposed or one combination: create a combination to analyse several cases together.</translation>
+    </message>
+    <message>
+        <source>éléments surfaciques (coques) : non calculés par Fem3D</source>
+        <translation>surface elements (shells): not analysed by Fem3D</translation>
+    </message>
+    <message>
+        <source>Ressort %1 du nœud N%2 sans effet : ce DDL est bloqué.</source>
+        <translation>Spring %1 of node N%2 has no effect: this DOF is restrained.</translation>
+    </message>
+    <message>
+        <source>%1 : barre articulée (treillis ou câble), non calculée par Fem3D</source>
+        <translation>%1: pinned member (truss or cable), not analysed by Fem3D</translation>
+    </message>
+    <message>
+        <source>%1 : relâchement d'effort normal, tranchant ou de torsion non pris en charge (seules les rotules de flexion My, Mz le sont)</source>
+        <translation>%1: axial, shear or torsion release not supported (only My, Mz bending hinges are)</translation>
+    </message>
+    <message>
+        <source>%1 : axes locaux de Fem3D différents de ceux de TSA (calcul refusé)</source>
+        <translation>%1: Fem3D local axes differ from those of TSA (analysis refused)</translation>
+    </message>
+    <message>
+        <source>Charge nodale « %1 » déclarée locale : appliquée dans les axes globaux (un nœud n'a pas de repère local).</source>
+        <translation>Nodal load “%1” declared local: applied in the global axes (a node has no local axis system).</translation>
+    </message>
+    <message>
+        <source>%1 : charge ponctuelle sur barre</source>
+        <translation>%1: point load on member</translation>
+    </message>
+    <message>
+        <source>%1 : moment réparti</source>
+        <translation>%1: distributed moment</translation>
+    </message>
+    <message>
+        <source>%1 : charge répartie sur une partie de la barre</source>
+        <translation>%1: distributed load over part of the member</translation>
+    </message>
+    <message>
+        <source>Méthode des déplacements (Fem3D) : éléments poutre 3D d'Euler–Bernoulli à rigidité exacte, charges réparties par forces nodales équivalentes exactes, rotules par condensation statique, appuis élastiques sur la diagonale de K, résolution LDLᵀ creuse (Eigen SimplicialLDLT).</source>
+        <translation>Displacement method (Fem3D): exact-stiffness 3D Euler–Bernoulli beam elements, distributed loads by exact equivalent nodal forces, hinges by static condensation, elastic supports on the diagonal of K, sparse LDLᵀ solution (Eigen SimplicialLDLT).</translation>
+    </message>
+    <message>
+        <source>Partition DDL libres / imposés</source>
+        <translation>Free / restrained DOF partition</translation>
+    </message>
+</context>
+<context>
     <name>TSA::Analysis::LoadValidation</name>
     <message>
         <source>Validation réussie. Le modèle est prêt pour le calcul OpenSees.</source>
@@ -7760,16 +7965,44 @@ Run the analysis?</translation>
 <context>
     <name>TSA::Analysis::OpenSeesManager</name>
     <message>
-        <source>Fichier OpenSees.exe introuvable.</source>
-        <translation>OpenSees.exe file not found.</translation>
+        <source>Exécutable OpenSees introuvable (ni dans %1, ni dans le PATH, ni au chemin enregistré « OpenSees/ExecutablePath »).</source>
+        <translation>OpenSees executable not found (not in %1, nor in the PATH, nor at the saved path “OpenSees/ExecutablePath”).</translation>
     </message>
     <message>
-        <source>Impossible de démarrer le processus OpenSees : %1</source>
-        <translation>Cannot start the OpenSees process: %1</translation>
+        <source>Exécutable OpenSees introuvable : %1</source>
+        <translation>OpenSees executable not found: %1</translation>
+    </message>
+    <message>
+        <source>Impossible de démarrer OpenSees (%1) : %2</source>
+        <translation>Cannot start OpenSees (%1): %2</translation>
     </message>
     <message>
         <source>Délai d'attente dépassé lors de la vérification d'OpenSees.</source>
         <translation>Timeout while checking OpenSees.</translation>
+    </message>
+    <message>
+        <source>OpenSees %1 non pris en charge : version %2 ou ultérieure requise.</source>
+        <translation>OpenSees %1 is not supported: version %2 or later is required.</translation>
+    </message>
+    <message>
+        <source>OpenSees %1 opérationnel.</source>
+        <translation>OpenSees %1 is operational.</translation>
+    </message>
+    <message>
+        <source>OpenSees démarre mais son interpréteur Tcl ne s'initialise pas (init.tcl introuvable) : la bibliothèque Tcl doit se trouver dans &lt;dossier de l'exécutable&gt;/../lib/tcl8.6.</source>
+        <translation>OpenSees starts but its Tcl interpreter fails to initialize (init.tcl not found): the Tcl library must be in &lt;executable folder&gt;/../lib/tcl8.6.</translation>
+    </message>
+    <message>
+        <source>OpenSees s'est arrêté anormalement (code %1) : bibliothèque manquante ou exécutable incompatible avec ce système.</source>
+        <translation>OpenSees stopped abnormally (code %1): missing library or executable incompatible with this system.</translation>
+    </message>
+    <message>
+        <source>Le programme ne répond pas comme OpenSees à la commande de contrôle.</source>
+        <translation>The program does not respond like OpenSees to the check command.</translation>
+    </message>
+    <message>
+        <source>Téléchargement automatique d'OpenSees disponible sous Windows uniquement : installer OpenSees et le placer dans le PATH.</source>
+        <translation>Automatic OpenSees download available on Windows only: install OpenSees and put it in the PATH.</translation>
     </message>
     <message>
         <source>Téléchargement d'OpenSees depuis %1...</source>
@@ -13836,6 +14069,26 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
         <translation>Computed by TSA — without AI</translation>
     </message>
     <message>
+        <source>⛔ refusée</source>
+        <translation>⛔ refused</translation>
+    </message>
+    <message>
+        <source>✗ échec</source>
+        <translation>✗ failed</translation>
+    </message>
+    <message>
+        <source>✓ exécutée et vérifiée</source>
+        <translation>✓ executed and verified</translation>
+    </message>
+    <message>
+        <source>⚠ exécutée, vérification NON conforme</source>
+        <translation>⚠ executed, verification NOT compliant</translation>
+    </message>
+    <message>
+        <source>Action de l'opérateur</source>
+        <translation>Operator action</translation>
+    </message>
+    <message>
         <source>Proposition appliquée</source>
         <translation>Proposal applied</translation>
     </message>
@@ -13904,6 +14157,42 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
         <translation>New conversation</translation>
     </message>
     <message>
+        <source>Opérateur</source>
+        <translation>Operator</translation>
+    </message>
+    <message>
+        <source>Mode opérateur : l'IA crée, modifie et calcule elle-même dans le projet ouvert, avec les commandes de TSA (annulables par Ctrl+Z), et vérifie chaque action dans le modèle. Désactivé : l'IA lit le modèle et propose, vous validez.</source>
+        <translation>Operator mode: the AI itself creates, modifies and analyses in the open project, using the TSA commands (undoable with Ctrl+Z), and checks each action in the model. Disabled: the AI reads the model and proposes, you validate.</translation>
+    </message>
+    <message>
+        <source>Utiliser la couche IA Python (python/tsa_ai) : mêmes commandes TSA, même mode opérateur, mêmes vérifications. Désactivé : assistant intégré.</source>
+        <translation>Use the Python AI layer (python/tsa_ai): same TSA commands, same operator mode, same checks. Disabled: built-in assistant.</translation>
+    </message>
+    <message>
+        <source>Mode opérateur indisponible</source>
+        <translation>Operator mode unavailable</translation>
+    </message>
+    <message>
+        <source>Aucun projet n'est relié à l'assistant.</source>
+        <translation>No project is linked to the assistant.</translation>
+    </message>
+    <message>
+        <source>Mode opérateur activé</source>
+        <translation>Operator mode enabled</translation>
+    </message>
+    <message>
+        <source>Mode opérateur désactivé</source>
+        <translation>Operator mode disabled</translation>
+    </message>
+    <message>
+        <source>L'IA peut créer, modifier et calculer dans ce projet (au plus %1 actions par demande), chaque action est annulable (Ctrl+Z) et vérifiée dans le modèle.</source>
+        <translation>The AI can create, modify and analyse in this project (at most %1 actions per request); each action can be undone (Ctrl+Z) and is checked in the model.</translation>
+    </message>
+    <message>
+        <source>L'IA lit le modèle et propose ; aucune modification sans votre accord.</source>
+        <translation>The AI reads the model and proposes; no change without your approval.</translation>
+    </message>
+    <message>
         <source>Question d'ingénierie… (Ctrl+Entrée pour envoyer)
 ex. « Pourquoi la poutre B3 a-t-elle un moment élevé ? »</source>
         <translation>Engineering question… (Ctrl+Enter to send)
@@ -13920,6 +14209,54 @@ e.g. “Why does beam B3 have a high moment?”</translation>
     <message>
         <source>Vous</source>
         <translation>You</translation>
+    </message>
+    <message>
+        <source>⋯ Couche IA Python</source>
+        <translation>⋯ Python AI layer</translation>
+    </message>
+    <message>
+        <source>Couche IA Python arrêtée</source>
+        <translation>Python AI layer stopped</translation>
+    </message>
+    <message>
+        <source>L'assistant intégré reprend les demandes.</source>
+        <translation>The built-in assistant takes over the requests.</translation>
+    </message>
+    <message>
+        <source>Couche IA Python indisponible</source>
+        <translation>Python AI layer unavailable</translation>
+    </message>
+    <message>
+        <source>Couche IA Python prête</source>
+        <translation>Python AI layer ready</translation>
+    </message>
+    <message>
+        <source>Fournisseur : %1 · modèle : %2 · %3</source>
+        <translation>Provider: %1 · model: %2 · %3</translation>
+    </message>
+    <message>
+        <source>en ligne (données envoyées au fournisseur)</source>
+        <translation>online (data sent to the provider)</translation>
+    </message>
+    <message>
+        <source>sur ce poste</source>
+        <translation>on this computer</translation>
+    </message>
+    <message>
+        <source>Matériel pour un modèle local</source>
+        <translation>Hardware for a local model</translation>
+    </message>
+    <message>
+        <source>⋯ Python : tour %1 (%2 ms)</source>
+        <translation>⋯ Python: turn %1 (%2 ms)</translation>
+    </message>
+    <message>
+        <source>Action de l'opérateur (Python)</source>
+        <translation>Operator action (Python)</translation>
+    </message>
+    <message>
+        <source>Couche IA Python</source>
+        <translation>Python AI layer</translation>
     </message>
     <message>
         <source>Démarrer</source>
@@ -14265,12 +14602,36 @@ The file is verified by SHA-256. Once installed, the AI works offline.</translat
         <translation>Cloud provider (optional)</translation>
     </message>
     <message>
+        <source>Google Gemini (palier gratuit, quotas par projet — compatible OpenAI)</source>
+        <translation>Google Gemini (free tier, per-project quotas — OpenAI-compatible)</translation>
+    </message>
+    <message>
+        <source>OpenRouter (modèles « :free » gratuits — compatible OpenAI)</source>
+        <translation>OpenRouter (free “:free” models — OpenAI-compatible)</translation>
+    </message>
+    <message>
+        <source>DeepSeek (R1 / V3 — compatible OpenAI)</source>
+        <translation>DeepSeek (R1 / V3 — OpenAI-compatible)</translation>
+    </message>
+    <message>
+        <source>Alibaba Qwen (DashScope — compatible OpenAI)</source>
+        <translation>Alibaba Qwen (DashScope — OpenAI-compatible)</translation>
+    </message>
+    <message>
+        <source>Groq (Ultra-rapide — compatible OpenAI)</source>
+        <translation>Groq (ultra-fast — OpenAI-compatible)</translation>
+    </message>
+    <message>
         <source>Compatible OpenAI (URL personnalisée)</source>
         <translation>OpenAI-compatible (custom URL)</translation>
     </message>
     <message>
-        <source>Google Gemini (point d'accès compatible OpenAI)</source>
-        <translation>Google Gemini (OpenAI-compatible endpoint)</translation>
+        <source>Fournisseurs compatibles avec le protocole standard Chat Completions.</source>
+        <translation>Providers compatible with the standard Chat Completions protocol.</translation>
+    </message>
+    <message>
+        <source>ex. gemini-2.0-flash, deepseek-chat, claude-3-5-sonnet-20241022</source>
+        <translation>e.g. gemini-2.0-flash, deepseek-chat, claude-3-5-sonnet-20241022</translation>
     </message>
     <message>
         <source>Anthropic Claude (point d'accès compatible OpenAI)</source>
@@ -14279,14 +14640,6 @@ The file is verified by SHA-256. Once installed, the AI works offline.</translat
     <message>
         <source>Ollama (local, sur ce poste)</source>
         <translation>Ollama (local, on this computer)</translation>
-    </message>
-    <message>
-        <source>Anthropic : point d'accès « compatible OpenAI » officiel (bêta) — même protocole que les autres fournisseurs Cloud, clé API Anthropic (console.anthropic.com).</source>
-        <translation>Anthropic: official “OpenAI-compatible” endpoint (beta) — same protocol as the other Cloud providers, Anthropic API key (console.anthropic.com).</translation>
-    </message>
-    <message>
-        <source>ex. claude-sonnet-5-5, gpt-..., gemini-...</source>
-        <translation>e.g. claude-sonnet-5-5, gpt-..., gemini-...</translation>
     </message>
     <message>
         <source>•••••• (enregistrée, chiffrée) — laisser vide pour conserver</source>
@@ -15229,6 +15582,14 @@ Each restraint is listed before the analysis and reported if it carries a force.
         <translation>Line elements (members, beams, columns)</translation>
     </message>
     <message>
+        <source>Éléments Filaires</source>
+        <translation>Line elements</translation>
+    </message>
+    <message>
+        <source>Création et paramétrage de poutres, poteaux et barres structurales</source>
+        <translation>Creation and setup of beams, columns and structural members</translation>
+    </message>
+    <message>
         <source>Barre n° :</source>
         <translation>Member no.:</translation>
     </message>
@@ -15355,10 +15716,6 @@ Each restraint is listed before the analysis and reported if it carries a force.
     <message>
         <source>Fermer</source>
         <translation>Close</translation>
-    </message>
-    <message>
-        <source>Aide</source>
-        <translation>Help</translation>
     </message>
     <message>
         <source>%1 créée reliant N%2 à N%3</source>
@@ -16445,6 +16802,14 @@ Fix the subgraph body or discard its changes.</translation>
         <translation>Cable properties</translation>
     </message>
     <message>
+        <source>Éléments Câbles &amp; Tirants</source>
+        <translation>Cable &amp; tie elements</translation>
+    </message>
+    <message>
+        <source>Modélisation géométrique et précontrainte initiale des câbles</source>
+        <translation>Geometric modelling and initial prestress of cables</translation>
+    </message>
+    <message>
         <source>Câble n° :</source>
         <translation>Cable no.:</translation>
     </message>
@@ -16615,10 +16980,6 @@ Fix the subgraph body or discard its changes.</translation>
     <message>
         <source>Étirer (Mode Continu)</source>
         <translation>Chain (continuous mode)</translation>
-    </message>
-    <message>
-        <source>Aide</source>
-        <translation>Help</translation>
     </message>
     <message>
         <source>Ajouter</source>
@@ -18048,6 +18409,49 @@ No recompilation was needed.</translation>
     </message>
 </context>
 <context>
+    <name>TSA::UI::Fem3DOptionsWidget</name>
+    <message>
+        <source>Moteur EF 3D Fem3D (moteur secondaire)</source>
+        <translation>Fem3D 3D FE engine (secondary engine)</translation>
+    </message>
+    <message>
+        <source>Fem3D seul</source>
+        <translation>Fem3D only</translation>
+    </message>
+    <message>
+        <source>Fem3D, comparé à OpenSees</source>
+        <translation>Fem3D, compared with OpenSees</translation>
+    </message>
+    <message>
+        <source>Comparaison : le modèle est aussi calculé par OpenSees. Les résultats affichés restent ceux de Fem3D ; les écarts sont donnés dans une table et signalés au-delà de la tolérance.</source>
+        <translation>Comparison: the model is also analysed by OpenSees. The displayed results remain those of Fem3D; the deviations are given in a table and flagged beyond the tolerance.</translation>
+    </message>
+    <message>
+        <source>Calcul :</source>
+        <translation>Analysis:</translation>
+    </message>
+    <message>
+        <source>Refuser le calcul</source>
+        <translation>Refuse the analysis</translation>
+    </message>
+    <message>
+        <source>Calculer par OpenSees</source>
+        <translation>Analyse with OpenSees</translation>
+    </message>
+    <message>
+        <source>Modèle hors du périmètre de Fem3D (charge ponctuelle ou partielle sur barre, moment réparti…). Un mécanisme ou une donnée invalide n'est jamais confié à un autre moteur.</source>
+        <translation>Model outside the scope of Fem3D (point or partial load on a member, distributed moment…). A mechanism or invalid data is never handed over to another engine.</translation>
+    </message>
+    <message>
+        <source>Hors périmètre :</source>
+        <translation>Out of scope:</translation>
+    </message>
+    <message>
+        <source>Un calcul confié à OpenSees est annoncé avant le calcul et ses résultats portent l'identité d'OpenSees.</source>
+        <translation>An analysis handed over to OpenSees is announced beforehand and its results carry the OpenSees identity.</translation>
+    </message>
+</context>
+<context>
     <name>TSA::UI::FoundationPropertiesView</name>
     <message>
         <source>Propriétés de la Fondation / Semelle</source>
@@ -18896,6 +19300,10 @@ Unchecked: waits for a click on 'Apply'.</translation>
         <translation>Import an IFC file</translation>
     </message>
     <message>
+        <source>Options d'importation géométrique et analytique du modèle BIM IFC.</source>
+        <translation>Geometric and analytical import options for the IFC BIM model.</translation>
+    </message>
+    <message>
         <source>Fichier : %1</source>
         <translation>File: %1</translation>
     </message>
@@ -18931,12 +19339,24 @@ Unchecked: waits for a click on 'Apply'.</translation>
         <source>Importer</source>
         <translation>Import</translation>
     </message>
+    <message>
+        <source>Annuler</source>
+        <translation>Cancel</translation>
+    </message>
 </context>
 <context>
     <name>TSA::UI::IfcImportReportDialog</name>
     <message>
         <source>Rapport d'import IFC</source>
         <translation>IFC import report</translation>
+    </message>
+    <message>
+        <source>Rapport d'Importation IFC</source>
+        <translation>IFC import report</translation>
+    </message>
+    <message>
+        <source>Bilan d'extraction des entités géométriques, éléments analytiques et avertissements.</source>
+        <translation>Summary of the extracted geometric entities, analytical elements and warnings.</translation>
     </message>
     <message>
         <source>Classe IFC</source>
@@ -18981,6 +19401,10 @@ Unchecked: waits for a click on 'Apply'.</translation>
     <message>
         <source>Enregistrer le rapport…</source>
         <translation>Save report…</translation>
+    </message>
+    <message>
+        <source>Fermer</source>
+        <translation>Close</translation>
     </message>
     <message>
         <source>Enregistrer le rapport d'import</source>
@@ -19067,28 +19491,8 @@ Unchecked: waits for a click on 'Apply'.</translation>
 <context>
     <name>TSA::UI::LevelDialog</name>
     <message>
-        <source>Level et Story Manager</source>
-        <translation>Level and storey manager</translation>
-    </message>
-    <message>
-        <source>Manage project stories, elevations and vertical levels:</source>
-        <translation>Manage project storeys, elevations and vertical levels:</translation>
-    </message>
-    <message>
         <source>ID</source>
         <translation>ID</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>Name</translation>
-    </message>
-    <message>
-        <source>Elevation Z (m)</source>
-        <translation>Elevation Z (m)</translation>
-    </message>
-    <message>
-        <source>Spacing ΔZ (m)</source>
-        <translation>Spacing ΔZ (m)</translation>
     </message>
     <message>
         <source>Visible</source>
@@ -19107,14 +19511,32 @@ Unchecked: waits for a click on 'Apply'.</translation>
         <translation>Generate storeys...</translation>
     </message>
     <message>
-        <source>Synchronisation en direct (temps réel)</source>
-        <translation>Live synchronisation (real time)</translation>
+        <source>Gestionnaire des Niveaux et Étages</source>
+        <translation>Level and storey manager</translation>
     </message>
     <message>
-        <source>Coché : applique immédiatement les modifications de niveaux dans la vue 3D.
-Décoché : attend un clic sur 'Appliquer'.</source>
-        <translation>Checked: applies the level changes immediately in the 3D view.
-Unchecked: waits for a click on 'Apply'.</translation>
+        <source>Définition des altimétries Z, espacements entre planchers et plans de travail verticaux.</source>
+        <translation>Definition of Z elevations, spacing between floors and vertical work planes.</translation>
+    </message>
+    <message>
+        <source>Nom</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>Altimétrie Z (m)</source>
+        <translation>Elevation Z (m)</translation>
+    </message>
+    <message>
+        <source>Espacement ΔZ (m)</source>
+        <translation>Spacing ΔZ (m)</translation>
+    </message>
+    <message>
+        <source>Synchronisation 3D en direct</source>
+        <translation>Live 3D synchronisation</translation>
+    </message>
+    <message>
+        <source>Applique immédiatement les modifications de niveaux dans la vue 3D.</source>
+        <translation>Applies the level changes immediately in the 3D view.</translation>
     </message>
     <message>
         <source>Appliquer</source>
@@ -19509,6 +19931,10 @@ Unchecked: waits for a click on 'Apply'.</translation>
     <message>
         <source>Cas de Charges, Combinaisons et Solveur OpenSees</source>
         <translation>Load cases, combinations and OpenSees solver</translation>
+    </message>
+    <message>
+        <source>Gestion des cas de charge élémentaires, combinaisons d'actions Eurocodes et validation de la structure.</source>
+        <translation>Management of elementary load cases, Eurocode action combinations and structure validation.</translation>
     </message>
     <message>
         <source>ID</source>
@@ -20176,6 +20602,10 @@ The other objects keep their settings.</translation>
     <message>
         <source>global</source>
         <translation>global</translation>
+    </message>
+    <message>
+        <source>Application de charges réparties (uniformes, trapézoïdales, moments) ou ponctuelles sur les barres.</source>
+        <translation>Application of distributed (uniform, trapezoidal, moments) or point loads on members.</translation>
     </message>
     <message>
         <source>Barre / Élément structural</source>
@@ -21532,6 +21962,10 @@ User folder: %1</translation>
         <translation>New node</translation>
     </message>
     <message>
+        <source>Définition des coordonnées 3D, étiquette et conditions aux limites.</source>
+        <translation>Definition of the 3D coordinates, label and boundary conditions.</translation>
+    </message>
+    <message>
         <source>Ex: (12.5, 0.0, 3.0) ou N&lt;id&gt;</source>
         <translation>E.g. (12.5, 0.0, 3.0) or N&lt;id&gt;</translation>
     </message>
@@ -21718,6 +22152,10 @@ Do you want to select it rather than create a duplicate?</translation>
     <message>
         <source>Charge nodale : force et couple</source>
         <translation>Nodal load: force and moment</translation>
+    </message>
+    <message>
+        <source>Définition des composantes d'action (Fx, Fy, Fz) et de moment (Mx, My, Mz) sur un nœud.</source>
+        <translation>Definition of the force components (Fx, Fy, Fz) and moment components (Mx, My, Mz) on a node.</translation>
     </message>
     <message>
         <source>Nœud cible</source>
@@ -23817,6 +24255,14 @@ Double-click to open</translation>
         <translation>Structural section customisation</translation>
     </message>
     <message>
+        <source>Personnalisation de la Section</source>
+        <translation>Section customisation</translation>
+    </message>
+    <message>
+        <source>Définition paramétrique des profilés et calcul en temps réel des caractéristiques géométriques.</source>
+        <translation>Parametric definition of profiles and real-time calculation of the geometric properties.</translation>
+    </message>
+    <message>
         <source>Forme de Section et Bibliothèque</source>
         <translation>Section shape and library</translation>
     </message>
@@ -24806,10 +25252,6 @@ Create a new project or open a %1 file: its preview will appear here.</translati
         <translation>Truss properties - 3D pre-drawing</translation>
     </message>
     <message>
-        <source>&lt;b&gt;Paramètres de modélisation initiale&lt;/b&gt;&lt;br&gt;&lt;span style='color:#8B949E; font-size:11px;'&gt;Définissez les propriétés appliquées automatiquement aux structures lors du tracé 3D.&lt;/span&gt;</source>
-        <translation>&lt;b&gt;Initial modelling settings&lt;/b&gt;&lt;br&gt;&lt;span style='color:#8B949E; font-size:11px;'&gt;Define the properties applied automatically to structures when drawing in 3D.&lt;/span&gt;</translation>
-    </message>
-    <message>
         <source>Voile / Mur</source>
         <translation>Wall</translation>
     </message>
@@ -24834,8 +25276,16 @@ Create a new project or open a %1 file: its preview will appear here.</translati
         <translation>Truss</translation>
     </message>
     <message>
-        <source>Afficher cette boîte avant chaque dessin d'élément</source>
-        <translation>Show this dialog before each element drawing</translation>
+        <source>Paramètres de Modélisation Initiale</source>
+        <translation>Initial modelling settings</translation>
+    </message>
+    <message>
+        <source>Définissez les propriétés appliquées automatiquement aux structures lors du tracé 3D interactif.</source>
+        <translation>Define the properties applied automatically to structures during interactive 3D drawing.</translation>
+    </message>
+    <message>
+        <source>Afficher cette boîte avant chaque dessin</source>
+        <translation>Show this dialog before each drawing</translation>
     </message>
     <message>
         <source>Démarrer le Dessin 3D</source>
@@ -24957,6 +25407,14 @@ Create a new project or open a %1 file: its preview will appear here.</translati
         <translation>Surface elements (slabs, walls)</translation>
     </message>
     <message>
+        <source>Éléments Surfaciques</source>
+        <translation>Surface elements</translation>
+    </message>
+    <message>
+        <source>Modélisation géométrique et physique des dalles et voiles porteurs</source>
+        <translation>Geometric and physical modelling of load-bearing slabs and walls</translation>
+    </message>
+    <message>
         <source>Type de surface :</source>
         <translation>Surface type:</translation>
     </message>
@@ -25073,10 +25531,6 @@ Create a new project or open a %1 file: its preview will appear here.</translati
         <translation>Close</translation>
     </message>
     <message>
-        <source>Aide</source>
-        <translation>Help</translation>
-    </message>
-    <message>
         <source>%1 point(s) cliqué(s). Fermez sur le 1er point ou cliquez 'Fermer le contour'</source>
         <translation>%1 point(s) clicked. Close on the 1st point or click 'Close outline'</translation>
     </message>
@@ -25158,6 +25612,14 @@ Create a new project or open a %1 file: its preview will appear here.</translati
     <message>
         <source>Charges surfaciques (%1 surface(s))</source>
         <translation>Surface loads (%1 surface(s))</translation>
+    </message>
+    <message>
+        <source>Charges Surfaciques</source>
+        <translation>Surface loads</translation>
+    </message>
+    <message>
+        <source>Application et gestion des charges réparties (kN/m²) ou ponctuelles (kN) sur dalles et voiles.</source>
+        <translation>Application and management of distributed (kN/m²) or point (kN) loads on slabs and walls.</translation>
     </message>
     <message>
         <source>Charges appliquées aux dalles et voiles sélectionnés. Au calcul, elles sont converties en charges nodales cohérentes sur le maillage (∫ Nᵢ p dA), résultante et moment contrôlés ; les ouvertures sont déduites. Le poids propre des surfaces est calculé automatiquement (ρ·g·e) pour les cas qui l'incluent : ne pas le saisir ici en plus.</source>
@@ -25248,6 +25710,14 @@ Create a new project or open a %1 file: its preview will appear here.</translati
         <translation>Delete</translation>
     </message>
     <message>
+        <source>Appliquer</source>
+        <translation>Apply</translation>
+    </message>
+    <message>
+        <source>Fermer</source>
+        <translation>Close</translation>
+    </message>
+    <message>
         <source> (nouvelle)</source>
         <translation> (new)</translation>
     </message>
@@ -25257,6 +25727,14 @@ Create a new project or open a %1 file: its preview will appear here.</translati
     <message>
         <source>Appuis linéiques des surfaces (%1 surface(s))</source>
         <translation>Line supports of surfaces (%1 surface(s))</translation>
+    </message>
+    <message>
+        <source>Appuis Linéiques des Surfaces</source>
+        <translation>Surface line supports</translation>
+    </message>
+    <message>
+        <source>Conditions aux limites réparties (encastrements, appuis simples, ressorts) sur les bords de dalles et voiles.</source>
+        <translation>Distributed boundary conditions (fixed supports, simple supports, springs) on the edges of slabs and walls.</translation>
     </message>
     <message>
         <source>Appuis répartis le long d'un bord (ou de tout le contour) : au calcul, chaque nœud du maillage situé sur le bord reçoit les blocages choisis et la raideur linéique multipliée par sa longueur d'influence. Axes globaux. Bords d'une dalle : côté allant du sommet i au sommet i+1 du contour ; bords d'un voile : pied, extrémité de fin, tête, extrémité de début (une porte au pied interrompt l'appui).</source>
@@ -25333,6 +25811,14 @@ Create a new project or open a %1 file: its preview will appear here.</translati
     <message>
         <source>Supprimer</source>
         <translation>Delete</translation>
+    </message>
+    <message>
+        <source>Appliquer</source>
+        <translation>Apply</translation>
+    </message>
+    <message>
+        <source>Fermer</source>
+        <translation>Close</translation>
     </message>
 </context>
 <context>

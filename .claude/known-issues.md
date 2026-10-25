@@ -1,8 +1,43 @@
 # Known Issues
 
-Last Updated: 2026-10-18 (finalisation des vues : BUG-078 corrigé, BUG-080 à BUG-082 trouvés et corrigés ; BUG-079 ouvert). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-24 (portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
+
+## BUG-104
+Area: Tests — i18n, test 457 (recherche, seuil 50 ms)
+Problem: en Debug, la requête la plus lente dépasse le seuil (60 ms sur 6 000 entrées ; ~11 ms en Release) ; l'échec
+arrête la suite, et les tests 458–463 ne s'exécutent pas (décompte Debug 482/490 au lieu de 489).
+Reproduction: build-linux-debug, 2026-10-25, suite complète xcb.
+Impact: LOW (performance réelle conforme en Release) ; masque toutefois 6 tests en Debug.
+Status: OPEN — pistes : seuil selon NDEBUG, ou poursuivre la suite après cet échec.
+Related files: tests/test_i18n.cpp, tests/test_main.cpp
+
+## BUG-102
+Area: OpenSees — chemin explicite de l'exécutable (src/Analysis/OpenSeesManager.cpp)
+Problem: aucune option de l'interface n'écrit le chemin d'OpenSees : `setCustomExecutablePath` n'a aucun appelant ;
+seule la clé QSettings `OpenSees/ExecutablePath` (organisation « TSA », application « TSA_StructuralAnalysis » ;
+~/.config/TSA/TSA_StructuralAnalysis.conf sous Linux, registre sous Windows) permet de l'imposer, à la main.
+Reproduction: Grep `setCustomExecutablePath` dans src/ (2026-10-25) : seule la définition.
+Impact: LOW sous Windows (exécutable livré dans thirdparty/OpenSees), MEDIUM sous Linux (application lancée depuis le
+bureau : OpenSees introuvable si ~/.profile n'ajoute pas son dossier au PATH).
+Status: OPEN — comportement vérifié le 2026-10-25 (suite opensees) : chemin enregistré prioritaire, PATH, environnement
+minimal (introuvable, message explicite). Ne pas proposer de lien symbolique (Tcl ne trouve plus lib/tcl8.6).
+Related files: src/Analysis/OpenSeesManager.cpp, docs/LINUX_BUILD.md §7
+
+## BUG-095
+Area: Dépendances Linux (OpenSees, Gmsh, IfcOpenShell)
+Problem: seules des versions Windows sont présentes dans thirdparty/ : OpenSees 3.8.0 (.exe, aucun binaire Linux
+publié), SDK Gmsh Windows64 (intégration cmake/Gmsh.cmake réservée à MSVC), IfcOpenShell construit avec MSVC.
+Sous Linux : moteur OpenSees indisponible, pas de maillage Gmsh, import IFC par le lecteur STEP interne.
+Reproduction: build-linux-debug, 2026-10-24 : suites opensees, ndc, extraction, engines (136), mdd (158), displaymodes
+(252), tsa3d (271), templates (284), torsion (321), demo (347), audit (369), benchmarks (367) → OpenSees ; mesh,
+surfaces (354) → Gmsh ; ifc (400) → IfcOpenShell.
+Impact: HIGH sous Linux (calcul impossible sans OpenSees), aucun sous Windows.
+Status: FIXED (2026-10-25) — OpenSees 3.8.0 compilé (Conan 2, docs/LINUX_BUILD.md §7, ~/opt/opensees-3.8.0, PATH) ;
+Gmsh : SDK Linux64 par cmake/Gmsh.cmake (§10, BUG-100, BUG-101) ; IfcOpenShell : scripts/linux/build-ifcopenshell.sh
+(§11, BUG-103). Vérifié : suite complète Release (xcb) 489/490, 0 échec, test 128 ignoré (Windows seulement).
+Related files: cmake/Gmsh.cmake, cmake/IfcOpenShell.cmake, src/Analysis/OpenSeesManager.cpp, docs/LINUX_BUILD.md
 
 ## BUG-076
 Area: Tests / intégration continue (vue 3D OCCT)
@@ -27,6 +62,9 @@ Essai local (build-ninja-release, 79dfdea) : offscreen 25/25 ; windows + Mesa 6/
 « Mesa — llvmpipe, OpenGL 4.6 » (test 370), aucun [SKIP]. Garde-fous éprouvés sur de fausses suites CTest (test
 sauté avec CTest « réussi », arrêt 0xC0000409, suite absente : échec dans les trois cas). Reste à vérifier sur le
 runner : session interactive (session ≠ 0) et durée de la passe native.
+24/10/2026 — même défaut sous Linux : `QT_QPA_PLATFORM=offscreen` → « X Error … BadWindow » et arrêt (suites
+display, multidoc, meshview après le test 343, désormais [SKIP] comme 408). scripts/linux/test.sh choisit « xcb » quand
+un affichage X11 et le plugin xcb de Qt (libxcb-cursor0) sont disponibles.
 Related files: tests/test_display.cpp, tests/test_audit.cpp, tests/test_multidoc*.cpp, Setup-Livrable/.github/workflows/release.yml, Setup-Livrable/scripts/run_tests.ps1
 
 ## BUG-079
@@ -174,6 +212,131 @@ Status: WORKAROUND — `cmake --preset ninja-debug --fresh` rétablit les drapea
 `Select-String build-ninja-debug\CMakeCache.txt -Pattern "^CMAKE_CXX_FLAGS:"` doit contenir /EHsc.
 
 ## Corrigés (historique)
+
+## BUG-103
+Area: Import IFC sous Linux — IfcOpenShell et libgmsh (scripts/linux/build-ifcopenshell.sh)
+Problem: libgmsh.so (SDK Gmsh, GCC 6) exporte ~879 instanciations std (et Boost) ; chargée avant les modules
+IfcOpenShell (dlopen), elle leur fournissait ses copies : 32 symboles d'IfcOpenShell (GCC 13) liés à libgmsh, dont
+std::_Rb_tree<pair<int,int>,…> → erreur de segmentation dans open_cascade_kernel::faceset_helper (thread de
+process_concurrently) dès le premier fichier IFC (suite ifc, test 400).
+Reproduction: 2026-10-25, gdb (pile dans std::_Rb_tree_insert_and_rebalance) puis LD_DEBUG=bindings.
+Status: FIXED (2026-10-25) — IfcOpenShell lié avec -Wl,-Bsymbolic (CMAKE_SHARED_LINKER_FLAGS et
+CMAKE_MODULE_LINKER_FLAGS du script) : 0 liaison ifcopenshell → libgmsh ; suite ifc 10/10 (Release, xcb). Les 3 liaisons
+libstdc++ → libgmsh restantes (basic_stringbuf, ctype::do_narrow) relèvent de l'ABI stable de libstdc++.
+Windows non concerné (pas d'interposition entre DLL).
+Related files: scripts/linux/build-ifcopenshell.sh, cmake/IfcOpenShell.cmake, docs/LINUX_BUILD.md §11
+
+## BUG-101
+Area: Maillage Gmsh sous Linux — interposition des instanciations std (cmake/Gmsh.cmake, cmake/gmsh-hide-std.map)
+Problem: le SDK Linux de Gmsh 4.15.2 est compilé avec GCC 6.5 ; les exécutables de TSA (GCC 13) exportaient ~185
+instanciations std (std::regex _Executor/_Compiler/_Scanner, std::function, _Rb_tree…) que libgmsh référence, et le
+chargeur ELF les substituait à celles de Gmsh (disposition mémoire différente : violation de l'ODR). Effet constaté :
+corruption non déterministe, nom du groupe physique (2,2) « SL1 » effacé par l'ajout du groupe 3D (tests 293 : aller-retour
+export/import 0/288 éléments ; 340 : 2 groupes physiques au lieu de 3) ; un simple gmsh::write en plus le masquait.
+Reproduction: 2026-10-25, LD_DEBUG=bindings : 101 symboles de libgmsh liés à ./TSA_TestSuite ; programme autonome lié au
+SDK avec les mêmes appels : pas de défaut.
+Status: FIXED (2026-10-25) — script de version ld (motifs décorés _ZNSt*, _ZNKSt*, _ZSt*, typeinfo, vtable, VTT,
+gardes) appliqué par INTERFACE_LINK_OPTIONS de TSA::Gmsh aux seuls exécutables, hors Windows : 0 fonction std exportée
+(TSA, TSA_TestSuite, tsa-mesh, TSA_Benchmark). Vérifié Release : mesh 12/12, meshview 12/12 (340, 341 exécutés),
+surfaces 12/12, benchmarks 2/2. Restent liés à l'exécutable : données copiées par relocation (vtables libstdc++,
+typeinfo), sans risque. Note : dans un script de version, un motif extern "C++" entre guillemets est littéral (aucun joker).
+Related files: cmake/Gmsh.cmake, cmake/gmsh-hide-std.map, docs/LINUX_BUILD.md §10
+
+## BUG-100
+Area: Maillage Gmsh sous Linux — gmsh.h_cwrap (src/Mesh/Gmsh/GmshMeshEngine.cpp)
+Problem: gmsh.h_cwrap définit dans TSA des fonctions en ligne gmsh::… qui appellent l'API C ; libgmsh.so exporte son API
+C++ native sous les mêmes noms décorés : l'API C de Gmsh appelait la copie de TSA (interposition ELF), qui rappelait
+l'API C → récursion infinie (gmshModelMeshFieldSetNumbers ↔ gmsh::model::mesh::field::setNumbers), 13 Go de RAM et
+TSA_TestSuite tué par le noyau (OOM) dès le test 289 (maillage 1D).
+Reproduction: 2026-10-25, gdb sous ulimit -v : pile d'appels alternant les deux fonctions.
+Status: FIXED (2026-10-25) — API C++ native (gmsh.h) hors Windows ; Windows (DLL MinGW + MSVC) garde gmsh.h_cwrap.
+Vérifié : suite mesh 12/12. Windows : NON TESTÉ (inchangé par #ifdef _WIN32).
+Related files: src/Mesh/Gmsh/GmshMeshEngine.cpp, cmake/Gmsh.cmake
+
+## BUG-099
+Area: OpenSees — vérification de l'exécutable (src/Analysis/OpenSeesManager.cpp)
+Problem: l'exécutable était accepté si sa sortie contenait « OPENSEES_CHECK_OK » OU « OpenSees » ; la bannière contient
+toujours « OpenSees ». Un binaire dont l'interpréteur Tcl ne démarre pas (init.tcl introuvable, « invalid command name
+"wipe" », code de retour 0) était déclaré disponible ; detectVersion rendait « 3.8.0 » inventé si rien n'était lu.
+Reproduction: 2026-10-24, OpenSees Linux sans lib/tcl8.6 à côté (aussi : lancé par un lien symbolique).
+Status: FIXED (2026-10-25) — `OpenSeesManager::checkExecutable` / `interpretCheckOutput` : seul le marqueur
+OPENSEES_CHECK_OK_<chiffres> prouve le fonctionnement (une recopie de l'entrée « …_%s » échoue), version ≥ 3.4.0
+(plage d'OpenSeesAdapter) ; statuts NotFound, LaunchFailed (non démarré ou arrêt anormal), Timeout, TclInitFailed,
+IncompatibleVersion, UnexpectedOutput, Operational, message traduit (en, mg) repris par OpenSeesEngine::availability et
+ensureAvailable (hors Windows) ; detectVersion n'invente plus de version. OpenSees 3.8.0 n'a pas d'option de version
+(sources : -noHeader, -suppressOutput seulement). Test 491 (sans installation : sorties réelles + faux exécutables
+scriptés sous Unix). Vérifié Linux avec le vrai binaire : opérationnel, sans lib/tcl8.6 → TclInitFailed, chemin
+enregistré (QSettings) et PATH. Windows : NON TESTÉ — gOpenSees.exe de thirdparty/ est un exécutable console qui contient
+le même tclMain (même lecture de l'entrée standard), mais n'a pas pu être lancé ici.
+Related files: src/Analysis/OpenSeesManager.cpp, src/Analysis/OpenSeesManager.h, src/Analysis/Engines/OpenSees/OpenSeesEngine.cpp, tests/test_opensees.cpp
+
+## BUG-098
+Area: Traductions (translations/*.ts, tools/i18n)
+Problem: les .ts n'étaient plus à jour avant le 24/10/2026 : 127 textes du code absents (standardisation des dialogues,
+Fem3D, opérateur IA…), alors que `check_translations.py` annonçait 100 % (il ne mesure que le contenu des .ts).
+`update_translations.py` (-no-obsolete) aurait retiré 15 textes traduits dont la source a été reformulée.
+Status: FIXED (2026-10-24) — lupdate sans -no-obsolete (128 ajoutés, 15 « vanished » gardés), puis 128 textes traduits
+(en, mg ; glossaire docs/I18N_GLOSSARY.md, traductions des 15 anciens textes reprises pour leurs reformulations),
+puis update_translations.py (-no-obsolete) retire les 15 et apply_translations.py écrit les traductions (0 refus).
+Vérifié : check_translations --strict 6540/6540 (100 %) en et mg, 0 erreur ; i18n 15/15, ribbon 4/4 (Release).
+Termes malgaches nouveaux non relus par un locuteur (comme le reste du glossaire) : solony (secours), sosona IA
+(couche IA), mpandidy (opérateur, déjà en usage). Limite de l'outil : check_translations ne détecte pas des .ts en
+retard sur le code ; lancer update_translations.py avant de s'y fier.
+Related files: translations/tsa_en.ts, translations/tsa_mg.ts, tools/i18n/update_translations.py
+
+## BUG-094
+Area: Modules (sdk/modules, src/Modules/ModuleRegistry) — Linux
+Problem: le manifeste `module.json` désigne un exécutable propre à Windows (`"command": "bin/sample_csv2tsa3d.exe"`) ;
+sous Linux le convertisseur est construit sans extension, le module d'exemple est invalide.
+Reproduction: `bash scripts/linux/test.sh debug --suite=modules` → Test 279 en échec (2026-10-24).
+Impact: MEDIUM sous Linux (modules à convertisseur inutilisables), aucun sous Windows.
+Status: FIXED (2026-10-24) — résolution du suffixe plutôt qu'une commande par plateforme (schéma tsa-module/1 et
+manifestes inchangés) : `ConverterSpec::executable()` rend le chemin déclaré s'il existe, sinon « bin/x.exe » → « bin/x »
+hors Windows, « bin/x » → « bin/x.exe » sous Windows ; utilisée pour la validation et le lancement. Vérifié Linux :
+modules 6/6 (test 274 : variante de plateforme acceptée, chemin déclaré prioritaire ; test 279 : conversion CSV → TSA3D
+réelle). Windows : NON TESTÉ. docs/SDK.md mis à jour.
+Related files: sdk/modules/sample.csvimport/module.json, src/Modules/ModuleRegistry.cpp, tests/test_modules.cpp
+
+## BUG-096
+Area: Vue 3D — textures des matériaux (src/Viewer/MaterialVisual.cpp) — Linux
+Problem: sans couleur choisie, la texture était chargée par OCCT depuis le fichier (WIC sous Windows, FreeImage
+ailleurs) ; OCCT compilé sans FreeImage : « no image library available », texture absente.
+Status: FIXED (2026-10-24) — hors Windows, décodage par Qt (RGBA, même convention de lignes que la texture neutre),
+repli sur OCCT si Qt échoue ; Windows inchangé. Vérifié : message disparu de la suite complète (xcb).
+
+## BUG-097
+Area: Tests — hypothèses propres à Windows
+Problem: Test 124 (une seule processEvents() pour une réponse différée par QTimer 0 ms : insuffisant avec le
+répartiteur glib de X11), Test 387 (casse des chemins et lecture du registre par reg.exe).
+Status: FIXED (2026-10-24) — attente bornée (2 s) ; 387 : chemin exact hors Windows, fichier INI de QSettings relu.
+Vérifié Linux xcb : ai 24/24, multidoc 10/10. Windows : NON TESTÉ (branches #ifdef Q_OS_WIN inchangées).
+
+## BUG-091
+Area: Conversions numériques (toutes plateformes Unix)
+Problem: sous Unix, le constructeur de QCoreApplication applique la locale du système (setlocale(LC_ALL, ""));
+avec fr_FR, std::stod / strtod lisaient « 3.5 » → 3 et std::to_string écrivait « 0,500000 » (lecteur STEP/IFC,
+résultats OpenSees, scripts de commandes, Blueprint, CommandRegistry, GridDefinition…). Valeurs silencieusement fausses.
+Reproduction: Ubuntu 24.04, LANG=fr_FR.UTF-8 : Test 178 (axe de poutre IFC z=3 au lieu de 3.5), 198, 389 en échec ;
+tous réussis avec LC_NUMERIC=C.
+Status: FIXED (2026-10-24) — src/Core/NumericLocale.cpp : Q_COREAPP_STARTUP_FUNCTION rétablit LC_NUMERIC="C" (même
+état que le CRT Windows). Vérifié sous fr_FR : blueprint 9/9, bim 13/13, Test 490 (nouveau, suite i18n).
+Related files: src/Core/NumericLocale.cpp, tests/test_i18n.cpp
+
+## BUG-092
+Area: Tests (tests/test_main.cpp)
+Problem: un `#ifdef _WIN32` posé pour la suite « thumbnail » (commit f79aef1) englobait toutes les suites ajoutées
+ensuite (thumbnail → templates_wp, 25 suites) : hors Windows elles n'étaient ni compilées ni exécutées, en silence.
+Status: FIXED (2026-10-24) — garde retirée ; seul le test 128 (DLL COM de l'Explorateur) est réservé à Windows, dans
+tests/test_thumbnail_provider.cpp ([SKIP] ailleurs). Vérifié : les 25 suites s'exécutent sous Linux.
+
+## BUG-093
+Area: OpenSees (src/Analysis/OpenSeesManager.cpp, OpenSeesEngine.cpp) — Linux
+Problem: hors Windows, OpenSeesManager retenait thirdparty/OpenSees/bin/gOpenSees.exe (execve : « Erreur de format »)
+puis tentait le téléchargement automatique Windows (curl.exe, powershell.exe : « Impossible de lancer curl »).
+Status: FIXED (2026-10-24) — candidats .exe et provisionnement réservés à Windows ; ailleurs, recherche de `OpenSees`
+dans thirdparty/OpenSees/bin puis le PATH et message « installer OpenSees et le placer dans le PATH ». Vérifié :
+suites opensees et torsion (message affiché, plus d'exécution du binaire Windows). Chaîne traduite à ajouter (lupdate).
+
 
 | ID | Problème | Correction | Preuve |
 | :--- | :--- | :--- | :--- |

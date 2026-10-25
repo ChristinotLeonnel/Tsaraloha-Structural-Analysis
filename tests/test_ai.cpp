@@ -19,6 +19,7 @@
 #include "Model/Model.h"
 #include "IO/TSAFile.h"
 
+#include <QElapsedTimer>
 #include <QJsonDocument>
 
 using namespace TSA::AI;
@@ -372,7 +373,11 @@ bool runSuite_AI(int& passed)
         });
 
         const quint64 id = mock.chat(req);
-        QCoreApplication::processEvents();
+        // Réponse différée (QTimer à 0 ms) : selon le répartiteur d'événements (glib sous X11), un seul
+        // processEvents() ne suffit pas à la délivrer.
+        QElapsedTimer waited;
+        waited.start();
+        while (!finishedEmitted && waited.elapsed() < 2000) QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
         TEST_CHECK(id > 0, "Test 124: ID de requête valide");
         TEST_CHECK(finishedEmitted, "Test 124: signal finished émis");
         TEST_CHECK(streamedContent == "Réponse structurelle simulée", "Test 124: reconstitution streaming exacte");

@@ -31,6 +31,24 @@ Warnings: aucun connu (C4996 corrigé, BUG-010).
 Note: MSVC francisé → lanceur généré `build-*/msvc_codepage.cmd` (page de code de la génération imposée à cl) :
 dépendances d'en-têtes Ninja fiables quelle que soit la console (BUG-011, vérifié `ninja -t deps`).
 
+## Build Linux (2026-10-24, branche fix/debug-build-errors)
+Status: IMPLEMENTED (Linux) — 2026-10-25 : OpenSees, Gmsh 4.15.2 (SDK, ~/opt/gmsh-4.15.2-Linux64-sdk) et IfcOpenShell
+0.9.0post1 (~/opt/ifcopenshell-0.9.0post1) intégrés (BUG-095, 099–101, 103 corrigés). Suite complète xcb : Release
+489/490 (0 échec, test 128 ignoré : Windows seulement) ; Debug 482/490 (test 457, seuil de performance, BUG-104).
+Historique ci-dessous. Debug et Release compilés (presets linux-debug / linux-release, scripts/linux/, docs/LINUX_BUILD.md).
+Mise à jour 2026-10-24 (soir) : interface lancée (Start Center, projet pont 253 nœuds / 665 barres, vue 3D, Mesa iGPU) ;
+suite complète en xcb : Release 363/471 comptés, 503 PASS, 4 SKIP, 16 FAIL — tous OpenSees / Gmsh / IfcOpenShell absents
+(BUG-095) ; Debug idem + test 457 (seuil de performance). BUG-094, 096, 097 corrigés.
+Ubuntu 24.04, GCC 13.3, CMake 3.28, Ninja 1.11, Qt 6.12.0 gcc_64, OCCT 8.0.1 compilé depuis les sources
+(~/opt/occt-8.0.1, 4 modules, RPATH $ORIGIN). Avertissements : dépréciations OCCT 8 seulement.
+Tests (offscreen, suite par suite, 55 suites) : Debug 35 sans échec / 480 PASS / 22 SKIP ; Release 36 / 487 / 22.
+Échecs : OpenSees / Gmsh / IfcOpenShell absents
+(BUG-095), format de module .exe (BUG-094), i18n 457 en Debug seulement (seuil 50 ms ; 11 ms en Release) ; arrêt
+BadWindow sous offscreen dans display, multidoc, meshview (BUG-076, vues OCCT réelles requises).
+OpenSees 3.8.0 Linux (2026-10-24, ~/opt/opensees-3.8.0, Conan 2) : cas analytiques exacts ; suite complète Release
+(xcb, OpenSees dans le PATH) 450/471 — 4 échecs, tous Gmsh / IfcOpenShell (400, maillage, 354, 367).
+Non vérifié : compilation Windows (MSVC) des modifications (24 et 25/10), dont les #ifdef de Gmsh et OpenSees.
+
 ## Tests
 Status: IMPLEMENTED — 233/233 PASS le 2026-10-10 (208 sélection 3D, 209–212 charges sur barre) ; 228/228 PASS le 2026-10-09 (audit QA : 205 annulation, 206 résultats périmés, 207 JSON des grilles) ; 225/225 PASS le 2026-10-09 (202 repères de grille, 203–204 déformée continue) ; 222/222 PASS le 2026-10-09 (test 201 : chemins accentués, chunk > 64 Kio, nom du projet, ouverture atomique ; TSALab 5/5, science 6/6, banc 14/14) ; 219/219 PASS le 2026-10-08 (197 débogueur Blueprint, 198 script ↔ Blueprint + IA) ; 217/217 avant (196 contrôleur d'analyse) ; 216/216 avant (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
 188 niveaux/grilles annulables, 189 chunk SETT, 190 collage BIM, 191 édition groupée) ; test 20 sensible au temps (BUG-035) ;

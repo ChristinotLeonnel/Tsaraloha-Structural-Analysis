@@ -20,9 +20,14 @@
 #include <unordered_map>
 
 #ifdef TSA_HAVE_GMSH
-#include <gmsh.h_cwrap>
 #ifdef _WIN32
+// DLL compilée avec MinGW : API C++ redéfinie sur l'API C (cmake/Gmsh.cmake).
+#include <gmsh.h_cwrap>
 #include <windows.h>
+#else
+// libgmsh.so (GCC) exporte son API C++ sous les noms que gmsh.h_cwrap définirait ici : le chargeur ELF
+// résoudrait les appels internes de Gmsh vers ces copies, qui rappellent l'API C (récursion infinie).
+#include <gmsh.h>
 #endif
 #endif
 

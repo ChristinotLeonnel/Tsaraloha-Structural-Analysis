@@ -593,18 +593,31 @@ bool runSuite_MultiDoc(int& passed)
         TEST_CHECK(!store.rename("Mon profil", "Charges", &err) && store.rename("Mon profil", "Vue client", &err) && store.contains("Vue client") && !store.contains("Mon profil"),
                    "Test 387: renommage (nom déjà pris refusé)");
         store.setDocumentProfile("C:/Projets/Pont.tsa", "Vue client");
+#ifdef Q_OS_WIN
         TEST_CHECK(store.documentProfile("c:/projets/PONT.tsa") == "Vue client", "Test 387: profil associé au document (chemin normalisé)");
+#else
+        // Système de fichiers sensible à la casse (normalizedPath) : « PONT.tsa » est un autre fichier.
+        TEST_CHECK(store.documentProfile("C:/Projets/Pont.tsa") == "Vue client" && store.documentProfile("c:/projets/PONT.tsa").isEmpty(),
+                   "Test 387: profil associé au document (chemin exact, casse significative)");
+#endif
         TEST_CHECK(store.remove("Résultats") && !store.contains("Résultats"), "Test 387: suppression");
         store.restoreDefaults();
         TEST_CHECK(store.contains("Résultats") && store.contains("Vue client"), "Test 387: profils fournis rétablis, profils de l'utilisateur conservés");
 
         // Persistance : relue par un autre processus (registre), puis par un nouvel objet (redémarrage)
         QSettings().sync();
+#ifdef Q_OS_WIN
         QProcess reg;
         reg.start("reg", { "query", QStringLiteral("HKCU\\Software\\%1\\%2\\Display\\Profiles").arg(isoOrg, isoApp), "/v", "list" });
         reg.waitForFinished(10000);
         const QString regOut = QString::fromLocal8Bit(reg.readAllStandardOutput());
         TEST_CHECK(regOut.contains("Vue client"), "Test 387: profils enregistrés sur disque (registre lu par reg.exe)");
+#else
+        // Format natif hors Windows : fichier INI de QSettings, relu directement sur le disque.
+        QFile ini(QSettings().fileName());
+        const QString iniText = ini.open(QIODevice::ReadOnly) ? QString::fromUtf8(ini.readAll()) : QString();
+        TEST_CHECK(iniText.contains("Vue client"), "Test 387: profils enregistrés sur disque (" << ini.fileName().toStdString() << ")");
+#endif
         DisplayProfileStore again;
         TEST_CHECK(again.contains("Vue client") && again.documentProfile("C:/Projets/Pont.tsa") == "Vue client", "Test 387: profils relus par un nouvel objet (après redémarrage)");
 
