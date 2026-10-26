@@ -1790,6 +1790,13 @@ function(tsa_add_product)
         tsa_apply_common_settings(${name}_CoreTests ${P_PRODUCT_DIR})
         target_link_libraries(${name}_CoreTests PRIVATE ${name}_Core)
         add_test(NAME ${name}_CoreLink COMMAND ${name}_CoreTests)
+        # Noyau STATIQUE : aucune initialisation statique dynamique (elle serait perdue à l'édition de liens). Contrôle par nm
+        # (GCC / Clang) ; non enregistré avec MSVC (pas d'équivalent fiable), la règle portant sur les mêmes sources.
+        find_package(Python3 COMPONENTS Interpreter QUIET)
+        if(Python3_FOUND AND CMAKE_NM AND NOT MSVC)
+            add_test(NAME ${name}_CoreStaticInit
+                     COMMAND Python3::Interpreter ${TSA_ROOT}/tools/check_core_static_init.py ${CMAKE_NM} $<TARGET_FILE:${name}_Core>)
+        endif()
 
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})

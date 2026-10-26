@@ -112,7 +112,7 @@ jobs:
 
       - name: Contrôles CTest (couches, traductions)
         if: always()
-        run: ctest --test-dir TSA/build-ci -R "Layers|I18nCheck|CoreLink" --output-on-failure
+        run: ctest --test-dir TSA/build-ci -R "Layers|I18nCheck|CoreLink|CoreStaticInit" --output-on-failure
 
       - name: Validation numérique (moteur interne Custom2D)
         if: always()
@@ -225,7 +225,7 @@ jobs:
       - name: Contrôles CTest (couches, traductions)
         if: always()
         shell: pwsh
-        run: ctest --test-dir TSA/build-ci -R "Layers|I18nCheck|CoreLink" --output-on-failure
+        run: ctest --test-dir TSA/build-ci -R "Layers|I18nCheck|CoreLink|CoreStaticInit" --output-on-failure
 
       - name: Validation numérique (moteur interne Custom2D)
         if: always()
