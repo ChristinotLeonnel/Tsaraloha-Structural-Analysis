@@ -23,6 +23,8 @@ libérée (Remove, caméra conservée), SurfaceCreated → vue recréée. Test 5
 parent, vue seule fermée). Validé : llvmpipe sur X réel, Xvfb (comme la CI), GPU Intel, ASan sans erreur, suite
 complète 507/508, 56/56 suites. CI 40280259182 (commit 6fec972) : Linux views 18/18 (test 509 compris). Windows :
 plantage toujours présent, mais à un autre endroit (après le test 435, déjà avant correctif) → défaut distinct, BUG-122.
+CI 40292062083 (431c81e, avec BUG-122) : Windows « GDI Generic » views 19/19, test 509 RÉUSSI (fermeture/réouverture,
+destruction par le parent) aux deux tentatives. Validé sous Windows en CI (rendu logiciel) ; pas sur poste Windows à GPU.
 Preuves : TSA-rapports/2026-10-26/preuves/BUG-119/.
 
 ## BUG-120
@@ -55,12 +57,51 @@ tests 510 (snap, logique) et 511 (views, vue réelle, fermeture/réouverture ; c
 l'autre).
 Linux : views 19/19 en llvmpipe 4.5, en MESA_GL_VERSION_OVERRIDE=1.1 et sur GPU Intel 4.6 ; rendu de fond forcé en 1.1
 = SIGSEGV dans drawRect (gdb), reproduction locale de la cause. Risques restants : Aspect_TODT_DIMENSION (PrsDim, non
-utilisé par TSA) et OpenGl_Structure.cxx:62 (surlignage par boîte, TSA utilise Aspect_TOHM_COLOR). Preuves :
+utilisé par TSA). OpenGl_Structure.cxx:62 est en fait protégé (core20fwd != nullptr, ligne 45). Reproduction minimale
+hors TSA et correctif OCCT d'une ligne (core11fwd->glDrawArrays) vérifiés sous Linux : TSA-rapports/2026-10-26/
+OCCT_signalement/ (brouillon non soumis). Preuves :
 TSA-rapports/2026-10-26/preuves/BUG-122/.
 Commit 1f9ce28 (CI 40289561813) : Linux RÉUSSIE (views 19/19, 509-511 PASS) ; Windows : compilation ÉCHOUÉE sur
 tests/test_snap.cpp (variables « near »/« far » = macros de <windows.h>, désormais inclus via GridRenderer.h/OCCT) → tests
-Windows non exécutés. Variables renommées farView/nearNode (erreur reproduite sous Linux par -Dnear= -Dfar=) ; CI à relancer.
-Status: OPEN — NON VALIDÉ sous Windows.
+Windows non exécutés. Variables renommées farView/nearNode (erreur reproduite sous Linux par -Dnear= -Dfar=), commit 431c81e.
+CI 40292062083 : Windows « GDI Generic » : compilation complète, views 19/19 (scénario du test 435 franchi, 436-449, 509 et
+511 « core20fwd absente » réussis), snap 8/8 (510), deployment 3/3, views sous cdb sans exception ; aux deux tentatives.
+Status: FIXED — validé en CI Windows (rendu logiciel GDI Generic) et Linux ; pas encore sur poste Windows MSVC 19.51.
+
+## BUG-124
+Area: TSALab — suite complète sans OpenSees
+Problem: sans OpenSees, la suite TSALab reste en échec : L10 (« calcul OpenSees ») exige OpenSees et, la suite
+s'arrêtant au premier échec, empêche l'exécution des tests suivants (6 / 27 dans le rapport de correction de BUG-121 (4),
+apres_sans.log). D'autres tests sont suspectés, non confirmés (non atteints) ; pistes d'investigation seulement, pas des
+causes démontrées : LabTests.cpp, boucle sur custom2d/opensees (vers la ligne 462), réglages opensees (vers 558-583),
+L14 « OpenSees disponible » (vers 694). Distinct de BUG-121 (4) (L9 seul).
+Impact: TSALab ne peut pas terminer sa suite sur un poste ou une CI sans OpenSees.
+Cause démontrée (diagnostic du 2026-10-26) : (1) main : (structuralOnly || runSuite_Lab) && runSuite_Structural — un échec de
+la suite Lab empêchait l'exécution des 16 tests Structural (L15-L30), pourtant indépendants d'OpenSees (16/16 avec
+--structural) ; (2) L10 à L14 exigeaient OpenSees sans contrôler sa disponibilité (L10 : calcul du portique spatial ; L11 :
+passage opensees de la boucle ; L12 : extraction avancée et mode léger ; L13 : chaîne FEA-01/FEA-07 ; L14 : calcul des coques).
+Correction (TSALab/lab/Tests/LabTests.cpp seul, branche fix/l9-sans-opensees, avec BUG-121 (4)) : les deux suites
+s'exécutent toujours ; disponibilité d'OpenSees lue dans le registre des moteurs (availability(), jamais le texte d'une
+erreur) ; seules les parties dépendantes d'OpenSees sont ignorées, avec une ligne [SKIP] et le motif du moteur ; compteur
+« parties ignorées » dans le bilan RESULTS. Résultats Linux Release consignés dans le rapport de correction : sans OpenSees
+27/27 réussis, code de sortie 0, six parties ignorées (L9 à L14) ; avec OpenSees 27/27, aucune partie ignorée (sortie
+identique à la référence) ; un faux moteur disponible qui échoue au calcul n'est pas traité comme indisponible (L9 à L14
+en échec, aucun [SKIP]) ; les erreurs numériques font toujours échouer les tests (RDM-01, FEA-01 faussés) ; les suites Lab
+et Structural sont toutes deux exécutées ; échecs numériques et échecs de calcul toujours détectés. Commit TSALab local
+58063a70e9d54fc461f85d1fe45acaa2c277ab5f (branche fix/l9-sans-opensees, lab/Tests/LabTests.cpp seul), non poussé.
+Restent à valider : Windows/MSVC et poste sans Gmsh.
+Preuves : TSA-rapports/2026-10-26/preuves/BUG-124/.
+Status: CORRIGÉ LOCALEMENT — validation Linux effectuée — commit TSALab créé — validation Windows en attente.
+
+## BUG-123
+Area: Tests des raccourcis sous Windows (CI)
+Problem: test 261 échoué une fois (CI 40292062083, tentative 1), réussi à la relance du même commit (tentative 2) et dans
+les trois exécutions Windows précédentes : intermittent. Suite arrêtée au premier échec (262-266 non exécutés).
+Cause probable (non prouvée, la condition ne dit pas quel terme échoue) : writeText du test (QSaveFile::commit, sans
+nouvelle tentative) refusé quand l'antivirus ou l'indexeur tient shortcut.txt — phénomène documenté dans
+ShortcutManager::writeFile, qui, lui, réessaie (12 × 50 ms).
+Impact: LOW — test seulement ; aucune modification de code proposée sans accord.
+Status: OPEN.
 
 ## BUG-121
 Area: Panneaux Propriétés (essais d'interface du 2026-10-26)
@@ -68,7 +109,23 @@ Problem: (1) CORRIGÉ : liste « Type de profilé » désactivée affichant un t
 « Profilé en I » ou « Rectangulaire ») → désignation réelle affichée (Beam/ColumnPropertiesView, test 493 complété).
 (2) OUVERT : libellés des champs masqués (« Largeur (b) : », « Rayon (r) : »…) visibles sans champ (QFormLayout) ;
 « Rayon (r) : » (cercle) voisin de « Rayon de congé (r) : ». (3) OUVERT : « IA non configurée » (barre d'état) non traduit.
-(4) OUVERT : TSALab test L9 échoue sans OpenSees au lieu d'être signalé non exécuté.
+(4) TSALab test L9 échouait sans OpenSees au lieu de signaler la partie OpenSees non exécutée. Cause (dans L9 seul) :
+l'assertion exigeait que toutes les vérifications réussissent (16/16), OpenSees comprises ; l'en-tête exigeait
+« OpenSees 3.8 » ; le bloc des références externes forçait le moteur opensees. La logique du banc était juste et n'a pas
+été modifiée (moteur indisponible → cas skipped avec motif, vérifications non disponibles, jamais en échec), mais
+checksUnavailable() mêle cas ignorés et calculs échoués d'un moteur présent : c'est au test de les distinguer.
+Correction locale (TSALab, branche fix/l9-sans-opensees, lab/Tests/LabTests.cpp seul) : disponibilité d'OpenSees lue
+dans le registre des moteurs ; sans OpenSees, cas OpenSees exigés ignorés (non exécutés, motif « indisponible », aucune
+vérification disponible) avec une ligne [SKIP] ; tout autre cas exécuté avec toutes ses vérifications réussies ; version
+jamais inventée (« OpenSees (version inconnue) ») ; références externes sur custom2d sans OpenSees. Comportement avec
+OpenSees inchangé. Résultats Linux Release consignés dans le rapport de correction du 2026-10-26 : A (sans OpenSees) L9
+réussi, 8 vérifications Custom2D réussies, 8 OpenSees non exécutées ; B (avec OpenSees) L9 16/16, TSALab 27/27 ;
+C1 et C2 (valeur attendue faussée, sans et avec OpenSees) et C4 (OpenSees disponible, calcul en échec) : L9 en échec,
+vrais échecs détectés ; C3 (exécutable qui plante à la sonde) : partie ignorée avec le motif déclaré par le moteur.
+Preuves : TSA-rapports/2026-10-26/preuves/BUG-121_4/. Windows/MSVC non testé. Commit TSALab local
+58063a70e9d54fc461f85d1fe45acaa2c277ab5f (branche fix/l9-sans-opensees, lab/Tests/LabTests.cpp seul, « fix(tsalab): tests
+du laboratoire sans OpenSees (BUG-121 (4), BUG-124) »), non poussé.
+Statut (4) : CORRIGÉ LOCALEMENT — validation Linux effectuée — commit TSALab créé — validation Windows en attente.
 Status: PARTIAL.
 
 ## BUG-116
