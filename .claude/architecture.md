@@ -25,7 +25,13 @@ TSALab (dépôt voisin `../TSA` → `TSA_ROOT_DIR`) appelle la même fonction av
 ```
 Catalogues installés : le noyau lit `Model/InstalledCatalogs` (Section::defaultLibrary, CableDefinition::defaultDefinitions) ;
 la couche des bibliothèques enregistre le fournisseur (`ExtensionSystem/LibraryRegistry.cpp`, initialisation statique,
-toujours liée car <P>_Model est OBJECT). Le noyau ne doit contenir aucune initialisation statique (bibliothèque STATIC).
+toujours liée car <P>_Model est OBJECT). Le noyau ne doit contenir aucune initialisation ni terminaison statique
+(bibliothèque STATIC : l'éditeur de liens ne garde que les objets référencés, un enregistrement serait perdu).
+Contrôle `tools/check_core_static_init.py` (CTest `<P>_CoreStaticInit` + contre-épreuve `<P>_CoreStaticInitSelfTest`) :
+sections ELF non vides `.init_array[.*]`, `.preinit_array`, `.ctors[.*]`, `.fini_array[.*]`, `.dtors[.*]`, `.init`, `.fini`
+(objdump -h) ; objets LTO refusés ; codes 0 conforme, 1 constat, 2 contrôle impossible (outil absent, LTO, membre illisible).
+Vérifié avec GCC 13 / binutils 2.42 ; Clang non vérifié ; MSVC : non enregistré (objets COFF, aucun contrôle) ;
+-fsanitize / --coverage : faux positifs sur tous les objets (non utilisés aujourd'hui).
 Identité produit : `<ProductIdentity.h>` (C++ pur, chevrons, dossier product/ du produit compilé) et
 `src/App/ProductInfo.h` (helpers Qt : extension, filtres, QSettings, `sourceDirectory()` = `TSA_SOURCE_DIR`).
 Aucun littéral « TSA » / « .tsa » / chemin absolu dans src/ pour ces usages.

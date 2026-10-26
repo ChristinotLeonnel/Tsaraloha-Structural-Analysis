@@ -1837,12 +1837,23 @@ function(tsa_add_product)
         tsa_apply_common_settings(${name}_CoreTests ${P_PRODUCT_DIR})
         target_link_libraries(${name}_CoreTests PRIVATE ${name}_Core)
         add_test(NAME ${name}_CoreLink COMMAND ${name}_CoreTests)
-        # Noyau STATIQUE : aucune initialisation statique dynamique (elle serait perdue à l'édition de liens). Contrôle par nm
-        # (GCC / Clang) ; non enregistré avec MSVC (pas d'équivalent fiable), la règle portant sur les mêmes sources.
         find_package(Python3 COMPONENTS Interpreter QUIET)
-        if(Python3_FOUND AND CMAKE_NM AND NOT MSVC)
+        # Noyau STATIQUE : aucune initialisation statique dynamique (elle serait perdue à l'édition de liens). Détection par
+        # sections (objdump -h : .init_array[.*], .preinit_array, .ctors[.*], .fini_array[.*], .dtors[.*], .init, .fini),
+        # vérifiée avec GCC 13 / binutils 2.42 ; la contre-épreuve <P>_CoreStaticInitSelfTest recompile des cas positifs et
+        # négatifs avec le compilateur du projet. Objets LTO (-flto, INTERPROCEDURAL_OPTIMIZATION) : contrôle refusé (code 2).
+        # Clang : non vérifié (la contre-épreuve le dira). MSVC : non enregistré (objets COFF, sections .CRT$XC* / symboles
+        # ??__E, équivalent dumpbin non implémenté) : la règle n'y est vérifiée que par les compilations Linux des mêmes sources.
+        if(Python3_FOUND AND CMAKE_OBJDUMP AND NOT MSVC)
+            set(_core_static_init ${TSA_ROOT}/tools/check_core_static_init.py)
             add_test(NAME ${name}_CoreStaticInit
-                     COMMAND Python3::Interpreter ${TSA_ROOT}/tools/check_core_static_init.py ${CMAKE_NM} $<TARGET_FILE:${name}_Core>)
+                     COMMAND Python3::Interpreter ${_core_static_init} --objdump ${CMAKE_OBJDUMP} $<TARGET_FILE:${name}_Core>)
+            add_test(NAME ${name}_CoreStaticInitSelfTest
+                     COMMAND Python3::Interpreter ${_core_static_init} --objdump ${CMAKE_OBJDUMP}
+                             --self-test ${CMAKE_CXX_COMPILER} --ar ${CMAKE_AR})
+        else()
+            message(STATUS "${name}_CoreStaticInit non enregistré (Python3 : ${Python3_FOUND}, objdump : '${CMAKE_OBJDUMP}', "
+                           "MSVC : ${MSVC})")
         endif()
 
         # Tests complets et suites thématiques enregistrés sous CTest
@@ -1852,7 +1863,6 @@ function(tsa_add_product)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
         # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)
-        find_package(Python3 COMPONENTS Interpreter QUIET)
         if(Python3_FOUND)
             add_test(NAME ${name}_Layers COMMAND Python3::Interpreter ${TSA_ROOT}/tools/check_layers.py ${TSA_ROOT}/src)
             # Traductions : paramètres, raccourcis &, doublons, caractères corrompus (docs/I18N.md §5)
