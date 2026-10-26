@@ -44,6 +44,11 @@ public:
     /// Surbrillance des cotations sélectionnées.
     void setHighlighted(const TSA::Model::Model& model, const std::set<int>& ids);
 
+    /// Textes sur rectangle de fond, ou entourés si le contexte OpenGL n'a pas core20fwd (BUG-122) ; s'applique aux
+    /// cotations construites ensuite (rebuildAll pour les existantes).
+    void setTextBackground(bool supported) { m_textBackground = supported; }
+    bool textBackground() const { return m_textBackground; }
+
     int count() const { return static_cast<int>(m_visuals.size()); }
     bool contains(int dimensionId) const { return m_visuals.count(dimensionId) > 0; }
 
@@ -60,6 +65,7 @@ private:
     SelectionManager* m_selection = nullptr;
     std::map<int, Visual> m_visuals;
     std::set<int> m_highlighted;
+    bool m_textBackground = true;
 };
 
 } // namespace TSA::Viewer

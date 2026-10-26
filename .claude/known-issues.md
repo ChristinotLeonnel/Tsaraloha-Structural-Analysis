@@ -42,8 +42,22 @@ seule, ou début du test 436 : nouvelle vue, tracé), avant comme après le corr
 40280259182). OCCT signale « OpenGL driver is too old… Fallback using deprecated fixed-function pipeline ». Non reproduit
 sous Linux, même avec un contexte OpenGL 1.1 émulé (MESA_GL_VERSION_OVERRIDE=1.1 : 18/18).
 Impact: HIGH [H] pour les postes Windows sans pilote graphique (machines virtuelles, bureau à distance).
-Status: OPEN — cause non établie ; diagnostic dans la CI Windows (symboles /Z7 + /DEBUG, suite views relancée sous cdb :
-code d'exception et piles dans ci-report/tests/views-cdb.log). Ne pas déduire la cause du seul pilote GDI Generic.
+Cause établie (CI 40283836445, cdb) : test_views.cpp:549 setObjectSnapEnabled(true) → refreshSnapAtCursor → V3d_View::Redraw
+→ OpenGl_Text::Render → OpenGl_Text::drawRect (fonction non exportée, identifiée par .pdata et désassemblage) :
+`theCtx->core20fwd->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)` (source OCCT 8.0.1, OpenGl_Text.cxx:649) avec core20fwd NUL
+(contexte OpenGL < 2.0) ; lecture à 0 + 0xe8. Déclenché par les textes Aspect_TODT_SUBTITLE de TSA : étiquette du
+marqueur d'accrochage (SnapMarker.cpp:184) et cotations (DimensionRenderer.cpp:176). Défaut d'OCCT, contournable dans TSA.
+Correctif (local, non commité, 2026-10-26) : OccView::contextHasCore20() lit OpenGl_Context::core20fwd du contexte
+partagé après SetWindow (aucune commande OpenGL) ; sans elle, SnapMarker et DimensionRenderer passent en Aspect_TODT_DEKALE
+(drawText, core11fwd seul) via Viewer/TextDisplayFallback.h ; détection refaite à la recréation de la surface
+(restoreViewWindow, nouveau contexte) et marqueur affiché recalculé au changement de mode (sinon présentation périmée) ;
+tests 510 (snap, logique) et 511 (views, vue réelle, fermeture/réouverture ; contre-épreuves : 511 échoue sans l'un ou
+l'autre).
+Linux : views 19/19 en llvmpipe 4.5, en MESA_GL_VERSION_OVERRIDE=1.1 et sur GPU Intel 4.6 ; rendu de fond forcé en 1.1
+= SIGSEGV dans drawRect (gdb), reproduction locale de la cause. Risques restants : Aspect_TODT_DIMENSION (PrsDim, non
+utilisé par TSA) et OpenGl_Structure.cxx:62 (surlignage par boîte, TSA utilise Aspect_TOHM_COLOR). Preuves :
+TSA-rapports/2026-10-26/preuves/BUG-122/.
+Status: OPEN — corrigé localement, NON VALIDÉ sous Windows (CI Windows requise après accord de publication).
 
 ## BUG-121
 Area: Panneaux Propriétés (essais d'interface du 2026-10-26)

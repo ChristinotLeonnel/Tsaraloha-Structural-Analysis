@@ -52,6 +52,10 @@ public:
     void hideSnapMarker(const Handle(AIS_InteractiveContext)& context);
     /// Échelle des pixels du marqueur (devicePixelRatio de la vue).
     void setSnapMarkerPixelScale(double scale);
+    /// Libellé du marqueur sur rectangle de fond, ou entouré si le contexte OpenGL n'a pas core20fwd (BUG-122). Un
+    /// marqueur affiché dans `context` est recalculé (sinon il garderait sa présentation jusqu'au prochain libellé).
+    void setSnapLabelBackground(bool supported, const Handle(AIS_InteractiveContext)& context = Handle(AIS_InteractiveContext)());
+    bool snapLabelBackground() const { return m_snapLabelBackground; }
 
     // Niveau actif pour le dessin en hauteur
     void setActiveLevelElevation(double z, const GridSystem* gridSystem, const Handle(AIS_InteractiveContext)& context);
@@ -92,6 +96,7 @@ private:
     // Marqueur dynamique d'aimantation (Snap) : symbole + libellé en pixels (SnapMarker)
     Handle(SnapMarker) m_snapMarkerShape;
     double m_snapMarkerScale = 1.0;
+    bool m_snapLabelBackground = true;
 };
 
 } // namespace TSA::Grid

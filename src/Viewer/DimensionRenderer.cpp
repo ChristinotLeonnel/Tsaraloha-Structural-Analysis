@@ -1,4 +1,5 @@
 #include "DimensionRenderer.h"
+#include "TextDisplayFallback.h"
 
 #include "MaterialVisual.h"
 #include "SelectionManager.h"
@@ -173,7 +174,7 @@ void DimensionRenderer::build(const TSA::Model::Model& model, int dimensionId, b
         label->SetFontAspect(Font_FA_Bold);
         label->SetZLayer(Graphic3d_ZLayerId_Topmost);
         // Fond sombre derrière le texte : lisible au-dessus des barres et de la grille.
-        label->SetDisplayType(Aspect_TODT_SUBTITLE);
+        label->SetDisplayType(backgroundTextDisplayType(m_textBackground));   // repli sans core20fwd (BUG-122)
         label->SetColorSubTitle(Quantity_Color(0.08, 0.09, 0.11, Quantity_TOC_sRGB));
         if (st.textInPlane)
         {

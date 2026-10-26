@@ -1,4 +1,5 @@
 #include "SnapMarker.h"
+#include "../Viewer/TextDisplayFallback.h"
 
 #include "SnapEngine.h"
 
@@ -146,6 +147,18 @@ bool SnapMarker::setSnap(const GridSnapResult& snap)
     return true;
 }
 
+void SnapMarker::setTextBackground(bool supported)
+{
+    if (supported == m_textBackground) return;
+    m_textBackground = supported;
+    SetToUpdate();
+}
+
+Aspect_TypeOfDisplayText SnapMarker::labelDisplayType() const
+{
+    return TSA::Viewer::backgroundTextDisplayType(m_textBackground);
+}
+
 void SnapMarker::setPixelScale(double scale)
 {
     if (scale > 0.0 && std::abs(scale - m_scale) > 1e-6)
@@ -181,7 +194,7 @@ void SnapMarker::Compute(const Handle(PrsMgr_PresentationManager)&, const Handle
         Handle(Graphic3d_Group) g = prs->NewGroup();
         Handle(Graphic3d_AspectText3d) aspect =
             new Graphic3d_AspectText3d(Quantity_Color(0.96, 0.97, 0.98, Quantity_TOC_sRGB), Font_NOF_SANS_SERIF, 1.0, 0.0,
-                                       Aspect_TOST_NORMAL, Aspect_TODT_SUBTITLE);
+                                       Aspect_TOST_NORMAL, labelDisplayType());
         aspect->SetColorSubTitle(Quantity_Color(0.07, 0.09, 0.12, Quantity_TOC_sRGB));
         g->SetGroupPrimitivesAspect(aspect);
         Handle(Graphic3d_Text) text = new Graphic3d_Text(static_cast<float>(13.0 * m_scale));

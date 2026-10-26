@@ -93,6 +93,13 @@ public:
     };
     RenderingInfo renderingInfo() const;
 
+    /// Textes sur rectangle de fond (marqueur d'accrochage, cotations) : possibles seulement si le contexte OpenGL actif
+    /// fournit la table core20fwd d'OCCT (BUG-122, voir Viewer/TextDisplayFallback.h). Détecté à l'initialisation de
+    /// la vue et à chaque recréation de sa surface (BUG-119) ; peut être forcé (essais, diagnostic) : reconstruit les
+    /// cotations et le marqueur d'accrochage affichés.
+    bool textBackgroundSupported() const { return m_textBackgroundSupported; }
+    void setTextBackgroundSupported(bool supported);
+
     /// Calques indépendants du modèle (maillage FEM…) : un clic simple sur une entité détectée est d'abord
     /// proposé à `click` ; s'il le consomme (vrai), la sélection du modèle est vidée sans autre traitement.
     /// `hover` : texte de survol d'une entité du calque (vide : survol habituel du modèle).
@@ -769,6 +776,9 @@ private:
     void releaseViewWindow();
     void restoreViewWindow();
     Handle(Graphic3d_Camera) m_releasedCamera;   ///< caméra de la vue libérée (BUG-119), rendue à la vue recréée
+    /// Table core20fwd chargée par le contexte OpenGL actif d'OCCT (lecture d'un membre, aucune commande OpenGL).
+    bool contextHasCore20() const;
+    bool m_textBackgroundSupported = true;
     bool m_viewWindowReleased = false;
 
     enum class CurrentAction

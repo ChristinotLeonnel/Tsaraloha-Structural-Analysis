@@ -2,6 +2,14 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-26 (BUG-122) — correctif commité sur fix/core-integrity (CI à examiner)
+
+- Repli Aspect_TODT_DEKALE des textes sur fond (marqueur d'accrochage, cotations) quand le contexte OCCT n'a pas
+  core20fwd (OpenGl_Text::drawRect, OCCT 8.0.1) ; détection refaite à la recréation de la surface (BUG-119) ; marqueur
+  affiché recalculé au changement de mode. Tests 510, 511 ; total attendu 510.
+- Linux Release : 509/510 (128 ignoré, Windows seul), exécuteur CI 56 suites réussies, banc 146/146, TSALab 27/27,
+  contrôles OK ; views 19/19 en OpenGL 4.5 (llvmpipe), 1.1 (Mesa) et 4.6 (GPU Intel). Windows : non validé.
+
 ## 2026-10-26 (BUG-119, BUG-120) — commit 6fec972 poussé sur fix/core-integrity
 
 - BUG-119 : vue OCCT libérée avant la destruction de sa fenêtre native, recréée ensuite (OccView::eventFilter) ; test 509.

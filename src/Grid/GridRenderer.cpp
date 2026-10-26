@@ -652,6 +652,7 @@ void GridRenderer::showSnapMarker(const GridSnapResult& snap, const Handle(AIS_I
     {
         m_snapMarkerShape = new SnapMarker();
         m_snapMarkerShape->setPixelScale(m_snapMarkerScale);
+        m_snapMarkerShape->setTextBackground(m_snapLabelBackground);
     }
     const bool changed = m_snapMarkerShape->setSnap(snap);
 
@@ -673,6 +674,14 @@ void GridRenderer::setSnapMarkerPixelScale(double scale)
 {
     m_snapMarkerScale = scale;
     if (!m_snapMarkerShape.IsNull()) m_snapMarkerShape->setPixelScale(scale);
+}
+
+void GridRenderer::setSnapLabelBackground(bool supported, const Handle(AIS_InteractiveContext)& context)
+{
+    m_snapLabelBackground = supported;
+    if (m_snapMarkerShape.IsNull()) return;
+    m_snapMarkerShape->setTextBackground(supported);
+    if (!context.IsNull() && context->IsDisplayed(m_snapMarkerShape)) context->Redisplay(m_snapMarkerShape, false);
 }
 
 void GridRenderer::hideSnapMarker(const Handle(AIS_InteractiveContext)& context)

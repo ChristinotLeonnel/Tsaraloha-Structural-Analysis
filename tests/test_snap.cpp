@@ -6,6 +6,9 @@
 
 #include "Grid/GridManager.h"
 #include "Grid/SnapEngine.h"
+#include "Grid/GridRenderer.h"
+#include "Grid/SnapMarker.h"
+#include "Viewer/TextDisplayFallback.h"
 
 using namespace TSA::Model;
 using namespace TSA::Grid;
@@ -243,5 +246,28 @@ bool runSuite_Snap(int& passed)
         std::cout << "[PASS] Test 187: Libellés et priorités" << std::endl;
         ++passed;
     }
+    // TEST 510 : textes sur rectangle de fond et contextes OpenGL sans core20fwd (BUG-122) — logique de choix, sans
+    // contexte OpenGL. OCCT 8.0.1 dessine le fond (Aspect_TODT_SUBTITLE) par core20fwd->glDrawArrays sans vérifier la
+    // table (OpenGl_Text.cxx:649) : sans elle, contour (Aspect_TODT_DEKALE, dessiné par core11fwd). Le choix réel de
+    // la vue (contexte actif) et les cotations affichées : test 511 (suite views) ; le rendu Windows « GDI Generic » :
+    // CI Windows.
+    {
+        TEST_CHECK(TSA::Viewer::backgroundTextDisplayType(true) == Aspect_TODT_SUBTITLE
+                       && TSA::Viewer::backgroundTextDisplayType(false) == Aspect_TODT_DEKALE,
+                   "Test 510: core20fwd présent → rectangle de fond ; absent → contour");
+        Handle(TSA::Grid::SnapMarker) marker = new TSA::Grid::SnapMarker();
+        TEST_CHECK(marker->labelDisplayType() == Aspect_TODT_SUBTITLE, "Test 510: marqueur d'accrochage : rectangle de fond par défaut (inchangé)");
+        marker->setTextBackground(false);
+        TEST_CHECK(marker->labelDisplayType() == Aspect_TODT_DEKALE, "Test 510: marqueur d'accrochage sans core20fwd : libellé entouré");
+        marker->setTextBackground(true);
+        TEST_CHECK(marker->labelDisplayType() == Aspect_TODT_SUBTITLE, "Test 510: marqueur d'accrochage : retour au rectangle de fond");
+        TSA::Grid::GridRenderer renderer;
+        TEST_CHECK(renderer.snapLabelBackground(), "Test 510: rendu des grilles : rectangle de fond par défaut");
+        renderer.setSnapLabelBackground(false);
+        TEST_CHECK(!renderer.snapLabelBackground(), "Test 510: rendu des grilles : repli transmis au marqueur");
+        std::cout << "[PASS] Test 510: Textes sur fond : contour si le contexte OpenGL n'a pas core20fwd (logique)" << std::endl;
+        ++passed;
+    }
+
     return true;
 }

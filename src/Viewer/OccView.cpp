@@ -29,6 +29,7 @@
 
 #include <QTimer>
 #include <QPlatformSurfaceEvent>
+#include <OpenGl_Context.hxx>
 #include <QWindow>
 #include <QMouseEvent>
 #include <QWheelEvent>
@@ -218,6 +219,31 @@ void OccView::applyViewDecorations()
     );
 }
 
+bool OccView::contextHasCore20() const
+{
+    // core20fwd n'est rempli par OCCT que si les fonctions OpenGL 2.0 ont réellement été chargées (OpenGl_GlFunctions :
+    // version ≥ 2.0 ET points d'entrée trouvés), pas d'après la seule version déclarée. Contexte absent ou invalide :
+    // repli par sécurité.
+    if (m_graphicDriver.IsNull()) return false;
+    const Handle(OpenGl_Context)& ctx = m_graphicDriver->GetSharedContext();
+    return !ctx.IsNull() && ctx->IsValid() && ctx->core20fwd != nullptr;
+}
+
+void OccView::setTextBackgroundSupported(bool supported)
+{
+    if (supported == m_textBackgroundSupported) return;   // contexte OpenGL ≥ 2.0 : rien ne change
+    m_textBackgroundSupported = supported;
+    m_gridRenderer.setSnapLabelBackground(supported, m_context);
+    if (m_dimensionRenderer)
+    {
+        m_dimensionRenderer->setTextBackground(supported);
+        if (m_isInitialized && m_model && !m_context.IsNull()) m_dimensionRenderer->rebuildAll(*m_model);   // à l'initialisation : rebuildAllShapes suit
+    }
+    if (!supported)
+        TSA_LOG_WARN("Viewer", "TextBackground",
+                     "Contexte OpenGL sans fonctions OpenGL 2.0 (core20fwd) : textes sur fond affichés entourés (BUG-122)");
+}
+
 bool OccView::eventFilter(QObject* watched, QEvent* event)
 {
     if (event->type() == QEvent::PlatformSurface && watched == windowHandle())
@@ -253,6 +279,8 @@ void OccView::restoreViewWindow()
     Handle(Aspect_Window) wind = createAspectWindow();
     m_view->SetWindow(wind);
     if (!wind->IsMapped()) wind->Map();
+    // Nouveau contexte OpenGL (la surface peut être recréée sous un autre pilote : bureau à distance), avant tout tracé
+    setTextBackgroundSupported(contextHasCore20());
     applyViewDecorations();
     if (!m_releasedCamera.IsNull()) m_view->Camera()->Copy(m_releasedCamera);
     if (!m_clipPlane.IsNull() && m_clipPlane->IsOn()) m_view->AddClipPlane(m_clipPlane);
@@ -308,6 +336,8 @@ void OccView::initOcc()
         wind->Map();
     }
     if (QWindow* native = windowHandle()) native->installEventFilter(this);   // destruction de la surface (BUG-119)
+    // Le contexte OpenGL est initialisé par SetWindow : ses tables de fonctions sont connues (BUG-122)
+    setTextBackgroundSupported(contextHasCore20());
     // Annotations : facteur d'échelle de l'écran (DPI) ; reconstruction des textes à chaque changement de réglage
     // (jamais au mouvement de la caméra : les textes constants à l'écran sont dessinés en pixels par OCCT)
     TSA::Viewer::AnnotationStyle::instance().setDevicePixelRatio(devicePixelRatioF());

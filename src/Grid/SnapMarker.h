@@ -8,6 +8,7 @@
 #include "GridType.h"
 
 #include <AIS_InteractiveObject.hxx>
+#include <Aspect_TypeOfDisplayText.hxx>
 
 #include <string>
 
@@ -26,6 +27,10 @@ public:
     bool setSnap(const GridSnapResult& snap);
     /// Facteur d'échelle des pixels (écrans haute densité).
     void setPixelScale(double scale);
+    /// Libellé sur rectangle de fond (contexte OpenGL avec core20fwd) ou entouré (repli, BUG-122).
+    void setTextBackground(bool supported);
+    /// Type d'affichage du libellé effectivement utilisé.
+    Aspect_TypeOfDisplayText labelDisplayType() const;
 
     /// Libellé affiché (« Milieu · Poutre B3 »).
     static std::string labelFor(const GridSnapResult& snap);
@@ -41,6 +46,7 @@ private:
     SnapSource m_source = SnapSource::None;
     std::string m_label;
     double m_scale = 1.0;
+    bool m_textBackground = true;
 };
 
 } // namespace TSA::Grid

@@ -4,6 +4,16 @@
 // annoncés sautés et jamais comptés réussis (BUG-076). Le test 434 (orientations calculées) tourne partout.
 
 #include "test_common.h"
+#include <set>
+#include <Prs3d_TextAspect.hxx>
+#include <OpenGl_Context.hxx>
+#include <AIS_TextLabel.hxx>
+#include <Graphic3d_AspectText3d.hxx>
+#include <Graphic3d_Group.hxx>
+#include <PrsMgr_Presentation.hxx>
+#include "Grid/SnapMarker.h"
+#include "Grid/GridRenderer.h"
+#include "Annotation/DimensionService.h"
 #include <QVBoxLayout>
 #include "Grid/GridManager.h"
 #include "Grid/WorkPlaneReferences.h"
@@ -351,7 +361,7 @@ bool runSuite_Views(int& passed)
 
     if (offscreen)
     {
-        for (int t : { 433, 435, 436, 437, 438, 440, 441, 442, 444, 445, 446, 447, 448, 449, 509 })
+        for (int t : { 433, 435, 436, 437, 438, 440, 441, 442, 444, 445, 446, 447, 448, 449, 509, 511 })
             std::cout << "[SKIP] Test " << t << ": vue 3D indisponible sur la plateforme Qt « offscreen » (lancer avec QT_QPA_PLATFORM=windows)" << std::endl;
         return true;
     }
@@ -1294,6 +1304,124 @@ bool runSuite_Views(int& passed)
         pump();
         std::cout << "[PASS] Test 509: Fermeture et destruction de la vue 3D sans contexte OpenGL orphelin (rendu "
                   << (info.hardware ? "matériel" : "logiciel") << " : " << info.device.toStdString() << ")" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 511 : textes sur rectangle de fond selon le contexte OpenGL réellement créé (BUG-122). La vue choisit le
+    // rectangle de fond si la table core20fwd d'OCCT est chargée, le contour sinon ; les cotations affichées et le
+    // marqueur d'accrochage suivent (y compris un marqueur déjà affiché) ; le choix est refait quand la fenêtre est
+    // fermée puis rouverte (BUG-119) ; comportement inchangé avec un contexte OpenGL ≥ 2.0. Le plantage lui-même
+    // (pilote « GDI Generic » de Windows) ne se reproduit pas sous Linux : validé par la suite views de la CI Windows.
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(6, 0, 0);
+        m.addBar(a, b, Section::ipe(300), Material::steelS235());
+        TSA::Annotation::Dimension dim;
+        dim.kind = TSA::Annotation::DimensionKind::Linear;
+        dim.axis = TSA::Annotation::MeasureAxis::Aligned;
+        TSA::Annotation::DimensionAnchor da, db;
+        da.nodeId = a;
+        db.nodeId = b;
+        dim.anchors = { da, db };
+        dim.position = { 3.0, -1.0, 0.0 };
+        std::string err;
+        TEST_CHECK(TSA::Annotation::addDimension(m, dim, &err) > 0, "Test 511: cotation créée (" << err << ")");
+        ViewHarness h(m);
+        OccView& view = h.view;
+        Handle(OpenGl_GraphicDriver) driver = Handle(OpenGl_GraphicDriver)::DownCast(view.viewer()->Driver());
+        const bool hasCore20 = !driver.IsNull() && !driver->GetSharedContext().IsNull() && driver->GetSharedContext()->core20fwd != nullptr;
+        TEST_CHECK(view.textBackgroundSupported() == hasCore20,
+                   "Test 511: choix de la vue = table core20fwd du contexte actif (" << (hasCore20 ? "présente" : "absente") << ")");
+        auto labelTypes = [&view]() {
+            std::set<int> types;
+            AIS_ListOfInteractive list;
+            view.context()->DisplayedObjects(list);
+            for (const auto& o : list)
+                if (Handle(AIS_TextLabel) label = Handle(AIS_TextLabel)::DownCast(o); !label.IsNull())
+                    types.insert(static_cast<int>(label->Attributes()->TextAspect()->Aspect()->DisplayType()));
+            return types;
+        };
+        const std::set<int> subtitle { static_cast<int>(Aspect_TODT_SUBTITLE) }, dekale { static_cast<int>(Aspect_TODT_DEKALE) };
+        TEST_CHECK(labelTypes() == (hasCore20 ? subtitle : dekale), "Test 511: cotation affichée selon le contexte (rectangle de fond si core20fwd)");
+        view.setTextBackgroundSupported(false);
+        pump();
+        TEST_CHECK(labelTypes() == dekale, "Test 511: repli forcé : texte de cotation entouré, sans rectangle de fond");
+        TSA::Grid::GridRenderer grids;
+        grids.setSnapLabelBackground(false);
+        TSA::Grid::GridSnapResult snap;
+        snap.snapped = true;
+        snap.type = TSA::Grid::GridSnapType::Node;
+        snap.point = { 6.0, 0.0, 0.0 };
+        grids.showSnapMarker(snap, view.context());
+        Handle(TSA::Grid::SnapMarker) marker;
+        AIS_ListOfInteractive shown;
+        view.context()->DisplayedObjects(shown);
+        for (const auto& o : shown)
+            if (Handle(TSA::Grid::SnapMarker) sm = Handle(TSA::Grid::SnapMarker)::DownCast(o); !sm.IsNull()) marker = sm;
+        TEST_CHECK(!marker.IsNull() && marker->labelDisplayType() == Aspect_TODT_DEKALE, "Test 511: marqueur d'accrochage affiché en repli : libellé entouré");
+        // Type de texte de la présentation réellement calculée (et non seulement le réglage de l'objet)
+        auto presentedTextTypes = [](const Handle(AIS_InteractiveObject)& obj) {
+            std::set<int> types;
+            for (const Handle(PrsMgr_Presentation)& prs : obj->Presentations())
+                for (const Handle(Graphic3d_Group)& group : prs->Groups())
+                    if (Handle(Graphic3d_AspectText3d) text = Handle(Graphic3d_AspectText3d)::DownCast(group->Aspects()); !text.IsNull())
+                        types.insert(static_cast<int>(text->TextDisplayType()));
+            return types;
+        };
+        TEST_CHECK(!marker.IsNull() && presentedTextTypes(marker) == dekale, "Test 511: présentation du marqueur calculée sans rectangle de fond");
+        view.view()->Redraw();   // rendu réel du marqueur et de la cotation en repli
+        // Marqueur affiché, libellé inchangé : un changement de mode le recalcule (aucune présentation périmée). Pas de
+        // tracé entre les deux : avec un contexte sans core20fwd, le rectangle de fond planterait.
+        grids.setSnapLabelBackground(true, view.context());
+        TEST_CHECK(!marker.IsNull() && presentedTextTypes(marker) == subtitle, "Test 511: marqueur affiché recalculé au changement de mode");
+        grids.setSnapLabelBackground(false, view.context());
+        TEST_CHECK(!marker.IsNull() && presentedTextTypes(marker) == dekale, "Test 511: marqueur affiché recalculé au retour en repli");
+        grids.hideSnapMarker(view.context());
+        view.setTextBackgroundSupported(hasCore20);
+        pump();
+        TEST_CHECK(labelTypes() == (hasCore20 ? subtitle : dekale), "Test 511: retour au choix détecté (aucun changement avec OpenGL ≥ 2.0)");
+        view.view()->Redraw();
+
+        // Fermeture puis réouverture (BUG-119) : la surface et le contexte OpenGL sont recréés, le choix est refait
+        // d'après le nouveau contexte. Repli forcé avant la fermeture : seule une nouvelle détection rétablit le choix.
+        auto* container = new QWidget;
+        container->resize(700, 500);
+        auto* layout = new QVBoxLayout(container);
+        auto* child = new OccView(container);
+        layout->addWidget(child);
+        container->show();
+        pump(20);
+        child->setModel(&m);
+        pump();
+        child->setTextBackgroundSupported(false);
+        container->close();
+        pump();
+        container->show();
+        pump(20);
+        TEST_CHECK(!child->view().IsNull(), "Test 511: vue recréée après réouverture");
+        Handle(OpenGl_GraphicDriver) childDriver = Handle(OpenGl_GraphicDriver)::DownCast(child->viewer()->Driver());
+        const bool reopenedCore20 = !childDriver.IsNull() && !childDriver->GetSharedContext().IsNull()
+                                    && childDriver->GetSharedContext()->core20fwd != nullptr;
+        TEST_CHECK(child->textBackgroundSupported() == reopenedCore20,
+                   "Test 511: réouverture : choix refait sur le nouveau contexte (core20fwd " << (reopenedCore20 ? "présente" : "absente") << ")");
+        std::set<int> reopenedTypes;
+        {
+            AIS_ListOfInteractive list;
+            child->context()->DisplayedObjects(list);
+            for (const auto& o : list)
+                if (Handle(AIS_TextLabel) label = Handle(AIS_TextLabel)::DownCast(o); !label.IsNull())
+                    reopenedTypes.insert(static_cast<int>(label->Attributes()->TextAspect()->Aspect()->DisplayType()));
+        }
+        TEST_CHECK(reopenedTypes == (reopenedCore20 ? subtitle : dekale), "Test 511: réouverture : cotations reconstruites selon le nouveau contexte");
+        child->view()->Redraw();
+        child->setModel(nullptr);
+        pump();
+        delete container;
+        pump();
+        std::cout << "[PASS] Test 511: Textes sur fond selon le contexte OpenGL (core20fwd " << (hasCore20 ? "présente" : "absente")
+                  << ", " << view.renderingInfo().device.toStdString() << ")" << std::endl;
         ++passed;
     }
     return true;

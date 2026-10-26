@@ -447,6 +447,7 @@ set(VIEWER_MAIN_SOURCES
 # --- Matériaux visuels, projection et navigation de vue — [CORE] --------------
 set(VIEWER_CORE_SOURCES
     ${TSA_ROOT}/src/Viewer/DimensionRenderer.h
+    ${TSA_ROOT}/src/Viewer/TextDisplayFallback.h
     ${TSA_ROOT}/src/Viewer/DimensionRenderer.cpp
     ${TSA_ROOT}/src/Viewer/ModelDisplayMode.h
     ${TSA_ROOT}/src/Viewer/ModelDisplayMode.cpp
