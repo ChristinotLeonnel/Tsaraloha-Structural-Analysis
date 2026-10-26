@@ -21,8 +21,9 @@ puis détruite → plantage au premier test (logiciel), 17/17 avec le GPU. ASan 
 Status: FIXED localement (Linux) — OccView::eventFilter sur la fenêtre native : SurfaceAboutToBeDestroyed → vue OCCT
 libérée (Remove, caméra conservée), SurfaceCreated → vue recréée. Test 509 (fermeture/réouverture, destruction par le
 parent, vue seule fermée). Validé : llvmpipe sur X réel, Xvfb (comme la CI), GPU Intel, ASan sans erreur, suite
-complète 507/508, 56/56 suites. Windows : NON VÉRIFIÉ (CI à relancer, push à autoriser). Preuves :
-TSA-rapports/2026-10-26/preuves/BUG-119/.
+complète 507/508, 56/56 suites. CI 40280259182 (commit 6fec972) : Linux views 18/18 (test 509 compris). Windows :
+plantage toujours présent, mais à un autre endroit (après le test 435, déjà avant correctif) → défaut distinct, BUG-122.
+Preuves : TSA-rapports/2026-10-26/preuves/BUG-119/.
 
 ## BUG-120
 Area: AppPaths::occtResourcesDir sous Linux (développement)
@@ -33,6 +34,16 @@ Status: FIXED localement — TSA_OCCT_RESOURCE_DIR = OpenCASCADE_RESOURCE_DIR de
 Linux, src du SDK Windows), utilisé en développement par AppPaths::occtResourcesDir (plus de nom de dossier codé en dur) ;
 test 286 : OpenSees embarqué absent → [SKIP] motivé (TSA_PACKAGE_OPENSEES=OFF par défaut), jamais compté réussi ; suite
 deployment de nouveau exécutée en CI. Vérifié localement (3/3) ; CI non relancée.
+
+## BUG-122
+Area: Vue 3D sous Windows avec l'OpenGL 1.1 logiciel « GDI Generic » (runners GitHub Actions, sans GPU)
+Problem: suite views : violation d'accès 0xC0000005 juste après le test 435 (fin du test 435 : destruction d'une OccView
+seule, ou début du test 436 : nouvelle vue, tracé), avant comme après le correctif BUG-119 (CI 40270307383 et
+40280259182). OCCT signale « OpenGL driver is too old… Fallback using deprecated fixed-function pipeline ». Non reproduit
+sous Linux, même avec un contexte OpenGL 1.1 émulé (MESA_GL_VERSION_OVERRIDE=1.1 : 18/18).
+Impact: HIGH [H] pour les postes Windows sans pilote graphique (machines virtuelles, bureau à distance).
+Status: OPEN — cause non établie ; diagnostic dans la CI Windows (symboles /Z7 + /DEBUG, suite views relancée sous cdb :
+code d'exception et piles dans ci-report/tests/views-cdb.log). Ne pas déduire la cause du seul pilote GDI Generic.
 
 ## BUG-121
 Area: Panneaux Propriétés (essais d'interface du 2026-10-26)

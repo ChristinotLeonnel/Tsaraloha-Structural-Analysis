@@ -179,7 +179,12 @@ jobs:
       - name: Configuration (Release)
         shell: pwsh
         run: |
+          # /Z7 + /DEBUG : symboles de débogage (piles d'appels lisibles en cas de plantage, BUG-122), sans changer
+          # l'optimisation de la Release (/O2).
           cmake -S TSA -B TSA/build-ci -G Ninja -DCMAKE_BUILD_TYPE=Release `
+                -DCMAKE_CXX_FLAGS_RELEASE="/O2 /Ob2 /DNDEBUG /Z7" `
+                -DCMAKE_EXE_LINKER_FLAGS_RELEASE="/DEBUG /OPT:REF /OPT:ICF" `
+                -DCMAKE_SHARED_LINKER_FLAGS_RELEASE="/DEBUG /OPT:REF /OPT:ICF" `
                 -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DTSA_AUTO_DOWNLOAD_DEPS=ON `
                 -DTSALAB_ROOT_DIR="$env:GITHUB_WORKSPACE/TSALab"
 
@@ -190,6 +195,32 @@ jobs:
       - name: Tests par suite
         shell: pwsh
         run: python TSA/tools/ci/run_test_suites.py --exe TSA/build-ci/TSA_TestSuite.exe --out ci-report/tests --available display --timeout 900
+
+      - name: Diagnostic — suite views sous le débogueur (pile d'appels, BUG-122)
+        if: always()
+        timeout-minutes: 30
+        shell: pwsh
+        run: |
+          # Diagnostic seulement : le statut de la suite views reste celui de l'étape « Tests par suite » (cette étape
+          # se termine toujours par exit 0 et ne modifie aucun rapport). À l'exception (violation d'accès 0xC0000005 ou
+          # arrêt d'urgence 0xC0000409), cdb affiche le code (.exr -1), la pile du thread fautif (.ecxr ; kP) et celles
+          # de tous les threads, puis quitte. -G : sortie automatique si la suite se termine sans exception.
+          $cdb = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\Debuggers\x64\cdb.exe"
+          $log = Join-Path $env:GITHUB_WORKSPACE "ci-report/tests/views-cdb.log"
+          New-Item -ItemType Directory -Force ci-report/tests/views-debug | Out-Null
+          if (-not (Test-Path $cdb)) { "DIAGNOSTIC NON DISPONIBLE : cdb.exe absent du runner ($cdb)" | Tee-Object $log; exit 0 }
+          $sym = "cache*$env:RUNNER_TEMP\symbols;srv*https://msdl.microsoft.com/download/symbols;$env:GITHUB_WORKSPACE\TSA\build-ci"
+          $onCrash = '.echo === EXCEPTION ===; .exr -1; .lastevent; .ecxr; kP 80; .echo === TOUS LES THREADS ===; ~*k 40; q'
+          Push-Location ci-report/tests/views-debug
+          & $cdb -G -lines -y $sym -logo $log -c "sxe -c `"$onCrash`" av; sxe -c `"$onCrash`" c0000409; g" `
+              "$env:GITHUB_WORKSPACE/TSA/build-ci/TSA_TestSuite.exe" --suite=views
+          $code = $LASTEXITCODE
+          Pop-Location
+          "=== fin du diagnostic (code de sortie de cdb : $code) ===" | Add-Content $log
+          if (-not (Select-String -Path $log -Pattern "=== EXCEPTION ===" -Quiet)) { "AUCUNE EXCEPTION CAPTURÉE : voir le journal complet" | Add-Content $log }
+          Select-String -Path $log -Pattern "ExceptionCode|ExceptionAddress|=== EXCEPTION|TSA_TestSuite!|TKOpenGl|TKV3d|opengl32|Qt6|AUCUNE|NON DISPONIBLE" |
+              Select-Object -First 120 | ForEach-Object { $_.Line }
+          exit 0
 
       - name: Contrôles CTest (couches, traductions)
         if: always()

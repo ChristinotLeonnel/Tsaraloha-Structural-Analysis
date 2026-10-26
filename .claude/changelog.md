@@ -2,6 +2,15 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-26 (BUG-119, BUG-120) — commit 6fec972 poussé sur fix/core-integrity
+
+- BUG-119 : vue OCCT libérée avant la destruction de sa fenêtre native, recréée ensuite (OccView::eventFilter) ; test 509.
+- BUG-120 : ressources OCCT depuis OpenCASCADE_RESOURCE_DIR de CMake ; test 286 avec [SKIP] motivé pour OpenSees.
+- BUG-121 (1) : forme hors liste affichée par sa désignation (panneaux poutre et poteau) ; test 493 complété.
+- CI 40280259182 : Linux RÉUSSIE (39 suites, 348 tests, views 18/18, deployment 3/3 avec SKIP motivé, Custom2D 58/58) ;
+  Windows : 38 suites réussies, 331 tests, test 128 réussi, views PLANTÉE (0xC0000005 après le test 435) → BUG-122.
+- Essais d'interface (Xvfb, xdotool) : 11/16 exécutés, résultats dans TSA-rapports/2026-10-26/ESSAIS_MANUELS_RESULTATS.md.
+
 ## 2026-10-26 (fin) — BUG-110 format 2.0, traductions, CI (branche fix/core-integrity)
 
 - CI 40267211722 (ea646c3) : Linux 37 suites réussies, 0 assertion en échec, views PLANTÉE (BUG-119), 18 non exécutées,
