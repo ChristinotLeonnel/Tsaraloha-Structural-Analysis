@@ -3,6 +3,7 @@
 // teintant le grain du matériau ; panneau Propriétés n'imposant plus de couleur par défaut.
 
 #include "test_common.h"
+#include <QComboBox>
 #include <QMessageBox>
 
 #include "App/ProductInfo.h"
@@ -152,6 +153,17 @@ bool runSuite_Appearance(int& passed)
             TSA::UI::BeamPropertiesView view(&m);
             view.setElementId(id);
             view.applyChanges();   // comme après une modification du nom ou de la couleur
+        }
+        {
+            // Forme absente de la liste : aucun type affiché à tort, même après une barre en I (essai manuel 12)
+            TSA::UI::BeamPropertiesView view(&m);
+            view.setElementId(ipe);
+            view.setElementId(upn);
+            QComboBox* shape = nullptr;
+            for (auto* c : view.findChildren<QComboBox*>())
+                if (c->findData(static_cast<int>(SectionShape::IShape)) >= 0) shape = c;
+            TEST_CHECK(shape && shape->currentIndex() == -1 && shape->placeholderText() == QString::fromStdString(upnSec.name) && !shape->isEnabled(),
+                       "Test 493: UPN : liste des types désactivée, aucun type affiché, désignation « " << upnSec.name << " »");
         }
         TEST_CHECK(sameSection(m.getBeam(ipe)->section(), ipeSec), "Test 493: barre IPE 300 conservée (nom, A, Iy, Iz, It)");
         TEST_CHECK(m.getBeam(ipe)->rotation() == 12.345, "Test 493: rotation non arrondie aux décimales affichées");

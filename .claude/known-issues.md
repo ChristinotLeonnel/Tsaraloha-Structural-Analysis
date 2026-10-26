@@ -12,14 +12,36 @@ QT_QPA_PLATFORM=xcb TSA_TestSuite --suite=views (après le test 446, deux docume
 Présent sur eb7e6db (antérieur à BUG-110). Pas reproduit avec le pilote matériel, ni avec MALLOC_CHECK_=3 sous ce pilote.
 Impact: HIGH [H] pour les postes sans pilote graphique (machines virtuelles, bureau à distance) : plantage possible à la
 fermeture d'un document. Piste [H] : un OpenGl_GraphicDriver / Aspect_DisplayConnection par vue au lieu d'un seul partagé.
-Status: OPEN — pile gdb : TSA-rapports/2026-10-26/preuves/CI_40263952835/BUG-119_views_gdb_llvmpipe.log.
+Windows (GitHub Actions, sans GPU, OpenGL 1.1 logiciel) : violation d'accès 0xC0000005 après le test 435 (CI 40270307383).
+Cause démontrée (2026-10-26) : ~QWidget d'une fenêtre visible appelle QWindow::close() avant deleteChildren : les
+surfaces natives sont détruites AVANT les OccView enfants, dont le contexte OpenGL (OpenGl_Window) est ensuite détruit
+sans sa fenêtre X. Expériences : vue détruite avant son conteneur → plus de plantage ; OccView seule fermée (close())
+puis détruite → plantage au premier test (logiciel), 17/17 avec le GPU. ASan (code non corrigé) : aucun rapport
+(double libération exclue ; écriture hors limites dans Mesa non instrumenté non détectable par ASan).
+Status: FIXED localement (Linux) — OccView::eventFilter sur la fenêtre native : SurfaceAboutToBeDestroyed → vue OCCT
+libérée (Remove, caméra conservée), SurfaceCreated → vue recréée. Test 509 (fermeture/réouverture, destruction par le
+parent, vue seule fermée). Validé : llvmpipe sur X réel, Xvfb (comme la CI), GPU Intel, ASan sans erreur, suite
+complète 507/508, 56/56 suites. Windows : NON VÉRIFIÉ (CI à relancer, push à autoriser). Preuves :
+TSA-rapports/2026-10-26/preuves/BUG-119/.
 
 ## BUG-120
 Area: AppPaths::occtResourcesDir sous Linux (développement)
 Problem: les ressources OCCT (Shaders…) ne sont cherchées que dans resources/occt (paquet) et dans le SDK Windows
 opencascade-8.0.1-vc14-64/src (non versionné) : test 286 en échec sur GitHub Actions (le poste local a le SDK Windows).
 OCCT trouve lui-même ses shaders sous Linux : impact sur le test et sur un paquet Linux futur.
-Status: OPEN — suite deployment marquée « NON EXÉCUTÉE » en CI (occt-sdk, opensees) dans tools/ci/run_test_suites.py.
+Status: FIXED localement — TSA_OCCT_RESOURCE_DIR = OpenCASCADE_RESOURCE_DIR de CMake (share/opencascade/resources sous
+Linux, src du SDK Windows), utilisé en développement par AppPaths::occtResourcesDir (plus de nom de dossier codé en dur) ;
+test 286 : OpenSees embarqué absent → [SKIP] motivé (TSA_PACKAGE_OPENSEES=OFF par défaut), jamais compté réussi ; suite
+deployment de nouveau exécutée en CI. Vérifié localement (3/3) ; CI non relancée.
+
+## BUG-121
+Area: Panneaux Propriétés (essais d'interface du 2026-10-26)
+Problem: (1) CORRIGÉ : liste « Type de profilé » désactivée affichant un type faux pour une forme hors liste (UPN montré
+« Profilé en I » ou « Rectangulaire ») → désignation réelle affichée (Beam/ColumnPropertiesView, test 493 complété).
+(2) OUVERT : libellés des champs masqués (« Largeur (b) : », « Rayon (r) : »…) visibles sans champ (QFormLayout) ;
+« Rayon (r) : » (cercle) voisin de « Rayon de congé (r) : ». (3) OUVERT : « IA non configurée » (barre d'état) non traduit.
+(4) OUVERT : TSALab test L9 échoue sans OpenSees au lieu d'être signalé non exécuté.
+Status: PARTIAL.
 
 ## BUG-116
 Area: Tests — test 166 (arbre indexé, tests/test_model_cleanup.cpp)

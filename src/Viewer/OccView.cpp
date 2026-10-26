@@ -28,6 +28,8 @@
 #include <gp_Ax1.hxx>
 
 #include <QTimer>
+#include <QPlatformSurfaceEvent>
+#include <QWindow>
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QKeyEvent>
@@ -179,6 +181,86 @@ OccView::RenderingInfo OccView::renderingInfo() const
     return r;
 }
 
+Handle(Aspect_Window) OccView::createAspectWindow()
+{
+#ifdef _WIN32
+    return new WNT_Window(reinterpret_cast<Aspect_Handle>(winId()));
+#elif defined(__APPLE__)
+    return new Cocoa_Window(reinterpret_cast<NSView*>(winId()));
+#else
+    return new Xw_Window(m_displayConnection, static_cast<Aspect_Drawable>(winId()));
+#endif
+}
+
+void OccView::applyViewDecorations()
+{
+    Quantity_Color topColor = m_isDarkMode ? Quantity_Color(0.12, 0.14, 0.18, Quantity_TOC_RGB)
+                                           : Quantity_Color(0.82, 0.88, 0.95, Quantity_TOC_RGB);
+    Quantity_Color bottomColor = m_isDarkMode ? Quantity_Color(0.06, 0.08, 0.10, Quantity_TOC_RGB)
+                                              : Quantity_Color(0.92, 0.94, 0.98, Quantity_TOC_RGB);
+    m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
+
+    // Configuration explicite des axes du trièdre : X=Rouge, Y=Vert, Z=Bleu
+    m_view->ZBufferTriedronSetup(
+        Quantity_NOC_RED,       // Axe X
+        Quantity_NOC_GREEN,     // Axe Y
+        Quantity_NOC_BLUE1,     // Axe Z
+        0.8,
+        0.05,
+        12
+    );
+
+    m_view->TriedronDisplay(
+        Aspect_TOTP_LEFT_LOWER,
+        Quantity_NOC_BLACK,
+        0.1,
+        V3d_ZBUFFER
+    );
+}
+
+bool OccView::eventFilter(QObject* watched, QEvent* event)
+{
+    if (event->type() == QEvent::PlatformSurface && watched == windowHandle())
+    {
+        switch (static_cast<QPlatformSurfaceEvent*>(event)->surfaceEventType())
+        {
+        case QPlatformSurfaceEvent::SurfaceAboutToBeDestroyed: releaseViewWindow(); break;
+        case QPlatformSurfaceEvent::SurfaceCreated: restoreViewWindow(); break;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
+void OccView::releaseViewWindow()
+{
+    // La fenêtre native existe encore : la vue OCCT (OpenGl_View, OpenGl_Window et son contexte) est détruite ici, et
+    // non plus après la fenêtre (destruction par le widget parent). Le visualiseur et le contexte interactif (objets
+    // affichés) sont conservés ; m_view nul = état « pas encore affichée », déjà géré partout.
+    if (m_view.IsNull() || m_viewWindowReleased) return;
+    m_releasedCamera = new Graphic3d_Camera();
+    m_releasedCamera->Copy(m_view->Camera());
+    m_view->Remove();
+    m_view.Nullify();
+    m_viewWindowReleased = true;
+}
+
+void OccView::restoreViewWindow()
+{
+    // Surface recréée (fenêtre parente refermée puis rouverte) : nouvelle vue du même visualiseur, sur la nouvelle
+    // fenêtre native, avec la caméra, le décor et le plan de coupe d'avant.
+    if (!m_viewWindowReleased || m_viewer.IsNull()) return;
+    m_view = m_viewer->CreateView();
+    Handle(Aspect_Window) wind = createAspectWindow();
+    m_view->SetWindow(wind);
+    if (!wind->IsMapped()) wind->Map();
+    applyViewDecorations();
+    if (!m_releasedCamera.IsNull()) m_view->Camera()->Copy(m_releasedCamera);
+    if (!m_clipPlane.IsNull() && m_clipPlane->IsOn()) m_view->AddClipPlane(m_clipPlane);
+    m_view->MustBeResized();
+    m_viewWindowReleased = false;
+    m_view->Redraw();
+}
+
 void OccView::initOcc()
 {
     m_displayConnection = new Aspect_DisplayConnection();
@@ -219,18 +301,13 @@ void OccView::initOcc()
 
     m_view = m_viewer->CreateView();
 
-#ifdef _WIN32
-    Handle(Aspect_Window) wind = new WNT_Window(reinterpret_cast<Aspect_Handle>(winId()));
-#elif defined(__APPLE__)
-    Handle(Aspect_Window) wind = new Cocoa_Window(reinterpret_cast<NSView*>(winId()));
-#else
-    Handle(Aspect_Window) wind = new Xw_Window(m_displayConnection, static_cast<Aspect_Drawable>(winId()));
-#endif
+    Handle(Aspect_Window) wind = createAspectWindow();
     m_view->SetWindow(wind);
     if (!wind->IsMapped())
     {
         wind->Map();
     }
+    if (QWindow* native = windowHandle()) native->installEventFilter(this);   // destruction de la surface (BUG-119)
     // Annotations : facteur d'échelle de l'écran (DPI) ; reconstruction des textes à chaque changement de réglage
     // (jamais au mouvement de la caméra : les textes constants à l'écran sont dessinés en pixels par OCCT)
     TSA::Viewer::AnnotationStyle::instance().setDevicePixelRatio(devicePixelRatioF());
@@ -243,28 +320,7 @@ void OccView::initOcc()
     // Rendu réellement obtenu, journalisé (diagnostic des postes sans accélération matérielle)
     TSA_LOG_INFO("Viewer", "OpenGLRenderer", renderingInfo().summary().toStdString());
 
-    Quantity_Color topColor = m_isDarkMode ? Quantity_Color(0.12, 0.14, 0.18, Quantity_TOC_RGB)
-                                           : Quantity_Color(0.82, 0.88, 0.95, Quantity_TOC_RGB);
-    Quantity_Color bottomColor = m_isDarkMode ? Quantity_Color(0.06, 0.08, 0.10, Quantity_TOC_RGB)
-                                              : Quantity_Color(0.92, 0.94, 0.98, Quantity_TOC_RGB);
-    m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
-
-    // Configuration explicite des axes du trièdre : X=Rouge, Y=Vert, Z=Bleu
-    m_view->ZBufferTriedronSetup(
-        Quantity_NOC_RED,       // Axe X
-        Quantity_NOC_GREEN,     // Axe Y
-        Quantity_NOC_BLUE1,     // Axe Z
-        0.8,
-        0.05,
-        12
-    );
-
-    m_view->TriedronDisplay(
-        Aspect_TOTP_LEFT_LOWER,
-        Quantity_NOC_BLACK,
-        0.1,
-        V3d_ZBUFFER
-    );
+    applyViewDecorations();
 
     // Orientation standard génie civil : +Z vers le haut (élévation), projection axonométrique droite Z-up
     TSA::Viewer::ViewManager::applyFrame(m_view, TSA::Viewer::ViewManager::standardFrame(TSA::Viewer::StandardCameraView::ThreeD_Axo),

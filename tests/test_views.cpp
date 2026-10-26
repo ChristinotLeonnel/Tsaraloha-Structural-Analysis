@@ -4,6 +4,7 @@
 // annoncés sautés et jamais comptés réussis (BUG-076). Le test 434 (orientations calculées) tourne partout.
 
 #include "test_common.h"
+#include <QVBoxLayout>
 #include "Grid/GridManager.h"
 #include "Grid/WorkPlaneReferences.h"
 #include "IO/TSAFile.h"
@@ -350,7 +351,7 @@ bool runSuite_Views(int& passed)
 
     if (offscreen)
     {
-        for (int t : { 433, 435, 436, 437, 438, 440, 441, 442, 444, 445, 446, 447, 448, 449 })
+        for (int t : { 433, 435, 436, 437, 438, 440, 441, 442, 444, 445, 446, 447, 448, 449, 509 })
             std::cout << "[SKIP] Test " << t << ": vue 3D indisponible sur la plateforme Qt « offscreen » (lancer avec QT_QPA_PLATFORM=windows)" << std::endl;
         return true;
     }
@@ -1242,6 +1243,57 @@ bool runSuite_Views(int& passed)
                    "Test 449: nom libre sans cote (« Coupe A ») conservé après un déplacement");
         view.setGridManager(nullptr, nullptr);
         std::cout << "[PASS] Test 449: Nom du plan tenu à jour après un changement de cote (noms libres conservés)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 509 : fermeture et destruction de la vue 3D (BUG-119). Qt détruit les fenêtres natives d'une fenêtre fermée ou
+    // détruite AVANT ses widgets enfants : la vue OCCT (contexte OpenGL lié à la fenêtre native) doit être libérée avant,
+    // sinon le rendu logiciel (Mesa llvmpipe, OpenGL 1.1 de Windows : postes virtuels, bureau à distance, CI) corrompt le
+    // tas. Vue enfant d'une fenêtre fermée puis rouverte (vue recréée, caméra conservée), puis détruite par son parent ;
+    // vue seule fermée avant sa destruction.
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(6, 0, 0);
+        m.addBar(a, b, Section::ipe(300), Material::steelS235());
+        auto* container = new QWidget;
+        container->resize(700, 500);
+        auto* layout = new QVBoxLayout(container);
+        auto* view = new OccView(container);
+        layout->addWidget(view);
+        container->show();
+        pump(20);
+        view->setModel(&m);
+        pump();
+        const OccView::RenderingInfo info = view->renderingInfo();
+        TEST_CHECK(!view->view().IsNull(), "Test 509: vue 3D enfant initialisée");
+        view->view()->SetEye(10.0, -8.0, 6.0);
+        const gp_Pnt eye = view->view()->Camera()->Eye();
+        container->close();   // QWindow::close() : surfaces natives détruites, widgets conservés
+        pump();
+        TEST_CHECK(view->view().IsNull(), "Test 509: fenêtre parente fermée : vue OCCT libérée avant la destruction de sa surface");
+        container->show();
+        pump(20);
+        TEST_CHECK(!view->view().IsNull() && view->view()->Camera()->Eye().Distance(eye) < 1e-9 && view->view()->Window()->IsMapped(),
+                   "Test 509: fenêtre rouverte : vue recréée sur la nouvelle surface, caméra conservée");
+        view->view()->Redraw();
+        view->setModel(nullptr);
+        pump();
+        delete container;   // vue détruite par son parent visible : scénario du plantage (test 447, CI Linux et Windows)
+        pump();
+        {
+            OccView single;
+            single.resize(400, 300);
+            single.show();
+            pump(20);
+            single.close();
+            pump();
+            TEST_CHECK(single.view().IsNull(), "Test 509: vue seule fermée : vue OCCT libérée avant sa surface");
+        }
+        pump();
+        std::cout << "[PASS] Test 509: Fermeture et destruction de la vue 3D sans contexte OpenGL orphelin (rendu "
+                  << (info.hardware ? "matériel" : "logiciel") << " : " << info.device.toStdString() << ")" << std::endl;
         ++passed;
     }
     return true;

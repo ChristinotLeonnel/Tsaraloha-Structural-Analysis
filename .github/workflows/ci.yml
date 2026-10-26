@@ -5,6 +5,10 @@
 # (tools/ci/run_test_suites.py). La validation numérique utilise le moteur interne Custom2D (sans dépendance externe).
 # TSALab (cœur scientifique tsalab_science) est obligatoire : récupéré à côté de TSA.
 #
+# Versions : Linux Qt 6.12.0 (comme le poste Linux) ; Windows Qt 6.10.3 + MSVC 19.44 (Visual Studio 2022 des runners).
+# Cette CI NE VALIDE PAS la configuration du poste Windows de développement (Qt 6.11.2, MSVC 19.51 / Visual Studio 2026) :
+# Qt 6.11+ n'est pas installable par aqtinstall 3.3.0 (voir l'étape Qt du job windows).
+#
 # À faire avant de rendre ce pipeline bloquant : épingler les actions par SHA de commit, ajouter OpenSees Linux
 # (compilation Conan 2, docs/LINUX_BUILD.md §7, mise en cache) et le SDK Gmsh avec empreinte vérifiée.
 

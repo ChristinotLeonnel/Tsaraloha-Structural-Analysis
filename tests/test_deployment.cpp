@@ -58,7 +58,13 @@ bool runSuite_Deployment(int& passed)
         TEST_CHECK(AppPaths::applicationDir() == QDir::cleanPath(QCoreApplication::applicationDirPath()), "Test 286: dossier de l'application = dossier de l'exécutable");
         TEST_CHECK(!AppPaths::shippedModulesDir().isEmpty() && QFileInfo(AppPaths::occtResourcesDir() + "/Shaders").isDir(),
                    "Test 286: modules livrés et ressources OCCT trouvés (" << AppPaths::occtResourcesDir().toStdString() << ")");
-        TEST_CHECK(QFileInfo(AppPaths::openSeesDir()).isDir(), "Test 286: moteur OpenSees trouvé (" << AppPaths::openSeesDir().toStdString() << ")");
+        // OpenSees embarqué (engines/OpenSees, ou thirdparty/OpenSees des sources) : absent par défaut depuis BUG-114
+        // (TSA_PACKAGE_OPENSEES=OFF, binaires non versionnés) ; vérifié quand il est fourni, signalé sinon (jamais réussi).
+        if (QFileInfo(AppPaths::openSeesDir()).isDir())
+            TEST_CHECK(QDir::isAbsolutePath(AppPaths::openSeesDir()), "Test 286: moteur OpenSees embarqué trouvé");
+        else
+            std::cout << "[SKIP] Test 286 (partie OpenSees) : aucun OpenSees embarqué (" << AppPaths::openSeesDir().toStdString()
+                      << " absent) — OpenSees n'est plus embarqué par défaut (TSA_PACKAGE_OPENSEES=OFF)" << std::endl;
         std::cout << "[PASS] Test 286: Chemins indépendants du dossier de travail" << std::endl;
         ++passed;
     }

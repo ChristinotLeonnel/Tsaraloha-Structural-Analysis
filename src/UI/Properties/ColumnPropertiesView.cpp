@@ -276,6 +276,13 @@ void ColumnPropertiesView::refreshView()
 
     int sIdx = m_comboSectionType->findData(static_cast<int>(sec.shape));
     if (sIdx >= 0) m_comboSectionType->setCurrentIndex(sIdx);
+    else
+    {
+        // Forme absente de la liste (UPN, cornière, T…) : aucun type affiché à tort (auparavant le choix précédent,
+        // « Profilé en I » ou « Rectangulaire »), la désignation réelle à la place (essai manuel 12, 2026-10-26)
+        m_comboSectionType->setPlaceholderText(QString::fromStdString(sec.name));
+        m_comboSectionType->setCurrentIndex(-1);
+    }
     updateSectionVisibility(static_cast<int>(sec.shape));
     // Les champs ne représentent que les sections rectangulaires et circulaires pleines : un profilé (HEA, IPE…),
     // un tube ou une autre forme n'est pas modifiable ici (dialogue des sections), jamais reconstruit en rectangle.

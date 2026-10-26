@@ -666,6 +666,11 @@ protected:
     void onModelDestroyed() override { m_model = nullptr; }
 
 protected:
+    /// Fenêtre native de la vue : la vue OCCT (contexte OpenGL lié à cette fenêtre) est libérée AVANT la destruction de
+    /// la surface (fermeture ou destruction d'une fenêtre parente : Qt détruit les fenêtres natives avant les widgets
+    /// enfants), puis recréée si la surface l'est (BUG-119 : sinon contexte détruit après sa fenêtre, tas corrompu avec
+    /// le rendu logiciel Mesa / Windows).
+    bool eventFilter(QObject* watched, QEvent* event) override;
     QPaintEngine* paintEngine() const override { return nullptr; }
     void paintEvent(QPaintEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
@@ -758,6 +763,13 @@ private:
     void updateLoadLegend();
 
     bool m_isInitialized = false;
+    /// Fenêtre OCCT sur la fenêtre native actuelle (winId) ; décor de la vue (fond, trièdre).
+    Handle(Aspect_Window) createAspectWindow();
+    void applyViewDecorations();
+    void releaseViewWindow();
+    void restoreViewWindow();
+    Handle(Graphic3d_Camera) m_releasedCamera;   ///< caméra de la vue libérée (BUG-119), rendue à la vue recréée
+    bool m_viewWindowReleased = false;
 
     enum class CurrentAction
     {

@@ -22,8 +22,12 @@ Last Updated: 2026-10-25. Uniquement des tâches réellement identifiées (voir 
 - [x] BUG-113 : tests de régression ajoutés (502 ouvertures, 444 manipulateur).
 - [x] BUG-110 : format 2.0 (SECP, requiredFeatures, migration, IFC/TSA3D, panneau) ; tests 506-508 ; démonstration
       au bit près sur le corpus. [ ] CI de la nouvelle version (push).
-- [ ] BUG-119 plantage destruction OccView sous llvmpipe ; [ ] BUG-120 ressources OCCT sous Linux (test 286).
-- [ ] CI : Windows passé à Qt 6.10.3 (6.11+ illisible par aqtinstall 3.3.0) — à confirmer par un passage réel.
+- [x] BUG-119 (local, test 509) ; [x] BUG-120 (local) ; [ ] validation CI Linux + Windows (push à autoriser).
+- [x] Essais d'interface : 11/16 exécutés (Xvfb, xdotool), défaut BUG-121(1) corrigé ; [ ] essais 9, 11, 13, 14, 15 ; [ ] Windows.
+- [ ] Compilation MSVC 19.51 + Qt 6.11.2 : impossible sur ce poste Linux (aucun poste Windows accessible).
+- [x] CI Windows (Qt 6.10.3, MSVC 19.44) : compilation complète, 37 suites réussies, 328 tests, test 128 RÉUSSI pour la
+      première fois, Custom2D 58/58 (CI 40270307383) ; views plantée (BUG-119). [ ] Compilation sur le poste MSVC 19.51.
+- [x] tools/ci/run_test_suites.py : plantage Windows (code ≥ 0xC0000000) classé PLANTÉE.
 - [ ] D5 : compilation et tests Windows/MSVC, CI GitHub (push requis), essai manuel des panneaux Propriétés, traductions
       (8 textes nouveaux non traduits en et mg, .ts non modifiés) — NON EXÉCUTÉS.
 - [ ] BUG-110 (A+ : r figé, chunk SECP, 1.13 / 2.0 conditionnelle) et BUG-111 (fiche AnalysisTrace, 4 empreintes,

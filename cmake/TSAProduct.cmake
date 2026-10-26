@@ -1191,8 +1191,9 @@ function(tsa_apply_common_settings target product_dir)
     # et supprime les milliers d'avertissements /W4 venant d'OCCT).
     target_include_directories(${target} PRIVATE ${TSA_ROOT}/src ${ARGN} ${product_dir})
     target_include_directories(${target} SYSTEM PRIVATE ${OpenCASCADE_INCLUDE_DIR})
-    # Ressources de développement (Extensions/, thirdparty/OpenSees) : sources communes.
-    target_compile_definitions(${target} PRIVATE TSA_SOURCE_DIR="${TSA_ROOT}")
+    # Ressources de développement (Extensions/, thirdparty/OpenSees) : sources communes. Ressources d'OCCT (Shaders…) :
+    # celles de l'OCCT trouvé par find_package (share/opencascade/resources sous Linux, src du SDK Windows), BUG-120.
+    target_compile_definitions(${target} PRIVATE TSA_SOURCE_DIR="${TSA_ROOT}" TSA_OCCT_RESOURCE_DIR="${OpenCASCADE_RESOURCE_DIR}")
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive- /utf-8)
         # Compilation parallèle des fichiers (générateurs Visual Studio uniquement ;

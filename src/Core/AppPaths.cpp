@@ -62,7 +62,19 @@ QString AppPaths::shippedDir(const QString& relative, const QString& devRelative
     return app.isEmpty() ? QString() : QDir::cleanPath(QDir(app).filePath(relative));
 }
 
-QString AppPaths::occtResourcesDir() { return shippedDir(QStringLiteral("resources/occt"), QStringLiteral("opencascade-8.0.1-vc14-64/src")); }
+QString AppPaths::occtResourcesDir()
+{
+    // Paquet : resources/occt. Développement : ressources de l'OCCT utilisé par la compilation (OpenCASCADE_RESOURCE_DIR
+    // de CMake), jamais un dossier propre à un poste (BUG-120).
+    const QString app = applicationDir();
+    if (!app.isEmpty() && QFileInfo(QDir(app).filePath(QStringLiteral("resources/occt"))).isDir())
+        return QDir::cleanPath(QDir(app).filePath(QStringLiteral("resources/occt")));
+#ifdef TSA_OCCT_RESOURCE_DIR
+    if (!developmentSourceDir().isEmpty())
+        if (const QString dev = QString::fromUtf8(TSA_OCCT_RESOURCE_DIR); !dev.isEmpty() && QFileInfo(dev).isDir()) return QDir::cleanPath(dev);
+#endif
+    return shippedDir(QStringLiteral("resources/occt"));
+}
 QString AppPaths::enginesDir() { return shippedDir(QStringLiteral("engines")); }
 
 QString AppPaths::openSeesDir()

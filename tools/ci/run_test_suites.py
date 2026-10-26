@@ -7,9 +7,9 @@ travail jetable (les tests écrivent dans le dossier courant), avec un délai ma
   ÉCHOUÉE         au moins une ligne [FAIL] ou code de retour non nul (dans une suite, le premier échec arrête
                   la suite : les tests suivants ne sont pas exécutés, BUG-104)
   DÉLAI DÉPASSÉ   arrêtée au bout de --timeout secondes
-  PLANTÉE         arrêtée par un signal (code de retour négatif)
-  NON EXÉCUTÉE    dépendance absente de cet environnement (OpenSees, Gmsh, IfcOpenShell, affichage X11, SDK OCCT
-                  de développement, Windows) : jamais comptée comme réussie
+  PLANTÉE         arrêtée par un signal (Unix : code négatif) ou une exception (Windows : code ≥ 0xC0000000)
+  NON EXÉCUTÉE    dépendance absente de cet environnement (OpenSees, Gmsh, IfcOpenShell, affichage X11,
+                  Windows) : jamais comptée comme réussie
 Les lignes [SKIP] (tests ignorés par la suite elle-même) sont rapportées à part.
 
 Code de sortie : 0 si aucune suite exécutée n'a échoué, 1 sinon, 2 en cas d'erreur d'utilisation.
@@ -48,11 +48,8 @@ REQUIREMENTS = {
     "mesh": ["gmsh"], "surfaces": ["gmsh", "opensees"], "meshview": ["gmsh", "display"],
     "ifc": ["ifcopenshell"],
     "display": ["display", "opensees"], "multidoc": ["display"],
-    # Test 286 : ressources OCCT cherchées dans le SDK de développement (opencascade-8.0.1-vc14-64/src, non versionné)
-    # et dossier OpenSees (BUG-120) ; constaté sur GitHub Actions le 2026-10-26 (exécution 40263952835).
-    "deployment": ["opensees", "occt-sdk"],
 }
-KNOWN_CAPABILITIES = {"opensees", "gmsh", "ifcopenshell", "display", "occt-sdk"}
+KNOWN_CAPABILITIES = {"opensees", "gmsh", "ifcopenshell", "display"}
 
 RESULTS_RE = re.compile(r"RESULTS:\s*(\d+)\s*test\(s\) passed")
 
@@ -76,7 +73,7 @@ def run_suite(exe, suite, workdir, timeout, env):
     passed = int(m[-1]) if m else 0
     if timed_out:
         status = "DÉLAI DÉPASSÉ"
-    elif code is not None and code < 0:
+    elif code is not None and (code < 0 or code >= 0xC0000000):   # signal (Unix) ou exception NTSTATUS (Windows)
         status = "PLANTÉE"
     elif fails or code != 0:
         status = "ÉCHOUÉE"
@@ -90,7 +87,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--exe", required=True, help="chemin de TSA_TestSuite")
     ap.add_argument("--out", required=True, help="dossier du rapport (créé) ; les suites s'y exécutent")
-    ap.add_argument("--available", default="", help="dépendances présentes : opensees,gmsh,ifcopenshell,display,occt-sdk")
+    ap.add_argument("--available", default="", help="dépendances présentes : opensees,gmsh,ifcopenshell,display")
     ap.add_argument("--suites", default="", help="sous-ensemble de suites (défaut : toutes)")
     ap.add_argument("--timeout", type=int, default=900, help="délai maximal par suite (s)")
     args = ap.parse_args()
