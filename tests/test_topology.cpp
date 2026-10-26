@@ -430,8 +430,8 @@ bool runSuite_Topology(int& passed)
         std::string err;
         TEST_CHECK(writer.saveToFile(path, m, nullptr, "Topo", "TSA Testing", &err), "Test 234: sauvegarde");
         TSA::IO::TSAFileHeader header;
-        TEST_CHECK(TSA::IO::TSAFileReader::readHeader(path, header) && header.versionMinor == TSA::IO::TSA_FORMAT_VERSION_MINOR &&
-                       TSA::IO::TSA_FORMAT_VERSION_MINOR >= 5,
+        TEST_CHECK(TSA::IO::TSAFileReader::readHeader(path, header) && header.versionMajor == TSA::IO::TSA_FORMAT_VERSION_MAJOR &&
+                       header.versionMinor == TSA::IO::TSA_FORMAT_VERSION_MINOR && (TSA::IO::TSA_FORMAT_VERSION_MAJOR > 1 || TSA::IO::TSA_FORMAT_VERSION_MINOR >= 5),
                    "Test 234: format ≥ 1.5");
         Model loaded;
         TSA::IO::TSAFileReader reader;

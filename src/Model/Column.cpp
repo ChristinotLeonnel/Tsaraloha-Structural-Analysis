@@ -33,6 +33,7 @@ Column::Column(int id, int startNodeId, int endNodeId, const Section& section, c
     , m_material(material)
     , m_rotation(rotation)
 {
+    m_section.fixFilletRadius();   // rayon de congé figé à l'entrée dans le modèle (BUG-110)
     if (m_name.empty() && m_id > 0)
     {
         std::ostringstream ss;

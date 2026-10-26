@@ -168,6 +168,7 @@ private:
 private:
     std::shared_ptr<ICompressionProvider> m_compressor;
     std::shared_ptr<IEncryptionProvider> m_encryptor;
+    uint16_t m_formatMajor = 0;   ///< version majeure du fichier en cours de lecture (1 : sections migrées)
 };
 
 // -----------------------------------------------------------------------------

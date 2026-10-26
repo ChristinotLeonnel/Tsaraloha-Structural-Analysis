@@ -2,6 +2,15 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-26 (fin) — BUG-110 format 2.0, traductions, CI (branche fix/core-integrity)
+
+- Commit eb7e6db poussé (sans fusion) ; CI 40263952835 : contrôles OK ; Linux : compilation OK, 37 suites réussies, Custom2D
+  58/58, 3 suites en échec (display : OpenSees absent, oubli du tableau des dépendances ; deployment : BUG-120 ;
+  views : plantage BUG-119, préexistant) ; Windows : Qt 6.11.2 non installable par aqtinstall 3.3.0 → Qt 6.10.3.
+- Traductions anglaises des nouveaux textes ; malgache en attente (repli sur le français vérifié dans les .qm).
+- BUG-110 : propriétés des sections enregistrées, format 2.0, migration au bit près ; IFC FilletRadius, TSA3D
+  dimensions.r ; panneau de la barre (rayon éditable, conversion proposée). Tests 506, 507, 508.
+
 ## 2026-10-26 (suite) — D1 à D6 : unités des échanges, informations de calcul, installation .tsalib (non commité)
 
 - BUG-117 (P1) : raideurs IFC en N/m avec unités dérivées déclarées, import selon l'unité du fichier (ancien export TSA

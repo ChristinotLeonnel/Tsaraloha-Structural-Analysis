@@ -81,6 +81,8 @@ private:
     QDoubleSpinBox* m_spinFlangeWidth = nullptr;
     QDoubleSpinBox* m_spinFlangeThick = nullptr;
     QDoubleSpinBox* m_spinWebThick = nullptr;
+    QDoubleSpinBox* m_spinFillet = nullptr;          ///< rayon de congé d'un profil en I (donnée de la section, BUG-110)
+    QString m_declinedConversion;                    ///< « id|nom » : conversion en section personnalisée déjà refusée
     QDoubleSpinBox* m_spinRotation = nullptr;
 
     // Excentrements

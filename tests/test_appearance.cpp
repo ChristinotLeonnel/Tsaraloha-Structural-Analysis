@@ -3,6 +3,7 @@
 // teintant le grain du matériau ; panneau Propriétés n'imposant plus de couleur par défaut.
 
 #include "test_common.h"
+#include <QMessageBox>
 
 #include "App/ProductInfo.h"
 #include "UI/Properties/BeamPropertiesView.h"
@@ -208,6 +209,60 @@ bool runSuite_Appearance(int& passed)
     }
 
     // -------------------------------------------------------------------------
+    // TEST 508 : panneau Propriétés d'une barre en I (BUG-110, décision D1) — modifier une dimension conserve le rayon de
+    // congé ; un profil normalisé qui ne correspond plus à la norme est signalé et sa conversion en section personnalisée
+    // proposée (une seule fois si elle est refusée) ; le rayon se modifie explicitement.
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(6, 0, 0), c = m.addNode(12, 0, 0);
+        const int bar1 = m.addBar(a, b, Section::ipe(300), Material::steelS355(), BarRole::Beam);
+        const int bar2 = m.addBar(b, c, Section::ipe(300), Material::steelS355(), BarRole::Beam);
+        QMessageBox::StandardButton reply = QMessageBox::Yes;
+        int prompts = 0;
+        QTimer answer;
+        QObject::connect(&answer, &QTimer::timeout, [&] {
+            for (auto* w : QApplication::topLevelWidgets())
+                if (auto* box = qobject_cast<QMessageBox*>(w); box && box->isVisible() && box->button(reply))
+                {
+                    ++prompts;
+                    box->button(reply)->click();
+                }
+        });
+        answer.start(20);
+        auto spin = [](QWidget& v, double lo, double hi) -> QDoubleSpinBox* {
+            for (auto* s : v.findChildren<QDoubleSpinBox*>())
+                if (s->minimum() == lo && s->maximum() == hi && !s->isHidden()) return s;
+            return nullptr;
+        };
+        {
+            TSA::UI::BeamPropertiesView view(&m);
+            view.setElementId(bar1);
+            QDoubleSpinBox* height = spin(view, 0.01, 10.0);
+            QDoubleSpinBox* fillet = spin(view, 0.0, 0.1);
+            TEST_CHECK(height && fillet && fillet->value() == 0.015, "Test 508: champ « rayon de congé » affiché (15 mm)");
+            height->setValue(0.31);
+            const auto& s = m.getBeam(bar1)->section();
+            TEST_CHECK(prompts == 1 && s.rootRadius() == 0.015 && s.height == 0.31 && s.name.rfind("Profilé I 310", 0) == 0,
+                       "Test 508: hauteur modifiée : rayon conservé, conversion proposée et acceptée (« " << s.name << " »)");
+        }
+        reply = QMessageBox::No;
+        {
+            TSA::UI::BeamPropertiesView view(&m);
+            view.setElementId(bar2);
+            QDoubleSpinBox* height = spin(view, 0.01, 10.0);
+            height->setValue(0.31);
+            TEST_CHECK(prompts == 2 && m.getBeam(bar2)->section().name == "IPE 300" && m.getBeam(bar2)->section().rootRadius() == 0.015,
+                       "Test 508: conversion refusée : désignation et rayon conservés");
+            height->setValue(0.32);
+            TEST_CHECK(prompts == 2 && m.getBeam(bar2)->section().height == 0.32, "Test 508: refus mémorisé : la question n'est pas reposée");
+            spin(view, 0.0, 0.1)->setValue(0.02);
+            TEST_CHECK(m.getBeam(bar2)->section().rootRadius() == 0.02 && prompts == 2, "Test 508: rayon de congé modifié explicitement");
+        }
+        answer.stop();
+        std::cout << "[PASS] Test 508: Barre en I : rayon conservé, conversion proposée, rayon modifiable" << std::endl;
+        ++passed;
+    }
+
     // TEST 498 : dialogue des cas de charge — ajouter un cas, ajouter / supprimer une combinaison prévient les vues
     // (arbre du modèle, vue 3D) une seule fois. Auparavant : entrée Annuler créée mais aucune notification.
     // -------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 **Format :** TSA Binary Project File  
 **Extension native :** `.tsa`  
 **Magic Signature :** `TSAF` (`0x46415354` en little-endian)  
-**Version actuelle :** Spécification 1.12 (Major = 1, Minor = 12) — 1.1 : chunk `LOAD` (2026-10-03) ; 1.2 : bloc d'aperçu ; 1.3 : chunk `BIMM` (2026-10-06) ; 1.4 : chunk `SETT` (2026-10-06) ; 1.5 : chunk `TOPO` (2026-10-10, topologie et numérotation, JSON UTF-8 `TopologySettings`, voir docs/TOPOLOGY.md) ; 1.6 : chunk `DIMS` (2026-10-10, cotations 3D, JSON UTF-8 `DimensionSet`, voir docs/DIMENSIONS.md) ; 1.7 : chunk `XTND` (2026-10-10, données d'échange TSA3D conservées, JSON UTF-8, voir docs/TSA3D.md) ; 1.8 : chunks `MESH` (maillage du projet : paramètres, profil, maillage Gmsh généré, rapport, JSON UTF-8 `tsa-mesh/1`, voir docs/MESH.md) et `OPNG` (ouvertures des dalles, repère local, JSON UTF-8) ; 1.9 : chunk `MVIS` (finitions d'aspect des éléments) ; 1.10 : chunk `SURF` (formulation des dalles et voiles, charges surfaciques) et ouvertures des voiles dans `OPNG` (docs/SURFACES.md) ; 1.11 : chunk `BGEO` (géométries physiques des produits importés) ; 1.12 : chunk `VIEW` (2026-10-18, vues nommées, docs/VIEWS_NAVIGATION.md) ; ajouts non cassants  
+**Version actuelle :** Spécification **2.0** (Major = 2, Minor = 0, 2026-10-26, BUG-110 : propriétés des sections enregistrées, chunk `SECP` obligatoire, fonctionnalités obligatoires dans l'en-tête — voir §5.4) ; historique 1.x — 1.1 : chunk `LOAD` (2026-10-03) ; 1.2 : bloc d'aperçu ; 1.3 : chunk `BIMM` (2026-10-06) ; 1.4 : chunk `SETT` (2026-10-06) ; 1.5 : chunk `TOPO` (2026-10-10, topologie et numérotation, JSON UTF-8 `TopologySettings`, voir docs/TOPOLOGY.md) ; 1.6 : chunk `DIMS` (2026-10-10, cotations 3D, JSON UTF-8 `DimensionSet`, voir docs/DIMENSIONS.md) ; 1.7 : chunk `XTND` (2026-10-10, données d'échange TSA3D conservées, JSON UTF-8, voir docs/TSA3D.md) ; 1.8 : chunks `MESH` (maillage du projet : paramètres, profil, maillage Gmsh généré, rapport, JSON UTF-8 `tsa-mesh/1`, voir docs/MESH.md) et `OPNG` (ouvertures des dalles, repère local, JSON UTF-8) ; 1.9 : chunk `MVIS` (finitions d'aspect des éléments) ; 1.10 : chunk `SURF` (formulation des dalles et voiles, charges surfaciques) et ouvertures des voiles dans `OPNG` (docs/SURFACES.md) ; 1.11 : chunk `BGEO` (géométries physiques des produits importés) ; 1.12 : chunk `VIEW` (2026-10-18, vues nommées, docs/VIEWS_NAVIGATION.md) ; ajouts non cassants  
 
 ---
 
@@ -155,6 +155,31 @@ Chaque élément filaire sérialise :
   - `fk` : `double` (Pa, limite élastique $f_y$ ou résistance béton $f_{ck}$)
   - `thermalCoeff` : `double` ($1/K$)
 
+### 5.4 Propriétés des sections (`CHUNK_SECP`, spécification 2.0, obligatoire)
+
+Avant 2.0, le rayon de congé `r` d'un profil en I n'était pas enregistré : il était déduit **du nom** de la section
+(« IPE 300 », « HEA 200 »…) à chaque calcul. Renommer une section ou corriger la table changeait A, I, J, la classe EC3 et
+les résultats sans avertissement (BUG-110). Depuis 2.0 :
+
+- **En-tête** : les 8 premiers octets de l'ancienne zone de réserve forment `requiredFeatures` (`uint64_t`, petit-boutien ;
+  réserve restante : 32 octets ; en-tête toujours de 272 octets). Bit 0 = `FEATURE_SECTION_PROPERTIES`. Un lecteur
+  refuse, avec un message, un fichier qui exige un bit qu'il ne connaît pas. Toute future donnée qui change le calcul
+  ajoute un bit au lieu d'être ignorée par les lecteurs qui ne la connaissent pas.
+- **Chunk `SECP` (`0x50434553`)**, JSON UTF-8 :
+  `{ "schema": 1, "sectionModel": 1, "beams": { "<id>": { "r": <m>, "props": { "A", "Iy", "Iz", "It" } } }, "columns": {…}, "trusses": {…} }`
+  — une entrée pour **chaque** élément linéaire en I. `r` fait foi ; `props` est l'empreinte des propriétés calculées à
+  l'enregistrement ; `sectionModel` est la version des formules (`Section::kSectionModel`).
+- **Lecture d'un fichier 2.0** : refus explicite (aucun recalcul silencieux) si `SECP` est absent ou illisible, si
+  `schema` ou `sectionModel` sont inconnus, si une entrée manque ou si une propriété recalculée diffère de l'empreinte
+  de plus de 1e-9 en relatif. Une évolution des formules impose d'incrémenter `sectionModel` et d'écrire une migration.
+- **Lecture d'un fichier 1.x** (migration déterministe) : `r` est figé une fois par l'algorithme historique, conservé à
+  l'identique (`Section::legacyRootRadius`) ; propriétés, rigidités et résultats identiques au bit près (démonstration du
+  2026-10-26 sur les 12 projets du dépôt : 4 568 barres, 8 calculs OpenSees). L'enregistrement écrit ensuite un 2.0.
+- **Anciens lecteurs** : tout TSA 1.x refuse un fichier 2.0 (« créé avec une version plus récente (Format v2.0) ») ; il ne
+  le lit ni ne le modifie. Miniatures de l'Explorateur : voir docs/THUMBNAIL_PROVIDER.md.
+- Après migration, le rayon est une donnée de la section : un renommage ou un changement de dimension le conserve ; il
+  se modifie explicitement (panneau Propriétés de la barre).
+
 ### 5.3 Dalles (`CHUNK_SLAB`)
 - `id` : `int32_t`
 - `name` : chaîne
@@ -219,7 +244,7 @@ ne sont toujours pas enregistrés : un projet rouvert doit être recalculé.
 
 Pour prévenir toute corruption de mémoire ou exploitation par fichier malveillant, le lecteur `TSAFileReader` applique un protocole d'assainissement strict :
 1. **Magic Number Check :** Rejet immédiat si `magic != TSA_FILE_MAGIC`.
-2. **Version Compatibility Check :** Rejet explicite avec message clair si `formatMajorVersion > TSA_FORMAT_VERSION_MAJOR`.
+2. **Version Compatibility Check :** Rejet explicite avec message clair si `formatMajorVersion > TSA_FORMAT_VERSION_MAJOR`, ou (format ≥ 2.0) si `requiredFeatures` contient une fonctionnalité inconnue.
 3. **Contrôle de Taille Réelle :** Vérification que la taille sur le système de fichiers correspond exactement à `fileSize`.
 4. **Validation CRC32 :** Calcul du CRC32 du payload brut avant décompression. Rejet si différence avec `checksumCRC32`.
 5. **Limites Numériques de Sécurité :**

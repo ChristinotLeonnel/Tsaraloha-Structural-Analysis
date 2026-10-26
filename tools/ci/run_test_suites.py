@@ -8,8 +8,8 @@ travail jetable (les tests écrivent dans le dossier courant), avec un délai ma
                   la suite : les tests suivants ne sont pas exécutés, BUG-104)
   DÉLAI DÉPASSÉ   arrêtée au bout de --timeout secondes
   PLANTÉE         arrêtée par un signal (code de retour négatif)
-  NON EXÉCUTÉE    dépendance absente de cet environnement (OpenSees, Gmsh, IfcOpenShell, affichage X11,
-                  Windows) : jamais comptée comme réussie
+  NON EXÉCUTÉE    dépendance absente de cet environnement (OpenSees, Gmsh, IfcOpenShell, affichage X11, SDK OCCT
+                  de développement, Windows) : jamais comptée comme réussie
 Les lignes [SKIP] (tests ignorés par la suite elle-même) sont rapportées à part.
 
 Code de sortie : 0 si aucune suite exécutée n'a échoué, 1 sinon, 2 en cas d'erreur d'utilisation.
@@ -47,9 +47,12 @@ REQUIREMENTS = {
     "audit": ["opensees"], "benchmarks": ["opensees"], "mdd": ["opensees"], "displaymodes": ["opensees"],
     "mesh": ["gmsh"], "surfaces": ["gmsh", "opensees"], "meshview": ["gmsh", "display"],
     "ifc": ["ifcopenshell"],
-    "display": ["display"], "multidoc": ["display"],
+    "display": ["display", "opensees"], "multidoc": ["display"],
+    # Test 286 : ressources OCCT cherchées dans le SDK de développement (opencascade-8.0.1-vc14-64/src, non versionné)
+    # et dossier OpenSees (BUG-120) ; constaté sur GitHub Actions le 2026-10-26 (exécution 40263952835).
+    "deployment": ["opensees", "occt-sdk"],
 }
-KNOWN_CAPABILITIES = {"opensees", "gmsh", "ifcopenshell", "display"}
+KNOWN_CAPABILITIES = {"opensees", "gmsh", "ifcopenshell", "display", "occt-sdk"}
 
 RESULTS_RE = re.compile(r"RESULTS:\s*(\d+)\s*test\(s\) passed")
 
@@ -87,7 +90,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--exe", required=True, help="chemin de TSA_TestSuite")
     ap.add_argument("--out", required=True, help="dossier du rapport (créé) ; les suites s'y exécutent")
-    ap.add_argument("--available", default="", help="dépendances présentes : opensees,gmsh,ifcopenshell,display")
+    ap.add_argument("--available", default="", help="dépendances présentes : opensees,gmsh,ifcopenshell,display,occt-sdk")
     ap.add_argument("--suites", default="", help="sous-ensemble de suites (défaut : toutes)")
     ap.add_argument("--timeout", type=int, default=900, help="délai maximal par suite (s)")
     args = ap.parse_args()

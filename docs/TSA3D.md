@@ -75,6 +75,10 @@ La masse volumique est toujours en kg/m³ et le coefficient de dilatation en 1/K
   | `i`, `box`, `channel`, `tee` | `b`, `h`, `tw`, `tf` |
 
 - `properties` (A, Iy, Iz, It, Wy, Wz) est informatif : TSA recalcule ces valeurs à partir des dimensions.
+- Profil `i` : `dimensions.r` = rayon de congé âme-semelle (même unité que `length` ; 0 = sans congé), écrit depuis le
+  2026-10-26 et relu tel quel. Absent (fichier antérieur ou autre logiciel) : déduit une seule fois de la désignation à
+  l'import (« IPE 300 » aux dimensions EN 10365 : 15 mm ; autre nom : 0). Les congés des autres formes (UPN, T,
+  cornière) ne sont pas représentés : ni dans TSA (formules de version 1), ni dans ce format.
 
 **`levels[]`** : `id`, `name`, `elevation` (obligatoire).
 

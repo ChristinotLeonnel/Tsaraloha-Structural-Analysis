@@ -26,8 +26,8 @@ remplacée par celle du fichier, avertissements, annulable.
 ## TSA Core — programme approuvé le 2026-10-25
 Status: PARTIAL — évolution progressive (pas de réécriture) vers un noyau C++20 (rapport d'audit du 2026-10-25, hors dépôt).
 Phase 0 (intégrité) en cours sur fix/core-integrity (non commitée) : BUG-105 à 109, 112 à 114, 116 corrigés ; BUG-117 P1
-(unités IFC, Fem3D, TSA3D), BUG-111 étape 0, BUG-118 étape E0 faits le 2026-10-26 (tests 492–505). BUG-110 présenté
-(2.0 inconditionnelle recommandée), en attente. Release Linux 503/504 (test 128 Windows seul), banc 146/146, TSALab 27/27.
+(unités IFC, Fem3D, TSA3D), BUG-111 étape 0, BUG-118 étape E0 faits le 2026-10-26 (tests 492–505). BUG-110 implémenté
+(format 2.0, 2026-10-26, migration démontrée au bit près). BUG-119 (plantage llvmpipe) et BUG-120 ouverts. Release Linux 503/504 (test 128 Windows seul), banc 146/146, TSALab 27/27.
 Non vérifié : Windows/MSVC, CI GitHub (aucun push), essai manuel de l'interface. Écart connu : calcul modal présent dans le code malgré ADR-022 (décision
 à prendre, ne pas supprimer sans accord).
 

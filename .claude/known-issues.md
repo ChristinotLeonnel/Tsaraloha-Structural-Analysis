@@ -4,6 +4,23 @@ Last Updated: 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-11
 
 ## Ouverts
 
+## BUG-119
+Area: Vue 3D — destruction d'OccView avec le rendu logiciel Mesa (llvmpipe)
+Problem: corruption du tas (« free(): invalid next size (fast) ») à la destruction de la vue : ViewportContainer →
+OccView::~OccView → V3d_Viewer → OpenGl_Window::~OpenGl_Window → libgallium. Reproduction : LIBGL_ALWAYS_SOFTWARE=1
+QT_QPA_PLATFORM=xcb TSA_TestSuite --suite=views (après le test 446, deux documents) ; aussi sur GitHub Actions (Xvfb).
+Présent sur eb7e6db (antérieur à BUG-110). Pas reproduit avec le pilote matériel, ni avec MALLOC_CHECK_=3 sous ce pilote.
+Impact: HIGH [H] pour les postes sans pilote graphique (machines virtuelles, bureau à distance) : plantage possible à la
+fermeture d'un document. Piste [H] : un OpenGl_GraphicDriver / Aspect_DisplayConnection par vue au lieu d'un seul partagé.
+Status: OPEN — pile gdb : TSA-rapports/2026-10-26/preuves/CI_40263952835/BUG-119_views_gdb_llvmpipe.log.
+
+## BUG-120
+Area: AppPaths::occtResourcesDir sous Linux (développement)
+Problem: les ressources OCCT (Shaders…) ne sont cherchées que dans resources/occt (paquet) et dans le SDK Windows
+opencascade-8.0.1-vc14-64/src (non versionné) : test 286 en échec sur GitHub Actions (le poste local a le SDK Windows).
+OCCT trouve lui-même ses shaders sous Linux : impact sur le test et sur un paquet Linux futur.
+Status: OPEN — suite deployment marquée « NON EXÉCUTÉE » en CI (occt-sdk, opensees) dans tools/ci/run_test_suites.py.
+
 ## BUG-116
 Area: Tests — test 166 (arbre indexé, tests/test_model_cleanup.cpp)
 Problem: un seul processEvents() après 1500 suppressions regroupées par minuteur 0 ms : échec systématique quand la suite
@@ -51,8 +68,14 @@ Impact: HIGH (exactitude, reproductibilité). Décision D1 (2026-10-26) : propri
 recalcul ; r conservé quand une dimension change (avertissement, conversion proposée). Constat : les formules des sections
 ont déjà changé sans version majeure (11f2087 en 1.8, 4457a16 en 1.10) → version conditionnelle non démontrable ;
 recommandé : 2.0 inconditionnelle + masque de fonctionnalités + sectionModel / empreinte dans SECP
-(TSA-rapports/2026-10-26/conceptions/BUG-110_presentation_D1.md). NON IMPLÉMENTÉ, en attente de validation.
-Status: OPEN
+(TSA-rapports/2026-10-26/conceptions/BUG-110_presentation_D1.md).
+Status: FIXED (2026-10-26, 2.0 approuvée) — Section::filletRadius (figé à l'entrée dans le modèle : constructeurs et
+setSection), legacyRootRadius = algorithme historique figé ; format 2.0 : TSAFileHeader::requiredFeatures
+(FEATURE_SECTION_PROPERTIES), chunk SECP obligatoire (r, empreinte A/Iy/Iz/It, sectionModel) ; refus explicites (fonction
+inconnue, SECP absent, empreinte différente > 1e-9, formules inconnues) ; 1.x migrés à la lecture ; IFC FilletRadius et
+TSA3D dimensions.r écrits et relus ; panneau de la barre : rayon conservé, conversion proposée, rayon éditable. Tests 506,
+507, 508. Démonstration (ancien eb7e6db / nouveau) sur les 12 .tsa du dépôt : propriétés, rigidités, déplacements et
+réactions OpenSees identiques au bit près (TSA-rapports/2026-10-26/preuves/BUG-110_migration/).
 Related files: src/Model/Section.*, src/IO/TSAFile_BinaryUtils.h
 
 ## BUG-111

@@ -101,7 +101,8 @@
           "type": "object",
           "properties": {
             "b": { "$ref": "#/$defs/positive" }, "h": { "$ref": "#/$defs/positive" }, "d": { "$ref": "#/$defs/positive" },
-            "tw": { "$ref": "#/$defs/positive" }, "tf": { "$ref": "#/$defs/positive" }
+            "tw": { "$ref": "#/$defs/positive" }, "tf": { "$ref": "#/$defs/positive" },
+            "r": { "type": "number", "minimum": 0, "description": "rayon de congé d'un profil i (0 : sans congé)" }
           }
         },
         "properties": {

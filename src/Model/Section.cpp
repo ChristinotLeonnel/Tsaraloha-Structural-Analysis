@@ -151,6 +151,13 @@ double Section::rolledIShapeTorsionConstant(double h, double b, double tw, doubl
 double Section::rootRadius() const
 {
     if (shape != SectionShape::IShape) return 0.0;
+    return filletRadius ? *filletRadius : legacyRootRadius();
+}
+
+double Section::legacyRootRadius() const
+{
+    // NE PAS MODIFIER : copie figée de l'algorithme des formats ≤ 1.12 (migration déterministe, BUG-110).
+    if (shape != SectionShape::IShape) return 0.0;
     // Désignation normalisée → profil de référence (mêmes usines) ; rayon EN 10365 seulement si les dimensions
     // n'ont pas été modifiées.
     auto number = [&](const std::string& prefix) -> int {

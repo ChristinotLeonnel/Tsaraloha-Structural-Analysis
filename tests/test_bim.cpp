@@ -14,6 +14,7 @@
 
 #include <QJsonObject>
 
+#include <cstring>
 #include <filesystem>
 #include <set>
 
@@ -782,6 +783,62 @@ END-ISO-10303-21;
         kilo.replace(kilo.find("*,.FORCEUNIT.,$,.NEWTON."), 24, "*,.FORCEUNIT.,.KILO.,.NEWTON.");
         TEST_CHECK(springsAt0(kilo, k).ok && equals(k, 1000.0), "Test 501: unité dérivée kN/m déclarée → valeurs × 1 (" << k[0] << ")");
         std::cout << "[PASS] Test 501: Raideurs d'appui IFC en N/m, unités déclarées, anciens fichiers TSA" << std::endl;
+        ++passed;
+    }
+
+    // TEST 507 : rayon de congé des profils en I en IFC (BUG-110) — IfcIShapeProfileDef.FilletRadius écrit (0 si sans
+    // congé) et relu ; une section renommée garde son rayon et ses propriétés ; FilletRadius absent : désignation (fichier
+    // d'un autre logiciel ou d'un ancien TSA).
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(6, 0, 0), c = m.addNode(12, 0, 0);
+        m.getNode(a)->setSupport(SupportDefinition::fixed());
+        const int b1 = m.addBar(a, b, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        Section renamed = m.getBeam(b1)->section();
+        renamed.name = "Poutre P1";
+        m.getBeam(b1)->setSection(renamed);
+        Section noFillet = Section::ipe(300);
+        noFillet.filletRadius = 0.0;   // rayon nul explicite malgré une désignation normalisée
+        const int b2 = m.addBar(b, c, noFillet, Material::steelS235(), BarRole::Beam);
+        auto props = [](const Section& s) { return std::vector<double> { s.rootRadius(), s.area(), s.iy(), s.iz(), s.it() }; };
+        const auto p1 = props(m.getBeam(b1)->section()), p2 = props(m.getBeam(b2)->section());
+        TEST_CHECK(p1[0] == 0.015 && p2[0] == 0.0, "Test 507: rayons de référence (15 mm renommée, 0 explicite)");
+        TSA::BIM::Ifc::IfcExportOptions opt;
+        opt.timeStamp = "2026-10-26T12:00:00";
+        std::string doc;
+        TEST_CHECK(TSA::BIM::Ifc::IfcExporter::exportToString(m, opt, doc).ok, "Test 507: export");
+        TEST_CHECK(doc.find("'Poutre P1',$,0.15,0.3,0.0071,0.0107,0.015,$,$)") != std::string::npos
+                       && doc.find(",0.15,0.3,0.0071,0.0107,0.,$,$)") != std::string::npos,
+                   "Test 507: FilletRadius écrit (0.015 pour la section renommée, 0. pour la section sans congé)");
+        const std::string dir = "./build/test_tsa_data/";
+        std::filesystem::create_directories(dir);
+        TSA::BIM::Ifc::IfcExporter::exportToFile(m, dir + "test_fillet_radius.ifc", opt);
+        auto reimport = [](const std::string& ifc) {
+            Model back;
+            TSA::BIM::Ifc::IfcImportOptions o;
+            o.importGeometry = false;
+            TSA::BIM::Ifc::IfcImporter::importString(ifc, back, o);
+            std::map<std::string, std::vector<double>> byName;
+            for (const auto& [id, beam] : back.beams())
+            {
+                const auto& s = beam.section();
+                byName[s.name] = { s.rootRadius(), s.area(), s.iy(), s.iz(), s.it() };
+            }
+            return byName;
+        };
+        const auto back = reimport(doc);
+        TEST_CHECK(back.count("Poutre P1") && back.at("Poutre P1") == p1, "Test 507: section renommée réimportée : rayon et propriétés identiques");
+        TEST_CHECK(back.count("IPE 300") && back.at("IPE 300") == p2, "Test 507: rayon nul explicite réimporté tel quel (pas de rayon déduit du nom)");
+        // FilletRadius absent ($) : rayon déduit une fois de la désignation, comme avant
+        std::string legacy = doc;
+        for (const char* v : { ",0.015,$,$)", ",0.,$,$)" })
+            for (std::size_t q = legacy.find(v); q != std::string::npos; q = legacy.find(v))
+                legacy.replace(q, std::strlen(v), ",$,$,$)");
+        const auto fromLegacy = reimport(legacy);
+        TEST_CHECK(fromLegacy.count("Poutre P1") && fromLegacy.at("Poutre P1")[0] == 0.0 && fromLegacy.count("IPE 300")
+                       && fromLegacy.at("IPE 300")[0] == 0.015,
+                   "Test 507: FilletRadius absent : rayon déduit de la désignation (« IPE 300 » : 15 mm ; autre nom : 0)");
+        std::cout << "[PASS] Test 507: Rayon de congé des profils en I exporté et relu en IFC" << std::endl;
         ++passed;
     }
 

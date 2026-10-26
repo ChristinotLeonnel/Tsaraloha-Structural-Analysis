@@ -9,7 +9,7 @@ namespace
 bool sameSection(const Section& a, const Section& b)
 {
     return a.id == b.id && a.name == b.name && a.shape == b.shape && a.width == b.width && a.height == b.height
-        && a.diameter == b.diameter && a.tw == b.tw && a.tf == b.tf;
+        && a.diameter == b.diameter && a.tw == b.tw && a.tf == b.tf && a.rootRadius() == b.rootRadius();
 }
 
 bool sameMaterial(const Material& a, const Material& b)

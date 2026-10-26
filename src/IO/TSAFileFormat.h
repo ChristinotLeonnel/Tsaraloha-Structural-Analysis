@@ -26,8 +26,16 @@ constexpr bool isReadableFileMagic(uint32_t magic)
 // -----------------------------------------------------------------------------
 // Versioning du format
 // -----------------------------------------------------------------------------
-constexpr uint16_t TSA_FORMAT_VERSION_MAJOR = 1;
-constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 12; // 1.12 : chunk VIEW (vues nommées) ; 1.11 : chunk BGEO (géométries physiques importées) ; 1.10 : chunk SURF, ouvertures des voiles (OPNG) ; 1.9 : chunk MVIS ; 1.8 : chunks MESH et OPNG ; 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT ; 1.5 : chunk TOPO ; 1.6 : chunk DIMS ; 1.7 : chunk XTND
+// 2.0 (BUG-110) : propriétés des sections enregistrées (chunk SECP, rayon de congé, version des formules, empreinte) et
+// fonctionnalités obligatoires dans l'en-tête (requiredFeatures). Version majeure : tout lecteur 1.x refuse le fichier au
+// lieu de recalculer les sections d'après leur nom. Les fichiers 1.x sont migrés à la lecture (algorithme historique).
+constexpr uint16_t TSA_FORMAT_VERSION_MAJOR = 2;
+constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 0; // 1.12 : chunk VIEW (vues nommées) ; 1.11 : chunk BGEO (géométries physiques importées) ; 1.10 : chunk SURF, ouvertures des voiles (OPNG) ; 1.9 : chunk MVIS ; 1.8 : chunks MESH et OPNG ; 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT ; 1.5 : chunk TOPO ; 1.6 : chunk DIMS ; 1.7 : chunk XTND
+
+// Fonctionnalités obligatoires (TSAFileHeader::requiredFeatures, format ≥ 2.0) : un lecteur refuse un fichier qui en
+// exige une qu'il ne connaît pas, au lieu de l'interpréter autrement. Ajouter un bit pour toute donnée qui change le calcul.
+constexpr uint64_t FEATURE_SECTION_PROPERTIES = 1ULL << 0;   // chunk SECP : rayon de congé et propriétés des sections
+constexpr uint64_t KNOWN_REQUIRED_FEATURES = FEATURE_SECTION_PROPERTIES;
 
 // Version de disposition interne du chunk LOAD (indépendante de la version du format)
 constexpr uint32_t LOAD_CHUNK_LAYOUT_VERSION = 1;
@@ -90,6 +98,7 @@ constexpr uint32_t CHUNK_RSLT = 0x544C5352; // 'RSLT' : Résultats de calcul EF 
 constexpr uint32_t CHUNK_SNAP = 0x50414E53; // 'SNAP' : Snapshots mécaniques immuables de calcul et métadonnées d'extensions
 constexpr uint32_t CHUNK_BIMM = 0x4D4D4942; // 'BIMM' : Couche BIM (produits physiques, GlobalId, Psets, mapping physique → analytique) — JSON UTF-8 versionné (1.3)
 constexpr uint32_t CHUNK_BGEO = 0x4F454742; // 'BGEO' : géométries physiques des produits importés (maillages, BimGeometry.h) — binaire versionné, après BIMM (1.11)
+constexpr uint32_t CHUNK_SECP = 0x50434553; // 'SECP' : propriétés des sections des éléments linéaires (rayon de congé, version des formules, empreinte A/Iy/Iz/It) — JSON UTF-8, OBLIGATOIRE (2.0)
 constexpr uint32_t CHUNK_VIEW = 0x57454956; // 'VIEW' : vues nommées (caméra, mode 2D, plan de travail ; NamedViews.h) — JSON UTF-8 versionné (1.12)
 
 #pragma pack(push, 1)
@@ -118,8 +127,10 @@ struct TSAFileHeader
     char creationTimestamp[24] = "";
     char lastModifiedTimestamp[24] = "";
 
+    // Format ≥ 2.0 : fonctionnalités que le lecteur doit connaître (FEATURE_*) ; zéro dans les fichiers 1.x
+    uint64_t requiredFeatures = 0;
     // Zone de réserve d'extensibilité (en-tête packé : 272 octets au total)
-    uint8_t reserved[40] = {0};
+    uint8_t reserved[32] = {0};
 };
 
 /**

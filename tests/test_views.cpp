@@ -276,7 +276,8 @@ bool runSuite_Views(int& passed)
         Model reread;
         TEST_CHECK(TSA::IO::TSAProjectIO::loadFromFile(file, reread, nullptr, &err) && headerOk, "Test 439: relecture .tsa (" << err << ")");
         std::filesystem::remove(path);
-        TEST_CHECK(header.versionMinor == 12, "Test 439: .tsa enregistré au format 1.12 (lu : 1." << header.versionMinor << ")");
+        TEST_CHECK(header.versionMajor == TSA::IO::TSA_FORMAT_VERSION_MAJOR && header.versionMinor == TSA::IO::TSA_FORMAT_VERSION_MINOR,
+                   "Test 439: .tsa enregistré au format courant (lu : " << header.versionMajor << "." << header.versionMinor << ")");
         TEST_CHECK(reread.namedViews() == set, "Test 439: .tsa (chunk VIEW) : vues relues à l'identique (" << reread.namedViews().views.size() << " vue(s) relue(s))");
         // (l'état « modifié » après ouverture est remis à zéro par ProjectManager, comme pour tout projet)
         Model old;

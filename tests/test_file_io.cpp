@@ -1,7 +1,10 @@
 #include "test_common.h"
 #include "App/ProductInfo.h"
+#include "IO/Tsa3d/Tsa3d.h"
 #include "Analysis/Engine/AnalysisContext.h"
 #include <QJsonDocument>
+#include <cstring>
+#include <functional>
 
 bool runSuite_FileIO(int& passed)
 {
@@ -1012,6 +1015,160 @@ bool runSuite_FileIO(int& passed)
         }
 
         std::cout << "[PASS] Test 201: Chemins accentués, chunk > 64 Kio, nom du projet, ouverture atomique (.tsa)" << std::endl;
+        ++passed;
+    }
+
+    // TEST 506 : propriétés des sections enregistrées, format 2.0 (BUG-110). Fichiers 1.x migrés par l'algorithme
+    // historique (propriétés au bit près) ; rayon de congé indépendant du nom après migration ; fonctionnalités
+    // obligatoires dans l'en-tête ; fichier non interprétable de manière fiable refusé explicitement ; TSA3D : rayon
+    // exporté et relu.
+    {
+        using TSA::Model::SectionShape;
+        auto ishapes = [](const Model& m) {
+            std::vector<std::pair<std::string, TSA::Model::Section>> out;
+            for (const auto& [id, b] : m.beams())
+                if (b.section().shape == SectionShape::IShape) out.emplace_back("B" + std::to_string(id), b.section());
+            for (const auto& [id, c] : m.columns())
+                if (c.section().shape == SectionShape::IShape) out.emplace_back("C" + std::to_string(id), c.section());
+            return out;
+        };
+        auto bits = [](const TSA::Model::Section& s) {
+            return std::vector<double> { s.rootRadius(), s.area(), s.iy(), s.iz(), s.it(), s.wy(), s.wz() };
+        };
+        // 1. Fichier d'exemple 1.10 : rayon figé = algorithme historique, au bit près ; enregistré en 2.0 puis relu à l'identique
+        const QString hangar = QStringLiteral(TSA_SOURCE_DIR) + "/examples/TSA_Demo_Hangar_60x40m.tsa";
+        Model old;
+        TEST_CHECK(TSA::IO::TSAProjectIO::loadProject(hangar, old), "Test 506: exemple 1.10 ouvert");
+        TSA::IO::TSAFileHeader h1;
+        TEST_CHECK(TSA::IO::TSAFileReader::readHeader(hangar.toStdString(), h1) && h1.versionMajor == 1, "Test 506: exemple au format 1.x");
+        const auto sections = ishapes(old);
+        bool frozen = !sections.empty(), rolled = false;
+        for (const auto& [key, s] : sections)
+        {
+            frozen = frozen && s.filletRadius && *s.filletRadius == s.legacyRootRadius();
+            rolled = rolled || s.rootRadius() > 0.0;
+        }
+        TEST_CHECK(frozen && rolled, "Test 506: migration : rayon de chaque profil en I figé, égal à l'algorithme historique (" << sections.size() << " éléments)");
+        const std::string v2 = (QDir::currentPath() + "/test_bug110_v2.tsa").toStdString();
+        TSA::IO::TSAFileWriter writer;
+        writer.setCompressionEnabled(false);   // charge utile lisible : altérations contrôlées ci-dessous
+        std::string err;
+        TEST_CHECK(writer.saveToFile(v2, old, nullptr, "P", "A", &err), "Test 506: enregistrement 2.0 (" << err << ")");
+        TSA::IO::TSAFileHeader h2;
+        TEST_CHECK(TSA::IO::TSAFileReader::readHeader(v2, h2) && h2.versionMajor == 2
+                       && (h2.requiredFeatures & TSA::IO::FEATURE_SECTION_PROPERTIES) != 0,
+                   "Test 506: format 2.0, propriétés des sections déclarées obligatoires dans l'en-tête");
+        Model back;
+        TSA::IO::TSAFileReader reader;
+        TEST_CHECK(reader.loadFromFile(v2, back, nullptr, "", nullptr, nullptr, nullptr, &err), "Test 506: relecture 2.0 (" << err << ")");
+        const auto again = ishapes(back);
+        bool same = again.size() == sections.size();
+        for (std::size_t i = 0; same && i < again.size(); ++i) same = again[i].first == sections[i].first && bits(again[i].second) == bits(sections[i].second);
+        TEST_CHECK(same, "Test 506: 2.0 relu : rayon, A, Iy, Iz, It, Wy, Wz identiques au bit près");
+
+        // 2. Après migration, le nom ne compte plus : renommer ou modifier une dimension conserve le rayon
+        auto rolledBeam = back.beams().begin();
+        while (rolledBeam != back.beams().end() && !(rolledBeam->second.section().shape == SectionShape::IShape && rolledBeam->second.section().rootRadius() > 0.0)) ++rolledBeam;
+        TEST_CHECK(rolledBeam != back.beams().end(), "Test 506: poutre laminée dans l'exemple");
+        auto& beam = *back.getBeam(rolledBeam->first);
+        const int rolledId = rolledBeam->first;
+        TSA::Model::Section renamed = beam.section();
+        const auto before = bits(renamed);
+        TEST_CHECK(renamed.shape == SectionShape::IShape && renamed.rootRadius() > 0.0, "Test 506: profil laminé de référence");
+        renamed.name = "Poutre P1";
+        beam.setSection(renamed);
+        TEST_CHECK(bits(beam.section()) == before && beam.section().legacyRootRadius() == 0.0,
+                   "Test 506: section renommée : rayon et propriétés inchangés (auparavant rayon 0 : A, I, J réduits)");
+        renamed.height += 0.01;
+        beam.setSection(renamed);
+        TEST_CHECK(beam.section().rootRadius() == before[0], "Test 506: dimension modifiée : rayon conservé");
+        const std::string v2b = (QDir::currentPath() + "/test_bug110_v2b.tsa").toStdString();
+        Model reread;
+        TEST_CHECK(writer.saveToFile(v2b, back, nullptr, "P", "A", &err) && reader.loadFromFile(v2b, reread, nullptr, "", nullptr, nullptr, nullptr, &err)
+                       && reread.getBeam(rolledId) && reread.getBeam(rolledId)->section().rootRadius() == before[0],
+                   "Test 506: section renommée et modifiée enregistrée puis relue avec son rayon (" << err << ")");
+
+        // 3. Refus explicites : fonctionnalité obligatoire inconnue, SECP absent, empreinte altérée, formules inconnues
+        auto readAll = [](const std::string& p) {
+            QFile f(QString::fromStdString(p));
+            return f.open(QIODevice::ReadOnly) ? f.readAll() : QByteArray();
+        };
+        auto writeAltered = [&](QByteArray bytes, const std::function<void(QByteArray&)>& alter) {
+            TSA::IO::TSAFileHeader hdr;
+            std::memcpy(&hdr, bytes.constData(), sizeof(hdr));
+            QByteArray payload = bytes.mid(static_cast<qsizetype>(hdr.payloadOffset), static_cast<qsizetype>(hdr.fileSize - hdr.payloadOffset));
+            alter(payload);
+            hdr.checksumCRC32 = TSA::IO::computeCRC32(reinterpret_cast<const uint8_t*>(payload.constData()), static_cast<size_t>(payload.size()));
+            bytes.replace(static_cast<qsizetype>(hdr.payloadOffset), payload.size(), payload);
+            std::memcpy(bytes.data(), &hdr, sizeof(hdr));
+            const std::string out = (QDir::currentPath() + "/test_bug110_altered.tsa").toStdString();
+            QFile f(QString::fromStdString(out));
+            f.open(QIODevice::WriteOnly);
+            f.write(bytes);
+            f.close();
+            Model m;
+            std::string e;
+            const bool ok = TSA::IO::TSAFileReader().loadFromFile(out, m, nullptr, "", nullptr, nullptr, nullptr, &e);
+            return std::make_pair(ok, e);
+        };
+        const QByteArray original = readAll(v2);
+        {
+            QByteArray bytes = original;
+            TSA::IO::TSAFileHeader hdr;
+            std::memcpy(&hdr, bytes.constData(), sizeof(hdr));
+            hdr.requiredFeatures |= 1ULL << 40;
+            std::memcpy(bytes.data(), &hdr, sizeof(hdr));
+            QFile f(QDir::currentPath() + "/test_bug110_feature.tsa");
+            f.open(QIODevice::WriteOnly);
+            f.write(bytes);
+            f.close();
+            Model m;
+            std::string e;
+            TEST_CHECK(!TSA::IO::TSAFileReader().loadFromFile((QDir::currentPath() + "/test_bug110_feature.tsa").toStdString(), m, nullptr, "", nullptr, nullptr, nullptr, &e)
+                           && e.find("fonctionnalités") != std::string::npos && m.beams().empty(),
+                       "Test 506: fonctionnalité obligatoire inconnue : refus explicite (" << e << ")");
+        }
+        const auto noSecp = writeAltered(original, [](QByteArray& p) {
+            const qsizetype i = p.indexOf(QByteArray("SECP", 4));
+            if (i >= 0) p[i + 3] = 'Q';
+        });
+        TEST_CHECK(!noSecp.first && noSecp.second.find("SECP") != std::string::npos, "Test 506: chunk SECP absent : refus explicite (" << noSecp.second << ")");
+        const auto tampered = writeAltered(original, [](QByteArray& p) {
+            qsizetype i = p.indexOf("\"props\":{\"A\":");
+            if (i < 0) return;
+            for (i += 13; i < p.size(); ++i)
+                if (p[i] >= '1' && p[i] <= '8')
+                {
+                    p[i] = static_cast<char>(p[i] + 1);
+                    break;
+                }
+        });
+        TEST_CHECK(!tampered.first && tampered.second.find("recalculée") != std::string::npos,
+                   "Test 506: empreinte des propriétés altérée : refus explicite (" << tampered.second << ")");
+        const auto futureModel = writeAltered(original, [](QByteArray& p) {
+            const qsizetype i = p.indexOf("\"sectionModel\":1");
+            if (i >= 0) p[i + 15] = '9';
+        });
+        TEST_CHECK(!futureModel.first && futureModel.second.find("formules") != std::string::npos,
+                   "Test 506: version des formules inconnue : refus explicite (" << futureModel.second << ")");
+
+        // 4. TSA3D : rayon de congé exporté (dimensions.r) et relu ; propriétés inchangées après réimport
+        Model renamedModel;
+        const int a = renamedModel.addNode(0, 0, 0), b = renamedModel.addNode(6, 0, 0);
+        TSA::Model::Section ipe = TSA::Model::Section::ipe(300);
+        const int bar = renamedModel.addBar(a, b, ipe, TSA::Model::Material::steelS235());
+        TSA::Model::Section p1 = renamedModel.getBeam(bar)->section();
+        p1.name = "Poutre P1";
+        renamedModel.getBeam(bar)->setSection(p1);
+        const auto ref = bits(renamedModel.getBeam(bar)->section());
+        const auto ex = TSA::IO::Tsa3d::exportModel(renamedModel, {});
+        const QJsonObject dims = ex.document["sections"].toArray().at(0).toObject()["dimensions"].toObject();
+        TEST_CHECK(dims.contains("r") && dims["r"].toDouble() == ref[0], "Test 506: TSA3D : dimensions.r exporté (" << dims["r"].toDouble() << ")");
+        Model imported;
+        const auto im = TSA::IO::Tsa3d::importDocument(ex.document, imported);
+        TEST_CHECK(im.ok && !imported.beams().empty() && bits(imported.beams().begin()->second.section()) == ref,
+                   "Test 506: TSA3D réimporté : rayon et propriétés identiques (section renommée)");
+        std::cout << "[PASS] Test 506: Propriétés des sections enregistrées (format 2.0, migration, refus explicites, TSA3D)" << std::endl;
         ++passed;
     }
 

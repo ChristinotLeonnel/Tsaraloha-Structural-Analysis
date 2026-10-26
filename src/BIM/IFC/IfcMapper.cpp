@@ -70,8 +70,9 @@ int IfcMapper::profile(const TSA::Model::Section& s)
         id = w.add("IFCCIRCLEHOLLOWPROFILEDEF", head + W::real(s.diameter / 2.0) + "," + W::real(s.tw));
         break;
     case SectionShape::IShape:
+        // FilletRadius (IfcNonNegativeLengthMeasure) : rayon de congé de la section, 0 si sans congé (BUG-110)
         id = w.add("IFCISHAPEPROFILEDEF", head + W::real(s.width) + "," + W::real(s.height) + "," + W::real(s.tw) + ","
-                                              + W::real(s.tf) + ",$,$,$");
+                                              + W::real(s.tf) + "," + W::real(s.rootRadius()) + ",$,$");
         break;
     case SectionShape::BoxHollow:
         id = w.add("IFCRECTANGLEHOLLOWPROFILEDEF", head + W::real(s.width) + "," + W::real(s.height) + "," + W::real(s.tw) + ",$,$");

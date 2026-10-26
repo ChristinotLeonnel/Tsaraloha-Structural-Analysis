@@ -35,6 +35,7 @@ Beam::Beam(int id, int startNodeId, int endNodeId, const Section& section, const
     , m_material(material)
     , m_rotation(rotation)
 {
+    m_section.fixFilletRadius();   // rayon de congé figé à l'entrée dans le modèle (BUG-110)
     if (m_name.empty() && m_id > 0)
     {
         std::ostringstream ss;
@@ -65,6 +66,7 @@ void Beam::setProperties(const BarProperties& props)
     m_name = props.name;
     m_role = props.role;
     m_section = props.section;
+    m_section.fixFilletRadius();
     m_material = props.material;
     m_rotation = props.rotation;
     m_eccentricity = props.eccentricity;

@@ -15,6 +15,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QColorDialog>
+#include <QMessageBox>
 
 namespace TSA::UI
 {
@@ -178,6 +179,15 @@ void BeamPropertiesView::setupUi()
     connect(m_spinWebThick, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &BeamPropertiesView::onWidgetChanged);
     formSec->addRow(tr("Épaisseur Âme (tw) :"), m_spinWebThick);
 
+    m_spinFillet = new QDoubleSpinBox(grpSec);
+    m_spinFillet->setRange(0.0, 0.1);
+    m_spinFillet->setDecimals(4);
+    m_spinFillet->setSingleStep(0.001);
+    m_spinFillet->setSuffix(" m");
+    m_spinFillet->setToolTip(tr("Rayon de congé âme-semelle d'un profil laminé (0 : profil soudé). Conservé quand une dimension change."));
+    connect(m_spinFillet, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &BeamPropertiesView::onWidgetChanged);
+    formSec->addRow(tr("Rayon de congé (r) :"), m_spinFillet);
+
     m_previewWidget = new SectionPreviewWidget(grpSec);
     m_previewWidget->setFixedHeight(120);
     formSec->addRow(m_previewWidget);
@@ -229,6 +239,7 @@ void BeamPropertiesView::updateSectionVisibility(int secType)
     m_spinFlangeWidth->setVisible(isI);
     m_spinFlangeThick->setVisible(isI);
     m_spinWebThick->setVisible(isI || isTube);
+    m_spinFillet->setVisible(isI);
 }
 
 void BeamPropertiesView::onSectionTypeChanged(int index)
@@ -246,13 +257,17 @@ TSA::Model::Section BeamPropertiesView::getSectionFromUi() const
         return TSA::Model::Section::circular(m_spinRadius->value() * 2.0, "Circulaire");
     case TSA::Model::SectionShape::IShape:
     {
-        TSA::Model::Section sec;
+        // Profil en I existant : nom et rayon de congé conservés, seules les dimensions saisies changent (BUG-110)
+        const auto* beam = m_model ? m_model->getBeam(m_beamId) : nullptr;
+        const bool wasI = beam && beam->section().shape == TSA::Model::SectionShape::IShape;
+        TSA::Model::Section sec = wasI ? beam->section() : TSA::Model::Section();
         sec.shape = TSA::Model::SectionShape::IShape;
         sec.height = m_spinHeight->value();
         sec.width = m_spinFlangeWidth->value();
         sec.tw = m_spinWebThick->value();
         sec.tf = m_spinFlangeThick->value();
-        sec.name = "Profilé I";
+        if (!wasI) sec.name = "Profilé I";
+        sec.filletRadius = m_spinFillet->value();
         return sec;
     }
     case TSA::Model::SectionShape::BoxHollow:
@@ -341,7 +356,7 @@ void BeamPropertiesView::refreshView()
     // Forme absente de la liste (UPN, cornière, T, tube rond) : les champs ne savent pas la représenter, la section
     // n'est pas modifiable ici (elle le reste par le dialogue des sections).
     m_sectionEditable = sIdx >= 0;
-    for (QWidget* w : std::initializer_list<QWidget*> { m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius, m_spinFlangeWidth, m_spinFlangeThick, m_spinWebThick })
+    for (QWidget* w : std::initializer_list<QWidget*> { m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius, m_spinFlangeWidth, m_spinFlangeThick, m_spinWebThick, m_spinFillet })
         w->setEnabled(m_sectionEditable);
     m_comboSectionType->setToolTip(m_sectionEditable ? QString() : tr("Profil %1 : forme non modifiable dans ce panneau (dialogue des sections).").arg(QString::fromStdString(sec.name)));
 
@@ -351,6 +366,7 @@ void BeamPropertiesView::refreshView()
     m_spinFlangeWidth->setValue(sec.width);
     m_spinFlangeThick->setValue(sec.tf);
     m_spinWebThick->setValue(sec.tw);
+    m_spinFillet->setValue(sec.rootRadius());
     m_spinRotation->setValue(beam->rotation());
 
     // Matériau absent de la liste (importé, personnalisé) : aucun choix affiché, jamais remplacé par un autre.
@@ -406,8 +422,28 @@ void BeamPropertiesView::applyChanges()
     // Seuls les champs modifiés sont réécrits : renommer une barre IPE 300 ne la remplace plus par un « Profilé I »
     // sans congés (A, I, It modifiés), ni un UPN par un rectangle, ni son matériau par celui de la liste.
     if (m_sectionEditable &&
-        m_edited.anyChanged({ m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius, m_spinFlangeWidth, m_spinFlangeThick, m_spinWebThick }))
-        beam->setSection(getSectionFromUi());
+        m_edited.anyChanged({ m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius, m_spinFlangeWidth, m_spinFlangeThick, m_spinWebThick, m_spinFillet }))
+    {
+        const TSA::Model::Section before = beam->section();
+        TSA::Model::Section sec = getSectionFromUi();
+        // Profil normalisé dont les dimensions ne correspondent plus à la norme : le rayon est conservé, la désignation
+        // deviendrait trompeuse → proposer une section personnalisée (une seule fois par barre et par désignation)
+        const QString key = QStringLiteral("%1|%2").arg(m_beamId).arg(QString::fromStdString(before.name));
+        if (sec.shape == TSA::Model::SectionShape::IShape && before.shape == TSA::Model::SectionShape::IShape && sec.name == before.name
+            && before.legacyRootRadius() > 0.0 && sec.legacyRootRadius() == 0.0 && m_declinedConversion != key)
+        {
+            const QString custom = tr("Profilé I %1×%2×%3×%4").arg(sec.height * 1000.0, 0, 'g', 4).arg(sec.width * 1000.0, 0, 'g', 4)
+                                       .arg(sec.tw * 1000.0, 0, 'g', 3).arg(sec.tf * 1000.0, 0, 'g', 3);
+            const auto answer = QMessageBox::question(this, tr("Profil normalisé modifié"),
+                                                      tr("Les dimensions ne correspondent plus au profil normalisé « %1 ».\n"
+                                                         "Le rayon de congé (%2 mm) est conservé.\n\n"
+                                                         "Convertir en section personnalisée « %3 » ?")
+                                                          .arg(QString::fromStdString(before.name)).arg(sec.rootRadius() * 1000.0, 0, 'g', 4).arg(custom));
+            if (answer == QMessageBox::Yes) sec.name = custom.toStdString();
+            else m_declinedConversion = key;
+        }
+        beam->setSection(sec);
+    }
 
     if (m_edited.changed(m_comboMaterial))
     {
@@ -444,8 +480,8 @@ void BeamPropertiesView::applyChanges()
 
 void BeamPropertiesView::captureEditedFields()
 {
-    m_edited.capture({ m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius, m_spinFlangeWidth, m_spinFlangeThick, m_spinWebThick, m_comboMaterial,
-                       m_spinRotation });
+    m_edited.capture({ m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius, m_spinFlangeWidth, m_spinFlangeThick, m_spinWebThick, m_spinFillet,
+                       m_comboMaterial, m_spinRotation });
 }
 
 } // namespace TSA::UI

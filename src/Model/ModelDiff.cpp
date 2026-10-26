@@ -36,6 +36,7 @@ bool isSectionDifferent(const Section& a, const Section& b)
     if (!approxEq(a.diameter, b.diameter)) return true;
     if (!approxEq(a.tw, b.tw)) return true;
     if (!approxEq(a.tf, b.tf)) return true;
+    if (!approxEq(a.rootRadius(), b.rootRadius())) return true;
     if (a.name != b.name) return true;
     return false;
 }

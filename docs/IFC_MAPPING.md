@@ -42,6 +42,7 @@ Interface (`src/UI/MainWindow_Bim.cpp`, `src/UI/Dialogs/IfcDialogs`) :
 | TSA | IFC |
 | :--- | :--- |
 | Projet (couche BIM) | `IfcProject` + `IfcUnitAssignment` (m, m², m³, rad, kg, N, Pa, s, K ; raideurs : `IfcDerivedUnit` `LINEARSTIFFNESSUNIT` N/m et `ROTATIONALSTIFFNESSUNIT` N·m/rad) |
+| Profil en I : rayon de congé (BUG-110) | `IfcIShapeProfileDef.FilletRadius` (0 si sans congé), relu tel quel ; absent (`$`), ou profil `IfcAsymmetricIShapeProfileDef` : déduit une fois de la désignation. **Non exportés** : `FlangeEdgeRadius`, `FlangeSlope`, congés des UPN, T et cornières (non modélisés par TSA), propriétés calculées (A, I, J), que les lecteurs IFC recalculent |
 | Appui élastique (kN/m, kN·m/rad dans TSA) | `IfcBoundaryNodeCondition` : `IfcLinearStiffnessMeasure` / `IfcRotationalStiffnessMeasure` **en N/m, N·m/rad** (× 1000 à l'export, depuis le 2026-10-26, BUG-117) |
 | Site / Bâtiment | `IfcSite`, `IfcBuilding` (`IfcRelAggregates`) |
 | Niveau (`LevelManager`) | `IfcBuildingStorey` (attribut `Elevation`, placement à l'origine : les produits gardent les coordonnées du modèle) |

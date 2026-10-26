@@ -71,6 +71,10 @@ Le temps ne dépend pas de la taille du modèle : seuls l'en-tête et le PNG (�
   enregistrement (qui ajoute le bloc d'aperçu).
 - **Une version de TSA antérieure au format 1.2 ne peut pas ouvrir un fichier 1.2** : elle lit le
   bloc d'aperçu comme du payload et signale un CRC invalide. Les versions ≥ 1.2 lisent tous les formats.
+- **Fichiers 2.0 (2026-10-26)** : l'extension d'une version antérieure n'affiche pas de miniature, seulement l'icône TSA.
+  `locatePreviewBlock` refuse toute version majeure supérieure à la sienne. Elle ne lit que l'en-tête, n'écrit jamais
+  dans le fichier et ne prétend pas l'interpréter. L'extension livrée avec la version 2.0 affiche la miniature des
+  fichiers 1.x et 2.0.
 
 ## Tests
 

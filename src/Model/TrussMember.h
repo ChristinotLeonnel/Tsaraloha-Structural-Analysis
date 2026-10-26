@@ -42,7 +42,11 @@ public:
 
     const Section& section() const { return m_section; }
     Section& section() { return m_section; }
-    void setSection(const Section& s) { m_section = s; }
+    void setSection(const Section& s)
+    {
+        m_section = s;
+        m_section.fixFilletRadius();   // rayon de congé figé à l'entrée dans le modèle (BUG-110)
+    }
 
     const Material& material() const { return m_material; }
     Material& material() { return m_material; }

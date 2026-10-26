@@ -20,7 +20,10 @@ Last Updated: 2026-10-25. Uniquement des tâches réellement identifiées (voir 
 - [x] BUG-118 étape E0 (test 505) ; [ ] E1 registre qualifié / provenance, E2 magasin versionné, E3 signatures, E4, E5.
 - [x] BUG-111 étape 0 (tests 503-504) ; [ ] étapes 1-2 (empreintes, AnalysisTrace en mémoire) ; [ ] 1.14 après validation.
 - [x] BUG-113 : tests de régression ajoutés (502 ouvertures, 444 manipulateur).
-- [ ] BUG-110 : présentation D1 livrée (2.0 inconditionnelle recommandée) — EN ATTENTE DE VALIDATION.
+- [x] BUG-110 : format 2.0 (SECP, requiredFeatures, migration, IFC/TSA3D, panneau) ; tests 506-508 ; démonstration
+      au bit près sur le corpus. [ ] CI de la nouvelle version (push).
+- [ ] BUG-119 plantage destruction OccView sous llvmpipe ; [ ] BUG-120 ressources OCCT sous Linux (test 286).
+- [ ] CI : Windows passé à Qt 6.10.3 (6.11+ illisible par aqtinstall 3.3.0) — à confirmer par un passage réel.
 - [ ] D5 : compilation et tests Windows/MSVC, CI GitHub (push requis), essai manuel des panneaux Propriétés, traductions
       (8 textes nouveaux non traduits en et mg, .ts non modifiés) — NON EXÉCUTÉS.
 - [ ] BUG-110 (A+ : r figé, chunk SECP, 1.13 / 2.0 conditionnelle) et BUG-111 (fiche AnalysisTrace, 4 empreintes,

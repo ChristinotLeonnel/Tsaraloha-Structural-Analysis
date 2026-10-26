@@ -8,6 +8,7 @@
 #include "../Core/Utf8Path.h"
 
 #include <QSaveFile>
+#include <cmath>
 #include <filesystem>
 #include <QByteArray>
 #include <QBuffer>
@@ -16,6 +17,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
+#include <QJsonParseError>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <cstring>
@@ -88,6 +90,67 @@ std::string elementVisualsJson(const TSA::Model::Model& model)
     if (root.isEmpty()) return {};
     root.insert("schema", 1);
     return QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString();
+}
+
+/// JSON du chunk SECP (format 2.0) : pour chaque élément linéaire en I, rayon de congé et propriétés calculées (A, Iy,
+/// Iz, It) — empreinte relue et comparée à l'ouverture ; version des formules (Section::kSectionModel).
+std::string sectionPropertiesJson(const TSA::Model::Model& model)
+{
+    auto collect = [](const auto& elements) {
+        QJsonObject out;
+        for (const auto& [id, e] : elements)
+        {
+            const auto& s = e.section();
+            if (s.shape != TSA::Model::SectionShape::IShape) continue;
+            out.insert(QString::number(id), QJsonObject { { "r", s.rootRadius() },
+                                                          { "props", QJsonObject { { "A", s.area() }, { "Iy", s.iy() }, { "Iz", s.iz() }, { "It", s.it() } } } });
+        }
+        return out;
+    };
+    const QJsonObject root { { "schema", 1 }, { "sectionModel", TSA::Model::Section::kSectionModel }, { "beams", collect(model.beams()) },
+                             { "columns", collect(model.columns()) }, { "trusses", collect(model.trussMembers()) } };
+    return QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString();
+}
+
+/// Applique le chunk SECP aux éléments lus. Format ≥ 2.0 : le rayon enregistré fait foi ; une entrée absente, illisible,
+/// une version de formules inconnue ou des propriétés recalculées différentes de l'empreinte sont des ERREURS (aucun
+/// recalcul silencieux). Format 1.x : rayon figé par l'algorithme historique (Section::legacyRootRadius).
+template <class Map>
+bool applySectionProperties(const QJsonObject& family, bool explicitProperties, const char* label, Map& elements, std::string* error)
+{
+    for (auto& [id, e] : elements)
+    {
+        TSA::Model::Section s = e.section();
+        if (s.shape != TSA::Model::SectionShape::IShape) continue;
+        if (!explicitProperties)
+        {
+            s.filletRadius = s.legacyRootRadius();
+            e.setSection(s);
+            continue;
+        }
+        const QJsonObject entry = family.value(QString::number(id)).toObject();
+        const double r = entry.value("r").toDouble(std::nan(""));
+        auto fail = [&](const QString& why) {
+            if (error)
+                *error = QCoreApplication::translate("TSA::IO::TSAFile", "Propriétés de section non interprétables (%1 %2, section « %3 ») : %4. "
+                                                                         "Le projet n'est pas ouvert pour ne pas calculer avec des propriétés différentes.")
+                             .arg(QString::fromLatin1(label)).arg(id).arg(QString::fromStdString(s.name), why).toStdString();
+            return false;
+        };
+        if (!std::isfinite(r) || r < 0.0) return fail(QCoreApplication::translate("TSA::IO::TSAFile", "rayon de congé absent ou invalide"));
+        s.filletRadius = r;
+        const QJsonObject props = entry.value("props").toObject();
+        const std::pair<const char*, double> computed[] = { { "A", s.area() }, { "Iy", s.iy() }, { "Iz", s.iz() }, { "It", s.it() } };
+        for (const auto& [key, value] : computed)
+        {
+            const double stored = props.value(key).toDouble(std::nan(""));
+            if (!std::isfinite(stored) || std::abs(value - stored) > 1e-9 * std::max(std::abs(stored), 1e-30))
+                return fail(QCoreApplication::translate("TSA::IO::TSAFile", "%1 recalculée (%2) différente de la valeur enregistrée (%3)")
+                                .arg(QString::fromLatin1(key)).arg(value, 0, 'g', 17).arg(stored, 0, 'g', 17));
+        }
+        e.setSection(s);
+    }
+    return true;
 }
 
 template <class Map>
@@ -336,6 +399,8 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
         const std::string visuals = Detail::elementVisualsJson(model);
         if (!visuals.empty()) writeJsonChunk(payload, CHUNK_MVIS, visuals);
     }
+    // Obligatoire (format 2.0, FEATURE_SECTION_PROPERTIES) : propriétés des sections, indépendantes de leur nom.
+    writeJsonChunk(payload, CHUNK_SECP, Detail::sectionPropertiesJson(model));
 
     // Snapshots mécaniques de calcul & références d'extensions (Phase 8)
     std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> snapshotsToSave = model.calculationSnapshots();
@@ -449,6 +514,7 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     header.magic = NATIVE_FILE_MAGIC;
     header.versionMajor = TSA_FORMAT_VERSION_MAJOR;
     header.versionMinor = TSA_FORMAT_VERSION_MINOR;
+    header.requiredFeatures = KNOWN_REQUIRED_FEATURES;
     header.appVersionMajor = TSA_APP_VERSION_MAJOR;
     header.appVersionMinor = TSA_APP_VERSION_MINOR;
     header.appVersionPatch = TSA_APP_VERSION_PATCH;
@@ -641,6 +707,17 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
         }
         return false;
     }
+    if (header.versionMajor >= 2 && (header.requiredFeatures & ~KNOWN_REQUIRED_FEATURES) != 0)
+    {
+        if (errorMessage)
+            *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Ce projet exige des fonctionnalités que cette version de %1 ne connaît pas "
+                                                                            "(masque 0x%2) : il ne peut pas être interprété de manière fiable. Veuillez mettre à jour %1.")
+                                .arg(QString::fromUtf8(TSA::Product::kName))
+                                .arg(QString::number(header.requiredFeatures & ~KNOWN_REQUIRED_FEATURES, 16))
+                                .toStdString();
+        return false;
+    }
+    m_formatMajor = header.versionMajor;
 
     // Fichiers ≥ 1.2 : un bloc d'aperçu suit le payload, dont la fin est header.fileSize.
     // Fichiers antérieurs : header.fileSize vaut la taille totale (comportement inchangé).
@@ -837,6 +914,8 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     std::string loadedOpenings;
     std::string loadedSurfaces;
     std::string loadedVisuals;
+    std::string loadedSectionProps;
+    bool hasSectionProps = false;
     std::string loadedCoordinates, loadedGrids;
     bool hasCoordinates = false, hasGrids = false;
 
@@ -959,12 +1038,50 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
             // Facultatif (format ≥ 1.12) : sans lui (anciens projets), aucune vue nommée.
             loadedViews.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
             break;
+        case CHUNK_SECP:
+            // Obligatoire en format 2.0 (FEATURE_SECTION_PROPERTIES), appliqué après la lecture des éléments.
+            loadedSectionProps.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
+            hasSectionProps = true;
+            break;
         default:
             // Chunk inconnu (version future) : ignoré en toute sécurité grâce à chunkSize
             break;
         }
 
         offset += ch.chunkSize;
+    }
+
+    // 5 bis. Propriétés des sections (BUG-110) : enregistrées en 2.0, migrées par l'algorithme historique en 1.x
+    {
+        const bool explicitProperties = m_formatMajor >= 2;
+        QJsonObject secp;
+        if (explicitProperties)
+        {
+            QJsonParseError parseError;
+            const QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(loadedSectionProps), &parseError);
+            if (!hasSectionProps || parseError.error != QJsonParseError::NoError || !doc.isObject())
+            {
+                if (errorMessage)
+                    *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Propriétés des sections absentes ou illisibles (chunk SECP) : "
+                                                                                    "le projet ne peut pas être interprété de manière fiable.").toStdString();
+                return false;
+            }
+            secp = doc.object();
+            const int sectionModel = secp.value("sectionModel").toInt(0);
+            if (secp.value("schema").toInt(0) != 1 || sectionModel < 1 || sectionModel > TSA::Model::Section::kSectionModel)
+            {
+                if (errorMessage)
+                    *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Version des formules de section %1 (schéma %2) inconnue de cette version "
+                                                                                    "de %3 (formules %4) : le projet n'est pas ouvert.")
+                                        .arg(sectionModel).arg(secp.value("schema").toInt(0)).arg(QString::fromUtf8(TSA::Product::kName))
+                                        .arg(TSA::Model::Section::kSectionModel).toStdString();
+                return false;
+            }
+        }
+        if (!Detail::applySectionProperties(secp.value("beams").toObject(), explicitProperties, "poutre", loadedBeams, errorMessage)
+            || !Detail::applySectionProperties(secp.value("columns").toObject(), explicitProperties, "poteau", loadedColumns, errorMessage)
+            || !Detail::applySectionProperties(secp.value("trusses").toObject(), explicitProperties, "barre de treillis", loadedTrussMembers, errorMessage))
+            return false;
     }
 
     // 6. Injection atomique dans le modèle structural existant

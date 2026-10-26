@@ -152,10 +152,13 @@ jobs:
         with:
           arch: x64
 
-      - name: Qt 6.11.2 (version vérifiée sous Windows)
+      # Qt 6.10.3 et non 6.11.2 (poste de développement) : depuis 6.11, le dépôt en ligne de Qt range les paquets Windows
+      # par chaîne de compilation (qt6_6112_msvc2022_64/), organisation qu'aqtinstall 3.3.0 (dernière version) ne lit pas
+      # (« Failed to locate XML data », exécution 40263952835). TSA exige Qt ≥ 6.2 et n'utilise aucune API propre à 6.11.
+      - name: Qt 6.10.3 (Windows, MSVC 2022)
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.11.2"
+          version: "6.10.3"
           host: windows
           target: desktop
           arch: win64_msvc2022_64

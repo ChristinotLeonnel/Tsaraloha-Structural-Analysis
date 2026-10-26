@@ -407,6 +407,8 @@ private:
             s.height = n(4);
             s.tw = n(5);
             s.tf = n(6);
+            // FilletRadius du profil symétrique ; absent ($) ou profil asymétrique : déduit une fois de la désignation
+            if (t == "IFCISHAPEPROFILEDEF" && !e->arg(7).isNull()) s.filletRadius = n(7);
         }
         else if (t == "IFCUSHAPEPROFILEDEF")
         {

@@ -10267,6 +10267,18 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
 <context>
     <name>TSA::IO::TSAFile</name>
     <message>
+        <source>Propriétés de section non interprétables (%1 %2, section « %3 ») : %4. Le projet n'est pas ouvert pour ne pas calculer avec des propriétés différentes.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>rayon de congé absent ou invalide</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>%1 recalculée (%2) différente de la valeur enregistrée (%3)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Impossible de créer le fichier .tsa : %1 (%2)</source>
         <translation>Tsy afaka mamorona ny rakitra .tsa: %1 (%2)</translation>
     </message>
@@ -10311,6 +10323,10 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
         <translation>Noforonina tamin'ny dikan-teny vaovao kokoa (endrika v%2.%3) ity tetikasa %1 ity. Havaozy azafady ny %1.</translation>
     </message>
     <message>
+        <source>Ce projet exige des fonctionnalités que cette version de %1 ne connaît pas (masque 0x%2) : il ne peut pas être interprété de manière fiable. Veuillez mettre à jour %1.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Taille du payload excessive (dépassement limite de sécurité de 1 Go).</source>
         <translation>Lehibe loatra ny haben'ny angona (mihoatra ny fetra fiarovana 1 Go).</translation>
     </message>
@@ -10353,6 +10369,14 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
     <message>
         <source>Chunk tronqué ou corrompu dans le fichier .tsa.</source>
         <translation>Sombin'angona tapaka na simba ao amin'ny rakitra .tsa.</translation>
+    </message>
+    <message>
+        <source>Propriétés des sections absentes ou illisibles (chunk SECP) : le projet ne peut pas être interprété de manière fiable.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Version des formules de section %1 (schéma %2) inconnue de cette version de %3 (formules %4) : le projet n'est pas ouvert.</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>Nombre de nœuds anormalement élevé dans le fichier.</source>
@@ -15883,6 +15907,14 @@ Ohatra: -10.00; 0.00; 0.00</translation>
         <translation>Hatevin'ny vatany (tw):</translation>
     </message>
     <message>
+        <source>Rayon de congé âme-semelle d'un profil laminé (0 : profil soudé). Conservé quand une dimension change.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Rayon de congé (r) :</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Aire (A) :</source>
         <translation>Velarana (A):</translation>
     </message>
@@ -15929,6 +15961,21 @@ Ohatra: -10.00; 0.00; 0.00</translation>
     <message>
         <source>Modification Barre %1</source>
         <translation>Fanovana ny tsorakazo %1</translation>
+    </message>
+    <message>
+        <source>Profilé I %1×%2×%3×%4</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Profil normalisé modifié</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Les dimensions ne correspondent plus au profil normalisé « %1 ».
+Le rayon de congé (%2 mm) est conservé.
+
+Convertir en section personnalisée « %3 » ?</source>
+        <translation type="unfinished" />
     </message>
 </context>
 <context>

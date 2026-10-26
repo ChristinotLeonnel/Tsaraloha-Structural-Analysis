@@ -1,12 +1,14 @@
 #include "test_common.h"
 #include <ProductIdentity.h>
 #include <cstring>
+#include "migration_dump.h"
+#include <QProcessEnvironment>
 
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 504;   // + test 505 (installation .tsalib transactionnelle), tests 499-501 (unités des échanges : Fem3D, TSA3D, IFC), 502 (ouvertures : Annuler et notification), 503-504 (métadonnées de calcul sans valeur inventée), 492 (unités EC2/EC3), 493 (panneau Propriétés), 494 (section annulable), 495 (injection Tcl), 496 (paquets .tsalib), 497 (Annuler dalles/voiles), 498 (notifications des cas de charge) ; 489 comptés sous Linux le 25/10/2026 (Release, OpenSees, Gmsh et IfcOpenShell présents, 0 échec) + test 128 (Explorateur Windows, ignoré ailleurs) ; décompte Windows à confirmer
+    int expectedTotal = 507;   // + test 508 (panneau : rayon de congé), tests 506-507 (propriétés des sections, format 2.0, IFC), test 505 (installation .tsalib transactionnelle), tests 499-501 (unités des échanges : Fem3D, TSA3D, IFC), 502 (ouvertures : Annuler et notification), 503-504 (métadonnées de calcul sans valeur inventée), 492 (unités EC2/EC3), 493 (panneau Propriétés), 494 (section annulable), 495 (injection Tcl), 496 (paquets .tsalib), 497 (Annuler dalles/voiles), 498 (notifications des cas de charge) ; 489 comptés sous Linux le 25/10/2026 (Release, OpenSees, Gmsh et IfcOpenShell présents, 0 échec) + test 128 (Explorateur Windows, ignoré ailleurs) ; décompte Windows à confirmer
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -24,6 +26,17 @@ int main(int argc, char* argv[])
         std::cout << "Filtering by suite: " << suiteFilter << std::endl;
     }
     std::cout << "=================================================" << std::endl;
+
+    // Relevé de migration BUG-110 (hors décompte) : TSA_MIGDUMP_LIST = fichier listant les .tsa, TSA_MIGDUMP_OUT = JSON écrit
+    if (suiteFilter == "migdump")
+    {
+        const auto env = QProcessEnvironment::systemEnvironment();
+        QFile list(env.value("TSA_MIGDUMP_LIST"));
+        if (!list.open(QIODevice::ReadOnly)) return 2;
+        const QStringList files = QString::fromUtf8(list.readAll()).split('\n', Qt::SkipEmptyParts);
+        if (env.contains("TSA_MIGDUMP_SAVE_DIR")) return MigrationDump::resaveFiles(files, env.value("TSA_MIGDUMP_SAVE_DIR")) ? 0 : 1;
+        return MigrationDump::dumpFiles(files, env.value("TSA_MIGDUMP_OUT")) ? 0 : 1;
+    }
 
     bool allOk = true;
 

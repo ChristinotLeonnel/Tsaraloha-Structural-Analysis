@@ -10267,6 +10267,18 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
 <context>
     <name>TSA::IO::TSAFile</name>
     <message>
+        <source>Propriétés de section non interprétables (%1 %2, section « %3 ») : %4. Le projet n'est pas ouvert pour ne pas calculer avec des propriétés différentes.</source>
+        <translation>Section properties cannot be interpreted (%1 %2, section “%3”): %4. The project is not opened, to avoid computing with different properties.</translation>
+    </message>
+    <message>
+        <source>rayon de congé absent ou invalide</source>
+        <translation>fillet radius missing or invalid</translation>
+    </message>
+    <message>
+        <source>%1 recalculée (%2) différente de la valeur enregistrée (%3)</source>
+        <translation>recomputed %1 (%2) differs from the stored value (%3)</translation>
+    </message>
+    <message>
         <source>Impossible de créer le fichier .tsa : %1 (%2)</source>
         <translation>Cannot create the .tsa file: %1 (%2)</translation>
     </message>
@@ -10311,6 +10323,10 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
         <translation>This %1 project was created with a newer version (format v%2.%3). Please update %1.</translation>
     </message>
     <message>
+        <source>Ce projet exige des fonctionnalités que cette version de %1 ne connaît pas (masque 0x%2) : il ne peut pas être interprété de manière fiable. Veuillez mettre à jour %1.</source>
+        <translation>This project requires features that this version of %1 does not know (mask 0x%2): it cannot be interpreted reliably. Please update %1.</translation>
+    </message>
+    <message>
         <source>Taille du payload excessive (dépassement limite de sécurité de 1 Go).</source>
         <translation>Payload size too large (exceeds the 1 GB safety limit).</translation>
     </message>
@@ -10353,6 +10369,14 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
     <message>
         <source>Chunk tronqué ou corrompu dans le fichier .tsa.</source>
         <translation>Truncated or corrupt chunk in the .tsa file.</translation>
+    </message>
+    <message>
+        <source>Propriétés des sections absentes ou illisibles (chunk SECP) : le projet ne peut pas être interprété de manière fiable.</source>
+        <translation>Section properties missing or unreadable (SECP chunk): the project cannot be interpreted reliably.</translation>
+    </message>
+    <message>
+        <source>Version des formules de section %1 (schéma %2) inconnue de cette version de %3 (formules %4) : le projet n'est pas ouvert.</source>
+        <translation>Section formula version %1 (schema %2) is unknown to this version of %3 (formulas %4): the project is not opened.</translation>
     </message>
     <message>
         <source>Nombre de nœuds anormalement élevé dans le fichier.</source>
@@ -15883,6 +15907,14 @@ Example: -10.00; 0.00; 0.00</translation>
         <translation>Web thickness (tw):</translation>
     </message>
     <message>
+        <source>Rayon de congé âme-semelle d'un profil laminé (0 : profil soudé). Conservé quand une dimension change.</source>
+        <translation>Web-flange fillet radius of a rolled profile (0: welded profile). Kept when a dimension changes.</translation>
+    </message>
+    <message>
+        <source>Rayon de congé (r) :</source>
+        <translation>Fillet radius (r):</translation>
+    </message>
+    <message>
         <source>Aire (A) :</source>
         <translation>Area (A):</translation>
     </message>
@@ -15929,6 +15961,24 @@ Example: -10.00; 0.00; 0.00</translation>
     <message>
         <source>Modification Barre %1</source>
         <translation>Edit member %1</translation>
+    </message>
+    <message>
+        <source>Profilé I %1×%2×%3×%4</source>
+        <translation>I-section %1×%2×%3×%4</translation>
+    </message>
+    <message>
+        <source>Profil normalisé modifié</source>
+        <translation>Standard profile modified</translation>
+    </message>
+    <message>
+        <source>Les dimensions ne correspondent plus au profil normalisé « %1 ».
+Le rayon de congé (%2 mm) est conservé.
+
+Convertir en section personnalisée « %3 » ?</source>
+        <translation>The dimensions no longer match the standard profile “%1”.
+The fillet radius (%2 mm) is kept.
+
+Convert to the custom section “%3”?</translation>
     </message>
 </context>
 <context>

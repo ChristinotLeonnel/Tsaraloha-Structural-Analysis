@@ -151,6 +151,8 @@ ImportResult importDocument(const QJsonObject& doc, TSA::Model::Model& model, co
         s.diameter = d.value("d").toDouble(s.diameter / u.length) * u.length;
         s.tw = d.value("tw").toDouble(s.tw / u.length) * u.length;
         s.tf = d.value("tf").toDouble(s.tf / u.length) * u.length;
+        // Rayon de congé explicite (profil en I) ; absent : déduit une fois de la désignation (fichiers antérieurs)
+        if (s.shape == SectionShape::IShape && d.contains("r")) s.filletRadius = d.value("r").toDouble() * u.length;
         sections[o.value("id").toString()] = s;
         if (options.keepUnknownFields)
             if (const QJsonObject extra = unknownOf(o, knownKeys("sections")); !extra.isEmpty()) preservedObjects.insert(o.value("id").toString(), extra);

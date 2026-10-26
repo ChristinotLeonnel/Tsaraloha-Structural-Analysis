@@ -67,7 +67,7 @@ bool sameSection(const TSA::Model::Section& a, const TSA::Model::Section& b)
 {
     auto eq = [](double x, double y) { return std::abs(x - y) <= 1e-9; };
     return a.name == b.name && a.shape == b.shape && eq(a.width, b.width) && eq(a.height, b.height) && eq(a.diameter, b.diameter)
-        && eq(a.tw, b.tw) && eq(a.tf, b.tf);
+        && eq(a.tw, b.tw) && eq(a.tf, b.tf) && eq(a.rootRadius(), b.rootRadius());
 }
 
 bool sameMaterial(const TSA::Model::Material& a, const TSA::Model::Material& b)

@@ -96,14 +96,16 @@ struct Ctx
     }
     QString section(const Section& s)
     {
-        const QString key = QStringLiteral("%1|%2|%3|%4|%5|%6|%7").arg(QString::fromStdString(s.name)).arg(static_cast<int>(s.shape))
+        const QString key = QStringLiteral("%1|%2|%3|%4|%5|%6|%7|%8").arg(QString::fromStdString(s.name)).arg(static_cast<int>(s.shape))
                                 .arg(s.width, 0, 'g', 17).arg(s.height, 0, 'g', 17).arg(s.diameter, 0, 'g', 17)
-                                .arg(s.tw, 0, 'g', 17).arg(s.tf, 0, 'g', 17);
+                                .arg(s.tw, 0, 'g', 17).arg(s.tf, 0, 'g', 17).arg(s.rootRadius(), 0, 'g', 17);
         auto it = sectionIds.find(key);
         if (it != sectionIds.end()) return it->second;
         const QString id = QStringLiteral("SEC%1").arg(sectionIds.size() + 1);
         sectionIds[key] = id;
         QJsonObject dims { { "b", s.width }, { "h", s.height }, { "d", s.diameter }, { "tw", s.tw }, { "tf", s.tf } };
+        // Profil en I : rayon de congé, donnée de la section (BUG-110), relu tel quel à l'import (0 : sans congé)
+        if (s.shape == SectionShape::IShape) dims.insert("r", s.rootRadius());
         // Propriétés calculées par TSA : informatives (recalculées à l'import à partir des dimensions).
         QJsonObject props { { "A", s.area() }, { "Iy", s.iy() }, { "Iz", s.iz() }, { "It", s.it() }, { "Wy", s.wy() }, { "Wz", s.wz() } };
         QJsonObject o { { "id", id },

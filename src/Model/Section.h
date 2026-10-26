@@ -1,8 +1,9 @@
 #pragma once
 
+#include <cmath>
+#include <optional>
 #include <string>
 #include <vector>
-#include <cmath>
 
 namespace TSA::Model
 {
@@ -31,6 +32,14 @@ struct Section
     double diameter = 0.30;// D
     double tw = 0.01;      // épaisseur âme (m)
     double tf = 0.015;     // épaisseur aile (m)
+    /// Rayon de congé âme-aile d'un profil en I (m), donnée de la section (BUG-110, format 2.0). Vide tant que la section
+    /// n'est pas entrée dans le modèle : il vaut alors legacyRootRadius(). fixFilletRadius() le fige une fois (élément
+    /// créé, fichier ≤ 1.12 relu, import) ; ensuite, ni un renommage ni un changement de dimension ne le modifient.
+    std::optional<double> filletRadius;
+
+    /// Version des formules des propriétés (A, I, J, W, congés) : enregistrée dans le chunk SECP ; toute évolution des
+    /// formules l'incrémente et impose une migration explicite des projets (jamais un changement silencieux).
+    static constexpr int kSectionModel = 1;
 
     // Caractéristiques géométriques calculées
     double area() const;
@@ -43,10 +52,17 @@ struct Section
     /// Constante de gauchissement Iw (m⁶) : profil en I bisymétrique tf·b³·(h − tf)²/24 ; nulle (négligeable)
     /// pour les sections pleines et fermées ; NaN si non disponible (UPN, cornière, T).
     double iw() const;
-    /// Rayon de congé (m) des profils laminés normalisés reconnus par leur désignation (« IPE 300 », « HEA 200 »,
-    /// « HEB 160 ») ET leurs dimensions EN 10365 ; 0 sinon (section paramétrique ou modifiée). Non stocké dans le
-    /// fichier : déduit à chaque calcul, identique avant et après réouverture.
+    /// Rayon de congé utilisé par les formules (m) : filletRadius s'il est figé, sinon legacyRootRadius() ; 0 hors
+    /// profil en I.
     double rootRadius() const;
+    /// Algorithme historique (≤ 1.12), conservé à l'identique pour la migration : rayon EN 10365 des profils reconnus
+    /// par leur désignation (« IPE 300 », « HEA 200 », « HEB 160 ») ET leurs dimensions à 1e-7 près ; 0 sinon.
+    double legacyRootRadius() const;
+    /// Fige le rayon (algorithme historique) s'il ne l'est pas encore ; sans effet hors profil en I.
+    void fixFilletRadius()
+    {
+        if (shape == SectionShape::IShape && !filletRadius) filletRadius = legacyRootRadius();
+    }
     /// J d'un profil en I laminé à congés (El Darwish & Johnston, unités cohérentes).
     static double rolledIShapeTorsionConstant(double h, double b, double tw, double tf, double r);
     /// Module de résistance élastique Wel,y = Iy / v_max (m³), v_max = distance du centre de gravité à la fibre la
