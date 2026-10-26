@@ -1418,14 +1418,25 @@ function(tsaraloha_add_shared_libraries)
     # (pas de risque de perdre des initialisations statiques comme avec une .lib).
     add_library(${model} OBJECT ${TSARALOHA_MODEL_SOURCES} ${P_MODEL_SOURCES})
     tsa_apply_common_settings(${model} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
+    # Le PCH de ${model} (REUSE_FROM) inclut QtWidgets et est compilé avec QT_WIDGETS_LIB : on garde les exigences de
+    # COMPILATION de QtWidgets, à la même place (options identiques pour toutes les cibles qui partagent le PCH), sans le
+    # LIEN. CMake < 3.27 (pas de $<COMPILE_ONLY>) : comportement antérieur.
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.27)
+        set(_model_widgets $<COMPILE_ONLY:Qt6::Widgets>)
+    else()
+        set(_model_widgets Qt6::Widgets)
+    endif()
+    # Dépendances réellement utilisées par les objets du modèle (nm sur les objets ; tsa-mesh et tsa-ifc liés sans QtWidgets
+    # ni rendu OCCT). QtWidgets et OCCT de rendu / B-Rep : portés par ${graphics}.
     target_link_libraries(${model} PUBLIC
         ${core}
         tsalab_science
         Qt6::Core
         Qt6::Gui
-        Qt6::Widgets
+        ${_model_widgets}
         Qt6::Network
-        ${OCCT_LIBS}
+        TKernel
+        TKMath
     )
     if(WIN32)
         target_link_libraries(${model} PUBLIC DbgHelp Crypt32)
@@ -1468,12 +1479,14 @@ function(tsaraloha_add_shared_libraries)
     add_library(${graphics} OBJECT ${TSARALOHA_GRAPHICS_SOURCES})
     tsa_apply_common_settings(${graphics} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
     target_precompile_headers(${graphics} REUSE_FROM ${model})
-    target_link_libraries(${graphics} PUBLIC ${model} Qt6::Svg)
+    # Dépendances propres à graphics (symboles constatés) : QtWidgets (OccView, ThemeManager, Viewport*), rendu et B-Rep
+    # OCCT. PUBLIC : widgets, applications et tests les utilisent aussi directement.
+    target_link_libraries(${graphics} PUBLIC ${model} Qt6::Widgets Qt6::Svg ${OCCT_LIBS})
 
     add_library(${widgets} OBJECT ${TSARALOHA_WIDGETS_SOURCES})
     tsa_apply_common_settings(${widgets} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
     target_precompile_headers(${widgets} REUSE_FROM ${model})
-    target_link_libraries(${widgets} PUBLIC ${model} ${graphics})
+    target_link_libraries(${widgets} PUBLIC ${model} ${graphics} Qt6::Widgets)
 
     set_source_files_properties(${TSA_NO_PCH_SOURCES} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 endfunction()
@@ -1762,7 +1775,7 @@ function(tsa_add_product)
     endif()
     tsa_apply_common_settings(${name} ${P_PRODUCT_DIR})
     target_precompile_headers(${name} REUSE_FROM ${model})
-    target_link_libraries(${name} PRIVATE ${model} ${graphics} ${widgets} Qt6::Svg)
+    target_link_libraries(${name} PRIVATE ${model} ${graphics} ${widgets} Qt6::Widgets Qt6::Svg)
     if(WIN32)
         # AppShell : barre de titre personnalisée (ombre DWM de la fenêtre sans cadre système)
         target_link_libraries(${name} PRIVATE dwmapi)
@@ -1784,7 +1797,8 @@ function(tsa_add_product)
         tsa_apply_common_settings(${tests} ${P_PRODUCT_DIR})
         target_include_directories(${tests} PRIVATE ${TSA_ROOT}/tests)
         target_precompile_headers(${tests} REUSE_FROM ${model})
-        target_link_libraries(${tests} PRIVATE ${model} ${graphics} ${widgets})
+        # QtWidgets utilisé directement ; QT_WIDGETS_LIB requis par les surcharges widgets de QtTest
+        target_link_libraries(${tests} PRIVATE ${model} ${graphics} ${widgets} Qt6::Widgets)
         if(TARGET Qt6::Test)   # frappes clavier simulées (suite « shortcuts »)
             target_link_libraries(${tests} PRIVATE Qt6::Test)
             target_compile_definitions(${tests} PRIVATE TSA_HAVE_QTTEST=1)
