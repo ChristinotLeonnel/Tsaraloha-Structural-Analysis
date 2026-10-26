@@ -2,13 +2,16 @@
 
 Last Updated: 2026-10-26 (soir). Uniquement des tâches réellement identifiées (voir known-issues.md).
 
-## TSA Core — préparation de l'étape 2 (2026-10-26, rien de commité ; étape 1 et CoreStaticInit fusionnées dans main 39155c4)
+## TSA Core — préparation de l'étape 2 (2026-10-26 ; commits LOCAUX, non poussés ni fusionnés ; main = 39155c4)
 
-Trois branches distinctes, base 39155c4 (TSALab : 58063a7) ; preuves dans ../TSA-rapports/2026-10-26/mission3 et mission4.
+Branches distinctes, base 39155c4 (TSALab : 58063a7) ; preuves dans ../TSA-rapports/2026-10-26/mission3 à mission10.
+Commits locaux : A 9a45d46, B 8695035, TSALab B1 eea9cd9, C 3b65ac3, documentation bf88548 (docs/architecture-tsa).
 - [x] A — `test/core-static-init-sections` (worktree ../TSA-worktrees/core-static-init) : contrôle par sections ELF
       (init et terminaison), refus LTO, codes 0/1/2, CTest `<P>_CoreStaticInitSelfTest` (38 cas) ; Linux 3/3 ; contre-épreuve
       sur libTSA_Core.a (constructor et init_priority manqués par l'ancien script, détectés). ci.yml inchangé (le filtre
-      « CoreStaticInit » sélectionne déjà le SelfTest). [ ] Clang ; MSVC : non pris en charge (non enregistré).
+      « CoreStaticInit » sélectionne déjà le SelfTest). [ ] Clang. MSVC : 9a45d46 ne l'enregistre pas ; moteur dumpbin (A2)
+      préparé NON COMMITÉ dans le worktree A (patch mission10_integration/A2_msvc_dumpbin_v2.patch), Linux 3/3, jamais
+      exécuté sous Windows : [ ] premier essai Windows, puis commit.
 - [x] B — `build/model-deps-explicites` (worktree ../TSA-worktrees/model-deps) + TSALab `build/tests-qtwidgets-explicite` :
       B1 QtWidgets explicite (TSALab_Tests compris), B2 Model ne lie plus QtWidgets ni l'OCCT de rendu
       (`$<COMPILE_ONLY:Qt6::Widgets>` à la même place : commandes de compilation identiques). Linux : suite identique à la base,
@@ -17,9 +20,11 @@ Trois branches distinctes, base 39155c4 (TSALab : 58063a7) ; preuves dans ../TSA
       [ ] TKG2d, TKBO, TKBool, TKMesh : sans utilisateur direct, conservés (tirés par TKV3d / TKOffset, greffon IFC).
 - [x] C — `test/etape2-caracterisation` (worktree principal) : suite « undo », tests 513-523 ; Linux Release 11/11 (×3 xcb,
       ×1 offscreen), suite complète 521/522 (128 Windows seul), 8 mutations de production détectées puis restaurées.
-- [ ] Validation Windows / MSVC des trois chantiers : procédure ../TSA-rapports/2026-10-26/core_etape1/VALIDATION_WINDOWS_39155c4.md
-      (§7-11) ; RIEN d'exécuté sous Windows.
-- [ ] Commits des trois branches : en attente d'autorisation.
+- [ ] Validation Windows / MSVC (A1, A2, B, B1, C) : procédure ../TSA-rapports/2026-10-26/mission10_integration/
+      PROCEDURE_WINDOWS_v2.md ; RIEN d'exécuté sous Windows.
+- [x] Commits locaux autorisés et faits (2026-10-26) ; [ ] push et fusion : après la validation Windows (plan d'intégration
+      dans mission10_integration).
+- [x] Documentation d'architecture (docs/architecture/, Mermaid + SVG) : branche docs/architecture-tsa, commit bf88548.
 - [ ] Étape 2 (migration pushUndoState → EditTransaction) : NON autorisée. Préalables : clé de coalescence dans
       EditTransaction (F1 et F3), contrat de BUG-127 (rollback sans modification), puis migration famille par famille.
 
