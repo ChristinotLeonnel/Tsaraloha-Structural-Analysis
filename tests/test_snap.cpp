@@ -159,9 +159,9 @@ bool runSuite_Snap(int& passed)
         TEST_CHECK(r.snapped && r.type == GridSnapType::Midpoint, "Test 184: zoom très proche → milieu toujours accessible");
         r = snapAt(m, close.query(gp_Pnt(0.0, 0, 0), 30, 0));
         TEST_CHECK(r.snapped && r.type == GridSnapType::Nearest, "Test 184: zoom très proche, 30 px du nœud → proche (pas de nœud à 6 mm)");
-        OrthoView far;
-        far.scale = 2.0;        // 0,4 m = 0,8 px : nœuds confondus à l'écran
-        r = snapAt(m, far.query(gp_Pnt(0.0, 0, 0), 6, 0));
+        OrthoView farView;   // pas « far » : macro vide de <windows.h> (minwindef.h), inclus par OCCT sous Windows
+        farView.scale = 2.0;        // 0,4 m = 0,8 px : nœuds confondus à l'écran
+        r = snapAt(m, farView.query(gp_Pnt(0.0, 0, 0), 6, 0));
         TEST_CHECK(r.snapped && r.type == GridSnapType::Node, "Test 184: zoom très éloigné → un nœud est retenu, jamais un point arbitraire");
         std::cout << "[PASS] Test 184: Zoom très proche / très éloigné" << std::endl;
         ++passed;
@@ -189,9 +189,9 @@ bool runSuite_Snap(int& passed)
         // Deux nœuds proches à l'écran : le plus proche du curseur, jamais l'ordre de création
         Model e;
         e.addNode(0, 0, 0);
-        const int near = e.addNode(0.16, 0, 0);
+        const int nearNode = e.addNode(0.16, 0, 0);   // pas « near » : macro de <windows.h>
         r = snapAt(e, top.query(gp_Pnt(0.16, 0, 0), 1, 0));
-        TEST_CHECK(r.snapped && r.targetEntityId == near, "Test 185: structure dense → candidat le plus proche du curseur");
+        TEST_CHECK(r.snapped && r.targetEntityId == nearNode, "Test 185: structure dense → candidat le plus proche du curseur");
         std::cout << "[PASS] Test 185: Vue isométrique, profondeur, structure dense" << std::endl;
         ++passed;
     }

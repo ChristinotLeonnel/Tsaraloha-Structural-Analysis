@@ -57,7 +57,10 @@ Linux : views 19/19 en llvmpipe 4.5, en MESA_GL_VERSION_OVERRIDE=1.1 et sur GPU 
 = SIGSEGV dans drawRect (gdb), reproduction locale de la cause. Risques restants : Aspect_TODT_DIMENSION (PrsDim, non
 utilisé par TSA) et OpenGl_Structure.cxx:62 (surlignage par boîte, TSA utilise Aspect_TOHM_COLOR). Preuves :
 TSA-rapports/2026-10-26/preuves/BUG-122/.
-Status: OPEN — corrigé localement, NON VALIDÉ sous Windows (CI Windows requise après accord de publication).
+Commit 1f9ce28 (CI 40289561813) : Linux RÉUSSIE (views 19/19, 509-511 PASS) ; Windows : compilation ÉCHOUÉE sur
+tests/test_snap.cpp (variables « near »/« far » = macros de <windows.h>, désormais inclus via GridRenderer.h/OCCT) → tests
+Windows non exécutés. Variables renommées farView/nearNode (erreur reproduite sous Linux par -Dnear= -Dfar=) ; CI à relancer.
+Status: OPEN — NON VALIDÉ sous Windows.
 
 ## BUG-121
 Area: Panneaux Propriétés (essais d'interface du 2026-10-26)
