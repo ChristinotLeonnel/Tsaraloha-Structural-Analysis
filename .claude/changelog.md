@@ -4,6 +4,9 @@ Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord)
 
 ## 2026-10-26 (fin) — BUG-110 format 2.0, traductions, CI (branche fix/core-integrity)
 
+- CI 40267211722 (ea646c3) : Linux 37 suites réussies, 0 assertion en échec, views PLANTÉE (BUG-119), 18 non exécutées,
+  Custom2D 58/58 ; Windows : Qt 6.10.3 installé, src/ entièrement compilé par MSVC 19.44, échec sur tests/test_templates.cpp
+  (chaîne brute avec \" en argument de macro, préexistant) → chaîne sortie de la macro.
 - Commit eb7e6db poussé (sans fusion) ; CI 40263952835 : contrôles OK ; Linux : compilation OK, 37 suites réussies, Custom2D
   58/58, 3 suites en échec (display : OpenSees absent, oubli du tableau des dépendances ; deployment : BUG-120 ;
   views : plantage BUG-119, préexistant) ; Windows : Qt 6.11.2 non installable par aqtinstall 3.3.0 → Qt 6.10.3.

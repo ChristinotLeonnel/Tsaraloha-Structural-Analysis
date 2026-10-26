@@ -124,7 +124,9 @@ bool runSuite_Templates(int& passed)
     // TEST 280 : moteur de templates
     // -------------------------------------------------------------------------
     {
-        TEST_CHECK(R("Bonjour {{nom}} !", R"({"nom":"<Tsa> & \"co\""})").output == "Bonjour &lt;Tsa&gt; &amp; &quot;co&quot; !", "Test 280: variable échappée");
+        // Chaîne brute hors de la macro : le préprocesseur de MSVC 19.44 lit mal « \" » d'une chaîne brute en argument
+        const char* quoted = R"({"nom":"<Tsa> & \"co\""})";
+        TEST_CHECK(R("Bonjour {{nom}} !", quoted).output == "Bonjour &lt;Tsa&gt; &amp; &quot;co&quot; !", "Test 280: variable échappée");
         TEST_CHECK(R("{{{h}}}|{{&h}}", R"({"h":"<b>x</b>"})").output == "<b>x</b>|<b>x</b>", "Test 280: valeurs brutes {{{ }}} et {{& }}");
         TEST_CHECK(R("{{a.b.c}}/{{n}}/{{d}}/{{t}}", R"({"a":{"b":{"c":"ok"}},"n":12,"d":1.5,"t":true})").output == "ok/12/1.5/oui", "Test 280: noms pointés et scalaires");
         TEST_CHECK(R("{{#l}}[{{.}}]{{/l}}", R"({"l":[1,2,3]})").output == "[1][2][3]", "Test 280: section liste, élément courant");
