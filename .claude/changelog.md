@@ -2,6 +2,18 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-26 (soir, préparation de l'étape 2) — contrôles, dépendances, filet de tests (non commités)
+
+- A (branche test/core-static-init-sections) : `tools/check_core_static_init.py` par sections ELF (init + terminaison),
+  LTO refusé, codes 0/1/2, CTest `<P>_CoreStaticInitSelfTest` ; règle précisée dans architecture.md.
+- B (build/model-deps-explicites + TSALab build/tests-qtwidgets-explicite) : QtWidgets et OCCT déclarés par leurs
+  utilisateurs ; `<P>_Model` lié à Core, science, Qt Core / Gui / Network, TKernel, TKMath seulement.
+- C (test/etape2-caracterisation) : suite « undo » (tests 513-523) — observateur des 39 notifications, empreinte du modèle,
+  transitions opération / Annuler / Rétablir (révision, ModelEdited, EditRecord), F1-F6, treillis et câbles, grilles,
+  notifications positives ; BUG-006 recompté (28 appels), BUG-125 à BUG-130 caractérisés (non corrigés).
+- Linux Release : A 3/3 ; B suite identique à la base, banc 146/146, TSALab 27/27 ; C 521/522 (128 Windows seul),
+  mutations 8/8 détectées. Windows / MSVC : non exécuté (procédure VALIDATION_WINDOWS_39155c4.md §7-11).
+
 ## 2026-10-26 (TSA Core, étape 1) — extraction de TSA_Core (non commitée)
 
 - Cible `<P>_Core` STATIC (50 sources : Model, Load, Cable, Coordinate sans AxisColorConfig, Annotation/Dimension,

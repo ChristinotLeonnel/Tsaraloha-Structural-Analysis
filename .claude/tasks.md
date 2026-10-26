@@ -1,6 +1,37 @@
 # Tasks
 
-Last Updated: 2026-10-25. Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-10-26 (soir). Uniquement des tâches réellement identifiées (voir known-issues.md).
+
+## TSA Core — préparation de l'étape 2 (2026-10-26, rien de commité ; étape 1 et CoreStaticInit fusionnées dans main 39155c4)
+
+Trois branches distinctes, base 39155c4 (TSALab : 58063a7) ; preuves dans ../TSA-rapports/2026-10-26/mission3 et mission4.
+- [x] A — `test/core-static-init-sections` (worktree ../TSA-worktrees/core-static-init) : contrôle par sections ELF
+      (init et terminaison), refus LTO, codes 0/1/2, CTest `<P>_CoreStaticInitSelfTest` (38 cas) ; Linux 3/3 ; contre-épreuve
+      sur libTSA_Core.a (constructor et init_priority manqués par l'ancien script, détectés). ci.yml inchangé (le filtre
+      « CoreStaticInit » sélectionne déjà le SelfTest). [ ] Clang ; MSVC : non pris en charge (non enregistré).
+- [x] B — `build/model-deps-explicites` (worktree ../TSA-worktrees/model-deps) + TSALab `build/tests-qtwidgets-explicite` :
+      B1 QtWidgets explicite (TSALab_Tests compris), B2 Model ne lie plus QtWidgets ni l'OCCT de rendu
+      (`$<COMPILE_ONLY:Qt6::Widgets>` à la même place : commandes de compilation identiques). Linux : suite identique à la base,
+      banc 146/146, TSALab 27/27, NEEDED identiques. [ ] PCH MSVC (cmake_pch.cxx.obj lié dans tsa-mesh / tsa-ifc /
+      tsa3d_roundtrip_example), avec et sans IfcOpenShell ; C4605 / C4651 ; version de CMake de la CI Windows.
+      [ ] TKG2d, TKBO, TKBool, TKMesh : sans utilisateur direct, conservés (tirés par TKV3d / TKOffset, greffon IFC).
+- [x] C — `test/etape2-caracterisation` (worktree principal) : suite « undo », tests 513-523 ; Linux Release 11/11 (×3 xcb,
+      ×1 offscreen), suite complète 521/522 (128 Windows seul), 8 mutations de production détectées puis restaurées.
+- [ ] Validation Windows / MSVC des trois chantiers : procédure ../TSA-rapports/2026-10-26/core_etape1/VALIDATION_WINDOWS_39155c4.md
+      (§7-11) ; RIEN d'exécuté sous Windows.
+- [ ] Commits des trois branches : en attente d'autorisation.
+- [ ] Étape 2 (migration pushUndoState → EditTransaction) : NON autorisée. Préalables : clé de coalescence dans
+      EditTransaction (F1 et F3), contrat de BUG-127 (rollback sans modification), puis migration famille par famille.
+
+Lacunes connues du filet C (non couvertes, ne pas les considérer comme testées) :
+- MainWindow_Mesh.cpp:326, :359 et MainWindow_Tools.cpp:464 (couche application, non liée aux tests) ;
+- exceptions dans les slots appelés par invokeMethod ; branche « column » de AIToolRegistry ; poteaux, dalles et voiles des
+  gabarits de LibraryManager ; ordre exact des ModelEdited (volontairement non contractuel) ;
+- notifications non vérifiées positivement : seules DimensionsChanged, ModelCleared, ModelDestroyed et les Added / Removed par
+  l'API du modèle (test 523) et par les chemins de production treillis / câbles / charges (521) le sont ;
+- empreinte (tests/undo_characterization.h) : PAS un comparateur exact — exclut les réglages hors historique (vues
+  nommées, JSON d'analyse / topologie / maillage / échanges), les plans de travail, les champs privés sans accesseur, le
+  contenu des MechanicalSnapshot (clés seules), l'état hors modèle ; BIM et affichage des grilles exclus par défaut.
 
 ## TSA Core — étape 1 : extraction de TSA_Core (autorisée le 2026-10-26, non commitée)
 

@@ -36,7 +36,7 @@ SUITES = [
     "engines", "tools", "mdd", "cleanup", "bim", "ifc", "drawing", "views", "snap", "automation", "blueprint", "help",
     "appearance", "groupedit", "topology", "dimensions", "displaymodes", "shortcuts", "tsa3d", "modules", "templates",
     "deployment", "mesh", "torsion", "meshview", "demo", "surfaces", "audit", "benchmarks", "display", "multidoc",
-    "i18n", "ribbon", "templates_wp",
+    "i18n", "ribbon", "templates_wp", "undo",
 ]
 
 # Dépendances d'environnement par suite, constatées sous Linux le 2026-10-25 (exécution sans OpenSees, sans

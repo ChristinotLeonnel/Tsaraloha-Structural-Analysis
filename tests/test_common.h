@@ -212,3 +212,4 @@ bool runSuite_MultiDoc(int& passed);
 bool runSuite_I18n(int& passed);
 bool runSuite_Ribbon(int& passed);
 bool runSuite_ProjectTemplates(int& passed);
+bool runSuite_UndoCharacterization(int& passed);

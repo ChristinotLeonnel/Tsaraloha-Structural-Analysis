@@ -1,8 +1,60 @@
 # Known Issues
 
-Last Updated: 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
+
+Défauts BUG-125 à BUG-130 : constatés et FIGÉS par la suite « undo » (tests 513-523, branche test/etape2-caracterisation,
+non commitée) ; non corrigés volontairement (caractérisation avant l'étape 2). Une correction devra modifier le test
+marqué « DÉFAUT FIGÉ » explicitement.
+
+## BUG-125
+Area: Panneau Propriétés — câble
+Problem: valider le panneau sans rien changer modifie l'aire de la définition : applyChanges réécrit tous les champs
+depuis l'affichage arrondi (CablePropertiesView.cpp:93, 275-280 ; aire 0x1.6b2f7682c2457p-12 → 0x1.6b3a0abdc923cp-12 m²
+pour Ø 21 mm). Même famille que le défaut corrigé pour les poteaux (test 221) et BUG-106.
+Impact: MEDIUM (modification silencieuse d'une donnée mécanique)
+Status: OPEN — figé au test 514
+
+## BUG-126
+Area: Panneau Propriétés — nœud
+Problem: valider le panneau sans rien changer impose la couleur « #2563EB » à un nœud sans couleur
+(NodePropertiesView.cpp:269, 526).
+Impact: LOW
+Status: OPEN — figé au test 514
+
+## BUG-127
+Area: Undo/Redo — EditTransaction
+Problem: (1) commit sans modification : entrée Annuler créée, révision +1, résultats déclarés périmés
+(UndoManager.cpp:176-185) ; (2) rollback, même sans modification : différentiel vide publié, révision +1, isModified
+forcé (Model_Snapshots.cpp:172, applySnapshotData), résultats périmés par ResultsValidityGuard ; (3) imbrication : un
+rollback interne remet la profondeur à 0 (UndoManager.cpp:194), le commit externe ne crée pas d'entrée (178-179).
+Impact: MEDIUM (une commande échouée périme les résultats ; à traiter avant la migration de l'étape 2)
+Status: OPEN — figé aux tests 513 et 520
+
+## BUG-128
+Area: Cas de charge — notifications
+Problem: supprimer un cas de charge (LoadCaseDialog.cpp:231-236) ou réinitialiser les cas Eurocodes (247) efface des
+charges sans notification NodalLoadRemoved / MemberLoadRemoved ; seule LoadCaseChanged est émise.
+Impact: MEDIUM (vues et arbre non informés du retrait des charges)
+Status: OPEN — figé au test 515
+
+## BUG-129
+Area: Undo/Redo — exception après l'enregistrement
+Problem: une exception levée après pushUndoState (notification d'observateur, MemberLoadCommands.cpp:80-92 ; panneaux)
+laisse l'entrée Annuler et une application partielle (aucun rollback). Annuler rend l'état initial.
+Impact: LOW (aucun observateur de production ne lève aujourd'hui ; à traiter par la migration vers EditTransaction)
+Status: OPEN — figé aux tests 514 et 515
+
+## BUG-130
+Area: Undo/Redo — défauts mineurs caractérisés
+Problem: entrées créées sans changement (gabarit de bibliothèque vide, LibraryManager.cpp:329 ; proposition IA sans id,
+AIToolRegistry.cpp:392 ; charge nodale validée sans contrôle, LoadPropertiesView.cpp:339) ; appui posé sans NodeModified
+(NewNodeDialog.cpp:190) ; GridSettingsDialog sans vue 3D : duplication hors historique (GridSettingsDialog.cpp:394-396) ;
+grilles et charges de surface de MainWindow_Mesh (326, 359) sans notification d'observateur ; validation de la grille
+active sans changement : xIsBold / yIsBold / zIsBold normalisés (vides → false), sans effet visible (test 522).
+Impact: LOW
+Status: OPEN — figés aux tests 515 à 522 (MainWindow_Mesh : lecture du code seulement, non atteignable par les tests)
 
 ## BUG-119
 Area: Vue 3D — destruction d'OccView avec le rendu logiciel Mesa (llvmpipe)
@@ -341,10 +393,16 @@ Related files: src/Analysis/CalculationSnapshot.cpp, src/Analysis/OpenSeesAnalys
 
 ## BUG-006
 Area: Undo/Redo
-Problem: 37 points d'entrée appellent `Model::pushUndoState` directement (dialogues, OccView_Events,
-MainWindow_Transform) : fonctionnels, mais sans `EditRecord` (historique structuré incomplet).
+Problem: 28 appels de production à `Model::pushUndoState` dans 20 fichiers (recompté le 2026-10-26 sur 39155c4 ;
+l'ancien décompte « 37 », OccView_Events et MainWindow_Transform compris, est périmé : ces deux fichiers n'en ont plus).
+Familles : F1 panneaux 10, F2 chargements 9, F3 appuis 3, F4 grilles 3, F5 création / bibliothèques 2, F6 IA 1. S'y
+ajoutent 5 appels à `pushLabelUndoState` (Annotation/DimensionService.cpp ×4, Topology/TopologyNumberingService.cpp).
+Fonctionnels, mais sans `EditRecord` sauf poutre, poteau (section, matériau) et nœud (coordonnées).
 Impact: LOW
 Status: OPEN
+Notes: comportement figé AVANT toute migration vers EditTransaction par la suite « undo » (tests 513-523, branche
+test/etape2-caracterisation, non commitée) ; 25 appels sur 28 atteints (MainWindow_Mesh.cpp:326, :359 et
+MainWindow_Tools.cpp:464 sont dans la couche application, non liée aux tests). Défauts figés : BUG-125 à BUG-130.
 
 ## BUG-008
 Area: Viewport / Performance
