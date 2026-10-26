@@ -2,6 +2,21 @@
 
 Last Updated: 2026-10-25. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
+## TSA Core — étape 1 : extraction de TSA_Core (autorisée le 2026-10-26, non commitée)
+
+- [x] Cible `<P>_Core` (STATIC, QtCore + TKernel + TKMath), 50 sources ; `<P>_Model` la lie en PUBLIC (TSA et TSALab).
+- [x] Inversion des catalogues : `Model/InstalledCatalogs`, fournisseur enregistré par ExtensionSystem.
+- [x] `<P>_CoreTests` / CTest `<P>_CoreLink` : lié au seul noyau ; contre-épreuve (ancien Section.cpp → échec de liaison).
+- [ ] Compilation MSVC (CI Windows après push, puis poste MSVC 19.51 + Qt 6.11.2).
+- [x] Revue : `SemanticVersion`, `DefinitionReference`, `MechanicalSnapshot` définis une seule fois dans le noyau
+      (`Model/DefinitionReference.h`), alias dans `ExtensionSystem/ExtensionTypes.h` ; `NamedViews` dans le noyau ;
+      aucun en-tête du noyau n'inclut un fichier hors du noyau ; test 512 (fournisseur, ordre, numérotation, repli).
+- [ ] Arête Grid/SnapMarker → Viewer/TextDisplayFallback.h (couche graphique, hors noyau) ; `CoreLink` hors CI (ctest -R).
+- [ ] Étape 2 (commandes) : à ne commencer qu'après revue du rapport d'étape 1.
+
+Points encore ouverts de l'étape 0 (2026-10-26) : validation Windows MSVC 19.51 / Qt 6.11.2 ; BUG-121 (2) et (3) ;
+BUG-123 ; essais manuels 9, 11, 13, 14, 15 ; CI de main sur a8b310a (40306365407).
+
 ## TSA Core — phase 0 : intégrité (approuvée le 2026-10-25, branche fix/core-integrity)
 
 - [x] BUG-105 unités EC2/EC3 et note de calcul (test 492).

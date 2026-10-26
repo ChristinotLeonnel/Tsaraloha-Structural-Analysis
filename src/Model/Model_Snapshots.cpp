@@ -210,7 +210,7 @@ void Model::restoreSnapshot(const Model::ModelStateSnapshot& snapshot)
     }
 }
 
-void Model::setCalculationSnapshot(const std::string& key, const TSA::ExtensionSystem::MechanicalSnapshot& snapshot, const TSA::ExtensionSystem::DefinitionReference& ref)
+void Model::setCalculationSnapshot(const std::string& key, const MechanicalSnapshot& snapshot, const DefinitionReference& ref)
 {
     m_calculationSnapshots[key] = snapshot;
     if (ref.isValid())
@@ -220,13 +220,13 @@ void Model::setCalculationSnapshot(const std::string& key, const TSA::ExtensionS
     m_isModified = true;
 }
 
-const TSA::ExtensionSystem::MechanicalSnapshot* Model::getCalculationSnapshot(const std::string& key) const
+const MechanicalSnapshot* Model::getCalculationSnapshot(const std::string& key) const
 {
     auto it = m_calculationSnapshots.find(key);
     return (it != m_calculationSnapshots.end()) ? &it->second : nullptr;
 }
 
-const TSA::ExtensionSystem::DefinitionReference* Model::getDefinitionReference(const std::string& key) const
+const DefinitionReference* Model::getDefinitionReference(const std::string& key) const
 {
     auto it = m_definitionReferences.find(key);
     return (it != m_definitionReferences.end()) ? &it->second : nullptr;

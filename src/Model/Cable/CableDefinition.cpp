@@ -1,6 +1,5 @@
 #include "CableDefinition.h"
-#include "../../ExtensionSystem/LibraryRegistry.h"
-#include "../../ExtensionSystem/DefinitionModels.h"
+#include "../InstalledCatalogs.h"
 #include <cmath>
 #include <algorithm>
 
@@ -183,15 +182,10 @@ CableDefinition CableDefinition::prestressingBar_32()
 
 std::vector<CableDefinition> CableDefinition::defaultDefinitions()
 {
-    const auto& extCables = TSA::ExtensionSystem::LibraryRegistry::instance().allCables();
-    if (!extCables.empty())
+    // Bibliothèques installées (fournies par la couche des bibliothèques), sinon catalogue intégré
+    const auto& installed = installedCatalogs();
+    if (std::vector<CableDefinition> list = installed.cables ? installed.cables() : std::vector<CableDefinition> {}; !list.empty())
     {
-        std::vector<CableDefinition> list;
-        list.reserve(extCables.size());
-        for (const auto& cabDef : extCables)
-        {
-            list.push_back(cabDef.toModelCableDefinition());
-        }
         std::sort(list.begin(), list.end(), [](const CableDefinition& a, const CableDefinition& b) {
             return a.name() < b.name();
         });

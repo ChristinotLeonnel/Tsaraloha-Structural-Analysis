@@ -1,4 +1,5 @@
 #include "LibraryRegistry.h"
+#include "../Model/InstalledCatalogs.h"
 #include <algorithm>
 #include <cctype>
 
@@ -321,5 +322,28 @@ size_t LibraryRegistry::cableCount() const
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_cables.size();
 }
+
+namespace
+{
+// Catalogues installés fournis au noyau (TSA_Core ne dépend pas de cette couche) : fournisseur enregistré à
+// l'initialisation du programme, registre relu à chaque appel. Ordre et numérotation identiques à l'ancienne lecture
+// directe du registre par Section::defaultLibrary et CableDefinition::defaultDefinitions.
+[[maybe_unused]] const bool kInstalledCatalogsProvided = [] {
+    TSA::Model::InstalledCatalogs catalogs;
+    catalogs.sections = [] {
+        std::vector<TSA::Model::Section> list;
+        int id = 1;
+        for (const auto& secDef : LibraryRegistry::instance().allSections()) list.push_back(secDef.toModelSection(id++));
+        return list;
+    };
+    catalogs.cables = [] {
+        std::vector<TSA::Model::CableDefinition> list;
+        for (const auto& cabDef : LibraryRegistry::instance().allCables()) list.push_back(cabDef.toModelCableDefinition());
+        return list;
+    };
+    TSA::Model::setInstalledCatalogs(std::move(catalogs));
+    return true;
+}();
+} // namespace
 
 } // namespace TSA::ExtensionSystem

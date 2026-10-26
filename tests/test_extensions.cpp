@@ -2,9 +2,12 @@
 #include "App/ProductInfo.h"
 #include "Core/AppPaths.h"
 #include "ExtensionSystem/LibraryManager.h"
+#include "ExtensionSystem/LibraryRegistry.h"
+#include "Model/InstalledCatalogs.h"
 #include <QCryptographicHash>
 #include <QDataStream>
 #include <QTemporaryDir>
+#include <type_traits>
 
 bool runSuite_Extensions(int& passed)
 {
@@ -1543,6 +1546,79 @@ bool runSuite_Extensions(int& passed)
         passed++;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 512 : catalogues installés vus par le noyau (TSA Core, étape 1). Dans un programme complet, la couche des
+    // bibliothèques fournit au noyau les sections et câbles du registre (Model/InstalledCatalogs) : ordre et numérotation
+    // identiques à l'ancienne lecture directe du registre ; sans bibliothèque installée, catalogues intégrés. Le registre
+    // n'est pas vidé : seules les définitions du test (bibliothèque « test.core512 ») sont ajoutées puis retirées.
+    // -------------------------------------------------------------------------
+    {
+        using namespace TSA::ExtensionSystem;
+        // Types du domaine définis une seule fois, dans le noyau : les noms d'ExtensionSystem sont des alias
+        static_assert(std::is_same_v<SemanticVersion, TSA::Model::SemanticVersion> && std::is_same_v<DefinitionReference, TSA::Model::DefinitionReference> &&
+                      std::is_same_v<MechanicalSnapshot, TSA::Model::MechanicalSnapshot>);
+        auto& registry = LibraryRegistry::instance();
+        const TSA::Model::InstalledCatalogs provider = TSA::Model::installedCatalogs();
+        TEST_CHECK(provider.sections && provider.cables, "Test 512: fournisseur des catalogues installés enregistré dans le programme");
+
+        const std::string lib = "test.core512";
+        auto section = [&lib](const std::string& id, const std::string& name, double h) {
+            SectionDefinition d;
+            d.ref.libraryId = lib;
+            d.ref.definitionId = id;
+            d.id = id;
+            d.name = name;
+            d.shapeType = "Rectangular";
+            d.width = 0.2;
+            d.height = h;
+            return d;
+        };
+        CableCatalogDefinition cable;
+        cable.ref.libraryId = lib;
+        cable.ref.definitionId = "test.core512.cable";
+        cable.id = "test.core512.cable";
+        cable.name = "Câble 512";
+        cable.category = "Generic";
+        TEST_CHECK(registry.registerSection(section("test.core512.z", "Z 512", 0.4)) && registry.registerSection(section("test.core512.a", "A 512", 0.3)) &&
+                       registry.registerSection(section("test.core512.m", "M 512", 0.5)) && registry.registerCable(cable),
+                   "Test 512: définitions d'essai enregistrées");
+
+        // Ancien algorithme (lecture directe du registre) : numérotation dans l'ordre du registre, puis tri par nom
+        std::vector<TSA::Model::Section> expected;
+        int id = 1;
+        for (const auto& d : registry.allSections()) expected.push_back(d.toModelSection(id++));
+        std::sort(expected.begin(), expected.end(), [](const auto& a, const auto& b) { return a.name < b.name; });
+        const auto sections = TSA::Model::Section::defaultLibrary();
+        bool sameSections = sections.size() == expected.size();
+        for (std::size_t i = 0; sameSections && i < sections.size(); ++i)
+            sameSections = sections[i].name == expected[i].name && sections[i].id == expected[i].id && sections[i].height == expected[i].height;
+        std::vector<std::string> expectedCables;
+        for (const auto& c : registry.allCables()) expectedCables.push_back(c.toModelCableDefinition().name());
+        std::sort(expectedCables.begin(), expectedCables.end());
+        std::vector<std::string> cables;
+        for (const auto& c : TSA::Model::CableDefinition::defaultDefinitions()) cables.push_back(c.name());
+        registry.removeDefinitionsByLibraryId(lib);
+        TEST_CHECK(sameSections && std::any_of(sections.begin(), sections.end(), [](const auto& s) { return s.name == "A 512"; }),
+                   "Test 512: sections installées — même ordre et même numérotation que la lecture directe du registre (" << sections.size() << ")");
+        TEST_CHECK(cables == expectedCables && std::find(cables.begin(), cables.end(), "Câble 512") != cables.end(),
+                   "Test 512: câbles installés — même liste triée que la lecture directe du registre");
+        TEST_CHECK(!registry.findSection("test.core512.a") && !registry.findCable("test.core512.cable"), "Test 512: définitions d'essai retirées du registre");
+
+        // Aucune bibliothèque installée : catalogues intégrés (fournisseur vide le temps du contrôle, puis rétabli)
+        TSA::Model::InstalledCatalogs none;
+        none.sections = [] { return std::vector<TSA::Model::Section> {}; };
+        none.cables = [] { return std::vector<TSA::Model::CableDefinition> {}; };
+        TSA::Model::setInstalledCatalogs(none);
+        const auto builtinSections = TSA::Model::Section::defaultLibrary();
+        const auto builtinCables = TSA::Model::CableDefinition::defaultDefinitions();
+        TSA::Model::setInstalledCatalogs(provider);
+        const std::string ipe300 = TSA::Model::Section::ipe(300).name;
+        TEST_CHECK(std::any_of(builtinSections.begin(), builtinSections.end(), [&ipe300](const auto& s) { return s.name == ipe300; }) && !builtinCables.empty(),
+                   "Test 512: sans bibliothèque installée, catalogues intégrés (sections, câbles)");
+        TEST_CHECK(TSA::Model::installedCatalogs().sections && TSA::Model::installedCatalogs().cables, "Test 512: fournisseur du programme rétabli");
+        std::cout << "[PASS] Test 512: Catalogues installés fournis au noyau (ordre, numérotation, repli intégré)" << std::endl;
+        passed++;
+    }
 
     return true;
 }

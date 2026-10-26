@@ -1,6 +1,5 @@
 #include "Section.h"
-#include "../ExtensionSystem/LibraryRegistry.h"
-#include "../ExtensionSystem/DefinitionModels.h"
+#include "InstalledCatalogs.h"
 #include <algorithm>
 
 #ifndef M_PI
@@ -521,16 +520,11 @@ Section Section::tSection(double h, double b, double tw, double tf, const std::s
 
 std::vector<Section> Section::defaultLibrary()
 {
-    const auto& extSections = TSA::ExtensionSystem::LibraryRegistry::instance().allSections();
-    if (!extSections.empty())
+    // Bibliothèques installées (fournies par la couche des bibliothèques), sinon catalogue intégré
+    const auto& installed = installedCatalogs();
+    std::vector<Section> result = installed.sections ? installed.sections() : std::vector<Section> {};
+    if (!result.empty())
     {
-        std::vector<Section> result;
-        result.reserve(extSections.size());
-        int id = 1;
-        for (const auto& secDef : extSections)
-        {
-            result.push_back(secDef.toModelSection(id++));
-        }
         std::sort(result.begin(), result.end(), [](const Section& a, const Section& b) {
             return a.name < b.name;
         });

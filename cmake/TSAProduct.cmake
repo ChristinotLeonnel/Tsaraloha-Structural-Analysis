@@ -973,6 +973,135 @@ set(TSARALOHA_MODEL_SOURCES
     ${PLATFORM_SOURCES}
 )
 
+# --- TSA Core (<P>_Core, étape 1 du programme TSA Core) ------------------------------------------------------------
+# Noyau du modèle structural : modèle, éléments, charges, câbles, repères et niveaux, cotations, BIM (données), grilles
+# (données), historique par instantanés, journal. Sans widget, sans rendu, sans moteur de calcul : périmètre établi par
+# fermeture à l'édition de liens (QtCore, TKernel, TKMath seulement). Les catalogues installés lui sont fournis par
+# la couche des bibliothèques (Model/InstalledCatalogs, enregistré par ExtensionSystem/LibraryRegistry.cpp).
+# Retirés de TSARALOHA_MODEL_SOURCES : compilés une seule fois, dans <P>_Core.
+set(TSARALOHA_CORE_SOURCES
+    ${TSA_ROOT}/src/Annotation/Dimension.h
+    ${TSA_ROOT}/src/Annotation/Dimension.cpp
+    ${TSA_ROOT}/src/BIM/Core/BimGeometry.h
+    ${TSA_ROOT}/src/BIM/Core/BimGeometry.cpp
+    ${TSA_ROOT}/src/BIM/Core/BimModel.h
+    ${TSA_ROOT}/src/BIM/Core/BimModel.cpp
+    ${TSA_ROOT}/src/BIM/Core/BimTypes.h
+    ${TSA_ROOT}/src/BIM/Core/BimTypes.cpp
+    ${TSA_ROOT}/src/BIM/Core/IfcGuid.h
+    ${TSA_ROOT}/src/BIM/Core/IfcGuid.cpp
+    ${TSA_ROOT}/src/BIM/Core/ProductTypes.h
+    ${TSA_ROOT}/src/BIM/Core/ProductTypes.cpp
+    ${TSA_ROOT}/src/BIM/Core/QuantityTakeoff.h
+    ${TSA_ROOT}/src/BIM/Core/QuantityTakeoff.cpp
+    ${TSA_ROOT}/src/Coordinate/CoordinateSystem.h
+    ${TSA_ROOT}/src/Coordinate/CoordinateSystem.cpp
+    ${TSA_ROOT}/src/Coordinate/GeometryTolerance.h
+    ${TSA_ROOT}/src/Coordinate/Level.h
+    ${TSA_ROOT}/src/Coordinate/LevelManager.h
+    ${TSA_ROOT}/src/Coordinate/LevelManager.cpp
+    ${TSA_ROOT}/src/Coordinate/Point3D.h
+    ${TSA_ROOT}/src/Coordinate/WorkPlane.h
+    ${TSA_ROOT}/src/Coordinate/WorkPlane.cpp
+    ${TSA_ROOT}/src/Coordinate/WorkPlaneCoordinateSystem.h
+    ${TSA_ROOT}/src/Coordinate/WorkPlaneCoordinateSystem.cpp
+    ${TSA_ROOT}/src/Coordinate/WorkPlaneManager.h
+    ${TSA_ROOT}/src/Coordinate/WorkPlaneManager.cpp
+    ${TSA_ROOT}/src/Core/AppPaths.h
+    ${TSA_ROOT}/src/Core/AppPaths.cpp
+    ${TSA_ROOT}/src/Diagnostics/LogEntry.h
+    ${TSA_ROOT}/src/Diagnostics/LogLevel.h
+    ${TSA_ROOT}/src/Diagnostics/Logger.h
+    ${TSA_ROOT}/src/Diagnostics/Logger.cpp
+    ${TSA_ROOT}/src/Diagnostics/RingBuffer.h
+    ${TSA_ROOT}/src/Grid/ArbitraryGrid.h
+    ${TSA_ROOT}/src/Grid/ArbitraryGrid.cpp
+    ${TSA_ROOT}/src/Grid/CartesianGrid.h
+    ${TSA_ROOT}/src/Grid/CartesianGrid.cpp
+    ${TSA_ROOT}/src/Grid/CylindricalGrid.h
+    ${TSA_ROOT}/src/Grid/CylindricalGrid.cpp
+    ${TSA_ROOT}/src/Grid/GridDefinition.h
+    ${TSA_ROOT}/src/Grid/GridDefinition.cpp
+    ${TSA_ROOT}/src/Grid/GridManager.h
+    ${TSA_ROOT}/src/Grid/GridManager.cpp
+    ${TSA_ROOT}/src/Grid/GridSystem.h
+    ${TSA_ROOT}/src/Grid/GridSystem.cpp
+    ${TSA_ROOT}/src/Grid/GridType.h
+    ${TSA_ROOT}/src/Model/Beam.h
+    ${TSA_ROOT}/src/Model/Beam.cpp
+    ${TSA_ROOT}/src/Model/Column.h
+    ${TSA_ROOT}/src/Model/Column.cpp
+    ${TSA_ROOT}/src/Model/Element.h
+    ${TSA_ROOT}/src/Model/Foundation.h
+    ${TSA_ROOT}/src/Model/Foundation.cpp
+    ${TSA_ROOT}/src/Model/DefinitionReference.h
+    ${TSA_ROOT}/src/Model/DefinitionReference.cpp
+    ${TSA_ROOT}/src/Model/InstalledCatalogs.h
+    ${TSA_ROOT}/src/Model/InstalledCatalogs.cpp
+    ${TSA_ROOT}/src/Model/Material.h
+    ${TSA_ROOT}/src/Model/Material.cpp
+    ${TSA_ROOT}/src/Model/Model.h
+    ${TSA_ROOT}/src/Model/Model.cpp
+    ${TSA_ROOT}/src/Model/ModelDiff.h
+    ${TSA_ROOT}/src/Model/ModelDiff.cpp
+    ${TSA_ROOT}/src/Model/ModelElementCopy.h
+    ${TSA_ROOT}/src/Model/NamedViews.h
+    ${TSA_ROOT}/src/Model/NamedViews.cpp
+    ${TSA_ROOT}/src/Model/Model_Snapshots.cpp
+    ${TSA_ROOT}/src/Model/Model_Topology.cpp
+    ${TSA_ROOT}/src/Model/Model_Transformations.cpp
+    ${TSA_ROOT}/src/Model/Node.h
+    ${TSA_ROOT}/src/Model/Node.cpp
+    ${TSA_ROOT}/src/Model/Section.h
+    ${TSA_ROOT}/src/Model/Section.cpp
+    ${TSA_ROOT}/src/Model/SelectionQuery.h
+    ${TSA_ROOT}/src/Model/SelectionQuery.cpp
+    ${TSA_ROOT}/src/Model/Slab.h
+    ${TSA_ROOT}/src/Model/Slab.cpp
+    ${TSA_ROOT}/src/Model/SupportDefinition.h
+    ${TSA_ROOT}/src/Model/SupportDefinition.cpp
+    ${TSA_ROOT}/src/Model/SurfaceFormulation.h
+    ${TSA_ROOT}/src/Model/SurfaceSupport.h
+    ${TSA_ROOT}/src/Model/TrussMember.h
+    ${TSA_ROOT}/src/Model/TrussMember.cpp
+    ${TSA_ROOT}/src/Model/Wall.h
+    ${TSA_ROOT}/src/Model/Wall.cpp
+    ${TSA_ROOT}/src/Model/Cable/Cable.h
+    ${TSA_ROOT}/src/Model/Cable/Cable.cpp
+    ${TSA_ROOT}/src/Model/Cable/CableAnalysisProperties.h
+    ${TSA_ROOT}/src/Model/Cable/CableAnchor.h
+    ${TSA_ROOT}/src/Model/Cable/CableAnchor.cpp
+    ${TSA_ROOT}/src/Model/Cable/CableDefinition.h
+    ${TSA_ROOT}/src/Model/Cable/CableDefinition.cpp
+    ${TSA_ROOT}/src/Model/Cable/CableGeometry.h
+    ${TSA_ROOT}/src/Model/Cable/CableGeometry.cpp
+    ${TSA_ROOT}/src/Model/Cable/CablePrestress.h
+    ${TSA_ROOT}/src/Model/Cable/CableStandards.h
+    ${TSA_ROOT}/src/Model/Cable/CableStandards.cpp
+    ${TSA_ROOT}/src/Model/Cable/CableTypes.h
+    ${TSA_ROOT}/src/Model/Cable/StayCable.h
+    ${TSA_ROOT}/src/Model/Cable/StayCable.cpp
+    ${TSA_ROOT}/src/Model/Cable/SuspensionSystem.h
+    ${TSA_ROOT}/src/Model/Cable/SuspensionSystem.cpp
+    ${TSA_ROOT}/src/Model/Load/LoadCase.h
+    ${TSA_ROOT}/src/Model/Load/LoadCase.cpp
+    ${TSA_ROOT}/src/Model/Load/LoadCombination.h
+    ${TSA_ROOT}/src/Model/Load/LoadCombination.cpp
+    ${TSA_ROOT}/src/Model/Load/LoadEnums.h
+    ${TSA_ROOT}/src/Model/Load/LoadManager.h
+    ${TSA_ROOT}/src/Model/Load/LoadManager.cpp
+    ${TSA_ROOT}/src/Model/Load/MemberLoad.h
+    ${TSA_ROOT}/src/Model/Load/MemberLoad.cpp
+    ${TSA_ROOT}/src/Model/Load/NodalLoad.h
+    ${TSA_ROOT}/src/Model/Load/NodalLoad.cpp
+    ${TSA_ROOT}/src/Model/Load/SurfaceLoad.h
+    ${TSA_ROOT}/src/UndoRedo/EditRecord.h
+    ${TSA_ROOT}/src/UndoRedo/EditTransaction.h
+    ${TSA_ROOT}/src/UndoRedo/UndoManager.h
+    ${TSA_ROOT}/src/UndoRedo/UndoManager.cpp
+)
+list(REMOVE_ITEM TSARALOHA_MODEL_SOURCES ${TSARALOHA_CORE_SOURCES})
+
 set(TSARALOHA_GRAPHICS_SOURCES
     ${VIEWER_CORE_SOURCES}
     ${VIEWER_MAIN_SOURCES}
@@ -1208,6 +1337,8 @@ endfunction()
 
 # =============================================================================
 # Bibliothèques partagées TSA / TSALab, compilées avec l'identité du produit (PRODUCT_DIR) :
+#   <PREFIX>_Core     (STATIC) : TSARALOHA_CORE_SOURCES — noyau sans widget, sans rendu, sans moteur (QtCore, TKernel,
+#                                TKMath) ; lié en PUBLIC par <PREFIX>_Model, donc transmis à tous ses consommateurs
 #   <PREFIX>_Model    (OBJECT) : TSARALOHA_MODEL_SOURCES (+ MODEL_SOURCES du produit) — porte le PCH
 #   <PREFIX>_Graphics (OBJECT) : TSARALOHA_GRAPHICS_SOURCES
 #   <PREFIX>_Widgets  (OBJECT) : TSARALOHA_WIDGETS_SOURCES
@@ -1217,6 +1348,7 @@ endfunction()
 # =============================================================================
 function(tsaraloha_add_shared_libraries)
     cmake_parse_arguments(P "" "PREFIX;PRODUCT_DIR" "OVERLAY_DIRS;MODEL_SOURCES" ${ARGN})
+    set(core ${P_PREFIX}_Core)
     set(model ${P_PREFIX}_Model)
     set(graphics ${P_PREFIX}_Graphics)
     set(widgets ${P_PREFIX}_Widgets)
@@ -1249,11 +1381,34 @@ function(tsaraloha_add_shared_libraries)
         add_subdirectory(${TSA_FEM3D_DIR} ${CMAKE_BINARY_DIR}/fem3d)
     endif()
 
+    # TSA Core : bibliothèque STATIQUE, transmise aux exécutables par le lien PUBLIC de ${model} (les objets d'une
+    # OBJECT ne le sont pas). Aucun de ses objets n'a d'initialisation statique (vérifié à l'étape 1) : un éventuel
+    # enregistrement par initialisation statique n'a pas sa place dans le noyau (il serait perdu à l'édition de liens).
+    # Dépendances limitées à QtCore et à la géométrie d'OCCT ; PCH propre, sans QtGui ni QtWidgets.
+    add_library(${core} STATIC ${TSARALOHA_CORE_SOURCES})
+    tsa_apply_common_settings(${core} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
+    target_link_libraries(${core} PUBLIC Qt6::Core TKernel TKMath)
+    target_precompile_headers(${core} PRIVATE
+        <QtCore/QtCore>
+        <Standard_Handle.hxx>
+        <gp_Pnt.hxx>
+        <gp_Vec.hxx>
+        <gp_Dir.hxx>
+        <gp_Trsf.hxx>
+        <algorithm>
+        <memory>
+        <string>
+        <vector>
+        <map>
+        <functional>
+    )
+
     # Bibliothèques OBJECT : les .obj sont réutilisés tels quels par les exécutables et les tests
     # (pas de risque de perdre des initialisations statiques comme avec une .lib).
     add_library(${model} OBJECT ${TSARALOHA_MODEL_SOURCES} ${P_MODEL_SOURCES})
     tsa_apply_common_settings(${model} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
     target_link_libraries(${model} PUBLIC
+        ${core}
         tsalab_science
         Qt6::Core
         Qt6::Gui
@@ -1628,6 +1783,13 @@ function(tsa_add_product)
             target_link_options(${name}_Benchmark PRIVATE /SUBSYSTEM:CONSOLE)
         endif()
         add_test(NAME ${name}_Benchmarks COMMAND ${name}_Benchmark --out ${CMAKE_BINARY_DIR}/validation-reports)
+
+        # TSA Core seul (étape 1) : programme lié uniquement à <nom>_Core — preuve à l'édition de liens que le noyau ne
+        # requiert ni QtGui, ni QtWidgets, ni le rendu OCCT, ni un moteur de calcul.
+        add_executable(${name}_CoreTests ${TSA_ROOT}/tests/core/test_core_link.cpp)
+        tsa_apply_common_settings(${name}_CoreTests ${P_PRODUCT_DIR})
+        target_link_libraries(${name}_CoreTests PRIVATE ${name}_Core)
+        add_test(NAME ${name}_CoreLink COMMAND ${name}_CoreTests)
 
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})

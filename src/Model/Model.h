@@ -23,7 +23,7 @@
 #include "Load/LoadManager.h"
 #include "../Coordinate/CoordinateSystem.h"
 #include "../Coordinate/WorkPlaneManager.h"
-#include "../ExtensionSystem/ExtensionTypes.h"
+#include "DefinitionReference.h"
 #include "../BIM/Core/BimModel.h"
 #include "../Annotation/Dimension.h"
 #include "NamedViews.h"
@@ -297,8 +297,8 @@ public:
         std::map<int, TrussMember> trussMembers;
         std::map<int, Cable> cables;
         LoadManager::LoadSnapshot loadSnapshot;
-        std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> calculationSnapshots;
-        std::map<std::string, TSA::ExtensionSystem::DefinitionReference> definitionReferences;
+        std::map<std::string, MechanicalSnapshot> calculationSnapshots;
+        std::map<std::string, DefinitionReference> definitionReferences;
         TSA::BIM::BimModel bim;   ///< couche BIM (produits physiques, GlobalId) synchronisée
         TSA::Annotation::DimensionSet dimensions; ///< cotations (annotations, hors calcul)
         // Données de définition hors éléments (BUG-003) : axes X/Y et niveaux (CoordinateSystem), grilles
@@ -425,11 +425,11 @@ public:
     void clear();
 
     // Snapshots mécaniques de calcul & références d'extensions (Phase 8)
-    const std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot>& calculationSnapshots() const { return m_calculationSnapshots; }
-    const std::map<std::string, TSA::ExtensionSystem::DefinitionReference>& definitionReferences() const { return m_definitionReferences; }
-    void setCalculationSnapshot(const std::string& key, const TSA::ExtensionSystem::MechanicalSnapshot& snapshot, const TSA::ExtensionSystem::DefinitionReference& ref = {});
-    const TSA::ExtensionSystem::MechanicalSnapshot* getCalculationSnapshot(const std::string& key) const;
-    const TSA::ExtensionSystem::DefinitionReference* getDefinitionReference(const std::string& key) const;
+    const std::map<std::string, MechanicalSnapshot>& calculationSnapshots() const { return m_calculationSnapshots; }
+    const std::map<std::string, DefinitionReference>& definitionReferences() const { return m_definitionReferences; }
+    void setCalculationSnapshot(const std::string& key, const MechanicalSnapshot& snapshot, const DefinitionReference& ref = {});
+    const MechanicalSnapshot* getCalculationSnapshot(const std::string& key) const;
+    const DefinitionReference* getDefinitionReference(const std::string& key) const;
     bool hasCalculationSnapshot(const std::string& key) const;
     void removeCalculationSnapshot(const std::string& key);
     void clearCalculationSnapshots();
@@ -472,8 +472,8 @@ private:
     std::map<int, Foundation> m_foundations;
     std::map<int, TrussMember> m_trussMembers;
     std::map<int, Cable> m_cables;
-    std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> m_calculationSnapshots;
-    std::map<std::string, TSA::ExtensionSystem::DefinitionReference> m_definitionReferences;
+    std::map<std::string, MechanicalSnapshot> m_calculationSnapshots;
+    std::map<std::string, DefinitionReference> m_definitionReferences;
     LoadManager m_loadManager;
 
     mutable TSA::BIM::BimModel m_bim;

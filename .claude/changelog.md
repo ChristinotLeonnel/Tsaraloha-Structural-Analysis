@@ -2,6 +2,18 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-26 (TSA Core, étape 1) — extraction de TSA_Core (non commitée)
+
+- Cible `<P>_Core` STATIC (50 sources : Model, Load, Cable, Coordinate sans AxisColorConfig, Annotation/Dimension,
+  BIM/Core, données de Grid, UndoManager, Logger, AppPaths, InstalledCatalogs) ; QtCore + TKernel + TKMath.
+- `Model/InstalledCatalogs` : Section::defaultLibrary et CableDefinition::defaultDefinitions ne dépendent plus
+  d'ExtensionSystem (fournisseur enregistré par LibraryRegistry.cpp) ; comportement inchangé.
+- `<P>_CoreTests` (CTest `<P>_CoreLink`). Linux Release : suite complète identique à la base (509/510, 128 Windows seul),
+  56/56 suites, banc 146/146, TSALab 27/27, contrôles OK. Windows/MSVC : non compilé.
+- Revue : types `SemanticVersion`, `DefinitionReference`, `MechanicalSnapshot` déplacés dans le noyau
+  (`Model/DefinitionReference.h`, alias dans ExtensionSystem, `IO/TSAFile.h` inclut ExtensionTypes.h) ; `NamedViews`
+  dans le noyau (52 sources) ; test 512 ; suite 510/511, identique à la base hors test 512 et durées mesurées.
+
 ## 2026-10-26 (BUG-122) — correctif commité sur fix/core-integrity (CI à examiner)
 
 - Repli Aspect_TODT_DEKALE des textes sur fond (marqueur d'accrochage, cotations) quand le contexte OCCT n'a pas

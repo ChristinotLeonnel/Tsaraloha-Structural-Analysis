@@ -1,6 +1,6 @@
 # Architecture (réelle) — TSA
 
-Last Updated: 2026-10-08 (base commune TSA / TSALab, branche feature/shared-core). Code > documentation.
+Last Updated: 2026-10-26 (cibles CMake : TSA Core, étape 1). Code > documentation.
 
 ## 1. Cibles CMake — base commune TSA / TSALab (ADR-023)
 
@@ -9,12 +9,21 @@ que trouver Qt / OCCT puis appeler `tsa_add_product(NAME TSA PRODUCT_DIR product
 TSALab (dépôt voisin `../TSA` → `TSA_ROOT_DIR`) appelle la même fonction avec son `product/` et ses sources `lab/`.
 
 ```text
-<P>_Core  (bibliothèque OBJECT, CORE_SOURCES + CORE_SOURCES du produit, PCH Qt/OCCT/STL partagé)
- ├── <P>                  (exe : UI, viewer, rendu, plateforme, ressources) — src/main.cpp → Application
- │                        + product/ProductHooks.cpp (configureShell : extensions du produit)
- ├── <P>_Tests            (exe <P>_TestSuite : tests/*.cpp + product/ProductTests.cpp)
- └── <P>ThumbnailProvider (DLL Explorateur, src/ShellExtension, sans Qt)
+<P>_Core      (STATIC, TSARALOHA_CORE_SOURCES : noyau — modèle, éléments, charges, câbles, repères, cotations, BIM
+               (données), grilles (données), historique par instantanés, journal ; QtCore + TKernel + TKMath seulement,
+               PCH propre sans widget ; périmètre établi par fermeture à l'édition de liens, 2026-10-26)
+ └── <P>_Model    (OBJECT, TSARALOHA_MODEL_SOURCES : commandes, IO, calcul, normes, NDC, IA, bibliothèques… ; lie
+     │             <P>_Core en PUBLIC, porte le PCH Qt/OCCT complet)
+     ├── <P>_Graphics (OBJECT : viewport, géométrie, rendu des grilles, outils) → <P>_Widgets (OBJECT : interface partagée)
+     ├── <P>                  (exe : UI, AppShell, MainWindow…) — src/main.cpp → EcosystemApplication
+     ├── <P>_Tests            (exe <P>_TestSuite : tests/*.cpp + product/ProductTests.cpp)
+     └── <P>ThumbnailProvider (DLL Explorateur, src/ShellExtension, sans Qt)
+<P>_CoreTests (exe tests/core/test_core_link.cpp, lié au SEUL <P>_Core ; CTest <P>_CoreLink) : preuve à l'édition de
+               liens que le noyau ne requiert ni QtGui, ni QtWidgets, ni rendu OCCT, ni moteur de calcul.
 ```
+Catalogues installés : le noyau lit `Model/InstalledCatalogs` (Section::defaultLibrary, CableDefinition::defaultDefinitions) ;
+la couche des bibliothèques enregistre le fournisseur (`ExtensionSystem/LibraryRegistry.cpp`, initialisation statique,
+toujours liée car <P>_Model est OBJECT). Le noyau ne doit contenir aucune initialisation statique (bibliothèque STATIC).
 Identité produit : `<ProductIdentity.h>` (C++ pur, chevrons, dossier product/ du produit compilé) et
 `src/App/ProductInfo.h` (helpers Qt : extension, filtres, QSettings, `sourceDirectory()` = `TSA_SOURCE_DIR`).
 Aucun littéral « TSA » / « .tsa » / chemin absolu dans src/ pour ces usages.
@@ -26,7 +35,7 @@ DeformedGeometry, DiagramGeometry, SupportGeometry) + `CABLE_GEOMETRY_SOURCES` (
 Viewer : `VIEWER_CORE_SOURCES` (MaterialVisual, TextureManager, ProjectionManager, ViewManager).
 Exe uniquement : UI ; `VIEWER_MAIN_SOURCES` (OccView*, **SelectionManager**, ResultsVisualManager) ;
 `GEOMETRY_MAIN_SOURCES` (SlabGeometry, WallGeometry, FoundationGeometry). Vérifier `CMakeLists.txt`
-avant de référencer une classe depuis les tests (`cmake/TSAProduct.cmake` ; TSA_Tests ne lie que TSA_Core). `ModelTreeWidget` est dans TSA_Core (testé, 2026-10-07).
+avant de référencer une classe depuis les tests (`cmake/TSAProduct.cmake`).
 Isolation 3D : `OccView::isolateElements / hideElements…` dans la passe `updateElementIsolation` (module View3D supprimé).
 
 ## 2. Cartographie des sous-systèmes

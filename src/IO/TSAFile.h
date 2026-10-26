@@ -3,6 +3,7 @@
 #include "../Model/Load/LoadManager.h"
 #include "TSAFileFormat.h"
 #include "../Model/Model.h"
+#include "../ExtensionSystem/ExtensionTypes.h"   // DefinitionReference, MechanicalSnapshot (noms ExtensionSystem)
 #include "../Grid/GridManager.h"
 
 #include <string>
