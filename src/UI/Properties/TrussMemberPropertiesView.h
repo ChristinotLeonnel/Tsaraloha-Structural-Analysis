@@ -2,6 +2,7 @@
 
 #include "../../Model/Material.h"
 
+#include "EditedFields.h"
 #include "IElementPropertyView.h"
 #include "MemberEndNodesWidget.h"
 #include "../../Model/TrussMember.h"
@@ -37,10 +38,13 @@ private slots:
 private:
     MemberEndNodesWidget* m_endNodes = nullptr;   // nœuds d'extrémité (appuis), lus dans le modèle
     void setupUi();
+    void captureEditedFields();
+    EditedFields m_edited;   ///< valeurs affichées au chargement : seuls les champs modifiés sont réécrits
 
     TSA::Model::Model* m_model = nullptr;
     int m_memberId = -1;
     bool m_isLoading = false;
+    bool m_sectionEditable = true;   ///< section circulaire pleine : seule forme représentée par le champ diamètre
 
     QLineEdit* m_editName = nullptr;
     QComboBox* m_comboRole = nullptr;

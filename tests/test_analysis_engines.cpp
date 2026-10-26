@@ -13,6 +13,7 @@
 #ifdef TSA_HAS_FEM3D
 #include "Analysis/Engines/Fem3D/Fem3DEngine.h"
 #endif
+#include "Analysis/OpenSeesManager.h"
 #include "Analysis/OpenSeesSolver.h"
 #include "Model/Load/LoadManager.h"
 #include "Project/ProjectSession.h"
@@ -879,6 +880,42 @@ bool runSuite_Engines(int& passed)
         }
         TEST_CHECK(scale > 1.0 && worst <= 1e-6 * scale, "Test 477: efforts aux stations identiques (écart " << worst << " / " << scale << ")");
         std::cout << "[PASS] Test 477: Fem3D comparé à OpenSees sur un portique spatial TSA" << std::endl;
+        ++passed;
+
+        // TEST 499 : comparaison Fem3D / OpenSees quand OpenSees calcule en N (option « kN, m, kPa » décochée) — Fem3D
+        // calcule toujours en kN : la comparaison ramène les deux côtés à la même unité (BUG-117, R8).
+        AnalysisContext cN = c;
+        cN.engineSettings["opensees"] = QJsonObject { { "useKiloNewtons", false } };
+        const auto runN = mgr.run(cN, mgr.prepare(m, &gm, cN));
+        TEST_CHECK(runN.success, "Test 499: calcul Fem3D, comparaison OpenSees en N (" << runN.message << ")");
+        TEST_CHECK(runN.message.find(" 0 hors tolérance") != std::string::npos, "Test 499: Fem3D (kN) = OpenSees (N) (" << runN.message << ")");
+        TEST_CHECK(runN.results.units().force == "kN", "Test 499: résultats affichés = Fem3D, en kN");
+        AnalysisContext osN = os;
+        osN.engineSettings["opensees"] = QJsonObject { { "useKiloNewtons", false } };
+        const auto osRunN = mgr.run(osN, mgr.prepare(m, &gm, osN));
+        TEST_CHECK(osRunN.success && osRunN.results.units().force == "N", "Test 499: OpenSees seul, en N");
+        TSA::Analysis::ResultsModel fem = run.results;
+        const auto cmpKN = compareResults(fem, osRun.results), cmpN = compareResults(fem, osRunN.results);
+        TEST_CHECK(cmpKN.compared > 0 && cmpKN.failed == 0 && cmpN.compared == cmpKN.compared && cmpN.failed == 0,
+                   "Test 499: compareResults indépendant de l'unité d'OpenSees (" << cmpN.failed << " écarts en N)");
+        std::cout << "[PASS] Test 499: Comparaison Fem3D / OpenSees en kN et en N" << std::endl;
+        ++passed;
+
+        // TEST 504 : métadonnées des vrais moteurs (BUG-111, étape 0) — version lue sur le moteur, aucune annexe nationale
+        // attribuée au calcul, configuration réelle du script OpenSees, messages de validation de la préparation repris.
+        std::size_t prepMessages = 0;
+        for (const auto& msg : prep.validation.messages()) prepMessages += msg.severity != ValidationSeverity::Error ? 1 : 0;
+        const auto& fm = run.results.executionMetadata();
+        const auto& om = osRun.results.executionMetadata();
+        const std::string installed = TSA::Analysis::OpenSeesManager::instance().versionInfo().versionString.toStdString();
+        TEST_CHECK(fm.solverEngine == "Fem3D" && !fm.solverVersion.empty() && fm.nationalAnnex.empty() && fm.normativeFramework.empty(),
+                   "Test 504: Fem3D : version du moteur, aucune annexe ni référentiel attribués (" << fm.solverVersion << ")");
+        TEST_CHECK(om.solverEngine == "OpenSees" && om.solverVersion == installed && om.nationalAnnex.empty()
+                       && om.modelBuilder == "BasicBuilder -ndm 3 -ndf 6" && om.numberer == "RCM",
+                   "Test 504: OpenSees : version lue (" << om.solverVersion << "), configuration du script, aucune annexe");
+        TEST_CHECK(fm.preparationMessages.size() == prepMessages,
+                   "Test 504: messages de la validation avant calcul repris dans les résultats (" << prepMessages << ")");
+        std::cout << "[PASS] Test 504: Métadonnées des moteurs Fem3D et OpenSees sans valeur inventée" << std::endl;
         ++passed;
     }
     {

@@ -5,7 +5,11 @@
 #include "test_common.h"
 
 #include "App/ProductInfo.h"
+#include "UI/Properties/BeamPropertiesView.h"
 #include "UI/Properties/ColumnPropertiesView.h"
+#include "UI/Properties/SlabPropertiesView.h"
+#include "UI/Properties/TrussMemberPropertiesView.h"
+#include "UI/Properties/WallPropertiesView.h"
 #include "Viewer/MaterialVisual.h"
 #include "Viewer/TextureManager.h"
 
@@ -21,6 +25,11 @@
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <Graphic3d_AspectFillArea3d.hxx>
 #include <Prs3d_ShadingAspect.hxx>
+#include <QDoubleSpinBox>
+#include <QApplication>
+#include <QInputDialog>
+#include <QTableWidget>
+#include <QTimer>
 #include <QPushButton>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -112,6 +121,130 @@ bool runSuite_Appearance(int& passed)
         useMaterial->click();
         TEST_CHECK(m.getColumn(col)->color().empty(), "Test 221: « Matériau » rend l'apparence du matériau");
         std::cout << "[PASS] Test 221: Panneau Propriétés : couleur du matériau par défaut, « Matériau »" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 493 : panneau Propriétés — modifier un champ ne réécrit pas la section, le matériau, ni les valeurs que
+    // les champs ne savent pas représenter. Auparavant, chaque validation (nom, couleur…) reconstruisait la section
+    // depuis les champs : IPE 300 → « Profilé I » sans congés, UPN / HEA / cornière → rectangle ou rond, matériau
+    // hors liste → matériau précédent de la liste, rotation et hauteur arrondies aux décimales affichées.
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(6, 0, 0), c = m.addNode(6, 4, 0), d = m.addNode(0, 4, 0);
+        const int e = m.addNode(0, 0, 3), f = m.addNode(6, 0, 3);
+        auto sameSection = [](const Section& x, const Section& y) {
+            return x.name == y.name && x.shape == y.shape && x.area() == y.area() && x.iy() == y.iy() && x.iz() == y.iz() && x.it() == y.it();
+        };
+
+        const int ipe = m.addBar(a, b, Section::ipe(300), Material::steelS355(), BarRole::Beam, 12.345);
+        const int upn = m.addBar(b, c, Section::upn(200), Material::steelS235());
+        Material special = Material::steelS355();
+        special.id = 987654;
+        special.name = "S355 spécial (test 493)";
+        special.fk = 4.12e8;
+        const int custom = m.addBar(c, d, Section::rectangular(0.20, 0.40), special);
+        const Section ipeSec = m.getBeam(ipe)->section(), upnSec = m.getBeam(upn)->section();
+        for (const int id : { ipe, upn, custom })
+        {
+            TSA::UI::BeamPropertiesView view(&m);
+            view.setElementId(id);
+            view.applyChanges();   // comme après une modification du nom ou de la couleur
+        }
+        TEST_CHECK(sameSection(m.getBeam(ipe)->section(), ipeSec), "Test 493: barre IPE 300 conservée (nom, A, Iy, Iz, It)");
+        TEST_CHECK(m.getBeam(ipe)->rotation() == 12.345, "Test 493: rotation non arrondie aux décimales affichées");
+        TEST_CHECK(sameSection(m.getBeam(upn)->section(), upnSec), "Test 493: barre UPN 200 conservée");
+        TEST_CHECK(m.getBeam(custom)->material().name == special.name && m.getBeam(custom)->material().fk == special.fk,
+                   "Test 493: matériau absent de la liste conservé");
+
+        const int col = m.addColumn(a, e);
+        m.getColumn(col)->setSection(Section::hea(200));
+        m.getColumn(col)->setMaterial(Material::steelS355());
+        const Section heaSec = m.getColumn(col)->section();
+        {
+            TSA::UI::ColumnPropertiesView view(&m);
+            view.setElementId(col);
+            view.applyChanges();
+        }
+        TEST_CHECK(sameSection(m.getColumn(col)->section(), heaSec), "Test 493: poteau HEA 200 conservé (non remplacé par un rectangle)");
+        TEST_CHECK(m.getColumn(col)->material().name == Material::steelS355().name, "Test 493: matériau du poteau conservé");
+
+        const int truss = m.addTrussMember(a, f);
+        m.getTrussMember(truss)->setSection(Section::angle(0.06, 0.06, 0.006, "L 60x60x6"));
+        const Section angleSec = m.getTrussMember(truss)->section();
+        {
+            TSA::UI::TrussMemberPropertiesView view(&m);
+            view.setElementId(truss);
+            view.applyChanges();
+        }
+        TEST_CHECK(sameSection(m.getTrussMember(truss)->section(), angleSec), "Test 493: treillis en cornière conservé (non remplacé par un rond)");
+
+        const int wall = m.addWall(e, f, 3.125, 0.175);
+        {
+            TSA::UI::WallPropertiesView view(&m);
+            view.setElementId(wall);
+            view.applyChanges();
+        }
+        TEST_CHECK(m.getWall(wall) && m.getWall(wall)->height() == 3.125 && m.getWall(wall)->thickness() == 0.175,
+                   "Test 493: hauteur du voile non arrondie (3,125 m)");
+
+        // Contrôle positif : une modification réelle d'un champ reste appliquée.
+        const int slab = m.addSlab({ a, b, c, d }, 0.175);
+        {
+            TSA::UI::SlabPropertiesView view(&m);
+            view.setElementId(slab);
+            view.applyChanges();
+            TEST_CHECK(m.getSlab(slab) && m.getSlab(slab)->thickness() == 0.175, "Test 493: épaisseur de dalle conservée");
+            QDoubleSpinBox* thickness = nullptr;
+            for (auto* spin : view.findChildren<QDoubleSpinBox*>())
+                if (spin->minimum() == 0.01 && spin->maximum() == 10.0) thickness = spin;
+            TEST_CHECK(thickness != nullptr, "Test 493: champ épaisseur trouvé");
+            thickness->setValue(0.25);
+            TEST_CHECK(m.getSlab(slab)->thickness() == 0.25, "Test 493: une épaisseur modifiée par l'utilisateur est appliquée");
+        }
+        std::cout << "[PASS] Test 493: Panneau Propriétés : seuls les champs modifiés sont réécrits (sections, matériaux, valeurs)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 498 : dialogue des cas de charge — ajouter un cas, ajouter / supprimer une combinaison prévient les vues
+    // (arbre du modèle, vue 3D) une seule fois. Auparavant : entrée Annuler créée mais aucune notification.
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        struct Observer : TSA::Model::IModelObserver
+        {
+            int loadCaseChanges = 0;
+            void onLoadCaseChanged(int) override { ++loadCaseChanges; }
+        } obs;
+        m.addObserver(&obs);
+        TSA::UI::LoadCaseDialog dlg(&m);
+        // Valide automatiquement les boîtes de saisie modales (nom, catégorie) ouvertes par le dialogue.
+        QTimer autoAccept;
+        QObject::connect(&autoAccept, &QTimer::timeout, [] {
+            for (auto* w : QApplication::topLevelWidgets())
+                if (auto* input = qobject_cast<QInputDialog*>(w); input && input->isVisible()) input->accept();
+        });
+        autoAccept.start(20);
+        const auto casesBefore = m.loadManager().loadCases().size();
+        QMetaObject::invokeMethod(&dlg, "onAddLoadCase", Qt::DirectConnection);
+        TEST_CHECK(m.loadManager().loadCases().size() == casesBefore + 1 && obs.loadCaseChanges == 1, "Test 498: cas ajouté, une notification");
+        const auto combosBefore = m.loadManager().combinations().size();
+        QMetaObject::invokeMethod(&dlg, "onAddCombination", Qt::DirectConnection);
+        TEST_CHECK(m.loadManager().combinations().size() == combosBefore + 1 && obs.loadCaseChanges == 2, "Test 498: combinaison ajoutée, une notification");
+        autoAccept.stop();
+        // Suppression : sélectionner la ligne de la combinaison ajoutée dans le tableau des combinaisons
+        QTableWidget* combos = nullptr;
+        for (auto* t : dlg.findChildren<QTableWidget*>())
+            for (int r = 0; r < t->rowCount(); ++r)
+                for (int c = 0; c < t->columnCount(); ++c)
+                    if (t->item(r, c) && t->item(r, c)->text() == QStringLiteral("1.35G + 1.5Q")) combos = t, t->setCurrentCell(r, 0);
+        TEST_CHECK(combos != nullptr, "Test 498: combinaison affichée dans le tableau");
+        QMetaObject::invokeMethod(&dlg, "onRemoveCombination", Qt::DirectConnection);
+        TEST_CHECK(m.loadManager().combinations().size() == combosBefore && obs.loadCaseChanges == 3, "Test 498: combinaison supprimée, une notification");
+        m.removeObserver(&obs);
+        std::cout << "[PASS] Test 498: Cas de charge et combinaisons : vues prévenues une fois par modification" << std::endl;
         ++passed;
     }
 

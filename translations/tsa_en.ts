@@ -5582,6 +5582,10 @@ Shift + click on a tool: use the other mode once.</translation>
         <translation>Select the I/H section:</translation>
     </message>
     <message>
+        <source>Profilé %1</source>
+        <translation>Profile %1</translation>
+    </message>
+    <message>
         <source>Profilé %1 appliqué à %2 barre(s) (h=%3m, b=%4m)</source>
         <translation>Section %1 applied to %2 member(s) (h=%3m, b=%4m)</translation>
     </message>
@@ -5604,6 +5608,10 @@ Shift + click on a tool: use the other mode once.</translation>
     <message>
         <source>Hauteur h (m) :</source>
         <translation>Height h (m):</translation>
+    </message>
+    <message>
+        <source>Section %1</source>
+        <translation>Section %1</translation>
     </message>
     <message>
         <source>Section Rectangulaire (%1 x %2 m) appliquée à %3 élément(s)</source>
@@ -6487,10 +6495,6 @@ See Help &gt; Modules.</translation>
     <message>
         <source>Éléments collés à l'emplacement ! Vous pouvez cliquer pour coller à nouveau ou Échap</source>
         <translation>Elements pasted at the location! You can click to paste again or press Esc</translation>
-    </message>
-    <message>
-        <source>Modification Plan de Travail</source>
-        <translation>Work plane modification</translation>
     </message>
     <message>
         <source>Capture (Droite -&gt; Gauche) : Sélectionne tout élément touché ou inclus</source>
@@ -9190,6 +9194,14 @@ Run the analysis?</translation>
     <message>
         <source> — schéma %1, %2</source>
         <translation> — schema %1, %2</translation>
+    </message>
+    <message>
+        <source>Raideurs d'appui lues en kN/m et kN·m/rad : fichier écrit par une version antérieure de l'export IFC de TSA, sans unité de raideur déclarée.</source>
+        <translation>Support stiffnesses read in kN/m and kN·m/rad: file written by an earlier version of the TSA IFC export, with no declared stiffness unit.</translation>
+    </message>
+    <message>
+        <source>Unité des raideurs d'appui non déclarée par le fichier : déduite des unités de force, de longueur et d'angle (facteurs vers kN/m : %1, vers kN·m/rad : %2).</source>
+        <translation>Support stiffness unit not declared by the file: derived from the force, length and angle units (factors to kN/m: %1, to kN·m/rad: %2).</translation>
     </message>
     <message>
         <source>%1 produit(s) porteur(s) dans le fichier, aucun n'a pu être converti</source>
@@ -15907,6 +15919,10 @@ Example: -10.00; 0.00; 0.00</translation>
         <translation>Custom section</translation>
     </message>
     <message>
+        <source>Profil %1 : forme non modifiable dans ce panneau (dialogue des sections).</source>
+        <translation>Profile %1: shape cannot be edited in this panel (use the sections dialog).</translation>
+    </message>
+    <message>
         <source>Couleur de la Poutre</source>
         <translation>Beam colour</translation>
     </message>
@@ -17324,6 +17340,10 @@ Fix the subgraph body or discard its changes.</translation>
         <translation>Concrete C25/30</translation>
     </message>
     <message>
+        <source>Profil %1 : forme non modifiable dans ce panneau (dialogue des sections).</source>
+        <translation>Profile %1: shape cannot be edited in this panel (use the sections dialog).</translation>
+    </message>
+    <message>
         <source>Couleur du Poteau</source>
         <translation>Column colour</translation>
     </message>
@@ -18338,6 +18358,12 @@ No recompilation was needed.</translation>
     <message>
         <source>Packages TSALib (*.tsalib);;Tous les fichiers (*.*)</source>
         <translation>TSALib packages (*.tsalib);;All files (*.*)</translation>
+    </message>
+    <message>
+        <source>L'ajout d'un dossier d'extension non empaqueté est réservé au mode développeur.
+Installez plutôt un package .tsalib.</source>
+        <translation>Adding an unpackaged extension folder is reserved for developer mode.
+Install a .tsalib package instead.</translation>
     </message>
     <message>
         <source>Ou sélectionner un dossier d'extension à importer</source>
@@ -26262,6 +26288,10 @@ Create a new project or open a %1 file: its preview will appear here.</translati
     <message>
         <source>Couleur d'affichage :</source>
         <translation>Display colour:</translation>
+    </message>
+    <message>
+        <source>Section %1 : non modifiable dans ce panneau (dialogue des sections).</source>
+        <translation>Section %1: cannot be edited in this panel (use the sections dialog).</translation>
     </message>
     <message>
         <source>Couleur de la Barre de Treillis</source>

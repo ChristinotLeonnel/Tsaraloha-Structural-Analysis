@@ -126,9 +126,13 @@ void TrussMemberPropertiesView::refreshView()
     if (rIdx >= 0) m_comboRole->setCurrentIndex(rIdx);
 
     m_spinDiameter->setValue(trm->section().diameter);
+    // Le champ ne représente qu'un rond plein : une cornière, un tube ou un profilé n'est pas modifiable ici.
+    m_sectionEditable = trm->section().shape == TSA::Model::SectionShape::Circular;
+    m_spinDiameter->setEnabled(m_sectionEditable);
+    m_spinDiameter->setToolTip(m_sectionEditable ? QString() : tr("Section %1 : non modifiable dans ce panneau (dialogue des sections).").arg(QString::fromStdString(trm->section().name)));
 
-    int mIdx = m_comboMaterial->findData(trm->material().id);
-    if (mIdx >= 0) m_comboMaterial->setCurrentIndex(mIdx);
+    // Matériau absent de la liste (importé, personnalisé) : aucun choix affiché, jamais remplacé par un autre.
+    m_comboMaterial->setCurrentIndex(m_comboMaterial->findData(trm->material().id));
 
     m_lblNodes->setText(QString("N%1 → N%2").arg(trm->startNodeId()).arg(trm->endNodeId()));
     m_endNodes->setModel(m_model);
@@ -137,6 +141,7 @@ void TrussMemberPropertiesView::refreshView()
     m_colorHex = QString::fromStdString(trm->color()); // vide : apparence du matériau
     TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, trm->material());
     m_colorMaterial = trm->material();
+    captureEditedFields();
 
     m_isLoading = false;
 }
@@ -169,19 +174,24 @@ void TrussMemberPropertiesView::applyChanges()
     m_model->pushUndoState(undoName, undoName);
 
     trm->setName(m_editName->text().toStdString());
-    trm->setRole(static_cast<TSA::Model::TrussMemberRole>(m_comboRole->currentData().toInt()));
-    trm->setSection(TSA::Model::Section::circular(m_spinDiameter->value()));
-
-    int matCode = m_comboMaterial->currentData().toInt();
-    const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(matCode);
-    if (pMat)
+    if (m_edited.changed(m_comboRole)) trm->setRole(static_cast<TSA::Model::TrussMemberRole>(m_comboRole->currentData().toInt()));
+    // Seuls les champs modifiés sont réécrits : renommer une barre en cornière ne la remplace plus par un rond plein.
+    if (m_sectionEditable && m_edited.changed(m_spinDiameter)) trm->setSection(TSA::Model::Section::circular(m_spinDiameter->value()));
+    if (m_edited.changed(m_comboMaterial))
     {
-        trm->setMaterial(*pMat);
+        if (const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(m_comboMaterial->currentData().toInt()))
+            trm->setMaterial(*pMat);
     }
     trm->setColor(m_colorHex.toStdString());
 
+    captureEditedFields();
     m_model->notifyTrussMemberModified(m_memberId);
     emit elementModified();
+}
+
+void TrussMemberPropertiesView::captureEditedFields()
+{
+    m_edited.capture({ m_comboRole, m_spinDiameter, m_comboMaterial });
 }
 
 } // namespace TSA::UI

@@ -41,7 +41,8 @@ Interface (`src/UI/MainWindow_Bim.cpp`, `src/UI/Dialogs/IfcDialogs`) :
 
 | TSA | IFC |
 | :--- | :--- |
-| Projet (couche BIM) | `IfcProject` + `IfcUnitAssignment` (m, m², m³, rad, kg, N, Pa, s, K) |
+| Projet (couche BIM) | `IfcProject` + `IfcUnitAssignment` (m, m², m³, rad, kg, N, Pa, s, K ; raideurs : `IfcDerivedUnit` `LINEARSTIFFNESSUNIT` N/m et `ROTATIONALSTIFFNESSUNIT` N·m/rad) |
+| Appui élastique (kN/m, kN·m/rad dans TSA) | `IfcBoundaryNodeCondition` : `IfcLinearStiffnessMeasure` / `IfcRotationalStiffnessMeasure` **en N/m, N·m/rad** (× 1000 à l'export, depuis le 2026-10-26, BUG-117) |
 | Site / Bâtiment | `IfcSite`, `IfcBuilding` (`IfcRelAggregates`) |
 | Niveau (`LevelManager`) | `IfcBuildingStorey` (attribut `Elevation`, placement à l'origine : les produits gardent les coordonnées du modèle) |
 | Étage d'un produit | `IfcRelContainedInSpatialStructure` (étage imposé, sinon déduit) ; une partie d'agrégat n'est pas contenue directement (seul le tout l'est) |
@@ -96,6 +97,11 @@ Produits importés :
 2. **Unités** du projet (`IfcSIUnit` avec préfixe, `IfcConversionBasedUnit` : pouce, pied…) → m, m², m³, N, Pa ;
    la géométrie du noyau est remise à l'unité du projet si IfcOpenShell en choisit une autre (cas d'un
    `IfcProjectLibrary` sans unité).
+   **Raideurs d'appui** : unité dérivée déclarée (`LINEARSTIFFNESSUNIT`, `ROTATIONALSTIFFNESSUNIT`) ; à défaut, déduite
+   des unités de force, de longueur et d'angle (IFC 4.3 : « usually measured in N/m, Nm/rad »), avec un avertissement.
+   Un fichier écrit par l'écrivain STEP de TSA / TSALab avant le 2026-10-26 (signature « … STEP writer », aucune unité
+   de raideur déclarée) contenait des kN/m et kN·m/rad : il est relu comme tel, avec un avertissement. Un autre
+   logiciel qui lisait ces anciens fichiers les interprétait 1000 fois trop souples.
 3. **Modèle de calcul du fichier** (option, par défaut) : nœuds, barres (type, axe → rotation γ), surfaces,
    appuis, rattachés aux produits par `IfcRelAssignsToProduct`. **Liens explicites convertis** : voile relié à sa
    surface de calcul → voile TSA reconstruit depuis la géométrie du produit (hauteur, épaisseur, décalage) ;

@@ -12,6 +12,7 @@
 #include "../src/Analysis/OpenSeesResultsReader.h"
 #include "../src/Analysis/CalculationSnapshot.h"
 #include "../src/Analysis/ResultsModel.h"
+#include "../src/NDC/NDCGenerator.h"
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
@@ -298,9 +299,10 @@ bool runSuite_Standards(int& passed)
         std::cout << "Test Standards.8 : AnalysisExecutionMetadata in ResultsModel... ";
         TSA::Analysis::ResultsModel res;
         auto meta = res.executionMetadata();
-        STD_CHECK(meta.solverEngine == "OpenSees");
-        STD_CHECK(!meta.nationalAnnex.empty());
-        STD_CHECK(!meta.normativeFramework.empty());
+        // BUG-111 (étape 0) : un résultat neuf ne porte aucune valeur inventée (auparavant « OpenSees 3.8.0 », « France NF »)
+        STD_CHECK(meta.solverEngine.empty() && meta.solverVersion.empty());
+        STD_CHECK(meta.nationalAnnex.empty());
+        STD_CHECK(meta.normativeFramework.empty());
 
         meta.maxResidualForce = 0.00045;
         meta.isEquilibriumVerified = true;
@@ -441,6 +443,48 @@ bool runSuite_Standards(int& passed)
 
         passed++;
         std::cout << "PASSED" << std::endl;
+    }
+
+    // TEST 503 : informations de calcul fiables (BUG-111, étape 0) — aucune valeur inventée dans les métadonnées ; la note
+    // de calcul décrit le moteur et la version enregistrés avec les résultats, jamais le moteur installé ; plus de
+    // métadonnées « certifiées » ; horodatage en temps universel.
+    {
+        const TSA::Analysis::AnalysisExecutionMetadata blank;
+        TEST_CHECK(blank.solverEngine.empty() && blank.solverVersion.empty() && blank.nationalAnnex.empty() && blank.normativeFramework.empty()
+                       && blank.modelBuilder.empty() && blank.numberer.empty() && blank.preparationMessages.empty(),
+                   "Test 503: métadonnées neuves vides (ni « OpenSees 3.8.0 », ni « France NF »)");
+
+        TSA::Model::Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(5, 0, 0);
+        m.getNode(a)->setSupport(TSA::Model::SupportDefinition::fixed());
+        m.addBar(a, b, TSA::Model::Section::ipe(300), TSA::Model::Material::steelS235());
+        auto results = std::make_shared<TSA::Analysis::ResultsModel>();
+        results->setValid(true);
+        results->updateTimestamp();
+        auto meta = results->executionMetadata();
+        meta.engineId = "opensees";
+        meta.solverEngine = "OpenSees";
+        meta.solverVersion = "9.9.9-enregistree";   // version simulée, différente de toute installation
+        meta.preparationMessages = { "Charges : composante hors plan ignorée" };
+        results->setExecutionMetadata(meta);
+        const QString html = TSA::NDC::NDCGenerator::generate(m, results, QStringLiteral("P"), QStringLiteral("I")).toHtml();
+        TEST_CHECK(html.contains(QStringLiteral("OpenSees 9.9.9-enregistree")) && !html.contains(QStringLiteral("OpenSees v3."))
+                       && !html.contains(QStringLiteral("OpenSees 3.")),
+                   "Test 503: note régénérée : version du moteur enregistrée avec les résultats, pas la version installée");
+        TEST_CHECK(!html.contains(QStringLiteral("certifiées")) && html.contains(QStringLiteral("ni une certification")),
+                   "Test 503: métadonnées présentées comme enregistrées, non certifiées");
+        TEST_CHECK(html.contains(QStringLiteral("aucune (coefficients des combinaisons saisis dans le modèle)"))
+                       && html.contains(QStringLiteral("Charges : composante hors plan ignorée")),
+                   "Test 503: annexe du calcul « aucune » ; messages de validation avant calcul repris");
+        meta.solverVersion.clear();
+        results->setExecutionMetadata(meta);
+        const QString unread = TSA::NDC::NDCGenerator::generate(m, results, QStringLiteral("P"), QStringLiteral("I")).toHtml();
+        TEST_CHECK(unread.contains(QStringLiteral("OpenSees (version non lue)")) && !unread.contains(QStringLiteral("OpenSees 3.")),
+                   "Test 503: version non lue affichée comme telle (aucune version de repli)");
+        const std::string& stamp = results->timestamp();
+        TEST_CHECK(stamp.size() == 23 && stamp.compare(stamp.size() - 4, 4, " UTC") == 0, "Test 503: horodatage UTC (" << stamp << ")");
+        std::cout << "[PASS] Test 503: Informations de calcul sans valeur inventée (métadonnées, note, horodatage)" << std::endl;
+        ++passed;
     }
 
     return true;

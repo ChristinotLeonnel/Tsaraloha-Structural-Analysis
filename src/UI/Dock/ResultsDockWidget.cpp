@@ -480,6 +480,8 @@ void ResultsDockWidget::updateSummaryText()
         int maxEtaEC2Id = 0;
         double maxEtaEC3 = 0.0;
         int maxEtaEC3Id = 0;
+        // Efforts du calcul (kN ou N selon le moteur et ses options) convertis en SI pour EC2 / EC3.
+        const double toN = m_resultsModel->units().forceToNewtons();
 
         for (const auto& [bId, beam] : m_model->beams())
         {
@@ -489,7 +491,7 @@ void ResultsDockWidget::updateSummaryText()
             if (beam.material().type == TSA::Model::MaterialType::Concrete ||
                 beam.material().type == TSA::Model::MaterialType::ReinforcedConcrete)
             {
-                double Med = elemRes->maxAbsMy() * 1000.0;   // axe fort de la section b × h (EC2, flexion simple)
+                double Med = elemRes->maxAbsMy() * toN;   // axe fort de la section b × h (EC2, flexion simple)
                 auto ec2 = TSA::Standards::Design::ConcreteDesignEC2::calculateFromModel(beam.section(), beam.material(), Med);
                 if (ec2.valid && ec2.utilizationRatio > maxEtaEC2)
                 {
@@ -500,7 +502,7 @@ void ResultsDockWidget::updateSummaryText()
             else if (beam.material().type == TSA::Model::MaterialType::Steel ||
                      beam.material().type == TSA::Model::MaterialType::GalvanizedSteel)
             {
-                double Ned = std::max(std::abs(elemRes->minNormalForce()), std::abs(elemRes->maxNormalForce())) * 1000.0;
+                double Ned = std::max(std::abs(elemRes->minNormalForce()), std::abs(elemRes->maxNormalForce())) * toN;
                 const auto* n1 = m_model->getNode(beam.startNodeId());
                 const auto* n2 = m_model->getNode(beam.endNodeId());
                 double L = 3.0;
@@ -526,7 +528,7 @@ void ResultsDockWidget::updateSummaryText()
             if (col.material().type == TSA::Model::MaterialType::Steel ||
                 col.material().type == TSA::Model::MaterialType::GalvanizedSteel)
             {
-                double Ned = std::max(std::abs(elemRes->minNormalForce()), std::abs(elemRes->maxNormalForce())) * 1000.0;
+                double Ned = std::max(std::abs(elemRes->minNormalForce()), std::abs(elemRes->maxNormalForce())) * toN;
                 const auto* n1 = m_model->getNode(col.startNodeId());
                 const auto* n2 = m_model->getNode(col.endNodeId());
                 double L = 3.0;

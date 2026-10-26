@@ -137,8 +137,8 @@ void SlabPropertiesView::refreshView()
     int typeIdx = m_comboType->findData(static_cast<int>(slab->slabType()));
     if (typeIdx >= 0) m_comboType->setCurrentIndex(typeIdx);
 
-    int matIdx = m_comboMaterial->findData(slab->material().id);
-    if (matIdx >= 0) m_comboMaterial->setCurrentIndex(matIdx);
+    // Matériau absent de la liste (importé, personnalisé) : aucun choix affiché, jamais remplacé par un autre.
+    m_comboMaterial->setCurrentIndex(m_comboMaterial->findData(slab->material().id));
 
     QString nodesStr = "";
     for (int nid : slab->nodeIds())
@@ -158,6 +158,7 @@ void SlabPropertiesView::refreshView()
                                   .arg(slab->openings().size())
                                   .arg(m_model->loadManager().surfaceLoadsForSurface(TSA::Model::SurfaceTargetKind::Slab, slab->id()).size()));
 
+    captureEditedFields();
     m_isLoading = false;
 }
 
@@ -189,20 +190,26 @@ void SlabPropertiesView::applyChanges()
     m_model->pushUndoState(undoName, undoName);
 
     slab->setName(m_editName->text().toStdString());
-    slab->setThickness(m_spinThickness->value());
-    slab->setSlabType(static_cast<TSA::Model::SlabType>(m_comboType->currentData().toInt()));
+    // Seuls les champs modifiés sont réécrits (épaisseur, hauteur au-delà des décimales affichées, matériau hors liste).
+    if (m_edited.changed(m_spinThickness)) slab->setThickness(m_spinThickness->value());
+    if (m_edited.changed(m_comboType)) slab->setSlabType(static_cast<TSA::Model::SlabType>(m_comboType->currentData().toInt()));
 
-    int matCode = m_comboMaterial->currentData().toInt();
-    const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(matCode);
-    if (pMat)
+    if (m_edited.changed(m_comboMaterial))
     {
-        slab->setMaterial(*pMat);
+        if (const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(m_comboMaterial->currentData().toInt()))
+            slab->setMaterial(*pMat);
     }
     slab->setColor(m_colorHex.toStdString());
 
-    slab->setFormulation(static_cast<TSA::Model::SurfaceFormulation>(m_comboFormulation->currentData().toInt()));
+    if (m_edited.changed(m_comboFormulation)) slab->setFormulation(static_cast<TSA::Model::SurfaceFormulation>(m_comboFormulation->currentData().toInt()));
+    captureEditedFields();
     m_model->notifySlabModified(m_slabId);
     emit elementModified();
+}
+
+void SlabPropertiesView::captureEditedFields()
+{
+    m_edited.capture({ m_spinThickness, m_comboType, m_comboMaterial, m_comboFormulation });
 }
 
 } // namespace TSA::UI

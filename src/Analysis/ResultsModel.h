@@ -189,19 +189,23 @@ struct GlobalEquilibrium
 };
 
 /**
- * @brief Métadonnées d'exécution et traçabilité normative des résultats d'analyse.
- * [NORM: ISO/IEC 25010 §4.2.5, EN 1990 §6, IEEE Std 1063]
+ * @brief Métadonnées d'exécution des résultats d'analyse.
+ *
+ * Seules des valeurs constatées par le moteur qui a calculé y figurent : un champ que ce moteur ne renseigne pas reste
+ * vide (« non lu »), jamais une valeur par défaut d'un autre moteur (BUG-111, étape 0).
  */
 struct AnalysisExecutionMetadata
 {
-    std::string solverEngine = "OpenSees";
-    std::string solverVersion = "3.8.0";
+    std::string solverEngine;           ///< nom du moteur producteur (AnalysisManager::run)
+    std::string solverVersion;          ///< version lue sur le moteur ; vide si elle n'a pas pu être lue
     std::string engineId;               ///< identifiant du moteur (registre), ex. "opensees", "custom2d"
     std::string analysisScope;          ///< portée calculée, ex. « Axe B (Grille 1) » ; vide = modèle complet
     std::string analysisDimension;      ///< "2d" ou "3d"
     std::string calculationMethod;      ///< méthode du moteur (texte de la note de calcul)
-    std::string nationalAnnex = "France NF (NF EN 1990/NA)";
-    std::string normativeFramework = "EN 1990:2002+A1:2005 / ISO/IEC 25010";
+    /// Annexe nationale appliquée par le calcul lui-même ; vide : aucune (les coefficients des combinaisons sont des
+    /// données du modèle, les vérifications EC2 / EC3 lisent leur annexe au moment de la vérification).
+    std::string nationalAnnex;
+    std::string normativeFramework;     ///< référentiel appliqué par le moteur ; vide : aucun
     std::string loadCombinationType = "Statique Linéaire";
     double globalEquilibriumTolerance = 1e-3;
     double maxResidualForce = 0.0;
@@ -216,16 +220,19 @@ struct AnalysisExecutionMetadata
     double finalLoadFactor = std::numeric_limits<double>::quiet_NaN();
 
     // Configuration réelle du système OpenSees (traçabilité des matrices)
-    std::string modelBuilder = "BasicBuilder -ndm 3 -ndf 6";
+    std::string modelBuilder;
     std::string systemSolver;
     std::string constraintHandler;
-    std::string numberer = "RCM";
+    std::string numberer;
     std::string geomTransf;
     double relativeEquilibriumResidual = 0.0;   ///< |Σ F + Σ R| / |Σ F|
     double relativeMomentResidual = 0.0;        ///< |Σ M + Σ M_R| / échelle des moments (autour de l'origine)
     ExtractionLevel extractionLevel = ExtractionLevel::Light;
     /// Points à vérifier constatés après le calcul (ex. effort repris par un blocage automatique d'appui).
     std::vector<std::string> warnings;
+    /// Avertissements et informations de la validation du modèle avant calcul (PreparedAnalysis::validation),
+    /// « catégorie : texte » ; les erreurs empêchent le calcul et n'y figurent donc jamais.
+    std::vector<std::string> preparationMessages;
 };
 
 /// Efforts élémentaires bruts fournis par OpenSees (mode ADVANCED), sans post-traitement.

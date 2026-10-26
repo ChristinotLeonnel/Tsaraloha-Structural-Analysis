@@ -307,10 +307,13 @@ bool OpenSeesManager::downloadAndInstall(std::function<void(int, const QString&)
     if (progressCallback) progressCallback(5, tr("Téléchargement d'OpenSees depuis %1...").arg(url));
     emit downloadProgress(5, tr("Téléchargement d'OpenSees..."));
 
+    // Outils système par leur chemin absolu (jamais résolus par le PATH, qu'un dossier quelconque peut précéder).
+    const QString system32 = QDir(qEnvironmentVariable("SystemRoot", QStringLiteral("C:/Windows"))).filePath(QStringLiteral("System32"));
+
     // Téléchargement via curl Windows
     QProcess curl;
     QStringList args = {"-L", "-o", zipPath, url};
-    curl.start("curl.exe", args);
+    curl.start(QDir(system32).filePath(QStringLiteral("curl.exe")), args);
 
     if (!curl.waitForStarted(3000))
     {
@@ -337,19 +340,21 @@ bool OpenSeesManager::downloadAndInstall(std::function<void(int, const QString&)
     if (progressCallback) progressCallback(60, tr("Extraction de l'archive OpenSees..."));
     emit downloadProgress(60, tr("Extraction en cours..."));
 
-    // Extraction PowerShell
+    // Extraction PowerShell. Les chemins passent par l'environnement du processus, jamais par le texte de la
+    // commande : une apostrophe (ou « ; ») dans un nom d'utilisateur ou de dossier ne peut pas devenir du code.
     QString tempExtract = targetDir + "/temp_extract";
     QProcess extract;
-    QString script = QString("Expand-Archive -Path '%1' -DestinationPath '%2' -Force; "
-                             "Copy-Item -Path '%2/OpenSees3.8.0/bin/*' -Destination '%3/bin/' -Recurse -Force; "
-                             "Copy-Item -Path '%2/OpenSees3.8.0/lib/*' -Destination '%3/lib/' -Recurse -Force; "
-                             "Remove-Item -Path '%2' -Recurse -Force; "
-                             "Remove-Item -Path '%1' -Force")
-                             .arg(QDir::toNativeSeparators(zipPath))
-                             .arg(QDir::toNativeSeparators(tempExtract))
-                             .arg(QDir::toNativeSeparators(targetDir));
-
-    extract.start("powershell.exe", QStringList() << "-NoProfile" << "-Command" << script);
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert(QStringLiteral("TSA_OPS_ZIP"), QDir::toNativeSeparators(zipPath));
+    env.insert(QStringLiteral("TSA_OPS_TMP"), QDir::toNativeSeparators(tempExtract));
+    env.insert(QStringLiteral("TSA_OPS_DEST"), QDir::toNativeSeparators(targetDir));
+    extract.setProcessEnvironment(env);
+    const QString script = QStringLiteral("Expand-Archive -LiteralPath $env:TSA_OPS_ZIP -DestinationPath $env:TSA_OPS_TMP -Force; "
+                                          "Copy-Item -Path (Join-Path $env:TSA_OPS_TMP 'OpenSees3.8.0/bin/*') -Destination (Join-Path $env:TSA_OPS_DEST 'bin') -Recurse -Force; "
+                                          "Copy-Item -Path (Join-Path $env:TSA_OPS_TMP 'OpenSees3.8.0/lib/*') -Destination (Join-Path $env:TSA_OPS_DEST 'lib') -Recurse -Force; "
+                                          "Remove-Item -LiteralPath $env:TSA_OPS_TMP -Recurse -Force; "
+                                          "Remove-Item -LiteralPath $env:TSA_OPS_ZIP -Force");
+    extract.start(QDir(system32).filePath(QStringLiteral("WindowsPowerShell/v1.0/powershell.exe")), QStringList() << "-NoProfile" << "-Command" << script);
     if (!extract.waitForFinished(60000))
     {
         extract.kill();
@@ -399,13 +404,11 @@ bool OpenSeesManager::ensureAvailable(QString* errorMessage)
         return true;
     }
 
-#ifdef Q_OS_WIN
-    return downloadAndInstall(nullptr, errorMessage);
-#else
-    // Pas de téléchargement hors Windows : la cause constatée est plus utile que le refus de downloadAndInstall.
+    // Jamais de téléchargement implicite (au lancement d'un calcul, depuis la console, l'IA ou un Blueprint) :
+    // installer un exécutable tiers demande l'accord de l'utilisateur (OpenSeesEngine::provision, proposé par la
+    // fenêtre d'analyse) et sa licence n'autorise pas toute utilisation (docs/THIRD_PARTY_LICENSES.md).
     if (errorMessage) *errorMessage = m_lastCheck.message;
     return false;
-#endif
 }
 
 } // namespace TSA::Analysis

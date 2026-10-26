@@ -108,7 +108,7 @@ Avant toute diffusion commerciale de TSA avec OpenSees :
 
 1. obtenir le texte exact de la licence de la version distribuée et le placer dans `licenses/OpenSees/` ;
 2. obtenir l'accord nécessaire ;
-3. ou bien construire le paquet sans OpenSees (`-DTSA_PACKAGE_OPENSEES=OFF`). Le moteur 2D intégré reste alors disponible et le calcul OpenSees indique que le moteur est absent.
+3. ou bien construire le paquet sans OpenSees (`-DTSA_PACKAGE_OPENSEES=OFF`, réglage par défaut depuis le 2026-10-25). Le moteur 2D intégré reste alors disponible et le calcul OpenSees indique que le moteur est absent.
 
 Le script de packaging affiche cet avertissement à chaque construction de paquet avec OpenSees.
 

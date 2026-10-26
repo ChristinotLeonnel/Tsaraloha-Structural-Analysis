@@ -1,4 +1,5 @@
 #include "ExtensionManagerDialog.h"
+#include "../../Diagnostics/Logger.h"
 #include "UI/Theme/ThemedIcon.h"
 #include "../../Core/AppPaths.h"
 #include "../../ExtensionSystem/LibraryManager.h"
@@ -906,6 +907,15 @@ void ExtensionManagerDialog::onImportExtension()
     if (selected.isEmpty())
     {
         // Si l'utilisateur n'a pas sélectionné de fichier .tsalib, demander s'il souhaite importer un dossier
+        // Un dossier ajouté aux chemins de recherche n'est ni vérifié ni approuvé (aucun manifeste d'intégrité) :
+        // réservé au mode développeur (conception TSALIB, étape E0). Les utilisateurs installent un package .tsalib.
+        if (!TSA::Diagnostics::Logger::instance().isDeveloperMode())
+        {
+            QMessageBox::information(this, tr("Importation d'Extension"),
+                                     tr("L'ajout d'un dossier d'extension non empaqueté est réservé au mode développeur.\n"
+                                        "Installez plutôt un package .tsalib."));
+            return;
+        }
         QString dir = QFileDialog::getExistingDirectory(this, tr("Ou sélectionner un dossier d'extension à importer"));
         if (dir.isEmpty()) return;
 

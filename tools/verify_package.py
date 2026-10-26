@@ -157,9 +157,12 @@ def main():
             if not os.path.exists(os.path.join(root, "licenses", lic)):
                 errors.append(f"IfcOpenShell (LGPL-3.0) livré sans licences/{lic}")
     if manifest.get("openSeesIncluded"):
-        for r in ("engines/OpenSees/bin/OpenSees.exe", "engines/OpenSees/lib/tcl8.6/init.tcl"):
-            if not os.path.exists(os.path.join(root, r)):
-                errors.append(f"moteur OpenSees incomplet : {r}")
+        # OpenSees 3.8.0 est distribué sous l'un ou l'autre nom (OpenSees.exe, gOpenSees.exe).
+        exes = [r for r in ("engines/OpenSees/bin/OpenSees.exe", "engines/OpenSees/bin/gOpenSees.exe") if os.path.exists(os.path.join(root, r))]
+        if not exes:
+            errors.append("moteur OpenSees incomplet : engines/OpenSees/bin/OpenSees.exe ou gOpenSees.exe")
+        if not os.path.exists(os.path.join(root, "engines/OpenSees/lib/tcl8.6/init.tcl")):
+            errors.append("moteur OpenSees incomplet : engines/OpenSees/lib/tcl8.6/init.tcl")
     listed = set()
     for e in manifest.get("entries", []):
         p = os.path.join(root, e["path"])

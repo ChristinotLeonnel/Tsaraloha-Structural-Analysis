@@ -18,6 +18,7 @@
 #include "Model/Beam.h"
 #include "Model/Column.h"
 #include "Model/SupportDefinition.h"
+#include "Standards/Design/ConcreteDesignEC2.h"
 
 #include <QFile>
 #include <QDir>
@@ -309,6 +310,110 @@ bool runSuite_NDCReport(int& passed)
         TEST_CHECK(fPdf.exists() && fPdf.size() > 500, "Exported PDF file must exist and have content");
         fPdf.remove();
 
+        passed++;
+    }
+
+    // TEST 492: vérifications EC2 / EC3 indépendantes des unités du calcul (kN ou N).
+    // Mêmes efforts physiques exprimés en kN puis en N (OpenSees, option « kN » décochée) : la note de calcul
+    // (présentation actuelle et historique) doit afficher les mêmes efforts et les mêmes ratios. Auparavant, les
+    // efforts étaient multipliés par 1000 sans lire les unités : en N, ratios faux d'un facteur 1000.
+    {
+        Model model;
+        const int n1 = model.addNode(0.0, 0.0, 0.0);
+        const int n2 = model.addNode(6.0, 0.0, 0.0);
+        const int beamId = model.addBar(n1, n2, Section::rectangular(0.30, 0.50, "R30x50"), Material::concreteC25_30(), BarRole::Beam);
+        const int n3 = model.addNode(10.0, 0.0, 0.0);
+        const int n4 = model.addNode(10.0, 0.0, 3.0);
+        const int colId = model.addColumn(n3, n4);
+        TEST_CHECK(beamId > 0 && colId > 0, "Test 492 : création des barres");
+        model.getColumn(colId)->setSection(Section::hea(200));
+        model.getColumn(colId)->setMaterial(Material::steelS355());
+
+        // Efforts en kN / kN·m : poutre M_y max = 60,3 kN·m en travée, poteau N = −212,7 kN (compression)
+        auto makeResults = [&](double scale, bool kN) {
+            auto r = std::make_shared<ResultsModel>();
+            r->setUnits(UnitSystem::fromKiloNewtons(kN));
+            r->setAnalysisType(AnalysisType::LinearStatic);
+            AnalysisExecutionMetadata meta;
+            meta.solverEngine = "Test";
+            meta.engineId = "test";
+            r->setExecutionMetadata(meta);
+            ElementResults eb;
+            eb.elementId = beamId;
+            eb.kind = StructuralElementKind::Beam;
+            eb.length = 6.0;
+            eb.endForces.position = 6.0;
+            StationForces mid;
+            mid.position = 3.0;
+            mid.My = 60.3 * scale;
+            eb.intermediateStations.push_back(mid);
+            r->setElementResults(eb);
+            ElementResults ec;
+            ec.elementId = colId;
+            ec.kind = StructuralElementKind::Column;
+            ec.length = 3.0;
+            ec.startForces.N = -212.7 * scale;
+            ec.endForces.N = -212.7 * scale;
+            ec.endForces.position = 3.0;
+            r->setElementResults(ec);
+            NodeReaction ra;
+            ra.rz = 212.7 * scale;
+            r->setNodeReaction(n3, ra);
+            ra.rz = 40.2 * scale;
+            r->setNodeReaction(n1, ra);
+            r->setValid(true);
+            return r;
+        };
+        const auto rKN = makeResults(1.0, true);
+        const auto rN = makeResults(1000.0, false);
+        TEST_CHECK(rKN->units().forceToNewtons() == 1000.0 && rN->units().forceToNewtons() == 1.0, "Test 492 : facteurs vers le newton");
+        TEST_CHECK(rKN->units().forceToKiloNewtons() == 1.0 && rN->units().forceToKiloNewtons() == 1.0e-3, "Test 492 : facteurs vers le kilonewton");
+
+        auto designTables = [](const NDCDocument& doc) {
+            std::vector<NDCTable> out;
+            for (const auto& ch : doc.chapters)
+                for (const auto& sec : ch.sections)
+                    for (const auto& t : sec.tables)
+                        if (ch.title.contains(QStringLiteral("Vérifications réglementaires")) || t.caption.contains(QStringLiteral("(EC2)")) ||
+                            t.caption.contains(QStringLiteral("(EC3)")))
+                            out.push_back(t);
+            return out;
+        };
+        for (const NoteLayout layout : { NoteLayout::Simplified, NoteLayout::Legacy })
+        {
+            ReportConfiguration cfg;
+            cfg.noteLayout = layout;
+            cfg.includeEurocodeDesignChecks = true;
+            const auto tKN = designTables(NDCGenerator::generate(model, rKN, cfg));
+            const auto tN = designTables(NDCGenerator::generate(model, rN, cfg));
+            const char* name = layout == NoteLayout::Legacy ? "historique" : "actuelle";
+            // Note entière (détaillée, et historique : présentation par défaut) : tous les tableaux (efforts, réactions,
+            // contraintes…) affichés en kN quelle que soit l'unité du calcul.
+            {
+                cfg.noteLayout = layout == NoteLayout::Simplified ? NoteLayout::Detailed : NoteLayout::Legacy;
+                const auto aKN = NDCGenerator::generate(model, rKN, cfg).allTables();
+                const auto aN = NDCGenerator::generate(model, rN, cfg).allTables();
+                TEST_CHECK(aKN.size() == aN.size(), std::string("Test 492 : même nombre de tableaux en kN et en N (note entière ") + name + ")");
+                for (std::size_t i = 0; i < aKN.size() && i < aN.size(); ++i)
+                    TEST_CHECK(aKN[i].rows == aN[i].rows, std::string("Test 492 : tableau « ") + aKN[i].caption.toStdString() + "» identique en kN et en N (note entière " + name + ")");
+                cfg.noteLayout = layout;
+            }
+            TEST_CHECK(tKN.size() >= 2, std::string("Test 492 : tableaux EC2 et EC3 présents (note ") + name + ")");
+            TEST_CHECK(tKN.size() == tN.size(), std::string("Test 492 : même nombre de tableaux en kN et en N (note ") + name + ")");
+            for (std::size_t i = 0; i < tKN.size() && i < tN.size(); ++i)
+                TEST_CHECK(tKN[i].rows == tN[i].rows, std::string("Test 492 : tableau « ") + tKN[i].caption.toStdString() + "» identique en kN et en N (note " + name + ")");
+        }
+
+        // Valeur attendue indépendante de la note : ratio EC2 calculé directement en SI
+        const auto direct = TSA::Standards::Design::ConcreteDesignEC2::calculateFromModel(Section::rectangular(0.30, 0.50), Material::concreteC25_30(), 60.3e3);
+        ReportConfiguration cfg;
+        cfg.noteLayout = NoteLayout::Simplified;
+        const QString expected = QString::number(direct.utilizationRatio * 100.0, 'f', 1);
+        bool found = false;
+        for (const auto& t : designTables(NDCGenerator::generate(model, rN, cfg)))
+            for (const auto& row : t.rows)
+                if (row.size() > 4 && row[0].contains(QStringLiteral("Poutre")) && row[4].startsWith(expected)) found = true;
+        TEST_CHECK(direct.valid && found, "Test 492 : ratio EC2 de la note (calcul en N) = ratio calculé directement en SI");
         passed++;
     }
 

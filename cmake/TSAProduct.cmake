@@ -90,6 +90,7 @@ set(UI_MODELTREE_SOURCES
 # --- Panneaux de propriétés par type d'élément -------------------------------
 set(UI_PROPERTIES_SOURCES
     ${TSA_ROOT}/src/UI/Properties/IElementPropertyView.h
+    ${TSA_ROOT}/src/UI/Properties/EditedFields.h
     ${TSA_ROOT}/src/UI/Properties/PropertyPanel.h
     ${TSA_ROOT}/src/UI/Properties/PropertyPanel.cpp
     ${TSA_ROOT}/src/UI/Properties/ElementBimPanel.h
@@ -841,6 +842,8 @@ set(INTERACTION_SOURCES
     ${TSA_ROOT}/src/Interaction/InteractionManager.cpp
     ${TSA_ROOT}/src/Interaction/ElementCreation.h
     ${TSA_ROOT}/src/Interaction/ElementCreation.cpp
+    ${TSA_ROOT}/src/Interaction/PropertyAssignment.h
+    ${TSA_ROOT}/src/Interaction/PropertyAssignment.cpp
     ${TSA_ROOT}/src/Interaction/Tools/ModelingTool.h
     ${TSA_ROOT}/src/Interaction/Tools/ModelingTool.cpp
     ${TSA_ROOT}/src/Interaction/Tools/ModifyTools.h
@@ -1433,7 +1436,7 @@ endfunction()
 # Paquet distribuable autonome : cible package_<produit> (cmake/PackageTSA.cmake, docs/DEPLOYMENT.md).
 # Dossier produit : <build>/dist/<produit> ; à vérifier avec tools/verify_package.py.
 set(TSA_VCREDIST_DIR "$ENV{VCToolsRedistDir}" CACHE PATH "Runtime MSVC redistribuable (VCToolsRedistDir)")
-option(TSA_PACKAGE_OPENSEES "Inclure OpenSees (thirdparty/OpenSees) dans le paquet — vérifier sa licence" ON)
+option(TSA_PACKAGE_OPENSEES "Inclure OpenSees (thirdparty/OpenSees) dans le paquet — licence UC : usage éducatif, recherche, non lucratif ; diffusion commerciale non autorisée sans accord (docs/THIRD_PARTY_LICENSES.md)" OFF)
 # Révision du code source citée par licenses/Gmsh/SOURCE.txt : commit exact construit (flux de publication de
 # Setup-Livrable) ; vide : étiquette v<version>.
 set(TSA_SOURCE_REF "" CACHE STRING "Commit ou étiquette du code source de la version distribuée")

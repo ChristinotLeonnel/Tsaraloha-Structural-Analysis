@@ -1,0 +1,219 @@
+# Intégration continue TSA — Linux (GCC) et Windows (MSVC), compilation Release, tests par suite, validation numérique.
+#
+# Les dépendances facultatives (OpenSees, Gmsh, IfcOpenShell) ne sont pas dans le dépôt (thirdparty/ non versionné) :
+# les suites qui en dépendent sont rapportées « NON EXÉCUTÉE », jamais comptées comme réussies
+# (tools/ci/run_test_suites.py). La validation numérique utilise le moteur interne Custom2D (sans dépendance externe).
+# TSALab (cœur scientifique tsalab_science) est obligatoire : récupéré à côté de TSA.
+#
+# À faire avant de rendre ce pipeline bloquant : épingler les actions par SHA de commit, ajouter OpenSees Linux
+# (compilation Conan 2, docs/LINUX_BUILD.md §7, mise en cache) et le SDK Gmsh avec empreinte vérifiée.
+
+name: CI
+
+on:
+  push:
+    branches: [main, "fix/**", "feature/**", "refactor/**", "test/**", "build/**", "ci/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TSALAB_REPOSITORY: ChristinotLeonnel/Tsaraloha-Structural-Analysis-Virtual-Laboratory
+  OCCT_VERSION: "8.0.1"
+
+jobs:
+  checks:
+    name: Dépendances et licences
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contrôle des dépendances et licences
+        run: python3 tools/ci/check_dependencies.py
+      - name: Couches (model < graphics < widgets < app)
+        run: python3 tools/check_layers.py
+      - name: Raccourcis
+        run: python3 tools/check_shortcuts.py --strict
+
+  linux:
+    name: Linux (Ubuntu 24.04, GCC, Release)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: TSA
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TSALAB_REPOSITORY }}
+          path: TSALab
+
+      - name: Paquets système
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build python3 xvfb \
+            libfreetype-dev libfontconfig-dev libgl-dev libglu1-mesa-dev libx11-dev libxext-dev libxi-dev \
+            libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+            libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libegl1
+
+      - name: Qt 6.12.0 (version vérifiée sous Linux)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.12.0"
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          cache: true
+
+      - name: Cache OpenCASCADE ${{ env.OCCT_VERSION }}
+        id: occt-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/opt/occt-${{ env.OCCT_VERSION }}
+          key: occt-${{ env.OCCT_VERSION }}-ubuntu24.04-gcc13-v1
+
+      - name: OpenCASCADE ${{ env.OCCT_VERSION }} (docs/LINUX_BUILD.md §2)
+        if: steps.occt-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/build-deps && cd ~/build-deps
+          curl -L --fail -o occt.tar.gz https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V8_0_1.tar.gz
+          tar -xzf occt.tar.gz
+          cmake -S OCCT-8_0_1 -B occt-build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=$HOME/opt/occt-${OCCT_VERSION} -DCMAKE_INSTALL_RPATH='$ORIGIN' \
+                -DBUILD_LIBRARY_TYPE=Shared -DBUILD_MODULE_ApplicationFramework=ON -DBUILD_MODULE_DataExchange=ON \
+                -DBUILD_MODULE_Draw=OFF -DUSE_TK=OFF -DUSE_FREETYPE=ON -DUSE_OPENGL=ON -DUSE_XLIB=ON
+          cmake --build occt-build -j "$(nproc)"
+          cmake --install occt-build
+
+      - name: Configuration (Release)
+        run: |
+          cmake -S TSA -B TSA/build-ci -G Ninja -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_PREFIX_PATH="$HOME/opt/occt-${OCCT_VERSION};${QT_ROOT_DIR}" \
+                -DTSALAB_ROOT_DIR="$GITHUB_WORKSPACE/TSALab"
+
+      - name: Compilation
+        run: cmake --build TSA/build-ci -j "$(nproc)"
+
+      - name: Tests par suite (affichage virtuel Xvfb)
+        run: |
+          xvfb-run -a -s "-screen 0 1920x1080x24" \
+            python3 TSA/tools/ci/run_test_suites.py --exe TSA/build-ci/TSA_TestSuite --out ci-report/tests \
+              --available display --timeout 900
+
+      - name: Contrôles CTest (couches, traductions)
+        if: always()
+        run: ctest --test-dir TSA/build-ci -R "Layers|I18nCheck" --output-on-failure
+
+      - name: Validation numérique (moteur interne Custom2D)
+        if: always()
+        run: |
+          mkdir -p ci-report/bench && cd ci-report/bench
+          QT_QPA_PLATFORM=offscreen "$GITHUB_WORKSPACE/TSA/build-ci/TSA_Benchmark" --engine custom2d --out "$PWD"
+
+      - name: Rapport
+        if: always()
+        run: |
+          [ -f ci-report/tests/report.md ] && cat ci-report/tests/report.md >> "$GITHUB_STEP_SUMMARY"
+          [ -f ci-report/bench/latest.md ] && { echo; echo "## Validation numérique (Custom2D)"; cat ci-report/bench/latest.md; } >> "$GITHUB_STEP_SUMMARY"
+          true
+
+      - name: Archives du rapport
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-report-linux
+          path: |
+            ci-report/**/*.md
+            ci-report/**/*.json
+            ci-report/**/*.log
+          retention-days: 30
+
+  windows:
+    name: Windows (MSVC, Release)
+    runs-on: windows-2022
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: TSA
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TSALAB_REPOSITORY }}
+          path: TSALab
+
+      - name: Environnement MSVC x64
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Qt 6.11.2 (version vérifiée sous Windows)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.11.2"
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Cache OpenCASCADE ${{ env.OCCT_VERSION }} (SDK MSVC téléchargé par CMake)
+        uses: actions/cache@v4
+        with:
+          path: |
+            TSA/opencascade-${{ env.OCCT_VERSION }}-vc14-64
+            TSA/3rdparty-vc14-64
+          key: occt-${{ env.OCCT_VERSION }}-vc14-64-v1
+
+      - name: Configuration (Release)
+        shell: pwsh
+        run: |
+          cmake -S TSA -B TSA/build-ci -G Ninja -DCMAKE_BUILD_TYPE=Release `
+                -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DTSA_AUTO_DOWNLOAD_DEPS=ON `
+                -DTSALAB_ROOT_DIR="$env:GITHUB_WORKSPACE/TSALab"
+
+      - name: Compilation
+        shell: pwsh
+        run: cmake --build TSA/build-ci -j 4   # au-delà, erreurs C3859 (mémoire des PCH) constatées sur poste
+
+      - name: Tests par suite
+        shell: pwsh
+        run: python TSA/tools/ci/run_test_suites.py --exe TSA/build-ci/TSA_TestSuite.exe --out ci-report/tests --available display --timeout 900
+
+      - name: Contrôles CTest (couches, traductions)
+        if: always()
+        shell: pwsh
+        run: ctest --test-dir TSA/build-ci -R "Layers|I18nCheck" --output-on-failure
+
+      - name: Validation numérique (moteur interne Custom2D)
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ci-report/bench | Out-Null
+          Push-Location ci-report/bench
+          & "$env:GITHUB_WORKSPACE/TSA/build-ci/TSA_Benchmark.exe" --engine custom2d --out "$PWD"
+          $code = $LASTEXITCODE
+          Pop-Location
+          exit $code
+
+      - name: Rapport
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path ci-report/tests/report.md) { Get-Content ci-report/tests/report.md | Add-Content $env:GITHUB_STEP_SUMMARY }
+          if (Test-Path ci-report/bench/latest.md) { "`n## Validation numérique (Custom2D)" | Add-Content $env:GITHUB_STEP_SUMMARY; Get-Content ci-report/bench/latest.md | Add-Content $env:GITHUB_STEP_SUMMARY }
+
+      - name: Archives du rapport
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-report-windows
+          path: |
+            ci-report/**/*.md
+            ci-report/**/*.json
+            ci-report/**/*.log
+          retention-days: 30

@@ -92,10 +92,27 @@ bool isColumnDifferent(const Column& a, const Column& b, const std::set<int>& mo
     return false;
 }
 
+/// Ouvertures comparées sommet par sommet (une ouverture déplacée garde le même nombre de sommets).
+bool areOpeningsDifferent(const std::vector<SlabOpening>& a, const std::vector<SlabOpening>& b)
+{
+    if (a.size() != b.size()) return true;
+    for (std::size_t i = 0; i < a.size(); ++i)
+    {
+        if (a[i].name != b[i].name || a[i].shape != b[i].shape || a[i].polygon.size() != b[i].polygon.size()) return true;
+        for (std::size_t k = 0; k < a[i].polygon.size(); ++k)
+            if (!approxEq(a[i].polygon[k].first, b[i].polygon[k].first) || !approxEq(a[i].polygon[k].second, b[i].polygon[k].second)) return true;
+    }
+    return false;
+}
+
 bool isSlabDifferent(const Slab& a, const Slab& b, const std::set<int>& movedNodes)
 {
     if (a.nodeIds() != b.nodeIds()) return true;
     if (!approxEq(a.thickness(), b.thickness())) return true;
+    if (a.slabType() != b.slabType()) return true;
+    if (a.formulation() != b.formulation()) return true;
+    if (areOpeningsDifferent(a.openings(), b.openings())) return true;
+    if (a.edgeSupports() != b.edgeSupports()) return true;
     if (a.name() != b.name()) return true;
     if (a.color() != b.color()) return true;
     if (isMaterialDifferent(a.material(), b.material())) return true;
@@ -111,6 +128,10 @@ bool isWallDifferent(const Wall& a, const Wall& b, const std::set<int>& movedNod
     if (a.startNodeId() != b.startNodeId() || a.endNodeId() != b.endNodeId()) return true;
     if (!approxEq(a.thickness(), b.thickness())) return true;
     if (!approxEq(a.height(), b.height())) return true;
+    if (!approxEq(a.offset(), b.offset())) return true;
+    if (a.formulation() != b.formulation()) return true;
+    if (areOpeningsDifferent(a.openings(), b.openings())) return true;
+    if (a.edgeSupports() != b.edgeSupports()) return true;
     if (a.name() != b.name()) return true;
     if (a.color() != b.color()) return true;
     if (isMaterialDifferent(a.material(), b.material())) return true;

@@ -44,6 +44,9 @@ public:
     bool parseFile(const std::string& path, std::string* error = nullptr);
 
     const std::string& schema() const { return m_schema; }
+    /// FILE_NAME de l'en-tête : préprocesseur (écrivain STEP) et système d'origine ; vides s'ils sont absents.
+    const std::string& preprocessorVersion() const { return m_preprocessor; }
+    const std::string& originatingSystem() const { return m_originatingSystem; }
     const StepEntity* get(int id) const;
     const StepEntity* get(const StepValue& refValue) const { return refValue.kind == StepValue::Kind::Ref ? get(refValue.ref) : nullptr; }
     /// Entités d'un type exact (majuscules : "IFCBEAM").
@@ -54,6 +57,8 @@ private:
     std::map<int, StepEntity> m_entities;
     std::map<std::string, std::vector<int>> m_byType;
     std::string m_schema;
+    std::string m_preprocessor;
+    std::string m_originatingSystem;
 };
 
 } // namespace TSA::BIM::Ifc

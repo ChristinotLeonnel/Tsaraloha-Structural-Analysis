@@ -66,9 +66,13 @@ MostStressedSummary ResultAnalyzer::analyzeExtrema(
     }
 
     TSA::Analysis::StructuralElementKind currentKind = TSA::Analysis::StructuralElementKind::Beam;
+    // Extrêmes présentés en kN et kN·m quelle que soit l'unité du calcul (kN ou N) ; les comparaisons portent sur
+    // les valeurs brutes (même ordre), seule la valeur retenue est convertie.
+    const double toKN = results->units().forceToKiloNewtons();
     auto fillExtremum = [&](ExtremumPoint& pt, const QString& qName, double val, const QString& unit,
                             int elId, const QString& elType, const QString& sec, const QString& mat,
                             double x, double L, const gp_Pnt& coords) {
+        if (unit.startsWith(QStringLiteral("kN"))) val *= toKN;
         pt.quantityName = qName;
         pt.value = val;
         pt.absValue = std::abs(val);
@@ -266,7 +270,7 @@ MostStressedSummary ResultAnalyzer::analyzeExtrema(
     double maxReactKn = 0.0;
     for (const auto& [nId, r] : results->allReactions())
     {
-        double mag = r.forceMagnitude();
+        double mag = r.forceMagnitude() * toKN;
         if (mag > maxReactKn) {
             maxReactKn = mag;
             summary.maxReaction.quantityName = QStringLiteral("Réaction d'Appui Résultante Maximale");

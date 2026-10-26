@@ -338,6 +338,12 @@ void BeamPropertiesView::refreshView()
     int sIdx = m_comboSectionType->findData(static_cast<int>(sec.shape));
     if (sIdx >= 0) m_comboSectionType->setCurrentIndex(sIdx);
     updateSectionVisibility(static_cast<int>(sec.shape));
+    // Forme absente de la liste (UPN, cornière, T, tube rond) : les champs ne savent pas la représenter, la section
+    // n'est pas modifiable ici (elle le reste par le dialogue des sections).
+    m_sectionEditable = sIdx >= 0;
+    for (QWidget* w : std::initializer_list<QWidget*> { m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius, m_spinFlangeWidth, m_spinFlangeThick, m_spinWebThick })
+        w->setEnabled(m_sectionEditable);
+    m_comboSectionType->setToolTip(m_sectionEditable ? QString() : tr("Profil %1 : forme non modifiable dans ce panneau (dialogue des sections).").arg(QString::fromStdString(sec.name)));
 
     m_spinWidth->setValue(sec.width);
     m_spinHeight->setValue(sec.height);
@@ -347,8 +353,8 @@ void BeamPropertiesView::refreshView()
     m_spinWebThick->setValue(sec.tw);
     m_spinRotation->setValue(beam->rotation());
 
-    int mIdx = m_comboMaterial->findData(beam->material().id);
-    if (mIdx >= 0) m_comboMaterial->setCurrentIndex(mIdx);
+    // Matériau absent de la liste (importé, personnalisé) : aucun choix affiché, jamais remplacé par un autre.
+    m_comboMaterial->setCurrentIndex(m_comboMaterial->findData(beam->material().id));
 
     if (m_previewWidget)
     {
@@ -356,6 +362,7 @@ void BeamPropertiesView::refreshView()
         m_previewWidget->setRotation(beam->rotation());
     }
     updateCalculatedProperties(sec);
+    captureEditedFields();
 
     m_colorHex = QString::fromStdString(beam->color()); // vide : apparence du matériau
     TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, beam->material());
@@ -396,16 +403,19 @@ void BeamPropertiesView::applyChanges()
     beam->setName(m_editName->text().toStdString());
     beam->setRole(static_cast<TSA::Model::BarRole>(m_comboRole->currentData().toInt()));
 
-    auto sec = getSectionFromUi();
-    beam->setSection(sec);
+    // Seuls les champs modifiés sont réécrits : renommer une barre IPE 300 ne la remplace plus par un « Profilé I »
+    // sans congés (A, I, It modifiés), ni un UPN par un rectangle, ni son matériau par celui de la liste.
+    if (m_sectionEditable &&
+        m_edited.anyChanged({ m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius, m_spinFlangeWidth, m_spinFlangeThick, m_spinWebThick }))
+        beam->setSection(getSectionFromUi());
 
-    int matCode = m_comboMaterial->currentData().toInt();
-    const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(matCode);
-    if (pMat)
+    if (m_edited.changed(m_comboMaterial))
     {
-        beam->setMaterial(*pMat);
+        if (const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(m_comboMaterial->currentData().toInt()))
+            beam->setMaterial(*pMat);
     }
-    beam->setRotation(m_spinRotation->value());
+    if (m_edited.changed(m_spinRotation)) beam->setRotation(m_spinRotation->value());
+    const auto& sec = beam->section();
 
     // Relâchements d'extrémité : retirés du panneau, ceux de la barre (fichier, import IFC) sont conservés.
 
@@ -427,8 +437,15 @@ void BeamPropertiesView::applyChanges()
             um->addRecord({ "modify_property", "Beam", m_beamId, "material", oldMaterial, beam->material().name,
                             { "stiffness", "self_weight", "results_invalidated" } });
     }
+    captureEditedFields();
     m_model->notifyBeamModified(m_beamId);
     emit elementModified();
+}
+
+void BeamPropertiesView::captureEditedFields()
+{
+    m_edited.capture({ m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius, m_spinFlangeWidth, m_spinFlangeThick, m_spinWebThick, m_comboMaterial,
+                       m_spinRotation });
 }
 
 } // namespace TSA::UI

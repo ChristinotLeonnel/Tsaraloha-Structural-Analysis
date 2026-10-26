@@ -214,6 +214,7 @@ void LoadCaseDialog::onAddLoadCase()
     m_model->pushUndoState(tr("Créer Cas de Charge").toStdString());
     TSA::Model::LoadCase lc(0, name.trimmed().toStdString(), cat, false, 1.0, "");
     m_model->loadManager().addLoadCase(lc);
+    m_model->notifyLoadCaseChanged(m_model->loadManager().activeLoadCaseId());   // arbre du modèle, vue 3D
     refreshCasesTable();
 }
 
@@ -266,6 +267,7 @@ void LoadCaseDialog::onAddCombination()
     if (m_model->loadManager().getLoadCase(2)) combo.setFactor(2, 1.50);
 
     m_model->loadManager().addCombination(combo);
+    m_model->notifyLoadCaseChanged(m_model->loadManager().activeLoadCaseId());
     refreshCombinationsTable();
 }
 
@@ -277,6 +279,7 @@ void LoadCaseDialog::onRemoveCombination()
     int comboId = m_tableCombinations->item(row, 0)->text().toInt();
     m_model->pushUndoState(tr("Supprimer Combinaison").toStdString());
     m_model->loadManager().removeCombination(comboId);
+    m_model->notifyLoadCaseChanged(m_model->loadManager().activeLoadCaseId());
     refreshCombinationsTable();
 }
 

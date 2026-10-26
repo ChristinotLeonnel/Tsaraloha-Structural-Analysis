@@ -137,8 +137,8 @@ void WallPropertiesView::refreshView()
     m_spinThickness->setValue(wall->thickness());
     m_spinHeight->setValue(wall->height());
 
-    int matIdx = m_comboMaterial->findData(wall->material().id);
-    if (matIdx >= 0) m_comboMaterial->setCurrentIndex(matIdx);
+    // Matériau absent de la liste (importé, personnalisé) : aucun choix affiché, jamais remplacé par un autre.
+    m_comboMaterial->setCurrentIndex(m_comboMaterial->findData(wall->material().id));
 
     m_lblNodes->setText(QString("N%1 → N%2").arg(wall->startNodeId()).arg(wall->endNodeId()));
 
@@ -152,6 +152,7 @@ void WallPropertiesView::refreshView()
                                   .arg(wall->openings().size())
                                   .arg(m_model->loadManager().surfaceLoadsForSurface(TSA::Model::SurfaceTargetKind::Wall, wall->id()).size()));
 
+    captureEditedFields();
     m_isLoading = false;
 }
 
@@ -183,20 +184,26 @@ void WallPropertiesView::applyChanges()
     m_model->pushUndoState(undoName, undoName);
 
     wall->setName(m_editName->text().toStdString());
-    wall->setThickness(m_spinThickness->value());
-    wall->setHeight(m_spinHeight->value());
+    // Seuls les champs modifiés sont réécrits (épaisseur, hauteur au-delà des décimales affichées, matériau hors liste).
+    if (m_edited.changed(m_spinThickness)) wall->setThickness(m_spinThickness->value());
+    if (m_edited.changed(m_spinHeight)) wall->setHeight(m_spinHeight->value());
 
-    int matCode = m_comboMaterial->currentData().toInt();
-    const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(matCode);
-    if (pMat)
+    if (m_edited.changed(m_comboMaterial))
     {
-        wall->setMaterial(*pMat);
+        if (const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(m_comboMaterial->currentData().toInt()))
+            wall->setMaterial(*pMat);
     }
     wall->setColor(m_colorHex.toStdString());
 
-    wall->setFormulation(static_cast<TSA::Model::SurfaceFormulation>(m_comboFormulation->currentData().toInt()));
+    if (m_edited.changed(m_comboFormulation)) wall->setFormulation(static_cast<TSA::Model::SurfaceFormulation>(m_comboFormulation->currentData().toInt()));
+    captureEditedFields();
     m_model->notifyWallModified(m_wallId);
     emit elementModified();
+}
+
+void WallPropertiesView::captureEditedFields()
+{
+    m_edited.capture({ m_spinThickness, m_spinHeight, m_comboMaterial, m_comboFormulation });
 }
 
 } // namespace TSA::UI

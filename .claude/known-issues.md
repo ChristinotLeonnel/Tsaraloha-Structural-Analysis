@@ -1,8 +1,95 @@
 # Known Issues
 
-Last Updated: 2026-10-24 (portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
+
+## BUG-116
+Area: Tests — test 166 (arbre indexé, tests/test_model_cleanup.cpp)
+Problem: un seul processEvents() après 1500 suppressions regroupées par minuteur 0 ms : échec systématique quand la suite
+cleanup est lancée seule sous xcb (6/6), réussite dans la suite complète.
+Status: FIXED (2026-10-26) — attente bornée (2 s) jusqu'à la condition, mêmes assertions ; 6/6 réussis (~10 ms).
+
+## BUG-117
+Area: Unités — consommateurs qui supposent kN (audit transversal du 2026-10-26, rapport hors dépôt)
+Problem: P1 : raideurs d'appui exportées en kN/m dans un IFC qui déclare N (IfcExporter.cpp:132-139, 187, 423-430),
+import sans facteur (IfcImporter.cpp:489-497) — VÉRIFIÉ ; comparaison Fem3D / OpenSees si OpenSees en N
+(Fem3DEngine.cpp:195-300) ; export TSA3D des réactions (Tsa3dExport.cpp:376-387). P2 : affichages « kN » en dur
+(résumé du dock, console, propriétés du nœud, flèches 3D, légendes des diagrammes : diagramUnit jamais renseigné,
+coques) ; libellés faux (NDCGenerator « Résidu <= 0.001 kN » relatif ; moment réparti kN·m/m). P3 : équilibre Custom2D
+par construction, g = 9,81 / 9,80665 (Beam::weight en N), UnitSystem : toute chaîne ≠ « N » vaut kN.
+Impact: HIGH pour l'IFC (échange avec d'autres logiciels), MEDIUM ailleurs (OpenSees en N seulement).
+Status: PARTIELLEMENT FIXED (2026-10-26, D4 approuvé) — P1 corrigés, reproduits avant correction : IFC (raideurs en N/m,
+IfcDerivedUnit LINEARSTIFFNESSUNIT / ROTATIONALSTIFFNESSUNIT déclarées ; import : unité déclarée, sinon FORCEUNIT /
+LENGTHUNIT / PLANEANGLEUNIT ; ancien export TSA reconnu par « … STEP writer » sans unité → kN/m + avertissement ; test 501,
+lecteur indépendant IfcOpenShell 0.9 Python : 5000 N/m avant, 5e6 N/m après, 0 erreur de schéma) ; Fem3D / OpenSees en N
+(166/240 faux écarts avant, 0 après ; test 499) ; TSA3D réactions en kN + bloc results.units (test 500, schéma mis à
+jour). Références avant / après : TSA-rapports/2026-10-26/references/unites_echanges/. RESTE OPEN : P2 (affichages « kN »
+en dur, diagramUnit), P3.
+
+## BUG-118
+Area: Paquets .tsalib — suite de BUG-109 (conception du 2026-10-26, hors dépôt)
+Problem: manifeste extrait ≠ manifeste validé (C4) — CORRIGÉ le 2026-10-26 (empreinte de manifest.json = en-tête, test
+496) ; flux non contrôlé — CORRIGÉ (stream.status(), en-tête relu comparé) ; restent : extraction non atomique, masquage
+d'une extension (registre indexé par id de fiche, recherche approximative), ref.libraryId jamais renseigné (déchargement
+sans effet), appartenance par préfixe, import de dossier sans approbation, minimum_tsa_version non vérifié, SNAP
+(TSAFile.cpp:357-392) qui écrit org.tsaraloha.tsalib 1.0.0 pour toute fiche, « signé » annoncé à tort (ExtensionPackager.h:45).
+Status: OPEN — étape E0 FAITE le 2026-10-26 (D3) : copie du paquet en préparation (<parent>/.staging/<uuid>), inspection et
+extraction de la copie, création exclusive des fichiers, un seul renommage final ; refus si la cible n'est pas vide (pas de
+mise à jour en place), si l'id est celui d'une extension livrée, si minimum_tsa_version (déclarée) > version de l'hôte ;
+inspection : octets en trop, doublons de casse, noms réservés Windows, point / espace final, caractères interdits ;
+découverte : le premier dossier (livré) l'emporte, conflit dans discoveryWarnings() ; import de dossier réservé au mode
+développeur ; commentaire « signé » retiré. Test 505. RESTE : E1 (registre qualifié, provenance SNAP), E2 (magasin
+versionné, journal, reprise, retour arrière), E3 (minisign/libsodium), E4, E5.
+
+## BUG-110
+Area: Sections — rayon de congé déduit du nom (src/Model/Section.h:46-49, Section.cpp:151-186)
+Problem: le rayon de congé d'un profilé laminé (A, Iy, Iz, It) n'est pas enregistré : il est relu à chaque calcul dans une
+table du code à partir du NOM de la section. Renommer la section (ou modifier la table) change les résultats d'un projet.
+Reproduction: 2026-10-25, test 495 (première version) : section « IPE 300 » renommée → déplacements différents.
+Impact: HIGH (exactitude, reproductibilité). Décision D1 (2026-10-26) : propriétés stockées, refus explicite plutôt que
+recalcul ; r conservé quand une dimension change (avertissement, conversion proposée). Constat : les formules des sections
+ont déjà changé sans version majeure (11f2087 en 1.8, 4457a16 en 1.10) → version conditionnelle non démontrable ;
+recommandé : 2.0 inconditionnelle + masque de fonctionnalités + sectionModel / empreinte dans SECP
+(TSA-rapports/2026-10-26/conceptions/BUG-110_presentation_D1.md). NON IMPLÉMENTÉ, en attente de validation.
+Status: OPEN
+Related files: src/Model/Section.*, src/IO/TSAFile_BinaryUtils.h
+
+## BUG-111
+Area: Traçabilité des calculs (ResultsModel, OpenSeesSolver, NDC, NationalAnnexConfig)
+Problem: version de moteur inventée par défaut (ResultsModel.h:197-198 « OpenSees 3.8.0 », OpenSeesSolver.cpp:421), aucune
+empreinte de l'entrée, script Tcl détruit (QTemporaryDir), chunk RSLT déclaré mais jamais écrit, annexe nationale et γ/ψ non
+figés dans le projet (singleton), NDC historique qui lit la version OpenSees du jour (NDCGenerator.cpp:127).
+Impact: HIGH (traçabilité, NDC régénérée différente). Status: OPEN — étape 0 FAITE le 2026-10-26 (D2) : métadonnées
+neuves vides (plus de « OpenSees 3.8.0 » / « France NF » par défaut), aucune version de repli, annexe non attribuée au
+calcul, configuration réelle du script (BasicBuilder, RCM), horodatage UTC, messages de validation avant calcul conservés
+(preparationMessages) ; NDC : moteur et version des résultats (« version non lue » sinon), plus « certifiées », annexe des
+vérifications EC2/EC3 indiquée à part. Tests 503, 504 ; test Standards.8 adapté (il vérifiait les valeurs inventées).
+RESTE : étapes 1-2 (empreintes, AnalysisTrace en mémoire), 3+ (format 1.14) après validation.
+Related files: src/Analysis/ResultsModel.h, src/Analysis/OpenSeesSolver.cpp, src/NDC/NDCGenerator.cpp, src/Standards/NationalAnnexConfig.*
+
+## BUG-112
+Area: Annuler — ModelDiff incomplet (src/Model/ModelDiff.cpp:95-107)
+Problem: isSlabDifferent ignore type, formulation, ouvertures et appuis de bord ; isWallDifferent a des lacunes similaires.
+Impact: MEDIUM [H] : annuler une modification de ces champs ne rafraîchit pas la vue. Status: FIXED (2026-10-26) — ModelDiff compare type, formulation, ouvertures (sommet par sommet), appuis de bord, décalage du voile. Test 497 (reproduit avant correction ; dalle inchangée non signalée).
+Related files: src/Model/ModelDiff.cpp
+
+## BUG-113
+Area: Notifications manquantes après mutation
+Problem: MainWindow_Mesh.cpp:311-312 (ouvertures de dalle, sans notifySlabModified ; le voile notifie, :299) ;
+LoadCaseDialog.cpp:216, 268, 279 (entrée Annuler créée, aucune notification après addLoadCase / addCombination /
+removeCombination) ; OccView_Events.cpp:441 (pushUndoState sur un plan de travail, absent du snapshot : entrée vide).
+Impact: MEDIUM (vues / invalidation des résultats). Status: FIXED (2026-10-26) — LoadCaseDialog : notifyLoadCaseChanged après ajout de cas, ajout / suppression de combinaison (test 498, reproduit avant correction) ; MainWindow_Mesh : ouvertures par Interaction::setSlabOpenings / setWallOpenings (une transaction, une notification ; test 502) ; OccView_Events : plus d'entrée Annuler vide pour le manipulateur de plan de travail (test 444 étendu, vrai glisser souris sous xcb : reproduit avant correction, 1 entrée et révision +1).
+## BUG-114
+Area: Paquet Windows — OpenSees (cmake/PackageTSA.cmake:236)
+Problem: le paquet teste thirdparty/OpenSees/bin/OpenSees.exe, le dossier ne contient que gOpenSees.exe : OpenSees absent
+du paquet, sans avertissement. Licence OpenSees : redistribution commerciale non autorisée sans accord (D3 du rapport).
+Status: FIXED (2026-10-26) — paquet : OpenSees.exe ou gOpenSees.exe, avertissement si demandé et absent, TSA_PACKAGE_OPENSEES=OFF par défaut, verify_package.py accepte les deux noms (script exécuté sous Linux sur une arborescence factice : ancien script sans OpenSees, nouveau avec) ; ensureAvailable ne télécharge plus jamais (installation par l'action « Installer », avec accord) ; extraction PowerShell sans interpolation de chemins, outils système par chemin absolu (Windows : NON COMPILÉ NI TESTÉ). Reste : empreinte SHA-256 de l'archive téléchargée, texte de licence OpenSees.
+## BUG-115
+Area: Panneau Propriétés du poteau — « Tube Rectangulaire / Creux » (ColumnPropertiesView::getSectionFromUi)
+Problem: choisir explicitement « Tube » produit un rectangle PLEIN nommé « Poteau Rectangulaire » (aucun champ
+d'épaisseur). Depuis BUG-106, ce n'est plus déclenché par une autre modification, seulement par ce choix explicite.
+Impact: MEDIUM. Status: OPEN.
 
 ## BUG-104
 Area: Tests — i18n, test 457 (recherche, seuil 50 ms)
@@ -212,6 +299,52 @@ Status: WORKAROUND — `cmake --preset ninja-debug --fresh` rétablit les drapea
 `Select-String build-ninja-debug\CMakeCache.txt -Pattern "^CMAKE_CXX_FLAGS:"` doit contenir /EHsc.
 
 ## Corrigés (historique)
+
+## BUG-105
+Area: Vérifications EC2 / EC3 et note de calcul — unités du calcul (kN ou N)
+Problem: les efforts étaient multipliés par 1000 (supposés en kN) sans lire ResultsModel::units() ; OpenSees, option « kN »
+décochée, rend des N : ratios EC2/EC3 faux d'un facteur 1000. Même hypothèse dans tous les tableaux de la note (réactions,
+efforts, σ, câbles N/F_pk, équilibre, extrêmes de ResultAnalyzer) et dans la note historique (présentation par défaut).
+Status: FIXED (2026-10-25) — UnitSystem::forceToNewtons / forceToKiloNewtons ; ResultsDockWidget (3 sites), NDCGenerator,
+NDCProjectNote (Ctx::toKN), ResultAnalyzer. Test 492 : même calcul en kN et en N → tous les tableaux des notes actuelle,
+détaillée et historique identiques ; ratio EC2 = calcul direct en SI. Reproduit avant correction (test 492 en échec).
+Chemin kN (défaut) : facteurs 1000 et 1 exacts, résultats bit à bit inchangés (banc 146/146, suite complète).
+Related files: src/Analysis/AnalysisTypes.h, src/NDC/*, src/UI/Dock/ResultsDockWidget.cpp, tests/test_ndc_report.cpp
+
+## BUG-106
+Area: Panneaux Propriétés (barre, poteau, treillis, dalle, voile) — réécriture silencieuse
+Problem: chaque validation (nom, couleur…) reconstruisait section, matériau, rotation, épaisseur depuis les champs : IPE 300
+→ « Profilé I » sans congés (A, Iy, It modifiés), UPN → rectangle, poteau HEA → rectangle, treillis en cornière → rond plein,
+matériau hors liste → matériau précédent de la liste, valeurs arrondies aux décimales affichées (hauteur de voile, rotation).
+Status: FIXED (2026-10-25) — src/UI/Properties/EditedFields.h : seuls les champs modifiés par l'utilisateur sont réécrits ;
+forme non représentable → champs de section désactivés ; matériau hors liste → aucun choix affiché. Test 493 (reproduit
+avant correction). Non testé en interface réelle (essai GUI à faire).
+Related files: src/UI/Properties/*PropertiesView.*, src/UI/Properties/EditedFields.h, tests/test_appearance.cpp
+
+## BUG-107
+Area: Ruban — Profilés I/H, Section rectangulaire, Section circulaire (MainWindow_Tools.cpp)
+Problem: setSection + notify sans pushUndoState ni transaction : modification non annulable.
+Status: FIXED (2026-10-25) — service TSA::Interaction::assignSection (src/Interaction/PropertyAssignment.*) : une entrée
+Annuler, aucune si rien n'est sélectionné. Test 494 (service ; l'action du ruban ouvre une boîte modale, non automatisée).
+Autres points d'entrée vérifiés annulables : panneaux, CommandRegistry, IA, types BIM.
+
+## BUG-108
+Area: Script OpenSees — injection Tcl par les noms (src/Analysis/OpenSeesAnalysisBuilder.cpp)
+Problem: noms de nœud, section, matériau, cas, charges et libellés écrits bruts en commentaire Tcl : un saut de ligne
+(fichier .tsa, import IFC) devenait une commande (exec), une barre oblique inverse finale absorbait la commande suivante,
+une accolade déséquilibrait le bloc pattern.
+Status: FIXED (2026-10-25) — tclComment() (une ligne, sans « \ », « { », « } ») sur les 7 écritures. Test 495 : aucune
+commande injectée, accolades équilibrées, déplacements identiques au modèle aux noms ordinaires (OpenSees 3.8 Linux).
+Reproduit avant correction (ligne « puts … » hors commentaire).
+
+## BUG-109
+Area: Paquets .tsalib non fiables (src/ExtensionSystem/ExtensionPackager.cpp)
+Problem: identifiant du manifeste utilisé tel quel comme dossier d'installation (« ../x » : écriture hors du dossier des
+extensions) ; décompression non plafonnée ; aucun contrôle de confinement du chemin final.
+Status: FIXED (partiel, 2026-10-25) — identifiant validé (LibraryValidator::isValidId) à la création, à l'inspection et donc à
+l'installation ; plafonds (10 000 fichiers, 256 Mio par fichier, 1 Gio au total) ; taille de l'en-tête zlib = taille
+déclarée avant qUncompress ; chemin final confiné au dossier cible. Test 496 (reproduit avant correction). RESTE OUVERT :
+extraction non atomique, masquage d'une extension officielle par une extension utilisateur de même id.
 
 ## BUG-103
 Area: Import IFC sous Linux — IfcOpenShell et libgmsh (scripts/linux/build-ifcopenshell.sh)

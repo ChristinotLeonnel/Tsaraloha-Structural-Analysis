@@ -133,7 +133,11 @@ Valeurs des énumérations :
 
 **`results`**
 - `status` vaut toujours `computed-not-validated`.
-- Autres champs : `engine`, `case`, `timestamp`, `displacements[{node, u[3], r[3]}]`, `reactions[{node, force[3], moment[3]}]`.
+- Autres champs : `engine`, `case`, `timestamp`, `units`, `displacements[{node, u[3], r[3]}]`, `reactions[{node, force[3], moment[3]}]`.
+- `units` (depuis le 2026-10-26) : `{ "length": "m", "rotation": "rad", "force": "kN", "moment": "kN.m" }`. Les réactions
+  sont toujours écrites dans ces unités, que le calcul ait été fait en kN ou en N. Avant cette date, un calcul OpenSees en
+  N (option « kN, m, kPa » décochée) exportait des réactions en N sous l'unité de document kN (BUG-117) ; les
+  rotations des résultats ont toujours été en radians.
 - Exportés seulement sur demande. À l'import, ils sont signalés et ne sont pas chargés comme résultats.
 
 ## 5. Propriétés personnalisées et extensions

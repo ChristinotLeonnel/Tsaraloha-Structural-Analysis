@@ -17,6 +17,7 @@ class Model;
 namespace TSA::Analysis
 {
 class ResultsModel;
+struct AnalysisExecutionMetadata;
 }
 
 namespace TSA::NDC
@@ -31,6 +32,10 @@ struct ModelAudit
 };
 
 ModelAudit auditModel(const TSA::Model::Model& model);
+
+/// « OpenSees 3.8.0 », « OpenSees (version non lue) » : moteur et version tels qu'enregistrés avec les résultats,
+/// jamais la version installée au moment de la note (BUG-111).
+QString engineLabel(const TSA::Analysis::AnalysisExecutionMetadata& meta);
 
 /// Poids propre des éléments transmis au calcul (kN) : Σ ρ · g · A · L, g = 9,81 m/s².
 double selfWeightKN(const TSA::Model::Model& model);

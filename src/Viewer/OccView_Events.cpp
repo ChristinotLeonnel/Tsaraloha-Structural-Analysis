@@ -436,13 +436,11 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
             }
 
             m_workPlane = withCurrentPositionName(m_workPlane, m_manipulatorStartWp);
-            if (m_model)
+            // Les plans de travail ne sont pas dans l'historique du modèle (snapshot) : leur historique est celui de
+            // la vue (rememberWorkPlane). Une entrée Annuler ici serait vide et déclarerait les résultats périmés.
+            if (m_model && m_model->workPlaneManager())
             {
-                m_model->pushUndoState(tr("Modification Plan de Travail").toStdString());
-                if (m_model->workPlaneManager())
-                {
-                    m_model->workPlaneManager()->updateWorkPlane(m_workPlane);
-                }
+                m_model->workPlaneManager()->updateWorkPlane(m_workPlane);
             }
             rememberWorkPlane(m_manipulatorStartWp, m_workPlane);
 

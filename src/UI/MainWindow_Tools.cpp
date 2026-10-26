@@ -23,6 +23,7 @@
 #include "Dock/ResultsDockWidget.h"
 #include "Properties/PropertyPanel.h"
 #include "../UndoRedo/EditTransaction.h"
+#include "../Interaction/PropertyAssignment.h"
 
 #include <QInputDialog>
 #include <QMessageBox>
@@ -64,6 +65,7 @@ bool confirmPlanarElementsExcluded(QWidget* parent, const TSA::Model::Model& mod
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     return reply == QMessageBox::Yes;
 }
+
 } // namespace
 
 void MainWindow::onActionWall()
@@ -277,30 +279,10 @@ void MainWindow::onActionSecI()
     double h = sec.height;
     double b = sec.width;
 
-    int modified = 0;
-    if (m_selectionManager)
-    {
-        for (int bId : m_selectionManager->selectedBeams())
-        {
-            auto* bm = m_model->getBeam(bId);
-            if (bm)
-            {
-                bm->setSection(sec);
-                m_model->notifyBeamModified(bId);
-                modified++;
-            }
-        }
-        for (int cId : m_selectionManager->selectedColumns())
-        {
-            auto* col = m_model->getColumn(cId);
-            if (col)
-            {
-                col->setSection(sec);
-                m_model->notifyColumnModified(cId);
-                modified++;
-            }
-        }
-    }
+    // Une seule entrée d'historique, annulable (auparavant : aucune).
+    const int modified = m_selectionManager ? TSA::Interaction::assignSection(*m_model, m_selectionManager->selectedBeams(), m_selectionManager->selectedColumns(), sec,
+                                                                               tr("Profilé %1").arg(QString::fromStdString(sec.name)).toStdString())
+                                            : 0;
 
     m_presets.beam.section = sec;
     m_presets.column.section = sec;
@@ -331,30 +313,10 @@ void MainWindow::onActionSecRect()
     std::string secName = QString("R%1x%2").arg(b * 100, 0, 'f', 0).arg(h * 100, 0, 'f', 0).toStdString();
     auto sec = TSA::Model::Section::rectangular(b, h, secName);
 
-    int modified = 0;
-    if (m_selectionManager)
-    {
-        for (int bId : m_selectionManager->selectedBeams())
-        {
-            auto* bm = m_model->getBeam(bId);
-            if (bm)
-            {
-                bm->setSection(sec);
-                m_model->notifyBeamModified(bId);
-                modified++;
-            }
-        }
-        for (int cId : m_selectionManager->selectedColumns())
-        {
-            auto* col = m_model->getColumn(cId);
-            if (col)
-            {
-                col->setSection(sec);
-                m_model->notifyColumnModified(cId);
-                modified++;
-            }
-        }
-    }
+    // Une seule entrée d'historique, annulable (auparavant : aucune).
+    const int modified = m_selectionManager ? TSA::Interaction::assignSection(*m_model, m_selectionManager->selectedBeams(), m_selectionManager->selectedColumns(), sec,
+                                                                               tr("Section %1").arg(QString::fromStdString(secName)).toStdString())
+                                            : 0;
 
     m_presets.beam.section = sec;
     m_presets.column.section = sec;
@@ -375,30 +337,10 @@ void MainWindow::onActionSecCirc()
     std::string secName = QString("D%1").arg(d * 100, 0, 'f', 0).toStdString();
     auto sec = TSA::Model::Section::circular(d, secName);
 
-    int modified = 0;
-    if (m_selectionManager)
-    {
-        for (int bId : m_selectionManager->selectedBeams())
-        {
-            auto* bm = m_model->getBeam(bId);
-            if (bm)
-            {
-                bm->setSection(sec);
-                m_model->notifyBeamModified(bId);
-                modified++;
-            }
-        }
-        for (int cId : m_selectionManager->selectedColumns())
-        {
-            auto* col = m_model->getColumn(cId);
-            if (col)
-            {
-                col->setSection(sec);
-                m_model->notifyColumnModified(cId);
-                modified++;
-            }
-        }
-    }
+    // Une seule entrée d'historique, annulable (auparavant : aucune).
+    const int modified = m_selectionManager ? TSA::Interaction::assignSection(*m_model, m_selectionManager->selectedBeams(), m_selectionManager->selectedColumns(), sec,
+                                                                               tr("Section %1").arg(QString::fromStdString(secName)).toStdString())
+                                            : 0;
 
     m_presets.beam.section = sec;
     m_presets.column.section = sec;

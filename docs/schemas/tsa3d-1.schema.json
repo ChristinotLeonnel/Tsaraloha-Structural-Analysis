@@ -284,6 +284,7 @@
       "description": "Résultats exportés : jamais chargés comme résultats validés à l'import",
       "properties": {
         "status": { "type": "string" }, "engine": { "type": "string" }, "case": { "type": "string" }, "timestamp": { "type": "string" },
+        "units": { "type": "object", "description": "unités des résultats : length m, rotation rad, force kN, moment kN.m", "properties": { "length": { "type": "string" }, "rotation": { "type": "string" }, "force": { "type": "string" }, "moment": { "type": "string" } } },
         "displacements": { "type": "array", "items": { "type": "object", "properties": { "node": { "$ref": "#/$defs/ref" }, "u": { "$ref": "#/$defs/vec3" }, "r": { "$ref": "#/$defs/vec3" } } } },
         "reactions": { "type": "array", "items": { "type": "object", "properties": { "node": { "$ref": "#/$defs/ref" }, "force": { "$ref": "#/$defs/vec3" }, "moment": { "$ref": "#/$defs/vec3" } } } }
       }

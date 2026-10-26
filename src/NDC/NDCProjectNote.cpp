@@ -118,6 +118,8 @@ struct Ctx
     bool hasResults() const { return results && results->isValid() && results->analysisType() != TSA::Analysis::AnalysisType::Modal; }
     bool hasModal() const { return results && results->isValid() && !results->modal().empty(); }
     int rowCap() const { return detailed ? 30 : 10; }
+    /// Facteur des efforts du calcul (kN ou N selon le moteur et ses options) vers le kN, unité de toute la note.
+    double toKN() const { return results ? results->units().forceToKiloNewtons() : 1.0; }
 
     NDCTable makeTable(const QString& caption, const QStringList& headers, const std::vector<QString>& align)
     {
@@ -224,11 +226,12 @@ double relativeDeflection(const TSA::Analysis::ElementResults& r, double* xAt)
     return best;
 }
 
-double maxNormalStress(const TSA::Analysis::ElementResults& r, const TSA::Model::Section& s)
+/// σ de fibre extrême (MPa) ; efforts dans les unités du calcul (kiloNewtons : kN, sinon N).
+double maxNormalStress(const TSA::Analysis::ElementResults& r, const TSA::Model::Section& s, bool kiloNewtons)
 {
     double best = 0.0;
     auto test = [&](const TSA::Analysis::StationForces& st) {
-        const double v = TSA::Analysis::fiberNormalStressMPa(st, s.area(), s.wy(), s.wz());
+        const double v = TSA::Analysis::fiberNormalStressMPa(st, s.area(), s.wy(), s.wz(), kiloNewtons);
         if (std::abs(v) > std::abs(best)) best = v;
     };
     test(r.startForces);
@@ -296,7 +299,7 @@ void chapterPresentation(Ctx& x, NDCDocument& doc)
     {
         const auto& meta = x.results->executionMetadata();
         s.keyValues.push_back({ QStringLiteral("Date du calcul"), QString::fromStdString(meta.executionTimestamp.empty() ? x.results->timestamp() : meta.executionTimestamp) });
-        s.keyValues.push_back({ QStringLiteral("Moteur"), QString::fromStdString(meta.solverEngine + " " + meta.solverVersion) });
+        s.keyValues.push_back({ QStringLiteral("Moteur"), engineLabel(meta) });
     }
     s.keyValues.push_back({ QStringLiteral("Note produite le"), QDateTime::currentDateTime().toString(QStringLiteral("dd/MM/yyyy HH:mm")) });
     ch.sections.push_back(s);
@@ -744,12 +747,13 @@ void chapterChecks(Ctx& x, NDCDocument& doc, int& issues)
         const auto eq = x.results->equilibrium();
         const double scale = std::max({ std::abs(eq.appliedFx), std::abs(eq.appliedFy), std::abs(eq.appliedFz), 1e-9 });
         const double rel = eq.maxError() / scale;
+        const double k = x.toKN();
         auto te = x.makeTable(QStringLiteral("Résultantes des charges et des réactions (kN)"),
                               { QStringLiteral("Direction"), QStringLiteral("Σ charges"), QStringLiteral("Σ réactions"), QStringLiteral("Écart") },
                               { QStringLiteral("left"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right") });
-        te.rows.push_back({ QStringLiteral("X"), f(eq.appliedFx), f(eq.reactionFx), f(eq.errorFx(), 4) });
-        te.rows.push_back({ QStringLiteral("Y"), f(eq.appliedFy), f(eq.reactionFy), f(eq.errorFy(), 4) });
-        te.rows.push_back({ QStringLiteral("Z"), f(eq.appliedFz), f(eq.reactionFz), f(eq.errorFz(), 4) });
+        te.rows.push_back({ QStringLiteral("X"), f(eq.appliedFx * k), f(eq.reactionFx * k), f(eq.errorFx() * k, 4) });
+        te.rows.push_back({ QStringLiteral("Y"), f(eq.appliedFy * k), f(eq.reactionFy * k), f(eq.errorFy() * k, 4) });
+        te.rows.push_back({ QStringLiteral("Z"), f(eq.appliedFz * k), f(eq.reactionFz * k), f(eq.errorFz() * k, 4) });
         se.tables.push_back(te);
         const bool balanced = eq.isBalanced(1e-3);
         if (!balanced) ++issues;
@@ -806,7 +810,7 @@ void chapterChecks(Ctx& x, NDCDocument& doc, int& issues)
                 expected += fac * surfaceByCase[cid];
             }
             complete = complete && surfaceLoads == 0.0;
-            const double computed = -eq.appliedFz;
+            const double computed = -eq.appliedFz * k;   // kN, comme la somme du modèle
             const double gap = std::abs(computed - expected) / std::max(std::abs(expected), 1e-9);
             se.paragraphs.push_back(QStringLiteral("Contrôle indépendant de la charge verticale : Σ facteurs × (poids propre + Σ q·L + Σ F<sub>z</sub> + charges surfaciques) = %1 kN "
                                                    "d'après le modèle ; charge appliquée par le moteur = %2 kN ; écart %3 % → %4.")
@@ -932,11 +936,12 @@ void chapterReactions(Ctx& x, NDCDocument& doc)
     double sx = 0, sy = 0, sz = 0, maxR = 0;
     int maxId = 0;
     std::vector<std::pair<double, int>> order;
+    const double k = x.toKN();
     for (const auto& [id, r] : x.results->allReactions())
     {
-        sx += r.rx, sy += r.ry, sz += r.rz;
-        if (r.forceMagnitude() > maxR) maxR = r.forceMagnitude(), maxId = id;
-        order.push_back({ r.rz, id });
+        sx += r.rx * k, sy += r.ry * k, sz += r.rz * k;
+        if (r.forceMagnitude() * k > maxR) maxR = r.forceMagnitude() * k, maxId = id;
+        order.push_back({ r.rz * k, id });
     }
     s.keyValues.push_back({ QStringLiteral("Σ R<sub>x</sub> ; Σ R<sub>y</sub> ; Σ R<sub>z</sub>"), QStringLiteral("%1 ; %2 ; %3 kN").arg(f(sx, 1), f(sy, 1), f(sz, 1)) });
     s.keyValues.push_back({ QStringLiteral("Réaction maximale"), QStringLiteral("%1 kN au nœud %2").arg(f(maxR, 1)).arg(maxId) });
@@ -951,7 +956,7 @@ void chapterReactions(Ctx& x, NDCDocument& doc)
         for (std::size_t i = 0; i < order.size() && i < 60; ++i)
         {
             const auto* r = x.results->getNodeReaction(order[i].second);
-            t.rows.push_back({ QString::number(order[i].second), f(r->rx, 1), f(r->ry, 1), f(r->rz, 1), f(r->mx, 1), f(r->my, 1), f(r->mz, 1) });
+            t.rows.push_back({ QString::number(order[i].second), f(r->rx * k, 1), f(r->ry * k, 1), f(r->rz * k, 1), f(r->mx * k, 1), f(r->my * k, 1), f(r->mz * k, 1) });
         }
         if (order.size() > 60) t.caption += QStringLiteral(" — 60 premières sur %1").arg(order.size());
         s.tables.push_back(t);
@@ -996,7 +1001,7 @@ void chapterForces(Ctx& x, NDCDocument& doc)
         if (mb.kind == StructuralElementKind::Cable) continue;
         const auto* r = x.results->getElementResults(mb.kind, mb.id);
         if (!r) continue;
-        rows.push_back({ maxNormalStress(*r, *mb.section), mb, std::max(std::abs(r->minNormalForce()), std::abs(r->maxNormalForce())) * (std::abs(r->minNormalForce()) > std::abs(r->maxNormalForce()) ? -1.0 : 1.0),
+        rows.push_back({ maxNormalStress(*r, *mb.section, x.toKN() == 1.0), mb, std::max(std::abs(r->minNormalForce()), std::abs(r->maxNormalForce())) * (std::abs(r->minNormalForce()) > std::abs(r->maxNormalForce()) ? -1.0 : 1.0),
                          absMax(*r, &TSA::Analysis::StationForces::Vy), absMax(*r, &TSA::Analysis::StationForces::Vz), absMax(*r, &TSA::Analysis::StationForces::My),
                          absMax(*r, &TSA::Analysis::StationForces::Mz), absMax(*r, &TSA::Analysis::StationForces::Mx) });
     }
@@ -1012,7 +1017,8 @@ void chapterForces(Ctx& x, NDCDocument& doc)
     {
         const auto& r = rows[i];
         ts.rows.push_back({ QStringLiteral("%1 %2").arg(kindName(r.m.kind)).arg(r.m.id), QStringLiteral("%1<br><small>%2</small>").arg(r.m.name, QString::fromStdString(r.m.section->name)),
-                            f(r.N, 1), f(r.Vy, 1), f(r.Vz, 1), f(r.My, 1), f(r.Mz, 1), f(r.Mx, 2), f(r.sigma, 1) });
+                            f(r.N * x.toKN(), 1), f(r.Vy * x.toKN(), 1), f(r.Vz * x.toKN(), 1), f(r.My * x.toKN(), 1), f(r.Mz * x.toKN(), 1), f(r.Mx * x.toKN(), 2),
+                            f(r.sigma, 1) });
     }
     ss.tables.push_back(ts);
     ch.sections.push_back(ss);
@@ -1050,7 +1056,8 @@ void chapterForces(Ctx& x, NDCDocument& doc)
         auto tc = x.makeTable(QStringLiteral("Résultantes maximales par surface"),
                               { QStringLiteral("Surface"), QStringLiteral("Éléments"), QStringLiteral("|M| max (kN·m/m)"), QStringLiteral("|N| max (kN/m)"), QStringLiteral("|V| max (kN/m)") },
                               { QStringLiteral("left"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right") });
-        for (const auto& [ref, s] : per) tc.rows.push_back({ QString::fromStdString(ref), QString::number(s.elements), f(s.m, 2), f(s.n, 2), f(s.v, 2) });
+        const double k = x.toKN();
+        for (const auto& [ref, s] : per) tc.rows.push_back({ QString::fromStdString(ref), QString::number(s.elements), f(s.m * k, 2), f(s.n * k, 2), f(s.v * k, 2) });
         sc.tables.push_back(tc);
         ch.sections.push_back(sc);
     }
@@ -1171,7 +1178,8 @@ void chapterCables(Ctx& x, NDCDocument& doc, int& issues)
                 ++missing;
                 continue;
             }
-            list.push_back({ mb.id, mb.name, mb.length, c->initialTension() / 1e3, std::min(r->startForces.N, r->endForces.N), c->definition().minimumBreakingForce() / 1e3 });
+            list.push_back({ mb.id, mb.name, mb.length, c->initialTension() / 1e3, std::min(r->startForces.N, r->endForces.N) * x.toKN(),
+                             c->definition().minimumBreakingForce() / 1e3 });
         }
         double nMin = 1e30, nMax = -1e30, ratioMax = 0;
         int compressed = 0;
@@ -1238,8 +1246,10 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
         if (!r) continue;
         // Flexion autour de l'axe fort (M_y, inertie I_y = b·h³/12, hauteur h) : seule configuration de la section b × h
         // vérifiée. Le moment d'axe faible M_z n'est pas un moment de la même section : signalé, jamais confondu.
-        const double med = absMax(*r, &TSA::Analysis::StationForces::My);
-        const double mzMax = absMax(*r, &TSA::Analysis::StationForces::Mz);
+        // Moments en kN·m (unités du calcul : kN ou N), passés en N·m à EC2
+        const double toKN = x.toKN();
+        const double med = absMax(*r, &TSA::Analysis::StationForces::My) * toKN;
+        const double mzMax = absMax(*r, &TSA::Analysis::StationForces::Mz) * toKN;
         const auto c = TSA::Standards::Design::ConcreteDesignEC2::calculateFromModel(*mb.section, *mb.material, std::max(med, 0.01) * 1000.0);
         const bool pass = c.valid && !c.requiresCompressionSteel && !c.exceedsMaximum;
         ++computedChecks;
@@ -1277,8 +1287,9 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
     {
         if (mb.kind == StructuralElementKind::Cable || !isSteel(*mb.material)) continue;
         const auto* r = x.results->getElementResults(mb.kind, mb.id);
-        if (!r || r->minNormalForce() >= -1e-3) continue;
-        const double ned = -r->minNormalForce();
+        const double toKN = x.toKN();
+        if (!r || r->minNormalForce() * toKN >= -1e-3) continue;
+        const double ned = -r->minNormalForce() * toKN;   // kN
         const auto c = TSA::Standards::Design::SteelDesignEC3::calculateFromBar(*mb.section, *mb.material, mb.length, 1.0, ned * 1000.0, false);
         const bool pass = c.valid && c.pass && c.utilizationRatio <= 1.0;
         ++computedChecks;
@@ -1317,7 +1328,7 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
         if (mb.kind == StructuralElementKind::Cable || !isSteel(*mb.material)) continue;
         const auto* r = x.results->getElementResults(mb.kind, mb.id);
         if (!r) continue;
-        const double s = std::abs(maxNormalStress(*r, *mb.section)), fy = mb.material->fk / 1e6;
+        const double s = std::abs(maxNormalStress(*r, *mb.section, x.toKN() == 1.0)), fy = mb.material->fk / 1e6;
         if (fy <= 0) continue;
         sig.push_back({ s / fy, { QStringLiteral("%1 %2").arg(kindName(mb.kind)).arg(mb.id), QStringLiteral("%1<br><small>%2</small>").arg(mb.name, QString::fromStdString(mb.section->name)),
                                   f(s, 1), f(fy, 0), f(s / fy * 100.0, 1) + QStringLiteral(" %"), s <= fy ? ok() : warn(QStringLiteral("σ > f<sub>y</sub>")) } });
@@ -1416,7 +1427,7 @@ void chapterValidation(Ctx& x, NDCDocument& doc)
     {
         const auto& meta = x.results->executionMetadata();
         st.keyValues.push_back({ QStringLiteral("Logiciel"), QStringLiteral("%1 %2").arg(TSA::Product::name(), TSA::Product::version()) });
-        st.keyValues.push_back({ QStringLiteral("Moteur de calcul"), QString::fromStdString(meta.solverEngine + " " + meta.solverVersion) });
+        st.keyValues.push_back({ QStringLiteral("Moteur de calcul"), engineLabel(meta) });
         st.keyValues.push_back({ QStringLiteral("Unités du calcul"), QString::fromStdString(x.results->units().force + ", " + x.results->units().length) });
         st.keyValues.push_back({ QStringLiteral("Date du calcul"), QString::fromStdString(meta.executionTimestamp.empty() ? x.results->timestamp() : meta.executionTimestamp) });
     }
@@ -1520,6 +1531,13 @@ void chapterConclusion(Ctx& x, NDCDocument& doc, int issues, int computedChecks,
 
 // =============================================================================================================
 
+QString engineLabel(const TSA::Analysis::AnalysisExecutionMetadata& meta)
+{
+    const QString name = QString::fromStdString(meta.solverEngine.empty() ? std::string("moteur inconnu") : meta.solverEngine);
+    return meta.solverVersion.empty() ? QStringLiteral("%1 (version non lue)").arg(name)
+                                      : QStringLiteral("%1 %2").arg(name, QString::fromStdString(meta.solverVersion));
+}
+
 ModelAudit auditModel(const TSA::Model::Model& m)
 {
     ModelAudit a;
@@ -1596,9 +1614,8 @@ NDCDocument NDCProjectNote::build(const TSA::Model::Model& model, const std::sha
     NDCDocument doc;
     doc.config = config;
     if (results && results->isValid() && !results->executionMetadata().solverEngine.empty())
-        doc.softwareVersion = QStringLiteral("%1 v%2 — moteur %3 %4").arg(TSA::Product::name(), QString::fromLatin1(TSA::Product::kReportVersion),
-                                                                         QString::fromStdString(results->executionMetadata().solverEngine),
-                                                                         QString::fromStdString(results->executionMetadata().solverVersion));
+        doc.softwareVersion = QStringLiteral("%1 v%2 — moteur %3").arg(TSA::Product::name(), QString::fromLatin1(TSA::Product::kReportVersion),
+                                                                      engineLabel(results->executionMetadata()));
     Ctx x { model, results, config, snapshotProvider };
     x.detailed = config.noteLayout == NoteLayout::Detailed;
     x.members = membersOf(model);

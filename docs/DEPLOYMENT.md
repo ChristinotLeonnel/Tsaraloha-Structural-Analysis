@@ -62,7 +62,7 @@ dossier de compilation n'est jamais réutilisé. Les étapes sont les suivantes 
    - une DLL introuvable autre que le runtime arrête le paquet avec une erreur.
 4. **Runtime MSVC** : les DLL `Microsoft.VC*.CRT` et `OpenMP` du dossier `VCToolsRedistDir` sont copiées à côté de l'exécutable (déploiement app-local autorisé pour le « Redistributable Code » de Visual Studio). En Debug, le runtime de débogage n'est pas redistribuable : le paquet Debug ne sert qu'aux essais.
 5. **Ressources OCCT** : `Shaders`, `Textures`, `StdResource`, `SHMessage`, `XSMessage`, `UnitsAPI`, `XSTEPResource`, `TObj`.
-6. **OpenSees** (option `TSA_PACKAGE_OPENSEES`, activée par défaut) : `engines/OpenSees/bin` (exécutable, `libiomp5md.dll`, runtime) et `lib/tcl8.6`. **Vérifiez la licence avant toute diffusion** (§6).
+6. **OpenSees** (option `TSA_PACKAGE_OPENSEES`, **désactivée par défaut** depuis le 2026-10-25 : droits de redistribution non vérifiés) : `engines/OpenSees/bin` (`OpenSees.exe` ou `gOpenSees.exe`, `libiomp5md.dll`, runtime) et `lib/tcl8.6`. Option activée sans exécutable : avertissement, paquet sans OpenSees. **Vérifiez la licence avant toute diffusion** (§6).
 7. **Données livrées** :
    - `Extensions/` ;
    - `plugins/` (vide) ;
@@ -100,7 +100,7 @@ Voir `docs/THIRD_PARTY_LICENSES.md`. Points d'attention :
 
 - **Qt 6 (LGPL v3)** : liaison dynamique, DLL remplaçables, texte de licence fourni.
 - **OpenCASCADE (LGPL 2.1 avec exception OCCT)** : liaison dynamique, textes fournis.
-- **OpenSees** : licence de l'Université de Californie, réservée à l'usage éducatif, de recherche et non lucratif. **Un usage commercial exige un accord.** Le paquet affiche un avertissement ; pour exclure OpenSees, utilisez `-DTSA_PACKAGE_OPENSEES=OFF`.
+- **OpenSees** : licence de l'Université de Californie, réservée à l'usage éducatif, de recherche et non lucratif. **Un usage commercial exige un accord.** OpenSees n'est plus inclus par défaut ; `-DTSA_PACKAGE_OPENSEES=ON` l'inclut (usage interne, éducatif ou de recherche) avec un avertissement. Sans OpenSees, TSA le détecte (dossier `engines/OpenSees`, PATH, chemin enregistré) et indique précisément son absence ; aucun téléchargement n'a lieu sans l'accord de l'utilisateur.
 
 ## 7. Limites connues
 

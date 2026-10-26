@@ -2,6 +2,32 @@
 
 Last Updated: 2026-10-25. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
+## TSA Core — phase 0 : intégrité (approuvée le 2026-10-25, branche fix/core-integrity)
+
+- [x] BUG-105 unités EC2/EC3 et note de calcul (test 492).
+- [x] BUG-106 panneaux Propriétés : seuls les champs modifiés sont réécrits (test 493) — essai GUI à faire.
+- [x] BUG-107 section du ruban annulable (test 494).
+- [x] BUG-108 injection Tcl (test 495).
+- [x] BUG-109 paquets .tsalib : id, chemins, tailles (test 496) ; [ ] extraction atomique, masquage.
+- [ ] BUG-110 rayon de congé figé dans le .tsa (format 1.13) — à présenter avant mise en œuvre.
+- [ ] BUG-111 traçabilité : manifeste de résultats, versions lues, empreinte, RSLT, annexe nationale figée.
+- [x] BUG-112 ModelDiff dalles/voiles (test 497) ; [x] BUG-113 notifications (test 498) ; [ ] BUG-115 poteau « Tube ».
+- [x] BUG-114 OpenSees : OFF par défaut, détection, aucun téléchargement implicite ; [ ] empreinte de l'archive, licence.
+- [x] CI préparée : .github/workflows/ci.yml (Linux + Windows), tools/ci/run_test_suites.py (rapport par suite,
+      dépendances absentes = NON EXÉCUTÉE), tools/ci/check_dependencies.py ; [ ] premier passage sur GitHub (push requis),
+      épinglage des actions par SHA, OpenSees et Gmsh en CI.
+- [x] BUG-117 P1 : IFC, Fem3D/OpenSees, TSA3D (tests 499-501, références avant/après) ; [ ] P2 affichages « kN », P3.
+- [x] BUG-118 étape E0 (test 505) ; [ ] E1 registre qualifié / provenance, E2 magasin versionné, E3 signatures, E4, E5.
+- [x] BUG-111 étape 0 (tests 503-504) ; [ ] étapes 1-2 (empreintes, AnalysisTrace en mémoire) ; [ ] 1.14 après validation.
+- [x] BUG-113 : tests de régression ajoutés (502 ouvertures, 444 manipulateur).
+- [ ] BUG-110 : présentation D1 livrée (2.0 inconditionnelle recommandée) — EN ATTENTE DE VALIDATION.
+- [ ] D5 : compilation et tests Windows/MSVC, CI GitHub (push requis), essai manuel des panneaux Propriétés, traductions
+      (8 textes nouveaux non traduits en et mg, .ts non modifiés) — NON EXÉCUTÉS.
+- [ ] BUG-110 (A+ : r figé, chunk SECP, 1.13 / 2.0 conditionnelle) et BUG-111 (fiche AnalysisTrace, 4 empreintes,
+      chunks TRCE/RSLT/EINP, 1.14) : conceptions livrées, EN ATTENTE D'APPROBATION.
+- [ ] ADR : Gmsh (processus séparé ?), OpenSees (redistribution), calcul modal (ADR-022 contredit par le code).
+- [x] Compiler et tester TSALab sous Linux (dossier temporaire, hors dépôt) : 27/27 le 2026-10-26 après les modifications de src/.
+
 ## Portage Linux (docs/LINUX_BUILD.md)
 
 - [x] OCCT 8.0.1 Linux, presets linux-debug/linux-release, scripts/linux/, build Debug + Release (2026-10-24).

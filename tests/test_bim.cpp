@@ -699,5 +699,91 @@ END-ISO-10303-21;
         ++passed;
     }
 
+    // TEST 501 : raideurs d'appui IFC dans l'unité déclarée par le fichier (BUG-117, X2/X3). Le modèle TSA est en kN/m et
+    // kN·m/rad ; IFC « usually measured in N/m, Nm/rad » (IFC 4.3, IfcLinearStiffnessMeasure). L'export déclare
+    // LINEARSTIFFNESSUNIT / ROTATIONALSTIFFNESSUNIT et écrit des N/m ; l'import lit l'unité déclarée, sinon FORCEUNIT /
+    // LENGTHUNIT / PLANEANGLEUNIT ; un fichier écrit par un ancien TSA (sans unité de raideur) reste lu en kN/m.
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(6, 0, 0);
+        m.getNode(a)->setSupport(SupportDefinition::elastic(5000.0, 6000.0, 7000.0, 1200.0, 1300.0, 1400.0));
+        m.getNode(b)->setSupport(SupportDefinition::pinned());
+        bar(m, a, b);
+        TSA::BIM::Ifc::IfcExportOptions opt;
+        opt.timeStamp = "2026-10-26T12:00:00";
+        std::string doc;
+        TEST_CHECK(TSA::BIM::Ifc::IfcExporter::exportToString(m, opt, doc).ok, "Test 501: export");
+        const std::string dir = "./build/test_tsa_data/";
+        std::filesystem::create_directories(dir);
+        TEST_CHECK(TSA::BIM::Ifc::IfcExporter::exportToFile(m, dir + "test_units_stiffness.ifc", opt).ok, "Test 501: fichier .ifc (lecteur indépendant)");
+        TEST_CHECK(doc.find("IFCLINEARSTIFFNESSMEASURE(5000000.)") != std::string::npos
+                       && doc.find("IFCLINEARSTIFFNESSMEASURE(7000000.)") != std::string::npos
+                       && doc.find("IFCROTATIONALSTIFFNESSMEASURE(1200000.)") != std::string::npos
+                       && doc.find("IFCROTATIONALSTIFFNESSMEASURE(1400000.)") != std::string::npos,
+                   "Test 501: raideurs écrites en N/m et N·m/rad (unités du fichier)");
+        TEST_CHECK(count(doc, "IFCDERIVEDUNIT") == 2 && doc.find(".LINEARSTIFFNESSUNIT.") != std::string::npos
+                       && doc.find(".ROTATIONALSTIFFNESSUNIT.") != std::string::npos,
+                   "Test 501: unités de raideur déclarées dans IFCUNITASSIGNMENT");
+
+        auto springsAt0 = [](const std::string& ifc, std::array<double, 6>& k) {
+            Model back;
+            TSA::BIM::Ifc::IfcImportOptions o;
+            o.importGeometry = false;
+            const auto r = TSA::BIM::Ifc::IfcImporter::importString(ifc, back, o);
+            for (const auto& [id, n] : back.nodes())
+                if (std::abs(n.x()) + std::abs(n.y()) + std::abs(n.z()) < 1e-9)
+                {
+                    const auto& s = n.support();
+                    k = { s.kx(), s.ky(), s.kz(), s.krx(), s.kry(), s.krz() };
+                }
+            return r;
+        };
+        auto equals = [](const std::array<double, 6>& k, double f) {
+            const double ref[6] = { 5000.0, 6000.0, 7000.0, 1200.0, 1300.0, 1400.0 };
+            for (int i = 0; i < 6; ++i)
+                if (std::abs(k[i] - f * ref[i]) > 1e-9 * f * ref[i]) return false;
+            return true;
+        };
+        std::array<double, 6> k {};
+        TEST_CHECK(springsAt0(doc, k).ok && equals(k, 1.0), "Test 501: aller-retour, raideurs relues en kN/m (" << k[0] << ")");
+
+        // Fichier d'un ancien TSA : signature de l'écrivain, aucune unité de raideur, valeurs en kN/m
+        std::string legacy = doc;
+        for (const char* v : { "5000000.", "6000000.", "7000000.", "1200000.", "1300000.", "1400000." })
+        {
+            const std::string s(v), kN = s.substr(0, s.size() - 4) + ".";
+            for (std::size_t p = legacy.find("MEASURE(" + s + ")"); p != std::string::npos; p = legacy.find("MEASURE(" + s + ")", p))
+                legacy.replace(p + 8, s.size(), kN);
+        }
+        std::vector<std::string> derived;
+        for (std::size_t p = legacy.find("=IFCDERIVEDUNIT("); p != std::string::npos; p = legacy.find("=IFCDERIVEDUNIT(", p + 1))
+            derived.push_back("," + legacy.substr(legacy.rfind('#', p), p - legacy.rfind('#', p)));
+        for (const auto& ref : derived)
+        {
+            const auto ua = legacy.find("IFCUNITASSIGNMENT"), end = legacy.find(';', ua);
+            auto p = legacy.find(ref, ua);
+            while (p < end && legacy[p + ref.size()] != ',' && legacy[p + ref.size()] != ')') p = legacy.find(ref, p + 1);
+            if (p < end) legacy.erase(p, ref.size());
+        }
+        TEST_CHECK(derived.size() == 2, "Test 501: ancien fichier reconstitué (unités de raideur retirées de l'affectation)");
+        const auto rl = springsAt0(legacy, k);
+        bool warned = false;
+        for (const auto& w : rl.warnings) warned |= w.find("kN/m") != std::string::npos;
+        TEST_CHECK(rl.ok && equals(k, 1.0) && warned, "Test 501: fichier d'un ancien TSA relu en kN/m, avec avertissement (" << k[0] << ")");
+
+        // Fichier d'un autre logiciel, sans unité de raideur, forces en kN : k = force / longueur = kN/m
+        std::string foreign = legacy;
+        foreign.replace(foreign.find(" STEP writer'"), 13, " exporter'");
+        foreign.replace(foreign.find("*,.FORCEUNIT.,$,.NEWTON."), 24, "*,.FORCEUNIT.,.KILO.,.NEWTON.");
+        TEST_CHECK(springsAt0(foreign, k).ok && equals(k, 1.0), "Test 501: autre logiciel en kN sans unité de raideur → kN/m (" << k[0] << ")");
+
+        // Unité de raideur déclarée à partir d'un FORCEUNIT en kN : les valeurs du fichier sont des kN/m
+        std::string kilo = doc;
+        kilo.replace(kilo.find("*,.FORCEUNIT.,$,.NEWTON."), 24, "*,.FORCEUNIT.,.KILO.,.NEWTON.");
+        TEST_CHECK(springsAt0(kilo, k).ok && equals(k, 1000.0), "Test 501: unité dérivée kN/m déclarée → valeurs × 1 (" << k[0] << ")");
+        std::cout << "[PASS] Test 501: Raideurs d'appui IFC en N/m, unités déclarées, anciens fichiers TSA" << std::endl;
+        ++passed;
+    }
+
     return true;
 }

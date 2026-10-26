@@ -37,6 +37,9 @@ public:
     // Chemins de recherche d'extensions
     void addSearchPath(const QString& path);
     QStringList searchPaths() const { return m_searchPaths; }
+    /// Extensions écartées par la dernière découverte (identifiant déjà fourni par un dossier lu avant : extensions
+    /// livrées d'abord), avec le motif. Une extension n'en masque jamais une autre en silence.
+    const QStringList& discoveryWarnings() const { return m_discoveryWarnings; }
 
     // Découverte et cycle de vie
     std::vector<ExtensionManifest> discover();
@@ -98,6 +101,7 @@ public:
 
 private:
     QStringList m_searchPaths;
+    QStringList m_discoveryWarnings;
     LibraryLoader m_loader;
     LibraryValidator m_validator;
     LibraryCache m_cache;

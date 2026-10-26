@@ -277,14 +277,20 @@ void ColumnPropertiesView::refreshView()
     int sIdx = m_comboSectionType->findData(static_cast<int>(sec.shape));
     if (sIdx >= 0) m_comboSectionType->setCurrentIndex(sIdx);
     updateSectionVisibility(static_cast<int>(sec.shape));
+    // Les champs ne représentent que les sections rectangulaires et circulaires pleines : un profilé (HEA, IPE…),
+    // un tube ou une autre forme n'est pas modifiable ici (dialogue des sections), jamais reconstruit en rectangle.
+    m_sectionEditable = sec.shape == TSA::Model::SectionShape::Rectangular || sec.shape == TSA::Model::SectionShape::Circular;
+    for (QWidget* w : std::initializer_list<QWidget*> { m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius })
+        w->setEnabled(m_sectionEditable);
+    m_comboSectionType->setToolTip(m_sectionEditable ? QString() : tr("Profil %1 : forme non modifiable dans ce panneau (dialogue des sections).").arg(QString::fromStdString(sec.name)));
 
     m_spinWidth->setValue(sec.width);
     m_spinHeight->setValue(sec.height);
     m_spinRadius->setValue(sec.diameter / 2.0);
     m_spinRotation->setValue(col->rotation());
 
-    int mIdx = m_comboMaterial->findData(col->material().id);
-    if (mIdx >= 0) m_comboMaterial->setCurrentIndex(mIdx);
+    // Matériau absent de la liste (importé, personnalisé) : aucun choix affiché, jamais remplacé par un autre.
+    m_comboMaterial->setCurrentIndex(m_comboMaterial->findData(col->material().id));
 
     m_lblNodes->setText(tr("N%1 (Pied) → N%2 (Tête)").arg(col->startNodeId()).arg(col->endNodeId()));
 
@@ -297,6 +303,7 @@ void ColumnPropertiesView::refreshView()
     m_colorHex = QString::fromStdString(col->color()); // vide : apparence du matériau
     TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, col->material());
     m_colorMaterial = col->material();
+    captureEditedFields();
 
     m_isLoading = false;
 }
@@ -332,16 +339,16 @@ void ColumnPropertiesView::applyChanges()
 
     col->setName(m_editName->text().toStdString());
 
-    auto sec = getSectionFromUi();
-    col->setSection(sec);
-
-    int matCode = m_comboMaterial->currentData().toInt();
-    const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(matCode);
-    if (pMat)
+    // Seuls les champs modifiés sont réécrits : renommer un poteau HEA 200 ne le remplace plus par un rectangle.
+    if (m_sectionEditable && m_edited.anyChanged({ m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius }))
+        col->setSection(getSectionFromUi());
+    if (m_edited.changed(m_comboMaterial))
     {
-        col->setMaterial(*pMat);
+        if (const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(m_comboMaterial->currentData().toInt()))
+            col->setMaterial(*pMat);
     }
-    col->setRotation(m_spinRotation->value());
+    if (m_edited.changed(m_spinRotation)) col->setRotation(m_spinRotation->value());
+    const auto& sec = col->section();
     col->setColor(m_colorHex.toStdString());
 
     if (m_previewWidget)
@@ -359,8 +366,14 @@ void ColumnPropertiesView::applyChanges()
             um->addRecord({ "modify_property", "Column", m_columnId, "material", oldMaterial, col->material().name,
                             { "stiffness", "self_weight", "results_invalidated" } });
     }
+    captureEditedFields();
     m_model->notifyColumnModified(m_columnId);
     emit elementModified();
+}
+
+void ColumnPropertiesView::captureEditedFields()
+{
+    m_edited.capture({ m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius, m_comboMaterial, m_spinRotation });
 }
 
 } // namespace TSA::UI

@@ -129,12 +129,16 @@ ExportClass exportClass(const PhysicalElement& e)
     return { "IFCBUILDINGELEMENTPROXY", ",.NOTDEFINED.", true };
 }
 
+/// Raideurs du modèle (kN/m, kN·m/rad, SupportDefinition) → unités déclarées par le fichier (N/m, N·m/rad,
+/// LINEARSTIFFNESSUNIT / ROTATIONALSTIFFNESSUNIT de writeContextAndProject).
+constexpr double kStiffnessToFileUnits = 1000.0;
+
 std::string stiffness(TSA::Model::DOFState s, double k, const char* measure)
 {
     switch (s)
     {
     case TSA::Model::DOFState::Fixed: return "IFCBOOLEAN(.T.)";
-    case TSA::Model::DOFState::Spring: return std::string(measure) + "(" + W::real(k) + ")";
+    case TSA::Model::DOFState::Spring: return std::string(measure) + "(" + W::real(k * kStiffnessToFileUnits) + ")";
     default: return "IFCBOOLEAN(.F.)";
     }
 }
@@ -178,17 +182,24 @@ private:
         m_ctx.bodyContext = m_w.add("IFCGEOMETRICREPRESENTATIONSUBCONTEXT", "'Body','Model',*,*,*,*," + W::ref(m_ctx.modelContext) + ",$,.MODEL_VIEW.,$");
         m_ctx.axisContext = m_w.add("IFCGEOMETRICREPRESENTATIONSUBCONTEXT", "'Axis','Model',*,*,*,*," + W::ref(m_ctx.modelContext) + ",$,.GRAPH_VIEW.,$");
 
-        // Unités SI du fichier = unités internes de TSA (src/Core/Units.h)
+        // Unités SI du fichier (src/Core/Units.h). Les raideurs d'appui sont des unités dérivées : déclarées
+        // explicitement (N/m, N·m/rad) plutôt que laissées à l'interprétation du lecteur.
+        const int metre = m_w.add("IFCSIUNIT", "*,.LENGTHUNIT.,$,.METRE.");
+        const int radian = m_w.add("IFCSIUNIT", "*,.PLANEANGLEUNIT.,$,.RADIAN.");
+        const int newton = m_w.add("IFCSIUNIT", "*,.FORCEUNIT.,$,.NEWTON.");
+        auto element = [this](int unit, int exponent) { return m_w.add("IFCDERIVEDUNITELEMENT", W::ref(unit) + "," + std::to_string(exponent)); };
         std::vector<int> units = {
-            m_w.add("IFCSIUNIT", "*,.LENGTHUNIT.,$,.METRE."),
+            metre,
             m_w.add("IFCSIUNIT", "*,.AREAUNIT.,$,.SQUARE_METRE."),
             m_w.add("IFCSIUNIT", "*,.VOLUMEUNIT.,$,.CUBIC_METRE."),
-            m_w.add("IFCSIUNIT", "*,.PLANEANGLEUNIT.,$,.RADIAN."),
+            radian,
             m_w.add("IFCSIUNIT", "*,.MASSUNIT.,.KILO.,.GRAM."),
-            m_w.add("IFCSIUNIT", "*,.FORCEUNIT.,$,.NEWTON."),
+            newton,
             m_w.add("IFCSIUNIT", "*,.PRESSUREUNIT.,$,.PASCAL."),
             m_w.add("IFCSIUNIT", "*,.TIMEUNIT.,$,.SECOND."),
             m_w.add("IFCSIUNIT", "*,.THERMODYNAMICTEMPERATUREUNIT.,$,.KELVIN."),
+            m_w.add("IFCDERIVEDUNIT", W::refs({ element(newton, 1), element(metre, -1) }) + ",.LINEARSTIFFNESSUNIT.,$,$"),
+            m_w.add("IFCDERIVEDUNIT", W::refs({ element(newton, 1), element(metre, 1), element(radian, -1) }) + ",.ROTATIONALSTIFFNESSUNIT.,$,$"),
         };
         const int ua = m_w.add("IFCUNITASSIGNMENT", W::refs(units));
         const auto& p = spatial().project;

@@ -84,7 +84,7 @@ public:
                             QString* errorMessage = nullptr);
     void downloadAndInstallAsync();
 
-    // Assure la disponibilité (détecte ou télécharge automatiquement)
+    // Vérifie la disponibilité (détection seule, jamais de téléchargement implicite) ; sinon, cause dans errorMessage
     bool ensureAvailable(QString* errorMessage = nullptr);
 
 signals:

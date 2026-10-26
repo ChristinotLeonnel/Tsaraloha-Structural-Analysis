@@ -286,6 +286,56 @@ bool runSuite_Tsa3d(int& passed)
         TEST_CHECK(im.ok && im.report.lines().join(" ").contains("non chargés comme résultats"), "Test 271: résultats importés non chargés comme résultats valides");
         std::cout << "[PASS] Test 271: Maillage et résultats TSA3D" << std::endl;
         ++passed;
+
+        // TEST 500 : réactions exportées dans l'unité déclarée par le document (kN), que le calcul soit en kN ou en N
+        // (BUG-117, X9). Contrôle analytique : ΣRx = −10 kN, ΣRz = +20 kN (charge nodale H = 10 kN, V = −20 kN).
+        TSA::Analysis::AnalysisContext ctxN = ctx;
+        ctxN.engineSettings["opensees"] = QJsonObject { { "useKiloNewtons", false } };
+        const auto runN = mgr.run(ctxN, mgr.prepare(m, &gm, ctxN));
+        TEST_CHECK(runN.success && runN.results.units().force == "N", "Test 500: calcul OpenSees en N (" << runN.message << ")");
+        T3::ExportOptions optN = opt;
+        optN.results = &runN.results;
+        const auto exN = T3::exportModel(m, optN);
+        QDir().mkpath("build/test_tsa_data");
+        for (const auto& [name, d] : { std::pair { "test_results_kN.tsa3d.json", &ex.document }, std::pair { "test_results_N.tsa3d.json", &exN.document } })
+        {
+            QFile f(QStringLiteral("build/test_tsa_data/") + name);
+            TEST_CHECK(f.open(QIODevice::WriteOnly) && f.write(QJsonDocument(*d).toJson()) > 0, "Test 500: fichier " << name);
+        }
+        auto reactions = [](const QJsonObject& doc) {
+            std::map<QString, std::array<double, 6>> out;
+            for (const auto& v : doc["results"].toObject()["reactions"].toArray())
+            {
+                const QJsonObject o = v.toObject();
+                const QJsonArray f = o["force"].toArray(), mo = o["moment"].toArray();
+                out[o["node"].toString()] = { f[0].toDouble(), f[1].toDouble(), f[2].toDouble(), mo[0].toDouble(), mo[1].toDouble(), mo[2].toDouble() };
+            }
+            return out;
+        };
+        const auto rKN = reactions(ex.document), rN = reactions(exN.document);
+        bool same = rKN.size() == 2 && rN.size() == rKN.size();
+        double sumX = 0.0, sumZ = 0.0;
+        for (const auto& [node, v] : rKN)
+        {
+            sumX += v[0];
+            sumZ += v[2];
+            const auto it = rN.find(node);
+            same = same && it != rN.end();
+            for (int i = 0; same && i < 6; ++i) same = std::abs(v[i] - it->second[i]) <= 1e-6 * std::max(1.0, std::abs(v[i]));
+        }
+        TEST_CHECK(same, "Test 500: réactions identiques dans les fichiers (calcul en kN / en N)");
+        TEST_CHECK(std::abs(sumX + 10.0) < 1e-6 && std::abs(sumZ - 20.0) < 1e-6,
+                   "Test 500: ΣRx = −10 kN, ΣRz = 20 kN (" << sumX << ", " << sumZ << ")");
+        for (const auto* d : { &ex.document, &exN.document })
+        {
+            const QJsonObject u = (*d)["results"].toObject()["units"].toObject();
+            TEST_CHECK(u["force"] == "kN" && u["moment"] == "kN.m" && u["length"] == "m" && u["rotation"] == "rad"
+                           && (*d)["units"].toObject()["force"] == "kN",
+                       "Test 500: unités des résultats déclarées (kN, kN.m, m, rad)");
+        }
+        TEST_CHECK(!T3::validate(exN.document).hasErrors(), "Test 500: document valide");
+        std::cout << "[PASS] Test 500: Réactions TSA3D en kN quel que soit le calcul" << std::endl;
+        ++passed;
     }
 
     // -------------------------------------------------------------------------

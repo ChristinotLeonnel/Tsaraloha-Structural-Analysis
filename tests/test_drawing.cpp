@@ -11,6 +11,8 @@
 #include "IO/TSAFile.h"
 #include "Mesh/MeshGeometry.h"
 #include "Interaction/ElementCreation.h"
+#include "Interaction/PropertyAssignment.h"
+#include "Model/ModelDiff.h"
 #include "Interaction/Tools/ModelingTool.h"
 #include "UndoRedo/EditTransaction.h"
 #include "UI/Properties/ElementBimPanel.h"
@@ -1019,6 +1021,134 @@ bool runSuite_Drawing(int& passed)
         }
         TEST_CHECK(same, "Test 432: réimport : mêmes types (GlobalId, nom), mêmes occurrences, définitions reprises");
         std::cout << "[PASS] Test 432: Types de produits en IFC" << std::endl;
+        ++passed;
+    }
+
+    // TEST 494 : affectation d'une section (ruban : Profilés I/H, Rectangulaire, Circulaire) — une entrée Annuler,
+    // section d'origine rendue par l'annulation, rien d'enregistré sans sélection. Auparavant : aucune entrée Annuler.
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(6, 0, 0), c = m.addNode(0, 0, 3);
+        const int beam = m.addBar(a, b, Section::rectangular(0.30, 0.50, "R30x50"), Material::concreteC25_30());
+        const int col = m.addColumn(a, c);
+        const std::string beamBefore = m.getBeam(beam)->section().name, colBefore = m.getColumn(col)->section().name;
+        const auto entries = m.undoManager() ? m.undoManager()->undoCount() : 0;
+        const int n = TSA::Interaction::assignSection(m, { beam }, { col, 999 }, Section::ipe(300), "Profilé IPE 300");
+        TEST_CHECK(n == 2 && m.getBeam(beam)->section().name == "IPE 300" && m.getColumn(col)->section().name == "IPE 300",
+                   "Test 494: section affectée à la poutre et au poteau (id inexistant ignoré)");
+        TEST_CHECK(m.undoManager() && m.undoManager()->undoCount() == entries + 1, "Test 494: une seule entrée Annuler");
+        TEST_CHECK(m.undo() && m.getBeam(beam)->section().name == beamBefore && m.getColumn(col)->section().name == colBefore,
+                   "Test 494: Annuler rend les sections d'origine");
+        const auto afterUndo = m.undoManager()->undoCount();
+        TEST_CHECK(TSA::Interaction::assignSection(m, {}, {}, Section::ipe(300), "vide") == 0 && m.undoManager()->undoCount() == afterUndo,
+                   "Test 494: sélection vide : aucune entrée Annuler");
+        std::cout << "[PASS] Test 494: Affectation de section annulable (ruban)" << std::endl;
+        ++passed;
+    }
+
+    // TEST 497 : Annuler / Rétablir des dalles et voiles — tout champ modifié est signalé aux vues (ModelDiff).
+    // Auparavant, type, formulation, ouvertures, appuis de bord (et décalage du voile) n'étaient pas comparés :
+    // les données étaient restaurées mais ni la vue 3D, ni l'arbre, ni le panneau Propriétés n'étaient prévenus.
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(6, 0, 0), c = m.addNode(6, 4, 0), d = m.addNode(0, 4, 0);
+        const int slab = m.addSlab({ a, b, c, d }, 0.20);
+        const int e = m.addNode(0, 0, 3);
+        const int wall = m.addWall(a, b, 3.0, 0.20);
+        (void)e;
+        auto slabChanged = [&](const std::function<void(Slab&)>& change) {
+            const auto before = m.createSnapshot();
+            change(*m.getSlab(slab));
+            const auto diff = TSA::Model::ModelDiff::compute(before, m.createSnapshot());
+            m.restoreSnapshot(before);
+            return std::find(diff.modifiedSlabIds.begin(), diff.modifiedSlabIds.end(), slab) != diff.modifiedSlabIds.end();
+        };
+        auto wallChanged = [&](const std::function<void(Wall&)>& change) {
+            const auto before = m.createSnapshot();
+            change(*m.getWall(wall));
+            const auto diff = TSA::Model::ModelDiff::compute(before, m.createSnapshot());
+            m.restoreSnapshot(before);
+            return std::find(diff.modifiedWallIds.begin(), diff.modifiedWallIds.end(), wall) != diff.modifiedWallIds.end();
+        };
+        SlabOpening hole;
+        hole.name = "Trémie";
+        hole.polygon = { { 1, 1 }, { 2, 1 }, { 2, 2 }, { 1, 2 } };
+        SurfaceEdgeSupport edge;
+        edge.edge = 0;
+        edge.fixed[2] = true;
+        TEST_CHECK(slabChanged([](Slab& s) { s.setSlabType(SlabType::OneWay); }), "Test 497: dalle — type signalé");
+        TEST_CHECK(slabChanged([](Slab& s) { s.setFormulation(s.formulation() == SurfaceFormulation::Shell ? SurfaceFormulation::Plate : SurfaceFormulation::Shell); }),
+                   "Test 497: dalle — formulation signalée");
+        TEST_CHECK(slabChanged([&](Slab& s) { s.setOpenings({ hole }); }), "Test 497: dalle — ouverture ajoutée signalée");
+        TEST_CHECK(slabChanged([&](Slab& s) { s.setEdgeSupports({ edge }); }), "Test 497: dalle — appui de bord signalé");
+        TEST_CHECK(wallChanged([](Wall& w) { w.setOffset(0.1); }), "Test 497: voile — décalage signalé");
+        TEST_CHECK(wallChanged([](Wall& w) { w.setFormulation(w.formulation() == SurfaceFormulation::Shell ? SurfaceFormulation::Plate : SurfaceFormulation::Shell); }),
+                   "Test 497: voile — formulation signalée");
+        TEST_CHECK(wallChanged([&](Wall& w) { w.setOpenings({ hole }); }), "Test 497: voile — ouverture signalée");
+        TEST_CHECK(wallChanged([&](Wall& w) { w.setEdgeSupports({ edge }); }), "Test 497: voile — appui de bord signalé");
+        // Ouverture déplacée (même nombre de sommets) : le polygone est comparé, pas seulement le nombre
+        m.getSlab(slab)->setOpenings({ hole });
+        SlabOpening moved = hole;
+        moved.polygon[0].first = 1.5;
+        TEST_CHECK(slabChanged([&](Slab& s) { s.setOpenings({ moved }); }), "Test 497: dalle — sommet d'ouverture déplacé signalé");
+        TEST_CHECK(!slabChanged([](Slab&) {}), "Test 497: dalle inchangée non signalée (pas de mise à jour inutile)");
+
+        // Bout en bout : Annuler une ouverture ajoutée sous transaction notifie la dalle
+        struct Observer : TSA::Model::IModelObserver
+        {
+            std::vector<int> slabs;
+            void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override { slabs.insert(slabs.end(), diff.modifiedSlabIds.begin(), diff.modifiedSlabIds.end()); }
+        } obs;
+        m.addObserver(&obs);
+        m.pushUndoState("Trémie");
+        m.getSlab(slab)->setOpenings({});
+        m.notifySlabModified(slab);
+        TEST_CHECK(m.undo() && m.getSlab(slab)->openings().size() == 1 && std::count(obs.slabs.begin(), obs.slabs.end(), slab) == 1,
+                   "Test 497: Annuler restaure l'ouverture et prévient les vues");
+        m.removeObserver(&obs);
+        std::cout << "[PASS] Test 497: Annuler / Rétablir des dalles et voiles : tous les champs signalés aux vues" << std::endl;
+        ++passed;
+    }
+
+    // TEST 502 : ouvertures d'une dalle ou d'un voile (Maillage > Ouvertures) — une entrée Annuler, une seule
+    // notification de l'élément (vue 3D, arbre, panneau Propriétés), modèle marqué modifié. Auparavant (BUG-113) : la
+    // dalle n'était pas notifiée (forme 3D seule, mise à jour directe de la vue) ; la forme du voile était reconstruite
+    // deux fois (notification + appel direct à la vue).
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(6, 0, 0), c = m.addNode(6, 4, 0), d = m.addNode(0, 4, 0);
+        const int slab = m.addSlab({ a, b, c, d }, 0.20);
+        const int wall = m.addWall(a, b, 3.0, 0.20);
+        struct Observer : TSA::Model::IModelObserver
+        {
+            int slabs = 0, walls = 0, edits = 0, other = 0;
+            void onSlabModified(const Slab&) override { ++slabs; }
+            void onWallModified(const Wall&) override { ++walls; }
+            void onBeamModified(const Beam&) override { ++other; }
+            void onNodeModified(const Node&) override { ++other; }
+            void onModelEdited() override { ++edits; }
+        } obs;
+        m.addObserver(&obs);
+        m.setModified(false);
+        SlabOpening hole;
+        hole.name = "Trémie";
+        hole.polygon = { { 1, 1 }, { 2, 1 }, { 2, 2 }, { 1, 2 } };
+        const auto entries = m.undoManager()->undoCount();
+        TEST_CHECK(TSA::Interaction::setSlabOpenings(m, slab, { hole }, "Ouvertures de la dalle"), "Test 502: ouverture de dalle affectée");
+        TEST_CHECK(m.getSlab(slab)->openings().size() == 1 && obs.slabs == 1 && obs.walls == 0 && obs.other == 0 && obs.edits >= 1,
+                   "Test 502: dalle notifiée une fois (" << obs.slabs << "), rien d'autre");
+        TEST_CHECK(m.undoManager()->undoCount() == entries + 1 && m.isModified(), "Test 502: une entrée Annuler, projet modifié");
+        TEST_CHECK(TSA::Interaction::setWallOpenings(m, wall, { hole }, "Ouvertures du voile") && m.getWall(wall)->openings().size() == 1
+                       && obs.walls == 1 && obs.slabs == 1 && m.undoManager()->undoCount() == entries + 2,
+                   "Test 502: voile : une notification (" << obs.walls << "), une entrée Annuler");
+        TEST_CHECK(m.undo() && m.getWall(wall)->openings().empty() && m.undo() && m.getSlab(slab)->openings().empty(),
+                   "Test 502: Annuler retire les ouvertures du voile puis de la dalle");
+        const auto afterUndo = m.undoManager()->undoCount();
+        TEST_CHECK(!TSA::Interaction::setSlabOpenings(m, 999, { hole }, "x") && !TSA::Interaction::setWallOpenings(m, 999, { hole }, "x")
+                       && m.undoManager()->undoCount() == afterUndo,
+                   "Test 502: élément inexistant : aucune entrée Annuler");
+        m.removeObserver(&obs);
+        std::cout << "[PASS] Test 502: Ouvertures de dalle et de voile : une entrée Annuler, une notification" << std::endl;
         ++passed;
     }
 

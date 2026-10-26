@@ -134,6 +134,18 @@ public:
         indexRelationships();
         importSpatial();
         if (m_opt.useAnalyticalModel) importAnalytical();
+        if (m_springsRead && m_stiffnessSource == StiffnessSource::LegacyKiloNewton)
+            m_report.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter",
+                                                                    "Raideurs d'appui lues en kN/m et kN·m/rad : fichier écrit par une version "
+                                                                    "antérieure de l'export IFC de TSA, sans unité de raideur déclarée.")
+                                            .toStdString());
+        else if (m_springsRead && m_stiffnessSource == StiffnessSource::Derived)
+            m_report.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter",
+                                                                    "Unité des raideurs d'appui non déclarée par le fichier : déduite des unités de "
+                                                                    "force, de longueur et d'angle (facteurs vers kN/m : %1, vers kN·m/rad : %2).")
+                                            .arg(m_linearStiffness)
+                                            .arg(m_rotationalStiffness)
+                                            .toStdString());
         importProducts();
         finalizeBim();
         // Jamais de succès sans contenu : un fichier qui contient des produits porteurs dont aucun n'a pu être
@@ -182,7 +194,32 @@ private:
                 const std::string type = e->arg(1).asText();
                 if (type == "LENGTHUNIT") m_len = unitFactor(e);
                 else if (type == "PRESSUREUNIT") m_pressure = unitFactor(e);
+                else if (type == "FORCEUNIT") m_force = unitFactor(e);
+                else if (type == "PLANEANGLEUNIT") m_angle = unitFactor(e);
+                else if (e->type == "IFCDERIVEDUNIT" && (type == "LINEARSTIFFNESSUNIT" || type == "ROTATIONALSTIFFNESSUNIT"))
+                {
+                    // IfcDerivedUnit(Elements, UnitType, …) : produit des unités élémentaires à leur exposant
+                    double f = 1.0;
+                    for (int el : e->arg(0).refs())
+                        if (const auto* de = m_r.get(el)) f *= std::pow(unitFactor(m_r.get(de->arg(0))), de->arg(1).asNumber(1.0));
+                    (type == "LINEARSTIFFNESSUNIT" ? m_linearStiffnessUnit : m_rotationalStiffnessUnit) = f;
+                }
             }
+        // Raideurs d'appui → kN/m, kN·m/rad (SupportDefinition). Unité déclarée par le fichier, sinon déduite des unités
+        // de force, de longueur et d'angle (IFC : « usually measured in N/m, Nm/rad »). Exception : un fichier écrit par
+        // l'écrivain STEP de TSA / TSALab avant la déclaration de ces unités (2026-10-26) contient des kN/m, kN·m/rad.
+        const bool legacyWriter = m_linearStiffnessUnit == 0.0 && m_rotationalStiffnessUnit == 0.0
+            && m_r.preprocessorVersion().size() > 12 && m_r.preprocessorVersion().ends_with(" STEP writer");
+        m_stiffnessSource = m_linearStiffnessUnit != 0.0 ? StiffnessSource::Declared
+                          : legacyWriter                 ? StiffnessSource::LegacyKiloNewton
+                                                         : StiffnessSource::Derived;
+        if (legacyWriter)
+            m_linearStiffness = m_rotationalStiffness = 1.0;
+        else
+        {
+            m_linearStiffness = (m_linearStiffnessUnit != 0.0 ? m_linearStiffnessUnit : m_force / m_len) * 1e-3;
+            m_rotationalStiffness = (m_rotationalStiffnessUnit != 0.0 ? m_rotationalStiffnessUnit : m_force * m_len / m_angle) * 1e-3;
+        }
         m_report.lengthUnit = m_len;
         if (m_len != 1.0)
             m_report.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "Unité de longueur du fichier convertie en mètres (facteur %1).")
@@ -486,11 +523,12 @@ private:
         return pts;
     }
 
-    static TSA::Model::DOFState dof(const StepValue& v, double& k)
+    TSA::Model::DOFState dof(const StepValue& v, double& k, double toModel)
     {
         if (v.kind == Kind::Typed && v.text != "IFCBOOLEAN" && v.text != "IFCLOGICAL")
         {
-            k = v.asNumber();
+            k = v.asNumber() * toModel;
+            m_springsRead = true;
             return TSA::Model::DOFState::Spring;
         }
         return v.asBool() ? TSA::Model::DOFState::Fixed : TSA::Model::DOFState::Free;
@@ -510,7 +548,7 @@ private:
             if (!bc || bc->type != "IFCBOUNDARYNODECONDITION") continue;
             double k[6] = {};
             D s[6];
-            for (int i = 0; i < 6; ++i) s[i] = dof(bc->arg(1 + i), k[i]);
+            for (int i = 0; i < 6; ++i) s[i] = dof(bc->arg(1 + i), k[i], i < 3 ? m_linearStiffness : m_rotationalStiffness);
             TSA::Model::SupportDefinition sup;
             const bool allFixed = std::all_of(s, s + 6, [](D d) { return d == D::Fixed; });
             const bool pinned = s[0] == D::Fixed && s[1] == D::Fixed && s[2] == D::Fixed && s[3] == D::Free && s[4] == D::Free && s[5] == D::Free;
@@ -1032,6 +1070,12 @@ private:
     IfcImportReport m_report;
     double m_len = 1.0;        ///< facteur de longueur du fichier → m
     double m_pressure = 1.0;   ///< facteur de contrainte du fichier → Pa
+    double m_force = 1.0;      ///< facteur de force du fichier → N
+    double m_angle = 1.0;      ///< facteur d'angle du fichier → rad
+    double m_linearStiffnessUnit = 0.0, m_rotationalStiffnessUnit = 0.0;   ///< unités dérivées déclarées → SI (0 : absente)
+    double m_linearStiffness = 1e-3, m_rotationalStiffness = 1e-3;         ///< valeur du fichier → kN/m, kN·m/rad
+    enum class StiffnessSource { Declared, Derived, LegacyKiloNewton } m_stiffnessSource = StiffnessSource::Derived;
+    bool m_springsRead = false;
     bool m_physicalProducts = true;
     BimModel m_bim;
     std::vector<PhysicalElement> m_products;

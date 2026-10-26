@@ -2,6 +2,58 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-26 (suite) — D1 à D6 : unités des échanges, informations de calcul, installation .tsalib (non commité)
+
+- BUG-117 (P1) : raideurs IFC en N/m avec unités dérivées déclarées, import selon l'unité du fichier (ancien export TSA
+  relu en kN/m) ; comparaison Fem3D / OpenSees ramenée en kN ; réactions TSA3D en kN + `results.units`. Tests 499, 500,
+  501 (reproduits avant correction). Docs : IFC_MAPPING.md, TSA3D.md, schéma tsa3d-1.
+- BUG-111 étape 0 : plus de valeurs inventées dans les métadonnées, NDC sur les métadonnées des résultats, UTC, messages
+  de validation conservés. Tests 503, 504 ; test Standards.8 adapté.
+- BUG-118 étape E0 : installation transactionnelle (préparation, copie, renommage unique), anti-masquage des extensions
+  livrées (installation et découverte), contrôles de chemins renforcés, minimum_tsa_version. Test 505.
+- BUG-113 : service Interaction::setSlabOpenings / setWallOpenings (test 502) ; test 444 : aucune entrée Annuler au
+  relâchement du manipulateur (reproduit avant correction).
+- Validation Linux Release : 503/504 (test 128 Windows seul, ignoré), banc 146/146, check_layers 0, raccourcis OK,
+  dépendances 0 erreur, CTest Layers/I18nCheck OK, TSALab 27/27. Non exécutés : Windows/MSVC, CI GitHub, essai GUI.
+
+## 2026-10-26 — TSA Core, phase 0 (suite) : BUG-112 à 114, 116, CI (branche fix/core-integrity, non commitée)
+
+### Fixed
+- BUG-112 ModelDiff dalles/voiles (test 497) ; BUG-113 notifications (test 498) ; BUG-114 OpenSees (paquet, OFF par défaut,
+  aucun téléchargement implicite, extraction sans interpolation) ; BUG-116 attente du test 166 ; BUG-118 (partiel) :
+  manifeste extrait lié à l'en-tête validé, flux contrôlé (test 496 étendu).
+
+### Added
+- .github/workflows/ci.yml, tools/ci/run_test_suites.py, tools/ci/check_dependencies.py.
+
+### Verified
+- Release Linux : 496/497 (test 128 Windows) ; banc OpenSees 146/146 ; banc Custom2D sans OpenSees 58/58 ;
+  run_test_suites.py : sans dépendance 38 suites réussies, 0 échec, 18 non exécutées ; avec toutes les dépendances
+  (xcb) 56/56 après correction du test 166.
+- Windows : NON VÉRIFIÉ. Pipeline CI : NON EXÉCUTÉ (push non autorisé).
+
+## 2026-10-25 (soir) — TSA Core, phase 0 : intégrité (branche fix/core-integrity, non commitée)
+
+### Fixed
+- BUG-105 : vérifications EC2/EC3 et note de calcul indépendantes des unités du calcul (UnitSystem::forceToNewtons /
+  forceToKiloNewtons ; ResultsDockWidget, NDCGenerator, NDCProjectNote, ResultAnalyzer). Test 492.
+- BUG-106 : panneaux Propriétés (barre, poteau, treillis, dalle, voile) — seuls les champs modifiés sont réécrits
+  (src/UI/Properties/EditedFields.h). Test 493.
+- BUG-107 : affectation de section du ruban annulable (TSA::Interaction::assignSection, src/Interaction/PropertyAssignment.*).
+  Test 494.
+- BUG-108 : noms neutralisés dans le script OpenSees (tclComment). Test 495.
+- BUG-109 (partiel) : paquets .tsalib — identifiant validé, plafonds, confinement. Test 496.
+
+### Verified
+- Release Linux (xcb, OpenSees) : 494/495, 0 échec (test 128 propre à Windows) ; banc de validation 146/146 inchangé.
+- Debug : compilation et suites ndc, appearance, drawing, extensions, opensees réussies. check_layers : 0 violation.
+- Chaque défaut reproduit par son test sur le code d'origine avant correction.
+- Windows (MSVC) : NON VÉRIFIÉ.
+
+### Audit
+- Audit d'architecture et conception de TSA Core (6 analyses) : rapport hors dépôt (décision D16 en attente) ; écarts
+  mémoire ↔ code relevés (calcul modal présent malgré ADR-022 ; architecture.md : format 1.1 annoncé, réel 1.12).
+
 ## 2026-10-25 (portage Linux : OpenSees, Gmsh, IfcOpenShell — branche fix/debug-build-errors)
 
 ### Added

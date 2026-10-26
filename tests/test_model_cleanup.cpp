@@ -241,7 +241,10 @@ bool runSuite_ModelCleanup(int& passed)
         m.notifyBeamModified(beams[1500]);
         const auto t0 = std::chrono::steady_clock::now();
         for (int i = 0; i < 1500; ++i) m.removeBeam(beams[i]);
-        QCoreApplication::processEvents();   // suppressions regroupées (minuteur 0 ms)
+        // Suppressions regroupées (minuteur 0 ms) : un seul processEvents() ne suffit pas toujours (plateforme xcb :
+        // événements du serveur X traités avant le minuteur) ; attente bornée à 2 s, mêmes assertions ensuite.
+        for (const auto limit = t0 + std::chrono::seconds(2); beamsCategory()->childCount() != 500 && std::chrono::steady_clock::now() < limit;)
+            QCoreApplication::processEvents();
         const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
         TEST_CHECK(beamsCategory()->childCount() == 500, "Test 166: 1500 suppressions appliquées");
         TEST_CHECK(beamsCategory()->child(0)->data(0, Qt::UserRole + 2).toInt() == beams[1500],

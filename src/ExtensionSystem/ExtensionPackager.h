@@ -42,7 +42,10 @@ struct PackageInspectionResult
  * 
  * Format unifié et autonome (.tsalib) permettant de distribuer une bibliothèque complète
  * (manifest.json, fiches matériaux Eurocode, sections et profilés, câbles et torons, textures PBR)
- * en un seul fichier signé avec intégrité SHA-256 et protection contre le Path Traversal (Zip Slip).
+ * en un seul fichier, avec empreinte SHA-256 de chaque fichier et protection contre le Path Traversal (Zip Slip).
+ *
+ * Format v1 NON SIGNÉ : les empreintes sont dans le paquet lui-même ; elles détectent une corruption accidentelle, pas
+ * une modification volontaire, et ne prouvent ni l'auteur ni l'origine (signatures : conception TSALIB, étape E3).
  */
 class ExtensionPackager
 {
@@ -75,9 +78,11 @@ public:
 
     /**
      * @brief Extrait et installe un package .tsalib dans le répertoire cible.
-     * Si destinationDir est vide, l'extension est installée automatiquement dans le répertoire
-     * officiel Extensions/<extensionId>/ de TSA.
-     * Contrôle strictement les chemins pour empêcher toute vulnérabilité de type Path Traversal.
+     * Si destinationDir est vide, l'extension est installée dans le dossier des extensions de l'utilisateur
+     * (<données>/Extensions/<extensionId>/) ; un identifiant d'extension livrée avec l'application y est refusé.
+     * Transaction : copie du paquet, inspection et extraction de la copie dans un dossier de préparation, puis un seul
+     * renommage vers la cible. Refus si la cible contient déjà une extension (pas de mise à jour en place) ou si
+     * minimum_tsa_version dépasse la version de l'application. Aucun fichier partiel en cas d'échec.
      * 
      * @param packagePath Chemin vers le fichier .tsalib
      * @param destinationDir Répertoire d'installation (ou chaîne vide pour le répertoire par défaut)

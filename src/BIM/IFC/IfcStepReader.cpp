@@ -254,6 +254,8 @@ bool IfcStepReader::parse(const std::string& s, std::string* error)
     m_entities.clear();
     m_byType.clear();
     m_schema.clear();
+    m_preprocessor.clear();
+    m_originatingSystem.clear();
     auto fail = [error](const std::string& msg) {
         if (error) *error = msg;
         return false;
@@ -267,6 +269,17 @@ bool IfcStepReader::parse(const std::string& s, std::string* error)
         if (q2 != std::string::npos) m_schema = s.substr(q1 + 1, q2 - q1 - 1);
     }
     const auto data = s.find("DATA;");
+    if (const auto fn = s.find("FILE_NAME"); fn != std::string::npos && fn < data)
+    {
+        // FILE_NAME(name, time_stamp, (author), (organization), preprocessor_version, originating_system, authorization)
+        std::vector<StepValue> header;
+        Parser h(s, s.find('(', fn));
+        if (h.list(header) && header.size() >= 6)
+        {
+            m_preprocessor = header[4].asText();
+            m_originatingSystem = header[5].asText();
+        }
+    }
     if (data == std::string::npos) return fail(QCoreApplication::translate("TSA::BIM::Ifc::IfcStepReader", "section DATA absente").toStdString());
 
     Parser p(s, data + 5);

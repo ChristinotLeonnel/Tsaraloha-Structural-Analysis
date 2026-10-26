@@ -2,6 +2,7 @@
 // l'affichage du maillage dans la vue 3D et la transmission au calcul au contrôleur de maillage (Gmsh).
 
 #include "MainWindow.h"
+#include "../Interaction/PropertyAssignment.h"
 #include "Dialogs/SurfaceLoadsDialog.h"
 #include "Dialogs/SurfaceSupportsDialog.h"
 #include "../Model/Load/LoadManager.h"
@@ -291,13 +292,8 @@ void MainWindow::onActionSlabOpenings()
         const int wid = *sel.walls.begin();
         TSA::UI::SlabOpeningsDialog dlg(*m_model, wid, this, true);
         if (dlg.exec() != QDialog::Accepted) return;
-        if (auto* wall = m_model->getWall(wid))
+        if (TSA::Interaction::setWallOpenings(*m_model, wid, dlg.openings(), tr("Ouvertures du voile %1").arg(wid).toStdString()))
         {
-            m_model->pushUndoState(tr("Ouvertures du voile %1").arg(wid).toStdString());
-            wall->setOpenings(dlg.openings());
-            m_model->setModified(true);
-            m_model->notifyWallModified(wid);
-            if (m_occView) m_occView->updateWallShape(wid, true);
             onMeshModelChanged();
             if (m_statusInfo) m_statusInfo->setText(tr("%1 ouverture(s) sur le voile : régénérer le maillage").arg(dlg.openings().size()));
         }
@@ -306,12 +302,8 @@ void MainWindow::onActionSlabOpenings()
     const int id = *sel.slabs.begin();
     TSA::UI::SlabOpeningsDialog dlg(*m_model, id, this);
     if (dlg.exec() != QDialog::Accepted) return;
-    if (auto* slab = m_model->getSlab(id))
+    if (TSA::Interaction::setSlabOpenings(*m_model, id, dlg.openings(), tr("Ouvertures de la dalle %1").arg(id).toStdString()))
     {
-        m_model->pushUndoState(tr("Ouvertures de la dalle %1").arg(id).toStdString());
-        slab->setOpenings(dlg.openings());
-        m_model->setModified(true);
-        if (m_occView) m_occView->updateSlabShape(id, true);
         onMeshModelChanged();
         if (m_statusInfo) m_statusInfo->setText(tr("%1 ouverture(s) sur la dalle : régénérer le maillage").arg(dlg.openings().size()));
     }

@@ -1,5 +1,10 @@
 #include "test_common.h"
 #include "App/ProductInfo.h"
+#include "Core/AppPaths.h"
+#include "ExtensionSystem/LibraryManager.h"
+#include <QCryptographicHash>
+#include <QDataStream>
+#include <QTemporaryDir>
 
 bool runSuite_Extensions(int& passed)
 {
@@ -1335,6 +1340,206 @@ bool runSuite_Extensions(int& passed)
         std::cout << "  [PASS] Subtest 48.5: Export via LibraryManager & Validation Globale Finale des 11 Phases Validees" << std::endl;
 
         std::cout << "[PASS] Test 48: TSALib Phase 11 - Packaging .tsalib, Distribution & Validation Globale Finale (5 Subtests Valides) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // TEST 496 : paquet .tsalib non fiable — identifiant, chemins et tailles vérifiés avant toute écriture.
+    // Auparavant, l'identifiant du manifeste servait tel quel de dossier d'installation (« ../x » : écriture hors du
+    // dossier des extensions) et la décompression n'était pas plafonnée.
+    {
+        using TSA::ExtensionSystem::ExtensionPackager;
+        QTemporaryDir tmp;
+        TEST_CHECK(tmp.isValid(), "Test 496: dossier temporaire");
+        // Paquet écrit octet par octet au format v1 (createPackage refuse désormais ces manifestes).
+        auto writePackage = [&](const QString& path, const QByteArray& manifest, const QString& relPath, const QByteArray& content,
+                                quint64 declaredSize) {
+            QFile f(path);
+            if (!f.open(QIODevice::WriteOnly)) return false;
+            QDataStream out(&f);
+            out.setVersion(QDataStream::Qt_6_0);
+            out.setByteOrder(QDataStream::LittleEndian);
+            out << ExtensionPackager::PACKAGE_MAGIC << ExtensionPackager::CURRENT_FORMAT_VERSION << quint32(0) << manifest << quint32(1);
+            out << relPath << declaredSize << QCryptographicHash::hash(content, QCryptographicHash::Sha256) << qCompress(content);
+            return true;
+        };
+        const QString escapeName = QStringLiteral("tsa_test496_escape");
+        const QString escapeDir = QDir(TSA::Core::AppPaths::userExtensionsDir()).absoluteFilePath(QStringLiteral("../") + escapeName);
+        QDir(escapeDir).removeRecursively();
+        const QByteArray content("{}");
+
+        const QString evil = tmp.filePath(QStringLiteral("evil.tsalib"));
+        TEST_CHECK(writePackage(evil, QByteArray(R"({"id":"../tsa_test496_escape","name":"x","version":"1.0.0"})"), QStringLiteral("data.json"), content,
+                                quint64(content.size())),
+                   "Test 496: paquet à identifiant « ../… » écrit");
+        TEST_CHECK(!ExtensionPackager::inspectPackage(evil).isValid(), "Test 496: identifiant « ../… » refusé à l'inspection");
+        QString installed, err;
+        TEST_CHECK(!ExtensionPackager::installPackage(evil, QString(), &installed, &err) && !QDir(escapeDir).exists(),
+                   "Test 496: installation refusée, rien écrit hors du dossier des extensions");
+
+        const QString bomb = tmp.filePath(QStringLiteral("bomb.tsalib"));
+        TEST_CHECK(writePackage(bomb, QByteArray(R"({"id":"tsa.test496.bomb","name":"x","version":"1.0.0"})"), QStringLiteral("data.json"), content,
+                                quint64(3) << 30),
+                   "Test 496: paquet à taille annoncée de 3 Gio écrit");
+        TEST_CHECK(!ExtensionPackager::inspectPackage(bomb).isValid(), "Test 496: taille décompressée excessive refusée");
+
+        const QString traversal = tmp.filePath(QStringLiteral("traversal.tsalib"));
+        TEST_CHECK(writePackage(traversal, QByteArray(R"({"id":"tsa.test496.traversal","name":"x","version":"1.0.0"})"), QStringLiteral("a/../../x.json"),
+                                content, quint64(content.size())),
+                   "Test 496: paquet à chemin « a/../../ » écrit");
+        TEST_CHECK(!ExtensionPackager::inspectPackage(traversal).isValid(), "Test 496: chemin hors du paquet refusé à l'inspection");
+
+        // Manifeste usurpé : en-tête « tsa.test496.spoof » validé, manifest.json extrait « org.tsaraloha.tsalib »
+        const QString spoof = tmp.filePath(QStringLiteral("spoof.tsalib"));
+        TEST_CHECK(writePackage(spoof, QByteArray(R"({"id":"tsa.test496.spoof","name":"x","version":"1.0.0"})"), QStringLiteral("manifest.json"),
+                                QByteArray(R"({"id":"org.tsaraloha.tsalib","name":"x","version":"9.0.0"})"), 57),
+                   "Test 496: paquet à manifeste usurpé écrit");
+        TEST_CHECK(!ExtensionPackager::inspectPackage(spoof).isValid(), "Test 496: manifest.json différent de l'en-tête refusé");
+        // Paquet tronqué au milieu de sa dernière entrée
+        const QString truncated = tmp.filePath(QStringLiteral("truncated.tsalib"));
+        TEST_CHECK(writePackage(truncated, QByteArray(R"({"id":"tsa.test496.trunc","name":"x","version":"1.0.0"})"), QStringLiteral("data.json"),
+                                QByteArray(4096, 'x'), 4096),
+                   "Test 496: paquet à tronquer écrit");
+        {
+            QFile f(truncated);
+            TEST_CHECK(f.open(QIODevice::ReadWrite) && f.resize(f.size() - 10), "Test 496: paquet tronqué");
+        }
+        TEST_CHECK(!ExtensionPackager::inspectPackage(truncated).isValid(), "Test 496: paquet tronqué refusé à l'inspection");
+
+        const QString good = tmp.filePath(QStringLiteral("good.tsalib"));
+        TEST_CHECK(writePackage(good, QByteArray(R"({"id":"tsa.test496.good","name":"x","version":"1.0.0"})"), QStringLiteral("data/a.json"), content,
+                                quint64(content.size())),
+                   "Test 496: paquet valide écrit");
+        TEST_CHECK(ExtensionPackager::inspectPackage(good).isValid(), "Test 496: paquet valide accepté");
+        const QString sandbox = tmp.filePath(QStringLiteral("sandbox"));
+        TEST_CHECK(ExtensionPackager::installPackage(good, sandbox, &installed, &err) && QFile::exists(sandbox + QStringLiteral("/data/a.json")),
+                   "Test 496: paquet valide installé dans le dossier demandé (" << err.toStdString() << ")");
+        std::cout << "[PASS] Test 496: Paquets .tsalib non fiables : identifiant, chemins et tailles contrôlés" << std::endl;
+        passed++;
+    }
+
+    // TEST 505 : installation .tsalib transactionnelle (conception TSALIB, étape E0) — copie du paquet inspectée et
+    // extraite dans un dossier de préparation, un seul renommage final ; identifiants dupliqués et extensions livrées
+    // protégés ; paquets altérés, chemins malveillants, interruption, mise à jour en place refusée. Les signatures et
+    // l'approbation (étapes E3, E5) et le retour à une version précédente (magasin versionné, E2) ne sont pas couverts.
+    {
+        using TSA::ExtensionSystem::ExtensionPackager;
+        QTemporaryDir tmp;
+        TEST_CHECK(tmp.isValid(), "Test 505: dossier temporaire");
+        struct Entry
+        {
+            QString path;
+            QByteArray content;
+        };
+        auto write = [&](const QString& name, const QByteArray& manifest, const std::vector<Entry>& entries, const QByteArray& tail = {}) {
+            const QString path = tmp.filePath(name);
+            QFile f(path);
+            if (!f.open(QIODevice::WriteOnly)) return QString();
+            QDataStream out(&f);
+            out.setVersion(QDataStream::Qt_6_0);
+            out.setByteOrder(QDataStream::LittleEndian);
+            out << ExtensionPackager::PACKAGE_MAGIC << ExtensionPackager::CURRENT_FORMAT_VERSION << quint32(0) << manifest << quint32(entries.size());
+            for (const auto& e : entries)
+                out << e.path << quint64(e.content.size()) << QCryptographicHash::hash(e.content, QCryptographicHash::Sha256) << qCompress(e.content);
+            f.write(tail);
+            return path;
+        };
+        auto manifest = [](const char* id, const char* version, const char* extra = "") {
+            return QByteArray(R"({"id":")") + id + R"(","name":"x","version":")" + version + "\"" + extra + "}";
+        };
+        auto noStaging = [](const QString& parent) { return !QDir(parent + "/.staging").exists(); };
+        QString installed, err;
+
+        // Identifiant d'une extension livrée (TSALib) : refusé à l'emplacement d'installation par défaut, rien écrit
+        const QString userDir = TSA::Core::AppPaths::userExtensionsDir();
+        const bool officialAlready = QDir(userDir + "/org.tsaraloha.tsalib").exists();
+        const QString official = write("official.tsalib", manifest("org.tsaraloha.tsalib", "99.0.0"), { { "Materials/x.json", "{}" } });
+        TEST_CHECK(!ExtensionPackager::installPackage(official, QString(), &installed, &err) && err.contains("livrée")
+                       && QDir(userDir + "/org.tsaraloha.tsalib").exists() == officialAlready && noStaging(userDir),
+                   "Test 505: identifiant d'une extension livrée refusé (" << err.toStdString() << ")");
+
+        // Découverte : le premier dossier (livré) l'emporte, l'autre est signalé — jamais de masquage silencieux
+        for (const char* root : { "shipped", "user" })
+        {
+            QDir().mkpath(tmp.filePath(QString("%1/lib").arg(root)));
+            QFile m(tmp.filePath(QString("%1/lib/manifest.json").arg(root)));
+            TEST_CHECK(m.open(QIODevice::WriteOnly) && m.write(manifest("tsa.test505.lib", "1.0.0")) > 0, "Test 505: extension de découverte");
+        }
+        TSA::ExtensionSystem::LibraryManager discovery;
+        discovery.addSearchPath(tmp.filePath("shipped"));
+        discovery.addSearchPath(tmp.filePath("user"));
+        discovery.discover();
+        TEST_CHECK(QDir::cleanPath(discovery.extensionPath("tsa.test505.lib")) == QDir::cleanPath(tmp.filePath("shipped/lib"))
+                       && discovery.discoveryWarnings().size() == 1,
+                   "Test 505: même identifiant dans deux dossiers : le dossier livré l'emporte, conflit signalé");
+
+        // Usurpation : manifest.json de la table (casse différente) autre que l'en-tête ; doublon de casse
+        TEST_CHECK(!ExtensionPackager::inspectPackage(write("spoof.tsalib", manifest("tsa.test505.spoof", "1.0.0"),
+                                                            { { "MANIFEST.JSON", manifest("org.tsaraloha.tsalib", "9.0.0") } }))
+                        .isValid(),
+                   "Test 505: MANIFEST.JSON différent de l'en-tête refusé");
+        TEST_CHECK(!ExtensionPackager::inspectPackage(write("case.tsalib", manifest("tsa.test505.case", "1.0.0"), { { "A.json", "{}" }, { "a.json", "{}" } }))
+                        .isValid(),
+                   "Test 505: fichiers en double (casse ignorée) refusés");
+
+        // Chemins malveillants (noms réservés Windows, point ou espace final, caractères de contrôle ou interdits)
+        for (const char* bad : { "NUL.json", "data/con.txt", "COM1", "lpt9.json", "a./b.json", "b /c.json", "x\x01.json", "a|b.json", "a?.json" })
+            TEST_CHECK(!ExtensionPackager::isSafeRelativePath(QString::fromLatin1(bad)), "Test 505: chemin refusé « " << bad << " »");
+        TEST_CHECK(ExtensionPackager::isSafeRelativePath("Materials/console.json") && ExtensionPackager::isSafeRelativePath("Sections/com10.json"),
+                   "Test 505: noms proches des noms réservés acceptés");
+        TEST_CHECK(!ExtensionPackager::inspectPackage(write("nul.tsalib", manifest("tsa.test505.nul", "1.0.0"), { { "NUL.json", "{}" } })).isValid(),
+                   "Test 505: paquet contenant « NUL.json » refusé");
+
+        // Paquets altérés : octets en trop ; octet modifié dans les données compressées du 2e fichier (interruption de
+        // l'extraction après le 1er fichier écrit) — aucune extension partielle, aucun dossier de préparation restant
+        TEST_CHECK(!ExtensionPackager::inspectPackage(write("tail.tsalib", manifest("tsa.test505.tail", "1.0.0"), { { "a.json", "{}" } }, "XX")).isValid(),
+                   "Test 505: données après la dernière entrée refusées");
+        const QString altered = write("altered.tsalib", manifest("tsa.test505.alt", "1.0.0"), { { "a.json", "{\"a\":1}" }, { "b.json", QByteArray(2000, 'b') } });
+        {
+            QFile f(altered);
+            TEST_CHECK(f.open(QIODevice::ReadWrite) && f.seek(f.size() - 5), "Test 505: paquet à altérer");
+            char c = 0;
+            f.getChar(&c);
+            f.seek(f.size() - 5);
+            f.putChar(static_cast<char>(c ^ 0x5a));
+        }
+        const QString target = tmp.filePath("install/tsa.test505");
+        TEST_CHECK(!ExtensionPackager::installPackage(altered, target, &installed, &err) && !QDir(target).exists() && noStaging(tmp.filePath("install")),
+                   "Test 505: paquet altéré : refus, aucune extension partielle, préparation nettoyée (" << err.toStdString() << ")");
+
+        // Interruption simulée : préparation abandonnée par un arrêt brutal → ignorée par la découverte, sans effet
+        QDir().mkpath(tmp.filePath("install/.staging/crash/tree"));
+        {
+            QFile m(tmp.filePath("install/.staging/crash/tree/manifest.json"));
+            TEST_CHECK(m.open(QIODevice::WriteOnly) && m.write(manifest("tsa.test505.crash", "1.0.0")) > 0, "Test 505: préparation abandonnée");
+        }
+        TSA::ExtensionSystem::LibraryManager afterCrash;
+        afterCrash.addSearchPath(tmp.filePath("install"));
+        afterCrash.discover();
+        TEST_CHECK(afterCrash.extensionPath("tsa.test505.crash").isEmpty(), "Test 505: préparation interrompue jamais vue comme une extension");
+
+        // Mise à jour : installation 1.0.0, puis 1.1.0 au même endroit refusée (pas de mélange de versions), 1.0.0
+        // intacte ; après désinstallation, 1.1.0 s'installe
+        const QString v1 = write("v1.tsalib", manifest("tsa.test505", "1.0.0"), { { "data/a.json", "{\"v\":1}" }, { "data/old.json", "{}" } });
+        const QString v2 = write("v2.tsalib", manifest("tsa.test505", "1.1.0"), { { "data/a.json", "{\"v\":2}" } });
+        TEST_CHECK(ExtensionPackager::installPackage(v1, target, &installed, &err), "Test 505: version 1.0.0 installée (" << err.toStdString() << ")");
+        auto read = [](const QString& p) {
+            QFile f(p);
+            return f.open(QIODevice::ReadOnly) ? f.readAll() : QByteArray();
+        };
+        TEST_CHECK(!ExtensionPackager::installPackage(v2, target, &installed, &err) && read(target + "/data/a.json") == "{\"v\":1}"
+                       && QFile::exists(target + "/data/old.json") && read(target + "/manifest.json").contains("1.0.0"),
+                   "Test 505: 1.1.0 sur 1.0.0 refusée, 1.0.0 intacte (" << err.toStdString() << ")");
+        QDir(target).removeRecursively();
+        TEST_CHECK(ExtensionPackager::installPackage(v2, target, &installed, &err) && read(target + "/data/a.json") == "{\"v\":2}"
+                       && !QFile::exists(target + "/data/old.json")
+                       && QDir(tmp.filePath("install/.staging")).entryList(QDir::Dirs | QDir::NoDotAndDotDot) == QStringList { "crash" },
+                   "Test 505: après désinstallation, 1.1.0 installée sans fichier de l'ancienne version, sa préparation retirée");
+
+        // Version minimale de l'application déclarée par le paquet
+        const QString future = write("future.tsalib", manifest("tsa.test505.future", "1.0.0", R"(,"minimum_tsa_version":"99.0.0")"), { { "a.json", "{}" } });
+        TEST_CHECK(!ExtensionPackager::installPackage(future, tmp.filePath("install/future"), &installed, &err) && !QDir(tmp.filePath("install/future")).exists(),
+                   "Test 505: minimum_tsa_version 99.0.0 refusée (" << err.toStdString() << ")");
+        std::cout << "[PASS] Test 505: Installation .tsalib transactionnelle (doublons, usurpation, altération, chemins, interruption, mise à jour)" << std::endl;
         passed++;
     }
 

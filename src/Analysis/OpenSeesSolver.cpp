@@ -5,7 +5,6 @@
 #include "../Standards/ModelValidator.h"
 #include "OpenSeesModelMap.h"
 #include <QElapsedTimer>
-#include "../Standards/NationalAnnexConfig.h"
 #include "../Diagnostics/Logger.h"
 
 #include <QDir>
@@ -417,10 +416,9 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     meta.solveDurationMs = solveMs;
     meta.readDurationMs = stageTimer.nsecsElapsed() / 1e6;
     meta.solverEngine = "OpenSees";
-    meta.solverVersion = OpenSeesManager::instance().versionInfo().versionString.toStdString();
-    if (meta.solverVersion.empty()) meta.solverVersion = "3.8.0";
-    meta.nationalAnnex = TSA::Standards::NationalAnnexConfig::instance().annexName().toStdString();
-    meta.normativeFramework = "EN 1990:2002+A1:2005 / ISO/IEC 25010";
+    meta.solverVersion = OpenSeesManager::instance().versionInfo().versionString.toStdString();   // vide si non lue
+    meta.modelBuilder = "BasicBuilder -ndm 3 -ndf 6";   // OpenSeesAnalysisBuilder : tous les scripts générés
+    meta.numberer = "RCM";
     if (modal)
     {
         meta.loadCombinationType = "Analyse modale (" + std::to_string(m_results.modal().modes.size()) + " modes)";

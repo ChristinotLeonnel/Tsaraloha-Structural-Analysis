@@ -5,6 +5,7 @@
 #include "../Library/LibraryManager.h"
 #include "../Library/CableLibrary.h"
 #include <QDir>
+#include <map>
 #include <QFileInfo>
 #include <QCoreApplication>
 #include <QStandardPaths>
@@ -60,6 +61,8 @@ void LibraryManager::addSearchPath(const QString& path)
 std::vector<ExtensionManifest> LibraryManager::discover()
 {
     std::vector<ExtensionManifest> discovered;
+    m_discoveryWarnings.clear();
+    std::map<std::string, QString> firstPath;   // identifiant → dossier qui le fournit dans cette découverte
 
     for (const QString& basePath : m_searchPaths)
     {
@@ -78,6 +81,16 @@ std::vector<ExtensionManifest> LibraryManager::discover()
                 ValidationResult res;
                 if (m_loader.indexExtension(extPath, &manifest))
                 {
+                    // Ordre des chemins : livré, puis utilisateur, puis développement. Le premier dossier qui fournit un
+                    // identifiant l'emporte : une extension utilisateur ne remplace jamais une extension livrée.
+                    if (const auto it = firstPath.find(manifest.id); it != firstPath.end())
+                    {
+                        if (QDir::cleanPath(it->second) != QDir::cleanPath(extPath))
+                            m_discoveryWarnings << QString("Extension « %1 » ignorée dans « %2 » : identifiant déjà fourni par « %3 ».")
+                                                       .arg(QString::fromStdString(manifest.id), extPath, it->second);
+                        continue;
+                    }
+                    firstPath[manifest.id] = extPath;
                     m_manifests[manifest.id] = manifest;
                     m_extensionPaths[manifest.id] = extPath;
                     m_dependencyManager.registerManifest(manifest);

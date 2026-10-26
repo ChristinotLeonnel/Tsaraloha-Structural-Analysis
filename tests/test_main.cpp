@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 490;   // 489 comptés sous Linux le 25/10/2026 (Release, OpenSees, Gmsh et IfcOpenShell présents, 0 échec) + test 128 (Explorateur Windows, ignoré ailleurs) ; décompte Windows à confirmer
+    int expectedTotal = 504;   // + test 505 (installation .tsalib transactionnelle), tests 499-501 (unités des échanges : Fem3D, TSA3D, IFC), 502 (ouvertures : Annuler et notification), 503-504 (métadonnées de calcul sans valeur inventée), 492 (unités EC2/EC3), 493 (panneau Propriétés), 494 (section annulable), 495 (injection Tcl), 496 (paquets .tsalib), 497 (Annuler dalles/voiles), 498 (notifications des cas de charge) ; 489 comptés sous Linux le 25/10/2026 (Release, OpenSees, Gmsh et IfcOpenShell présents, 0 échec) + test 128 (Explorateur Windows, ignoré ailleurs) ; décompte Windows à confirmer
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Loads(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "opensees" || suiteFilter == "solver") {
-        std::cout << "\n--- [Suite 13/14] OpenSees Solver, Immutability & Analytical Validation (Tests 491, 65-69) ---" << std::endl;
+        std::cout << "\n--- [Suite 13/14] OpenSees Solver, Immutability & Analytical Validation (Tests 491, 495, 65-69) ---" << std::endl;
         if (!runSuite_OpenSees(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "supports" || suiteFilter == "support") {
@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Standards(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "ndc" || suiteFilter == "report") {
-        std::cout << "\n--- [Suite 16/16] Professional NDC Report, Eurocodes & Extrema (Tests 85-89) ---" << std::endl;
+        std::cout << "\n--- [Suite 16/16] Professional NDC Report, Eurocodes & Extrema (Tests 85-89, 492) ---" << std::endl;
         if (!runSuite_NDCReport(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "extraction" || suiteFilter == "matrices") {

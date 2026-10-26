@@ -27,6 +27,21 @@ std::string recorderPrecision()
 {
     return " -precision " + std::to_string(kRecorderPrecision);
 }
+
+/// Texte libre du modèle (nom, libellé) écrit en commentaire Tcl : une seule ligne, sans barre oblique inverse ni
+/// accolade. Un saut de ligne terminerait le commentaire (la suite du nom deviendrait une commande Tcl, `exec`
+/// compris), une barre oblique inverse finale le prolongerait sur la commande suivante (supprimée sans erreur), une
+/// accolade déséquilibrerait le bloc `pattern { … }` qui le contient. Les caractères UTF-8 sont conservés.
+std::string tclComment(const std::string& text)
+{
+    std::string out(text);
+    for (char& c : out)
+    {
+        const auto u = static_cast<unsigned char>(c);
+        if (u < 0x20 || u == 0x7f || c == '\\' || c == '{' || c == '}') c = ' ';
+    }
+    return out;
+}
 } // namespace
 
 std::string OpenSeesAnalysisBuilder::joinTags(const std::vector<int>& tags)
@@ -145,7 +160,7 @@ std::string OpenSeesAnalysisBuilder::buildNodes(const CalculationSnapshot& snaps
         tcl << "node " << id << " " << n.x << " " << n.y << " " << n.z;
         if (!n.name.empty())
         {
-            tcl << " ;# " << n.name;
+            tcl << " ;# " << tclComment(n.name);
         }
         tcl << "\n";
     }
@@ -338,7 +353,7 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
             const int releaseZ = (el->startRelease.mz ? 1 : 0) + (el->endRelease.mz ? 2 : 0);
             if (releaseY) tcl << " -releasey " << releaseY;
             if (releaseZ) tcl << " -releasez " << releaseZ;
-            tcl << " ;# " << e.key.label() << " " << el->section.name << "\n";
+            tcl << " ;# " << e.key.label() << " " << tclComment(el->section.name) << "\n";
         }
     }
     tcl << "\n";
@@ -359,14 +374,14 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
             const int tag = int(sections.size()) + 1;
             sections[k] = tag;
             tcl << "section ElasticMembranePlateSection " << tag << " " << std::get<0>(k) << " " << std::get<1>(k) << " " << std::get<2>(k) << " "
-                << std::get<3>(k) << " ;# " << sh.material.name << ", e = " << sh.thickness << " m\n";
+                << std::get<3>(k) << " ;# " << tclComment(sh.material.name) << ", e = " << sh.thickness << " m\n";
         }
         for (const auto& sh : snapshot.shells())
         {
             const int sec = sections.at(std::make_tuple(sh.material.mechanical.youngModulus * scaleForce, sh.material.mechanical.poissonRatio, sh.thickness, sh.material.mechanical.density * massScale));
             tcl << "element " << (sh.nodes.size() == 4 ? "ShellMITC4 " : "ShellDKGT ") << sh.tag;
             for (int n : sh.nodes) tcl << " " << n;
-            tcl << " " << sec << " ;# " << sh.source << " élément " << sh.meshElement << "\n";
+            tcl << " " << sec << " ;# " << tclComment(sh.source) << " élément " << sh.meshElement << "\n";
         }
         tcl << "\n";
     }
@@ -731,7 +746,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
     {
         const double factor = pattern.factor;
         tcl << "pattern Plain " << pattern.id << " 1 {\n";
-        tcl << "  # Pattern " << pattern.name << " (facteur = " << factor << ")\n";
+        tcl << "  # Pattern " << tclComment(pattern.name) << " (facteur = " << factor << ")\n";
 
         // Charges nodales
         for (const auto& nl : snapshot.nodalLoads())
@@ -747,7 +762,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
 
             // Repère global (un nœud n'a pas de repère local ; ModelValidator le signale si « local »).
             tcl << "  load " << nl.nodeId() << " " << fx << " " << fy << " " << fz << " "
-                << mx << " " << my << " " << mz << " ;# " << nl.name()
+                << mx << " " << my << " " << mz << " ;# " << tclComment(nl.name())
                 << (nl.coordSystem() == TSA::Model::LoadCoordSystem::Local ? " (déclarée locale : axes globaux)" : "") << "\n";
         }
 
@@ -761,7 +776,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
             else if (pattern.caseId == 0 || f.loadCaseId == pattern.caseId)
                 k = factor;
             if (k == 0.0) continue;
-            tcl << "  load " << f.nodeId << " " << f.fx * k * forceScale << " " << f.fy * k * forceScale << " " << f.fz * k * forceScale << " 0 0 0 ;# " << f.label << "\n";
+            tcl << "  load " << f.nodeId << " " << f.fx * k * forceScale << " " << f.fy * k * forceScale << " " << f.fz * k * forceScale << " 0 0 0 ;# " << tclComment(f.label) << "\n";
         }
 
         // Charges sur treillis et câbles : réparties pour moitié sur chaque nœud

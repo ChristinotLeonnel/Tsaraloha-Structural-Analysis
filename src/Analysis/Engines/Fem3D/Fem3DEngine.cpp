@@ -222,6 +222,8 @@ void Fem3DEngine::cancel()
 
 EngineComparison compareResults(ResultsModel& fem3d, const ResultsModel& openSees)
 {
+    // Forces et moments comparés en kN, kN·m : Fem3D calcule toujours en kN, OpenSees en kN ou en N selon le projet.
+    const double kF = fem3d.units().forceToKiloNewtons(), kO = openSees.units().forceToKiloNewtons();
     // Échelles par nature de grandeur, planchers dimensionnels (comme les benchmarks du moteur) : une grandeur toute
     // nulle n'a pas d'échelle nulle.
     double sT = 0.0, sR = 0.0, sF = 0.0, sM = 0.0, maxLength = 0.0;
@@ -235,16 +237,16 @@ EngineComparison compareResults(ResultsModel& fem3d, const ResultsModel& openSee
     }
     for (const auto& [id, r] : openSees.allReactions())
     {
-        for (double v : { r.rx, r.ry, r.rz }) grow(sF, v);
-        for (double v : { r.mx, r.my, r.mz }) grow(sM, v);
+        for (double v : { r.rx, r.ry, r.rz }) grow(sF, v * kO);
+        for (double v : { r.mx, r.my, r.mz }) grow(sM, v * kO);
     }
     for (const auto& [key, e] : openSees.allElementResults())
     {
         maxLength = std::max(maxLength, e.length);
         for (const StationForces* f : { &e.startForces, &e.endForces })
         {
-            for (double v : { f->N, f->Vy, f->Vz }) grow(sF, v);
-            for (double v : { f->Mx, f->My, f->Mz }) grow(sM, v);
+            for (double v : { f->N, f->Vy, f->Vz }) grow(sF, v * kO);
+            for (double v : { f->Mx, f->My, f->Mz }) grow(sM, v * kO);
         }
     }
     maxLength = std::max(maxLength, 1e-9);
@@ -279,8 +281,8 @@ EngineComparison compareResults(ResultsModel& fem3d, const ResultsModel& openSee
     {
         const NodeReaction* o = openSees.getNodeReaction(id);
         if (!o) { ++groups[1].c.compared; ++groups[1].c.failed; continue; }
-        check(groups[1].c, r.rx, o->rx, sF); check(groups[1].c, r.ry, o->ry, sF); check(groups[1].c, r.rz, o->rz, sF);
-        check(groups[1].c, r.mx, o->mx, sM); check(groups[1].c, r.my, o->my, sM); check(groups[1].c, r.mz, o->mz, sM);
+        check(groups[1].c, r.rx * kF, o->rx * kO, sF); check(groups[1].c, r.ry * kF, o->ry * kO, sF); check(groups[1].c, r.rz * kF, o->rz * kO, sF);
+        check(groups[1].c, r.mx * kF, o->mx * kO, sM); check(groups[1].c, r.my * kF, o->my * kO, sM); check(groups[1].c, r.mz * kF, o->mz * kO, sM);
     }
     for (const auto& [key, e] : fem3d.allElementResults())
     {
@@ -289,8 +291,8 @@ EngineComparison compareResults(ResultsModel& fem3d, const ResultsModel& openSee
         const std::pair<const StationForces*, const StationForces*> ends[2] = { { &e.startForces, &o->startForces }, { &e.endForces, &o->endForces } };
         for (const auto& [a, b] : ends)
         {
-            check(groups[2].c, a->N, b->N, sF); check(groups[2].c, a->Vy, b->Vy, sF); check(groups[2].c, a->Vz, b->Vz, sF);
-            check(groups[2].c, a->Mx, b->Mx, sM); check(groups[2].c, a->My, b->My, sM); check(groups[2].c, a->Mz, b->Mz, sM);
+            check(groups[2].c, a->N * kF, b->N * kO, sF); check(groups[2].c, a->Vy * kF, b->Vy * kO, sF); check(groups[2].c, a->Vz * kF, b->Vz * kO, sF);
+            check(groups[2].c, a->Mx * kF, b->Mx * kO, sM); check(groups[2].c, a->My * kF, b->My * kO, sM); check(groups[2].c, a->Mz * kF, b->Mz * kO, sM);
         }
     }
 

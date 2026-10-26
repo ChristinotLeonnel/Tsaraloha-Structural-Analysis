@@ -17,9 +17,9 @@
 #include "../Model/Load/LoadCase.h"
 #include "../Model/Load/LoadCombination.h"
 #include "../Analysis/ResultsModel.h"
-#include "../Analysis/OpenSeesManager.h"
 #include "../Standards/Design/ConcreteDesignEC2.h"
 #include "../Standards/Design/SteelDesignEC3.h"
+#include "../Standards/NationalAnnexConfig.h"
 
 #include <QBuffer>
 #include <QByteArray>
@@ -113,23 +113,13 @@ NDCDocument NDCGenerator::generate(
     NDCDocument doc;
     doc.config = config;
 
-    // Moteur réellement utilisé pour les résultats (OpenSees, Custom2D…), sinon OpenSees détecté.
-    const bool hasResultsMeta = results && !results->executionMetadata().engineId.empty();
+    // Moteur et version enregistrés avec les résultats, jamais le moteur installé au moment de la note (BUG-111) :
+    // une note régénérée après une mise à jour d'OpenSees décrit toujours le calcul réellement effectué.
+    const bool hasResultsMeta = results && !results->executionMetadata().solverEngine.empty();
     const bool planar = hasResultsMeta && results->executionMetadata().analysisDimension == "2d";
-    if (hasResultsMeta && results->executionMetadata().engineId != "opensees")
-    {
-        const auto& m = results->executionMetadata();
-        doc.softwareVersion = QString("%1 v%2 (Moteur : %3%4)").arg(TSA::Product::name(), TSA::Product::kReportVersion, QString::fromStdString(m.solverEngine),
-            m.solverVersion.empty() ? QString() : QString(" v") + QString::fromStdString(m.solverVersion));
-    }
-    else
-    {
-        auto vInfo = TSA::Analysis::OpenSeesManager::instance().versionInfo();
-        if (vInfo.isValid)
-        {
-            doc.softwareVersion = QString("%1 v%2 (Moteur EF : OpenSees v%3.%4.%5)").arg(TSA::Product::name(), TSA::Product::kReportVersion).arg(vInfo.major).arg(vInfo.minor).arg(vInfo.patch);
-        }
-    }
+    doc.softwareVersion = hasResultsMeta
+        ? QString("%1 v%2 (Moteur : %3)").arg(TSA::Product::name(), TSA::Product::kReportVersion, engineLabel(results->executionMetadata()))
+        : QString("%1 v%2 (aucun calcul)").arg(TSA::Product::name(), TSA::Product::kReportVersion);
 
     int chapNum = 1;
     int tableNum = 1;
@@ -154,11 +144,13 @@ NDCDocument NDCGenerator::generate(
 
         NDCSection s1;
         s1.title = QStringLiteral("Objet du Document");
-        const QString engineName = hasResultsMeta ? QString::fromStdString(results->executionMetadata().solverEngine)
-                                                  : QStringLiteral("OpenSees");
-        s1.paragraphs.push_back(QStringLiteral("Le présent rapport technique constitue la Note de Calcul justificative de dimensionnement "
-                                               "et de vérification de la structure modélisée dans l'environnement %2. "
-                                               "Les analyses numériques sont exécutées par le moteur de calcul %1.").arg(engineName, TSA::Product::displayName()));
+        s1.paragraphs.push_back(hasResultsMeta
+            ? QStringLiteral("Le présent rapport technique constitue la Note de Calcul justificative de dimensionnement "
+                             "et de vérification de la structure modélisée dans l'environnement %2. "
+                             "Les analyses numériques ont été exécutées par le moteur de calcul %1.")
+                  .arg(QString::fromStdString(results->executionMetadata().solverEngine), TSA::Product::displayName())
+            : QStringLiteral("Le présent rapport technique décrit la structure modélisée dans l'environnement %1. "
+                             "Aucun résultat de calcul n'est joint.").arg(TSA::Product::displayName()));
 
         NDCSection s2;
         s2.title = QStringLiteral("Modélisation Numérique par Éléments Finis");
@@ -187,12 +179,23 @@ NDCDocument NDCGenerator::generate(
             const auto& meta = results->executionMetadata();
             NDCSection sMeta;
             sMeta.title = QStringLiteral("Traçabilité de Calcul & Annexe Nationale");
-            sMeta.paragraphs.push_back(QStringLiteral("Informations d'environnement et métadonnées d'exécution certifiées pour la présente note de calcul :"));
-            sMeta.keyValues.push_back({QStringLiteral("Solveur de calcul"), QString::fromStdString(meta.solverEngine + " (v" + meta.solverVersion + ")")});
-            sMeta.keyValues.push_back({QStringLiteral("Annexe Nationale active"), QString::fromStdString(meta.nationalAnnex)});
-            sMeta.keyValues.push_back({QStringLiteral("Référentiel réglementaire"), QString::fromStdString(meta.normativeFramework)});
+            sMeta.paragraphs.push_back(QStringLiteral("Informations enregistrées avec les résultats par le moteur qui les a produits. Elles "
+                                                      "identifient le calcul ; elles ne constituent ni une certification ni une garantie de "
+                                                      "reproductibilité numérique."));
+            sMeta.keyValues.push_back({QStringLiteral("Solveur de calcul"), engineLabel(meta)});
+            sMeta.keyValues.push_back({QStringLiteral("Annexe nationale du calcul"), meta.nationalAnnex.empty()
+                ? QStringLiteral("aucune (coefficients des combinaisons saisis dans le modèle)") : QString::fromStdString(meta.nationalAnnex)});
+            sMeta.keyValues.push_back({QStringLiteral("Annexe nationale des vérifications EC2 / EC3 de cette note"),
+                                       TSA::Standards::NationalAnnexConfig::instance().annexName() + QStringLiteral(" (lue à la génération de la note)")});
+            if (!meta.normativeFramework.empty())
+                sMeta.keyValues.push_back({QStringLiteral("Référentiel appliqué par le moteur"), QString::fromStdString(meta.normativeFramework)});
             sMeta.keyValues.push_back({QStringLiteral("Date / Heure de calcul"), QString::fromStdString(meta.executionTimestamp.empty() ? results->timestamp() : meta.executionTimestamp)});
-            sMeta.keyValues.push_back({QStringLiteral("Équilibre global statique"), meta.isEquilibriumVerified ? QStringLiteral("CONFORME (Résidu max <= %1 kN)").arg(meta.globalEquilibriumTolerance) : QStringLiteral("Divergence / Non vérifié")});
+            sMeta.keyValues.push_back({QStringLiteral("Équilibre global statique"), meta.isEquilibriumVerified
+                ? QStringLiteral("vérifié par le moteur (tolérance %1%2)").arg(meta.globalEquilibriumTolerance)
+                      .arg(meta.relativeEquilibriumResidual > 0.0 ? QStringLiteral(", résidu relatif des forces %1").arg(meta.relativeEquilibriumResidual, 0, 'g', 3) : QString())
+                : QStringLiteral("non vérifié par le moteur")});
+            for (const auto& m : meta.preparationMessages)
+                sMeta.keyValues.push_back({QStringLiteral("Validation avant calcul"), QString::fromStdString(m)});
             ch.sections.push_back(sMeta);
         }
 
@@ -484,8 +487,9 @@ NDCDocument NDCGenerator::generate(
         if (results && results->isValid())
         {
             const auto& eq = results->equilibrium();
-            const double maxRes = eq.maxError();
-            const double scale = std::max({ std::abs(eq.appliedFx), std::abs(eq.appliedFy), std::abs(eq.appliedFz), 1e-9 });
+            const double maxRes = eq.maxError() * results->units().forceToKiloNewtons();   // kN (calcul en kN ou N)
+            const double scale = std::max({ std::abs(eq.appliedFx), std::abs(eq.appliedFy), std::abs(eq.appliedFz), 1e-9 }) *
+                                 results->units().forceToKiloNewtons();
             tVerif.rows.push_back({
                 QStringLiteral("Équilibre global des forces (Σ F_ext + Σ R = 0)"),
                 QString("Résidu max = %1 kN (relatif %2)").arg(maxRes, 0, 'e', 2).arg(maxRes / scale, 0, 'e', 2),
@@ -675,6 +679,7 @@ NDCDocument NDCGenerator::generate(
         tForces.headers = {QStringLiteral("Élément ID"), QStringLiteral("Type"), QStringLiteral("N_min (kN)"), QStringLiteral("N_max (kN)"), QStringLiteral("Vz_max (kN)"), QStringLiteral("Mz_min (kNm)"), QStringLiteral("Mz_max (kNm)")};
         tForces.columnAlignments = {QStringLiteral("center"), QStringLiteral("left"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right")};
 
+        const double toKN = results->units().forceToKiloNewtons();   // tableau en kN et kN·m (calcul en kN ou N)
         auto appendRow = [&](TSA::Analysis::StructuralElementKind kind, int elId, const QString& typeName) {
             const auto* r = results->getElementResults(kind, elId);
             if (r)
@@ -692,11 +697,11 @@ NDCDocument NDCGenerator::generate(
                 tForces.rows.push_back({
                     QString("<a href=\"tsa://element?kind=%3&id=%1\">%2 #%1</a>").arg(elId).arg(typeName).arg(elementKindKey(kind)),
                     typeName,
-                    QString::number(r->minNormalForce(), 'f', 2),
-                    QString::number(r->maxNormalForce(), 'f', 2),
-                    QString::number(vzMax, 'f', 2),
-                    QString::number(mzMin, 'f', 2),
-                    QString::number(mzMax, 'f', 2)
+                    QString::number(r->minNormalForce() * toKN, 'f', 2),
+                    QString::number(r->maxNormalForce() * toKN, 'f', 2),
+                    QString::number(vzMax * toKN, 'f', 2),
+                    QString::number(mzMin * toKN, 'f', 2),
+                    QString::number(mzMax * toKN, 'f', 2)
                 });
             }
         };
@@ -813,7 +818,8 @@ NDCDocument NDCGenerator::generate(
                 const auto* elRes = results->getElementResults(TSA::Analysis::StructuralElementKind::Beam, bId);
                 if (!elRes) continue;
 
-                double Med = std::max(elRes->maxAbsMy(), 0.01);   // axe fort (flexion simple EC2)
+                // Moment en kN·m pour l'affichage, en N·m pour EC2 (unités du calcul : kN ou N)
+                double Med = std::max(elRes->maxAbsMy() * results->units().forceToKiloNewtons(), 0.01);   // axe fort (flexion simple EC2)
                 auto check = TSA::Standards::Design::ConcreteDesignEC2::calculateFromModel(b.section(), b.material(), Med * 1000.0);
                 double maxRatio = check.utilizationRatio * 100.0;
                 bool ok = (maxRatio <= 100.0 && check.valid);
@@ -860,7 +866,7 @@ NDCDocument NDCGenerator::generate(
                 const auto* elRes = results->getElementResults(TSA::Analysis::StructuralElementKind::Column, colId);
                 if (!elRes) continue;
 
-                double Ned = std::max(std::abs(elRes->minNormalForce()), std::abs(elRes->maxNormalForce())) * 1000.0;
+                double Ned = std::max(std::abs(elRes->minNormalForce()), std::abs(elRes->maxNormalForce())) * results->units().forceToNewtons();
                 const auto* n1 = model.getNode(col.startNodeId());
                 const auto* n2 = model.getNode(col.endNodeId());
                 double L = (n1 && n2) ? std::sqrt(std::pow(n2->x()-n1->x(),2) + std::pow(n2->y()-n1->y(),2) + std::pow(n2->z()-n1->z(),2)) : 3.0;

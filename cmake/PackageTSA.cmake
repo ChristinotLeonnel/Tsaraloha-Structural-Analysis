@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.20)
 #     platforms/ styles/ imageformats/ iconengines/ tls/ …  plugins Qt
 #     translations/qtbase_fr.qm
 #     resources/occt/        ressources OpenCASCADE (Shaders, Textures, messages, unités)
-#     engines/OpenSees/      bin/OpenSees.exe + libiomp5md.dll + runtime ; lib/tcl8.6
+#     engines/OpenSees/      bin/OpenSees.exe ou gOpenSees.exe + libiomp5md.dll + runtime ; lib/tcl8.6 (si PACKAGE_OPENSEES)
 #     Extensions/            bibliothèques TSALib livrées
 #     modules/               modules livrés (module.json)
 #     plugins/               plugins binaires (vide par défaut)
@@ -233,12 +233,24 @@ foreach(r Shaders Textures StdResource SHMessage XSMessage UnitsAPI XSTEPResourc
 endforeach()
 
 # --- 6. Moteur OpenSees -----------------------------------------------------------------------------
-if(PACKAGE_OPENSEES AND EXISTS "${SOURCE_DIR}/thirdparty/OpenSees/bin/OpenSees.exe")
+# Exécutable fourni sous l'un des deux noms d'OpenSees 3.8.0 (OpenSees.exe, gOpenSees.exe), cherchés par
+# OpenSeesManager sous ces deux noms. Non inclus par défaut (licence : TSA_PACKAGE_OPENSEES=OFF).
+set(_ops_exe "")
+foreach(_n OpenSees.exe gOpenSees.exe)
+    if(NOT _ops_exe AND EXISTS "${SOURCE_DIR}/thirdparty/OpenSees/bin/${_n}")
+        set(_ops_exe "${_n}")
+    endif()
+endforeach()
+if(PACKAGE_OPENSEES AND NOT _ops_exe)
+    message(WARNING "OpenSees demandé (TSA_PACKAGE_OPENSEES=ON) mais introuvable dans thirdparty/OpenSees/bin "
+                    "(OpenSees.exe ou gOpenSees.exe) : paquet SANS moteur OpenSees.")
+endif()
+if(PACKAGE_OPENSEES AND _ops_exe)
     message(WARNING "OpenSees inclus : sa licence (The Regents of the University of California) autorise l'usage "
                     "éducatif, de recherche et non lucratif ; un usage commercial exige un accord de l'Université. "
                     "Vérifier avant toute diffusion (docs/THIRD_PARTY_LICENSES.md) ou configurer -DTSA_PACKAGE_OPENSEES=OFF.")
     set(os "${DIST_DIR}/engines/OpenSees")
-    file(COPY "${SOURCE_DIR}/thirdparty/OpenSees/bin/OpenSees.exe" "${SOURCE_DIR}/thirdparty/OpenSees/bin/libiomp5md.dll"
+    file(COPY "${SOURCE_DIR}/thirdparty/OpenSees/bin/${_ops_exe}" "${SOURCE_DIR}/thirdparty/OpenSees/bin/libiomp5md.dll"
          DESTINATION "${os}/bin")
     file(COPY "${SOURCE_DIR}/thirdparty/OpenSees/lib" DESTINATION "${os}")
     # OpenSees.exe est lancé comme processus séparé : son propre runtime à côté de lui.
@@ -357,7 +369,7 @@ foreach(f ${all_files})
     list(APPEND entries "    {\"path\": \"${fj}\", \"size\": ${sz}, \"sha256\": \"${h}\", \"category\": \"${cat}\"}")
 endforeach()
 string(TIMESTAMP now "%Y-%m-%dT%H:%M:%SZ" UTC)
-if(EXISTS "${DIST_DIR}/engines/OpenSees/bin/OpenSees.exe")
+if(EXISTS "${DIST_DIR}/engines/OpenSees/bin/OpenSees.exe" OR EXISTS "${DIST_DIR}/engines/OpenSees/bin/gOpenSees.exe")
     set(os_json true)
 else()
     set(os_json false)

@@ -2,6 +2,7 @@
 
 #include "../../Model/Material.h"
 
+#include "EditedFields.h"
 #include "IElementPropertyView.h"
 
 class QLineEdit;
@@ -34,6 +35,8 @@ private slots:
 
 private:
     void setupUi();
+    void captureEditedFields();
+    EditedFields m_edited;   ///< valeurs affichées au chargement : seuls les champs modifiés sont réécrits
 
     TSA::Model::Model* m_model = nullptr;
     int m_slabId = -1;

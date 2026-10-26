@@ -137,12 +137,12 @@ void ResultsModel::updateTimestamp()
     std::time_t t = std::chrono::system_clock::to_time_t(now);
     std::tm tm{};
 #if defined(_WIN32)
-    localtime_s(&tm, &t);
+    gmtime_s(&tm, &t);
 #else
-    localtime_r(&t, &tm);
+    gmtime_r(&t, &tm);
 #endif
     std::ostringstream ss;
-    ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+    ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S UTC");   // temps universel : comparable d'un poste à l'autre
     m_timestamp = ss.str();
 }
 

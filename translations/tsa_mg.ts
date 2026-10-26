@@ -5582,6 +5582,10 @@ Maj + tsindry amin'ny fitaovana: ampiasao indray mandeha ny fomba iray hafa.</tr
         <translation>Fidio ny fizarana I/H:</translation>
     </message>
     <message>
+        <source>Profilé %1</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Profilé %1 appliqué à %2 barre(s) (h=%3m, b=%4m)</source>
         <translation>Nampiharina tamin'ny tsorakazo %2 ny fizarana %1 (h=%3m, b=%4m)</translation>
     </message>
@@ -5604,6 +5608,10 @@ Maj + tsindry amin'ny fitaovana: ampiasao indray mandeha ny fomba iray hafa.</tr
     <message>
         <source>Hauteur h (m) :</source>
         <translation>Haavony h (m):</translation>
+    </message>
+    <message>
+        <source>Section %1</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>Section Rectangulaire (%1 x %2 m) appliquée à %3 élément(s)</source>
@@ -6487,10 +6495,6 @@ Jereo Fanampiana &gt; Môdiola.</translation>
     <message>
         <source>Éléments collés à l'emplacement ! Vous pouvez cliquer pour coller à nouveau ou Échap</source>
         <translation>Voapetaka teo amin'ny toerana ny singa! Afaka manindry ianao raha hametaka indray na Échap</translation>
-    </message>
-    <message>
-        <source>Modification Plan de Travail</source>
-        <translation>Fanovana ny planina fiasana</translation>
     </message>
     <message>
         <source>Capture (Droite -&gt; Gauche) : Sélectionne tout élément touché ou inclus</source>
@@ -9190,6 +9194,14 @@ Atomboka ve ny kajy?</translation>
     <message>
         <source> — schéma %1, %2</source>
         <translation> — skema %1, %2</translation>
+    </message>
+    <message>
+        <source>Raideurs d'appui lues en kN/m et kN·m/rad : fichier écrit par une version antérieure de l'export IFC de TSA, sans unité de raideur déclarée.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Unité des raideurs d'appui non déclarée par le fichier : déduite des unités de force, de longueur et d'angle (facteurs vers kN/m : %1, vers kN·m/rad : %2).</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>%1 produit(s) porteur(s) dans le fichier, aucun n'a pu être converti</source>
@@ -15907,6 +15919,10 @@ Ohatra: -10.00; 0.00; 0.00</translation>
         <translation>Fizarana namboarina</translation>
     </message>
     <message>
+        <source>Profil %1 : forme non modifiable dans ce panneau (dialogue des sections).</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Couleur de la Poutre</source>
         <translation>Lokon'ny andry mitsivalana</translation>
     </message>
@@ -17324,6 +17340,10 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
         <translation>Betôna C25/30</translation>
     </message>
     <message>
+        <source>Profil %1 : forme non modifiable dans ce panneau (dialogue des sections).</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Couleur du Poteau</source>
         <translation>Lokon'ny andry</translation>
     </message>
@@ -18338,6 +18358,11 @@ Tsy nila nanangonana indray.</translation>
     <message>
         <source>Packages TSALib (*.tsalib);;Tous les fichiers (*.*)</source>
         <translation>Fonosana TSALib (*.tsalib);;Rakitra rehetra (*.*)</translation>
+    </message>
+    <message>
+        <source>L'ajout d'un dossier d'extension non empaqueté est réservé au mode développeur.
+Installez plutôt un package .tsalib.</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>Ou sélectionner un dossier d'extension à importer</source>
@@ -26262,6 +26287,10 @@ Mamorona tetikasa vaovao na sokafy rakitra %1: eto no hiseho ny topimasony.</tra
     <message>
         <source>Couleur d'affichage :</source>
         <translation>Loko aseho:</translation>
+    </message>
+    <message>
+        <source>Section %1 : non modifiable dans ce panneau (dialogue des sections).</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>Couleur de la Barre de Treillis</source>

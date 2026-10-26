@@ -930,6 +930,8 @@ bool runSuite_Views(int& passed)
             pump(2);
         };
         const size_t history = view.workPlaneHistorySize();
+        const std::size_t undoBefore = m.undoManager()->undoCount();
+        const std::uint64_t revisionBefore = m.revision();
         send(QEvent::MouseMove, handle, Qt::NoButton, Qt::NoButton);   // détection : active la translation Z
         send(QEvent::MouseButtonPress, handle, Qt::LeftButton, Qt::LeftButton);
         send(QEvent::MouseMove, QPointF(handle.x(), handle.y() - 30.0), Qt::NoButton, Qt::LeftButton);
@@ -944,6 +946,11 @@ bool runSuite_Views(int& passed)
         TEST_CHECK(wp.type() == TSA::Coordinate::WorkPlaneType::GlobalXY && std::abs(wp.offset() - wp.origin().Z()) < 1e-12
                        && std::abs(wp.normal().Z() - 1.0) < 1e-12 && view.workPlaneHistorySize() == static_cast<int>(history) + 1,
                    "Test 444 (A): translation : plan toujours horizontal de type XY, décalage = altitude, un plan dans l'historique");
+        // BUG-113 : le plan de travail n'est pas dans l'instantané du modèle — relâcher le manipulateur ne crée pas
+        // d'entrée Annuler vide et ne change pas la révision du modèle (les résultats de calcul ne deviennent pas périmés)
+        TEST_CHECK(m.undoManager()->undoCount() == undoBefore && m.revision() == revisionBefore,
+                   "Test 444 (A): glisser du plan : aucune entrée Annuler, révision du modèle inchangée ("
+                       << m.undoManager()->undoCount() - undoBefore << " entrée(s), révision +" << m.revision() - revisionBefore << ")");
 
         // Échap pendant un glisser : plan et grille revenus à la position de départ, par les deux chemins réels de la
         // touche — reçue par la vue (keyPressEvent), puis raccourci « Mode sélection » de la fenêtre (setInteractionMode)

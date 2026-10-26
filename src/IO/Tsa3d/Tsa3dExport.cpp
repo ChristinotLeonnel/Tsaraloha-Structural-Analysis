@@ -375,15 +375,20 @@ ExportResult exportModel(const TSA::Model::Model& model, const ExportOptions& op
         doc.insert("mesh", c.preserved.document.value("mesh"));
     if (r && r->isValid() && options.includeResults)
     {
+        // Résultats dans les unités du document (kN, kN.m, m) quelle que soit l'unité du calcul (kN ou N) ; rotations en rad
+        const double k = r->units().forceToKiloNewtons();
         QJsonArray disp, reac;
         for (const auto& [nid, d] : r->allDisplacements())
             disp.append(QJsonObject { { "node", nodeRef(nid) }, { "u", arr3(d.ux, d.uy, d.uz) }, { "r", arr3(d.rx, d.ry, d.rz) } });
         for (const auto& [nid, re] : r->allReactions())
-            reac.append(QJsonObject { { "node", nodeRef(nid) }, { "force", arr3(re.rx, re.ry, re.rz) }, { "moment", arr3(re.mx, re.my, re.mz) } });
+            reac.append(QJsonObject { { "node", nodeRef(nid) }, { "force", arr3(re.rx * k, re.ry * k, re.rz * k) }, { "moment", arr3(re.mx * k, re.my * k, re.mz * k) } });
+        const QJsonObject units = tsaUnits();
         doc.insert("results", QJsonObject { { "status", "computed-not-validated" },
                                             { "engine", QString::fromStdString(r->executionMetadata().engineId) },
                                             { "case", QString::fromStdString(r->caseOrComboName()) },
                                             { "timestamp", QString::fromStdString(r->timestamp()) },
+                                            { "units", QJsonObject { { "length", units["length"] }, { "rotation", "rad" },
+                                                                     { "force", units["force"] }, { "moment", units["moment"] } } },
                                             { "displacements", disp }, { "reactions", reac } });
     }
 

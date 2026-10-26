@@ -1,5 +1,6 @@
 #include "test_common.h"
 #include <limits>
+#include <sstream>
 
 #include <QFile>
 #include <QTemporaryDir>
@@ -737,6 +738,74 @@ bool runSuite_OpenSees(int& passed)
             p1, p2, 0.0, crossStations, TSA::Geometry::DiagramType::BendingMz, 0.05);
         TEST_CHECK(!shCross.IsNull(), "Diagram crossing zero must produce valid compound shape");
 
+        passed++;
+    }
+
+    // TEST 495: noms du modèle écrits dans le script Tcl (commentaires) — aucune injection de commande.
+    // Un nom vient d'un fichier .tsa ou d'un import IFC : un saut de ligne en faisait une commande Tcl (exec…), une
+    // barre oblique inverse finale prolongeait le commentaire sur la commande suivante, une accolade déséquilibrait
+    // le bloc pattern { … }. Le calcul doit être identique à celui du même modèle aux noms ordinaires.
+    {
+        auto build = [](bool hostile, Model& m, int& tip) {
+            const int a = m.addNode(0, 0, 0);
+            tip = m.addNode(4, 0, 0);
+            m.getNode(a)->setSupportType(SupportType::Fixed);
+            const int c = m.addNode(4, 0, 3);
+            // Section rectangulaire : ses propriétés ne dépendent pas de son nom (un profilé laminé tire son rayon de
+            // congé de son nom, défaut distinct traité à part).
+            Section sec = Section::rectangular(0.30, 0.50, hostile ? "R}{30x50 \\" : "R30x50");
+            m.addBar(a, tip, sec, Material::concreteC25_30());
+            m.addBar(tip, c, sec, Material::concreteC25_30());
+            if (hostile)
+            {
+                m.getNode(a)->setName("N1\nputs TSA_INJECTED_NODE");
+                m.getNode(tip)->setName("fin \\");
+                m.getNode(c)->setName("haut}\r\nexec echo TSA_INJECTED_EXEC");
+            }
+            auto& lm = m.loadManager();
+            const int lc = lm.addLoadCase(LoadCase(1, hostile ? "Cas {G}\nputs TSA_INJECTED_CASE" : "G", LoadCaseCategory::Live, false, 1.0));
+            lm.addNodalLoad(NodalLoad(0, c, lc, 5.0, 0.0, -10.0, 0, 0, 0, LoadCoordSystem::Global, hostile ? "F\\\n}puts TSA_INJECTED_LOAD" : "F"));
+            return lc;
+        };
+        Model hostileModel, cleanModel;
+        int tipH = 0, tipC = 0;
+        const int lcH = build(true, hostileModel, tipH);
+        const int lcC = build(false, cleanModel, tipC);
+        AnalysisParameters params;
+        params.type = AnalysisType::LinearStatic;
+        params.includeSelfWeight = false;
+        params.targetLoadCaseId = lcH;
+        const std::string script = OpenSeesAnalysisBuilder::buildScript(CalculationSnapshot::capture(hostileModel), params);
+        bool injected = false, danglingBackslash = false;
+        int depth = 0, minDepth = 0;
+        std::istringstream lines(script);
+        for (std::string line; std::getline(lines, line);)
+        {
+            // Un marqueur hors commentaire (aucun « # » avant lui sur la ligne) serait exécuté par Tcl.
+            const auto marker = line.find("TSA_INJECTED");
+            if (marker != std::string::npos && line.rfind('#', marker) == std::string::npos) injected = true;
+            if (!line.empty() && line.back() == '\\') danglingBackslash = true;
+            for (char ch : line) depth += ch == '{' ? 1 : (ch == '}' ? -1 : 0), minDepth = std::min(minDepth, depth);
+        }
+        TEST_CHECK(!injected, "Test 495: aucun nom ne devient une commande Tcl");
+        TEST_CHECK(!danglingBackslash, "Test 495: aucune ligne ne se termine par une barre oblique inverse");
+        TEST_CHECK(depth == 0 && minDepth == 0, "Test 495: accolades du script équilibrées");
+        if (TSA::Analysis::OpenSeesManager::instance().isAvailable())
+        {
+            OpenSeesSolver sH, sC;
+            QString errH, errC;
+            AnalysisParameters pc = params;
+            pc.targetLoadCaseId = lcC;
+            TEST_CHECK(sH.solveSynchronous(hostileModel, params, &errH) && sC.solveSynchronous(cleanModel, pc, &errC),
+                       "Test 495: calculs OpenSees réussis (noms piégés et noms ordinaires)");
+            const auto* dH = sH.results().getNodeDisplacement(tipH);
+            const auto* dC = sC.results().getNodeDisplacement(tipC);
+            TEST_CHECK(dH && dC && dH->ux == dC->ux && dH->uz == dC->uz && dH->ry == dC->ry && std::abs(dC->ux) > 0.0,
+                       "Test 495: déplacements identiques à ceux du modèle aux noms ordinaires");
+        }
+        else
+            std::cout << "  [INFO] Test 495 : OpenSees absent, comparaison des calculs non exécutée" << std::endl;
+        std::cout << "[PASS] Test 495: Noms du modèle neutralisés dans le script OpenSees (pas d'injection Tcl)" << std::endl;
         passed++;
     }
 

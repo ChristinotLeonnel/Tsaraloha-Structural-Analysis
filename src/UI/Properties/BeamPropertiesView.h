@@ -2,6 +2,7 @@
 
 #include "../../Model/Material.h"
 
+#include "EditedFields.h"
 #include "IElementPropertyView.h"
 #include "MemberEndNodesWidget.h"
 #include "../../Model/Section.h"
@@ -51,6 +52,9 @@ private:
     void updateSectionVisibility(int secType);
     void updateCalculatedProperties(const TSA::Model::Section& sec);
     TSA::Model::Section getSectionFromUi() const;
+    void captureEditedFields();
+    EditedFields m_edited;   ///< valeurs affichées au chargement : seuls les champs modifiés sont réécrits
+    bool m_sectionEditable = true;   ///< forme de la section représentable par les champs du panneau
 
     TSA::Model::Model* m_model = nullptr;
     int m_beamId = -1;

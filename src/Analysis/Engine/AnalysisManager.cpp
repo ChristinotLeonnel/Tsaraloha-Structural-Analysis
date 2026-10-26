@@ -477,6 +477,10 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
     if (!info.version.empty()) meta.solverVersion = info.version;
     meta.analysisScope = prepared.model.entireModel ? std::string() : prepared.model.scopeLabel;
     meta.analysisDimension = dimensionKey(context.dimension);
+    meta.preparationMessages.clear();
+    for (const auto severity : { ValidationSeverity::Warning, ValidationSeverity::Info })
+        for (const auto& m : prepared.validation.messages())
+            if (m.severity == severity) meta.preparationMessages.push_back(m.category.empty() ? m.text : m.category + " : " + m.text);
 
     // Catégories annoncées = capacité déclarée ET données réellement présentes (capacités du moteur producteur).
     const AnalysisCapabilities caps = (producer ? producer : engine)->capabilities();
