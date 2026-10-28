@@ -2,6 +2,40 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-28 (soir) — dépendances portables (branche build/dependency-detection, non commitée)
+SetupDependencies.cmake étendu (pas de module parallèle) : tsa_find_qt (Qt la plus récente compatible, cache périmé
+remplacé, Qt6*_DIR étrangers effacés), tsa_validate_dependencies (x64, chaîne MSVC/MinGW/ELF, kit msvcAAAA, mélange,
+OCCT ≥ 8.0, statut VALIDÉE / NON VALIDÉE), rapport tsa-dependencies.txt + cible tsa-dependency-report. Presets sans
+Qt6_DIR (W-9). windeployqt de la Qt retenue, DLL OCCT depuis OpenCASCADE_BINARY_DIR. Traductions désactivées si Qt < 6.9.
+OpenSees : PATH, TSA_OPENSEES_ARCHIVE, curl --fail + SHA-256 dans OpenSeesManager (W-3 : aucune source officielle
+joignable). W-8 déplacé dans DeployDependencies. W-10 Logger non ASCII (test 37.8). docs/DEPENDENCIES.md, rapport §11.
+Windows : matrice m1-m7, suites 42/0/15, paquet vérifié et lancé hors du dépôt. Linux non testé.
+Suite : OpenSees 3.8.0 depuis conda-forge (12 paquets épinglés + SHA-256, installation CMake identique à l'assemblage
+manuel, empreinte falsifiée rejetée) ; exécution NON validée (lancement refusé par le contrôle de sécurité). TSALab :
+tsa_find_qt, presets sans Qt figé, W-6. Plancher Qt 6.2 conservé (décision utilisateur).
+
+## 2026-10-28 — validation Windows MSVC 19.51 (branche test/windows-validation, depuis 6a5bde1, non commitée)
+Rapport : docs/reports/WINDOWS_VALIDATION_REPORT.md. Release Ninja, Qt 6.12.0 (6.11.2 absent du poste), build-windows-validation.
+Compilation TSA et TSALab : code 0. Suites : 42 réussies, 14 non exécutées (OpenSees absent), Custom2D 58/58, test 128 réussi,
+views 19/19, undo 11/11, TSA.exe démarre et se ferme proprement. Corrigé : W-1 (tests 127, 293, 341 : chemins UTF-8 étroits →
+TSA::Core::utf8Path), W-2 (PythonAIBridge::findPython : « py » d'abord sous Windows, alias Store évité, test 489), W-5
+(run_test_suites.py : mesh dépend d'OpenSees). Ajouté : tsa_download_opensees (SetupDependencies.cmake, SHA-256 vérifié,
+non bloquant). Ouverts : W-3 (URL officielle d'OpenSees en 404), W-6 (TSALab LabTests.cpp:120), W-7, W-8, W-9.
+Suite (même jour) : W-8 corrigé (RuntimeDependencies.cmake filtre les introuvables par EXCLUDE_REGEXES, vérifié) ; W-7
+corrigé (test_torsion.cpp, utf8Path), compilé, non exécuté faute d'OpenSees.
+
+## 2026-10-26 (soir, préparation de l'étape 2) — contrôles, dépendances, filet de tests (non commités)
+
+- A (branche test/core-static-init-sections) : `tools/check_core_static_init.py` par sections ELF (init + terminaison),
+  LTO refusé, codes 0/1/2, CTest `<P>_CoreStaticInitSelfTest` ; règle précisée dans architecture.md.
+- B (build/model-deps-explicites + TSALab build/tests-qtwidgets-explicite) : QtWidgets et OCCT déclarés par leurs
+  utilisateurs ; `<P>_Model` lié à Core, science, Qt Core / Gui / Network, TKernel, TKMath seulement.
+- C (test/etape2-caracterisation) : suite « undo » (tests 513-523) — observateur des 39 notifications, empreinte du modèle,
+  transitions opération / Annuler / Rétablir (révision, ModelEdited, EditRecord), F1-F6, treillis et câbles, grilles,
+  notifications positives ; BUG-006 recompté (28 appels), BUG-125 à BUG-130 caractérisés (non corrigés).
+- Linux Release : A 3/3 ; B suite identique à la base, banc 146/146, TSALab 27/27 ; C 521/522 (128 Windows seul),
+  mutations 8/8 détectées. Windows / MSVC : non exécuté (procédure VALIDATION_WINDOWS_39155c4.md §7-11).
+
 ## 2026-10-26 (TSA Core, étape 1) — extraction de TSA_Core (non commitée)
 
 - Cible `<P>_Core` STATIC (50 sources : Model, Load, Cable, Coordinate sans AxisColorConfig, Annotation/Dimension,

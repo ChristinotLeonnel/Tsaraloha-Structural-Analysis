@@ -1,5 +1,6 @@
 #include "OpenSeesManager.h"
 #include "../Core/AppPaths.h"
+#include "AI/Models/ModelManager.h"
 #include "App/ProductInfo.h"
 
 #include <QCoreApplication>
@@ -41,6 +42,11 @@ QString OpenSeesManager::defaultSearchDirectory()
 QString OpenSeesManager::officialDownloadUrl()
 {
     return QStringLiteral("https://opensees.berkeley.edu/OpenSees/code/OpenSees3.8.0-x64.exe.zip");
+}
+
+QString OpenSeesManager::officialArchiveSha256()
+{
+    return QStringLiteral("5e37a5a95c645e31c7700ce6ec5b08c178baedc83241f7cbe10ef10cf6a4fb41");
 }
 
 void OpenSeesManager::loadSettings()
@@ -312,7 +318,8 @@ bool OpenSeesManager::downloadAndInstall(std::function<void(int, const QString&)
 
     // Téléchargement via curl Windows
     QProcess curl;
-    QStringList args = {"-L", "-o", zipPath, url};
+    // --fail : une page d'erreur HTTP (404 du serveur officiel, W-3) n'est jamais enregistrée comme archive.
+    QStringList args = {"-L", "--fail", "-o", zipPath, url};
     curl.start(QDir(system32).filePath(QStringLiteral("curl.exe")), args);
 
     if (!curl.waitForStarted(3000))
@@ -332,8 +339,21 @@ bool OpenSeesManager::downloadAndInstall(std::function<void(int, const QString&)
 
     if (curl.exitCode() != 0 || !QFile::exists(zipPath))
     {
-        if (errorMessage) *errorMessage = tr("Erreur lors du téléchargement de l'archive OpenSees.");
+        QFile::remove(zipPath);
+        if (errorMessage) *errorMessage = tr("Téléchargement de l'archive OpenSees impossible (%1, code curl %2). "
+                                             "Installer OpenSees manuellement et indiquer son exécutable dans les préférences.")
+                                              .arg(url).arg(curl.exitCode());
         emit downloadCompleted(false, "", tr("Erreur de téléchargement."));
+        return false;
+    }
+
+    QString actualSha256;
+    if (!TSA::AI::ModelManager::verifySha256(zipPath, officialArchiveSha256(), &actualSha256))
+    {
+        QFile::remove(zipPath);
+        if (errorMessage) *errorMessage = tr("Archive OpenSees rejetée : empreinte SHA-256 %1, attendue %2.")
+                                              .arg(actualSha256, officialArchiveSha256());
+        emit downloadCompleted(false, "", tr("Archive rejetée (empreinte inattendue)."));
         return false;
     }
 

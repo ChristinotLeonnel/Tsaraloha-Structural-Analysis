@@ -86,7 +86,10 @@ pour le GPU NVIDIA : `__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvid
   une locale à virgule (fr_FR), `std::stod`/`strtod` lisaient « 3.5 » comme 3 et `std::to_string` écrivait « 0,5 »
   (fichiers d'échange, résultats OpenSees, STEP/IFC, scripts). `src/Core/NumericLocale.cpp` rétablit `LC_NUMERIC="C"`
   dans le constructeur de toute `QCoreApplication` (comportement identique à Windows). Test 490.
-- `cmake/SetupDependencies.cmake` ne télécharge le SDK OCCT Windows que sous Windows.
+- `cmake/SetupDependencies.cmake` ne télécharge le SDK OCCT Windows que sous Windows. Ses contrôles s'appliquent aussi
+  sous Linux (Qt de chaîne ELF, OCCT ≥ 8.0, aucun module Qt d'une autre installation) ; sans Qt dans
+  `CMAKE_PREFIX_PATH`, la plus récente de `~/Qt/6.*/gcc_64` est retenue ; rapport `<build>/tsa-dependencies.txt` et
+  cible `tsa-dependency-report` (`docs/DEPENDENCIES.md`). **Non vérifié sous Linux** à ce jour (2026-10-28).
 - `cmake/IfcOpenShell.cmake` : pas de chemin par défaut vers la construction MSVC hors Windows.
 - `OccView` : `Xw_Window` reçoit un `Aspect_Drawable` (OCCT ≥ 7.6 n'expose plus le type X11 `Window`).
 - Extension de miniatures de l'Explorateur (`TSAThumbnailProvider`, test 128) : Windows uniquement.

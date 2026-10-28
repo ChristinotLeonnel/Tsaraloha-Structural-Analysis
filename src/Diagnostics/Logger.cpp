@@ -1,5 +1,6 @@
 #include "Logger.h"
 #include "../Core/AppPaths.h"
+#include "../Core/Utf8Path.h"
 #include <ProductIdentity.h>
 
 #if defined(_WIN32)
@@ -128,15 +129,15 @@ bool Logger::init(const std::string& baseDir)
 
     try
     {
-        fs::create_directories(m_logsDirectory);
-        fs::create_directories(m_logsDirectory + "/sessions");
+        fs::create_directories(TSA::Core::utf8Path(m_logsDirectory));
+        fs::create_directories(TSA::Core::utf8Path(m_logsDirectory + "/sessions"));
     }
     catch (...)
     {
         // Permissions refusées : dossier temporaire de l'utilisateur (jamais le répertoire courant).
         m_logsDirectory = (QDir::tempPath() + "/TSA/logs").toStdString();
         try {
-            fs::create_directories(m_logsDirectory + "/sessions");
+            fs::create_directories(TSA::Core::utf8Path(m_logsDirectory + "/sessions"));
         } catch (...) {}
     }
 
@@ -148,7 +149,7 @@ bool Logger::init(const std::string& baseDir)
     m_sessionLogPath = m_logsDirectory + "/sessions/session_" + timeStr + ".log";
     m_latestLogPath = m_logsDirectory + "/tsa_latest.log";
 
-    m_fileStream.open(m_sessionLogPath, std::ios::out | std::ios::trunc);
+    m_fileStream.open(TSA::Core::utf8Path(m_sessionLogPath), std::ios::out | std::ios::trunc);
     if (!m_fileStream.is_open())
     {
         std::cerr << "[TSA::Logger] Impossible d'ouvrir le fichier de log : " << m_sessionLogPath << std::endl;
@@ -200,9 +201,9 @@ void Logger::shutdown()
     // Mettre à jour le fichier tsa_latest.log par copie du fichier de session actuel
     try
     {
-        if (fs::exists(m_sessionLogPath))
+        if (fs::exists(TSA::Core::utf8Path(m_sessionLogPath)))
         {
-            fs::copy_file(m_sessionLogPath, m_latestLogPath, fs::copy_options::overwrite_existing);
+            fs::copy_file(TSA::Core::utf8Path(m_sessionLogPath), TSA::Core::utf8Path(m_latestLogPath), fs::copy_options::overwrite_existing);
         }
     }
     catch (...) {}
@@ -363,7 +364,7 @@ void Logger::rotateOldSessions(size_t maxSessionsToKeep)
 {
     try
     {
-        std::string sessDir = m_logsDirectory + "/sessions";
+        const fs::path sessDir = TSA::Core::utf8Path(m_logsDirectory + "/sessions");
         if (!fs::exists(sessDir)) return;
 
         std::vector<fs::directory_entry> files;

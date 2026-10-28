@@ -8,14 +8,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 511;   // + test 512 (catalogues installés fournis au noyau, TSA Core étape 1), tests 510-511 (textes sur fond sans core20fwd, BUG-122), test 509 (destruction de la vue 3D, BUG-119), test 508 (panneau : rayon de congé), tests 506-507 (propriétés des sections, format 2.0, IFC), test 505 (installation .tsalib transactionnelle), tests 499-501 (unités des échanges : Fem3D, TSA3D, IFC), 502 (ouvertures : Annuler et notification), 503-504 (métadonnées de calcul sans valeur inventée), 492 (unités EC2/EC3), 493 (panneau Propriétés), 494 (section annulable), 495 (injection Tcl), 496 (paquets .tsalib), 497 (Annuler dalles/voiles), 498 (notifications des cas de charge) ; 489 comptés sous Linux le 25/10/2026 (Release, OpenSees, Gmsh et IfcOpenShell présents, 0 échec) + test 128 (Explorateur Windows, ignoré ailleurs) ; décompte Windows à confirmer
+    int expectedTotal = 522;   // + tests 513-523 (caractérisation Annuler avant migration vers EditTransaction, suite « undo ») ; + test 512 (catalogues installés fournis au noyau, TSA Core étape 1), tests 510-511 (textes sur fond sans core20fwd, BUG-122), test 509 (destruction de la vue 3D, BUG-119), test 508 (panneau : rayon de congé), tests 506-507 (propriétés des sections, format 2.0, IFC), test 505 (installation .tsalib transactionnelle), tests 499-501 (unités des échanges : Fem3D, TSA3D, IFC), 502 (ouvertures : Annuler et notification), 503-504 (métadonnées de calcul sans valeur inventée), 492 (unités EC2/EC3), 493 (panneau Propriétés), 494 (section annulable), 495 (injection Tcl), 496 (paquets .tsalib), 497 (Annuler dalles/voiles), 498 (notifications des cas de charge) ; 489 comptés sous Linux le 25/10/2026 (Release, OpenSees, Gmsh et IfcOpenShell présents, 0 échec) + test 128 (Explorateur Windows, ignoré ailleurs) ; décompte Windows à confirmer
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|operator|ailive|preview|thumbnail|engines|tools|mdd|cleanup|bim|ifc|drawing|views|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh|torsion|meshview|demo|surfaces|audit|benchmarks|display|multidoc|i18n|ribbon|templates_wp]" << std::endl;
+            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|operator|ailive|preview|thumbnail|engines|tools|mdd|cleanup|bim|ifc|drawing|views|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh|torsion|meshview|demo|surfaces|audit|benchmarks|display|multidoc|i18n|ribbon|templates_wp|undo]" << std::endl;
             return 0;
         }
     }
@@ -264,6 +264,10 @@ int main(int argc, char* argv[])
     if (suiteFilter == "all" || suiteFilter == "templates_wp") {
         std::cout << "\n--- [Suite 36/36] Templates de projets, plans de travail et grille réelle (Tests 468-475) ---" << std::endl;
         if (!runSuite_ProjectTemplates(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "undo") {
+        std::cout << "\n--- [Suite 37/37] Caractérisation Annuler / Rétablir : historique, coalescence, transactions, F1-F6, révisions, notifications (Tests 513-523) ---" << std::endl;
+        if (!runSuite_UndoCharacterization(passed)) allOk = false;
     }
 
     std::cout << "\n=================================================" << std::endl;

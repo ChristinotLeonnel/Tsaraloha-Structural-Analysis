@@ -8,6 +8,7 @@
 #include "Analysis/Engine/AnalysisEngineRegistry.h"
 #include "Analysis/Engine/AnalysisManager.h"
 #include "Analysis/OpenSeesSolver.h"
+#include "Core/Utf8Path.h"
 #include "Geometry/BeamGeometry.h"
 #include "Geometry/DeformedGeometry.h"
 #include "Geometry/MemberLoadGlyph.h"
@@ -721,7 +722,7 @@ bool runTorsionMechanics(int& passed)
         const Section& reread = back.beams().begin()->second.section();
         TEST_CHECK(reread.rootRadius() == Section::hea(260).rootRadius() && reread.it() == Section::hea(260).it(),
                    "Test 332: J identique après réouverture (rayon déduit de la désignation, aucun champ ajouté au format)");
-        std::filesystem::remove(path);
+        std::filesystem::remove(TSA::Core::utf8Path(path));
         std::cout << "[PASS] Test 332: J et Iw des profils laminés" << std::endl;
         ++passed;
     }

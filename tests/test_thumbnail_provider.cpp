@@ -19,6 +19,7 @@
 
 #include "test_common.h"
 
+#include "Core/Utf8Path.h"
 #include "IO/TSAFile.h"
 #include "IO/TSAPreviewBlock.h"
 #include <ProductIdentity.h>
@@ -63,7 +64,7 @@ bool saveWithThumbnail(const QString& path, const TSA::Model::Model& m, const QI
 // Réécrit un fichier 1.2 comme un fichier 1.1 : sans bloc d'aperçu (fichier « ancien »).
 bool downgradeToV11(const QString& path)
 {
-    std::fstream f(path.toStdString(), std::ios::in | std::ios::out | std::ios::binary);
+    std::fstream f(TSA::Core::utf8Path(path.toStdString()), std::ios::in | std::ios::out | std::ios::binary);
     TSA::IO::TSAFileHeader h;
     if (!f.read(reinterpret_cast<char*>(&h), sizeof(h))) return false;
     h.versionMinor = 1;

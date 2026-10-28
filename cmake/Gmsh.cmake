@@ -85,6 +85,19 @@ if(TSA_WITH_GMSH AND NOT TARGET TSA::Gmsh)
     endif()
 endif()
 
+# Rapport des dépendances (SetupDependencies.cmake). Version validée : 4.15.2 (SDK officiel gmsh.info).
+string(REGEX MATCH "gmsh-([0-9]+\\.[0-9]+\\.[0-9]+)" _gmsh_ver_match "${TSA_GMSH_SDK}")
+set(_gmsh_ver "${CMAKE_MATCH_1}")
+if(NOT TSA_WITH_GMSH)
+    tsa_dependency_record(Gmsh "DÉSACTIVÉE" "" "" "TSA_WITH_GMSH=OFF : maillage indisponible")
+elseif(TARGET TSA::Gmsh)
+    tsa_validation_status(_gmsh_st "${_gmsh_ver}" "4.15.2")
+    tsa_dependency_record(Gmsh "${_gmsh_st}" "${_gmsh_ver}" "${TSA_GMSH_SDK}" "facultative, GPL v2+")
+else()
+    tsa_dependency_record(Gmsh "ABSENTE" "" "" "facultative : maillage indisponible, suites mesh/surfaces/meshview NON EXÉCUTÉES —"
+                          "-DTSA_GMSH_SDK=<gmsh-4.15.2-Windows64-sdk ou Linux64-sdk>")
+endif()
+
 # Copie de la DLL Gmsh à côté d'un exécutable (développement ; le paquet la reçoit par PackageTSA.cmake).
 function(tsa_copy_gmsh_runtime target)
     if(TARGET TSA::Gmsh AND TSA_GMSH_DLL)

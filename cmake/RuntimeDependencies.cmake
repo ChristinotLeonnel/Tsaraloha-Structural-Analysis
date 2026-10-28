@@ -3,7 +3,8 @@
 # toutes les DLL de 3rdparty-vc14-64 (Qt 5, VTK, Tcl/Tk, Doxygen… inutiles à TSA).
 #
 # tsa_runtime_search_dirs(<var> <source_dir> [<extra>...])
-#   Dossiers où chercher : SDK OpenCASCADE, bin/ de chaque bibliothèque 3rdparty, dossiers supplémentaires.
+#   Dossiers où chercher : SDK OpenCASCADE (OCCT_BIN_DIR s'il est défini), bin/ de chaque bibliothèque 3rdparty,
+#   dossiers supplémentaires.
 #
 # tsa_copy_runtime_dependencies(BINARIES <exe/dll>... DESTINATION <dir> SEARCH_DIRS <dir>...
 #                                [EXCLUDE_REGEXES <regex>...] [RESULT_VAR <var>] [UNRESOLVED_VAR <var>])
@@ -15,7 +16,13 @@ if(POLICY CMP0207)
 endif()
 
 function(tsa_runtime_search_dirs out source_dir)
-    set(dirs "${source_dir}/opencascade-8.0.1-vc14-64/win64/vc14/bin")
+    # DLL d'OCCT : bin/ de l'OCCT retenu à la configuration (OCCT_BIN_DIR = OpenCASCADE_BINARY_DIR, passé par -D),
+    # sinon le SDK téléchargé par défaut dans la base commune.
+    if(OCCT_BIN_DIR)
+        set(dirs "${OCCT_BIN_DIR}")
+    else()
+        set(dirs "${source_dir}/opencascade-8.0.1-vc14-64/win64/vc14/bin")
+    endif()
     # bin/ et bin/win64/ (ex. openvr_api.dll, importée par TKOpenGl).
     file(GLOB tp LIST_DIRECTORIES true "${source_dir}/3rdparty-vc14-64/*/bin" "${source_dir}/3rdparty-vc14-64/*/bin/win64")
     foreach(d ${tp})

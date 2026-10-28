@@ -13,7 +13,8 @@ poteaux, dalles, voiles, fondations, treillis, câbles), viewport 3D OCCT, calcu
 
 Technologies constatées :
 - C++20 (`CMAKE_CXX_STANDARD 20`), MSVC 19.51 (Visual Studio 18 / 2026 Community)
-- Qt 6.11.2 (`C:/Qt/6.11.2/msvc2022_64`) : Core, Gui, Widgets, Svg
+- Qt 6 (≥ 6.2, validées 6.11.2 et 6.12.0 ; poste actuel `C:/Qt/6.12.0/msvc2022_64`, détectée automatiquement,
+  `docs/DEPENDENCIES.md`) : Core, Gui, Widgets, Svg, Network
 - Open CASCADE Technology 8.0.1 (`opencascade-8.0.1-vc14-64/`)
 - CMake ≥ 3.20 (installé : 4.3.3), Ninja (presets `ninja-debug` / `ninja-release`)
 - OpenSees (exécutable externe piloté par `QProcess`, scripts Tcl générés)

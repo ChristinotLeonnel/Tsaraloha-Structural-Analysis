@@ -10,7 +10,6 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "Qt6_DIR": "C:/Qt/6.11.2/msvc2022_64/lib/cmake/Qt6",
         "OpenCASCADE_DIR": "${sourceDir}/opencascade-8.0.1-vc14-64/cmake"
       }
     },
@@ -23,7 +22,6 @@
       "binaryDir": "${sourceDir}/build-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "Qt6_DIR": "C:/Qt/6.11.2/msvc2022_64/lib/cmake/Qt6",
         "OpenCASCADE_DIR": "${sourceDir}/opencascade-8.0.1-vc14-64/cmake"
       }
     },
@@ -44,7 +42,6 @@
       },
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "cl",
-        "Qt6_DIR": "C:/Qt/6.11.2/msvc2022_64/lib/cmake/Qt6",
         "OpenCASCADE_DIR": "${sourceDir}/opencascade-8.0.1-vc14-64/cmake"
       }
     },

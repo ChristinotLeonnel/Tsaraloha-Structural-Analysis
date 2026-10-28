@@ -51,6 +51,19 @@ else()
     message(STATUS "IfcOpenShell absent (${TSA_IFCOPENSHELL_ROOT}) — import IFC par le lecteur STEP interne "
                    "(capacités réduites) ; voir scripts/build_ifcopenshell.ps1")
 endif()
+# Rapport des dépendances (SetupDependencies.cmake). Version validée : 0.9.0post1 (construite contre l'OCCT de TSA).
+string(REGEX MATCH "ifcopenshell-([0-9][0-9a-z.]*)" _ifc_ver_match "${TSA_IFCOPENSHELL_ROOT}")
+set(_ifc_ver "${CMAKE_MATCH_1}")
+if(NOT TSA_WITH_IFCOPENSHELL)
+    tsa_dependency_record(IfcOpenShell "DÉSACTIVÉE" "" "" "import IFC par le lecteur STEP interne")
+elseif(TSA_HAVE_IFCOPENSHELL)
+    tsa_validation_status(_ifc_st "${_ifc_ver}" "0.9.0post1")
+    tsa_dependency_record(IfcOpenShell "${_ifc_st}" "${_ifc_ver}" "${TSA_IFCOPENSHELL_ROOT}" "facultative, LGPL-3.0")
+else()
+    tsa_dependency_record(IfcOpenShell "ABSENTE" "" "" "facultative : import IFC par le lecteur STEP interne —"
+                          "scripts/build_ifcopenshell.ps1 ou -DTSA_IFCOPENSHELL_ROOT=<chemin>")
+endif()
+
 if(TSA_REQUIRE_IFCOPENSHELL AND NOT TSA_HAVE_IFCOPENSHELL)
     message(FATAL_ERROR "TSA_REQUIRE_IFCOPENSHELL : IfcOpenShell introuvable ou inutilisable dans ${TSA_IFCOPENSHELL_ROOT} "
                         "(lancer scripts/build_ifcopenshell.ps1)")

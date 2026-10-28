@@ -1,6 +1,7 @@
 #include "test_common.h"
 #include "App/ProductInfo.h"
 #include "Core/AppPaths.h"
+#include "Core/Utf8Path.h"
 #include "ExtensionSystem/LibraryManager.h"
 #include "ExtensionSystem/LibraryRegistry.h"
 #include "Model/InstalledCatalogs.h"
@@ -174,7 +175,24 @@ bool runSuite_Extensions(int& passed)
             std::cout << "  [PASS] Subtest 37.7: Automated Cartesian Grid Rebuild Telemetry Verified" << std::endl;
         }
 
-        std::cout << "[PASS] Test 37: Diagnostic, Logging & Telemetry Subsystem (7 Subtests Validated) Passed Successfully!" << std::endl;
+        // 37.8: dossier de journaux non ASCII (profil « T. Léonnel », paquet installé : journaux dans AppData)
+        {
+            auto& logger = TSA::Diagnostics::Logger::instance();
+            QTemporaryDir tmp;
+            TEST_CHECK(tmp.isValid(), "Subtest 37.8: dossier temporaire");
+            const std::string dir = tmp.filePath(QStringLiteral("journaux é")).toStdString();
+            logger.shutdown();
+            TEST_CHECK(logger.init(dir), "Subtest 37.8: journal ouvert dans un dossier non ASCII");
+            TEST_CHECK(std::filesystem::exists(TSA::Core::utf8Path(logger.sessionLogPath())),
+                       "Subtest 37.8: fichier de session créé au chemin UTF-8");
+            logger.shutdown();
+            TEST_CHECK(std::filesystem::exists(TSA::Core::utf8Path(dir + "/tsa_latest.log")),
+                       "Subtest 37.8: tsa_latest.log copié à la fermeture");
+            logger.init();   // dossier par défaut, comme pour les tests suivants
+            std::cout << "  [PASS] Subtest 37.8: Journaux dans un dossier non ASCII" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 37: Diagnostic, Logging & Telemetry Subsystem (8 Subtests Validated) Passed Successfully!" << std::endl;
         passed++;
     }
 

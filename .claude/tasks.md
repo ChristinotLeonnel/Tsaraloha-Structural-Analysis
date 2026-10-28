@@ -1,6 +1,57 @@
 # Tasks
 
-Last Updated: 2026-10-25. Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-10-28. Uniquement des tâches réellement identifiées (voir known-issues.md).
+
+## Validation Windows (2026-10-28, docs/reports/WINDOWS_VALIDATION_REPORT.md, branche test/windows-validation)
+- [x] Compilation MSVC 19.51 Release de C (6a5bde1) + TSALab eea9cd9 ; 42 suites ; Custom2D 58/58 ; W-1, W-2, W-5 corrigés.
+- [ ] OpenSees : remettre l'exécutable (serveur officiel en 404, W-3) puis relancer les 14 suites, le banc et TSALab L9-L14.
+- [ ] W-6 : TSALab LabTests.cpp:120 → TSA::Core::utf8Path (autre dépôt, accord requis).
+- [x] W-8 corrigé et vérifié ; W-7 corrigé, compilé — [ ] à exécuter quand OpenSees sera présent (suite torsion, test 332).
+- [x] W-3 : SHA-256 + curl --fail dans OpenSeesManager ; TSA_OPENSEES_ARCHIVE ; OpenSees 3.8.0 conda-forge épinglé
+      (TSA_OPENSEES_CONDA_PACKAGES, thirdparty/OpenSees installé) ; [ ] EXÉCUTION non validée (lancement refusé par le
+      contrôle de sécurité de la session) : 14 suites OpenSees, banc, TSALab L9-L14 à lancer.
+- [ ] OpenSeesManager::downloadAndInstall vise encore l'archive officielle (404) : basculer vers conda-forge ou retirer.
+- [x] W-9 : presets sans Qt6_DIR, détection automatique (branche build/dependency-detection, non commitée).
+- [x] W-10 Logger non ASCII corrigé (test 37.8).
+- [x] TSALab : tsa_find_qt(), presets sans Qt figé, W-6 ; plancher Qt conservé à 6.2 (décision 2026-10-28).
+- [ ] Dépendances : Linux NON TESTÉ ; scripts PowerShell (setup_build/detect_*) à simplifier — rapport §11.8.
+- [ ] Procédure PROCEDURE_WINDOWS_v2 (A1, A2 dumpbin, B, B sans IFC) : NON exécutée ; Debug non testé ; commit à autoriser.
+
+## TSA Core — préparation de l'étape 2 (2026-10-26 ; commits LOCAUX, non poussés ni fusionnés ; main = 39155c4)
+
+Branches distinctes, base 39155c4 (TSALab : 58063a7) ; preuves dans ../TSA-rapports/2026-10-26/mission3 à mission10.
+Commits locaux : A 9a45d46, B 8695035, TSALab B1 eea9cd9, C 3b65ac3, documentation bf88548 (docs/architecture-tsa).
+- [x] A — `test/core-static-init-sections` (worktree ../TSA-worktrees/core-static-init) : contrôle par sections ELF
+      (init et terminaison), refus LTO, codes 0/1/2, CTest `<P>_CoreStaticInitSelfTest` (38 cas) ; Linux 3/3 ; contre-épreuve
+      sur libTSA_Core.a (constructor et init_priority manqués par l'ancien script, détectés). ci.yml inchangé (le filtre
+      « CoreStaticInit » sélectionne déjà le SelfTest). [ ] Clang. MSVC : 9a45d46 ne l'enregistre pas ; moteur dumpbin (A2)
+      préparé NON COMMITÉ dans le worktree A (patch mission10_integration/A2_msvc_dumpbin_v2.patch), Linux 3/3, jamais
+      exécuté sous Windows : [ ] premier essai Windows, puis commit.
+- [x] B — `build/model-deps-explicites` (worktree ../TSA-worktrees/model-deps) + TSALab `build/tests-qtwidgets-explicite` :
+      B1 QtWidgets explicite (TSALab_Tests compris), B2 Model ne lie plus QtWidgets ni l'OCCT de rendu
+      (`$<COMPILE_ONLY:Qt6::Widgets>` à la même place : commandes de compilation identiques). Linux : suite identique à la base,
+      banc 146/146, TSALab 27/27, NEEDED identiques. [ ] PCH MSVC (cmake_pch.cxx.obj lié dans tsa-mesh / tsa-ifc /
+      tsa3d_roundtrip_example), avec et sans IfcOpenShell ; C4605 / C4651 ; version de CMake de la CI Windows.
+      [ ] TKG2d, TKBO, TKBool, TKMesh : sans utilisateur direct, conservés (tirés par TKV3d / TKOffset, greffon IFC).
+- [x] C — `test/etape2-caracterisation` (worktree principal) : suite « undo », tests 513-523 ; Linux Release 11/11 (×3 xcb,
+      ×1 offscreen), suite complète 521/522 (128 Windows seul), 8 mutations de production détectées puis restaurées.
+- [ ] Validation Windows / MSVC (A1, A2, B, B1, C) : procédure ../TSA-rapports/2026-10-26/mission10_integration/
+      PROCEDURE_WINDOWS_v2.md ; RIEN d'exécuté sous Windows.
+- [x] Commits locaux autorisés et faits (2026-10-26) ; [ ] push et fusion : après la validation Windows (plan d'intégration
+      dans mission10_integration).
+- [x] Documentation d'architecture (docs/architecture/, Mermaid + SVG) : branche docs/architecture-tsa, commit bf88548.
+- [ ] Étape 2 (migration pushUndoState → EditTransaction) : NON autorisée. Préalables : clé de coalescence dans
+      EditTransaction (F1 et F3), contrat de BUG-127 (rollback sans modification), puis migration famille par famille.
+
+Lacunes connues du filet C (non couvertes, ne pas les considérer comme testées) :
+- MainWindow_Mesh.cpp:326, :359 et MainWindow_Tools.cpp:464 (couche application, non liée aux tests) ;
+- exceptions dans les slots appelés par invokeMethod ; branche « column » de AIToolRegistry ; poteaux, dalles et voiles des
+  gabarits de LibraryManager ; ordre exact des ModelEdited (volontairement non contractuel) ;
+- notifications non vérifiées positivement : seules DimensionsChanged, ModelCleared, ModelDestroyed et les Added / Removed par
+  l'API du modèle (test 523) et par les chemins de production treillis / câbles / charges (521) le sont ;
+- empreinte (tests/undo_characterization.h) : PAS un comparateur exact — exclut les réglages hors historique (vues
+  nommées, JSON d'analyse / topologie / maillage / échanges), les plans de travail, les champs privés sans accesseur, le
+  contenu des MechanicalSnapshot (clés seules), l'état hors modèle ; BIM et affichage des grilles exclus par défaut.
 
 ## TSA Core — étape 1 : extraction de TSA_Core (autorisée le 2026-10-26, non commitée)
 

@@ -36,6 +36,13 @@ Status: IMPLEMENTED — PASS (preset ninja-debug, -j 4)
 Compiler: MSVC 19.51 (VS 18 2026 Community), C++20
 Qt: 6.11.2 · OpenCASCADE: 8.0.1 · CMake: 4.3.3 (min 3.20)
 Warnings: aucun connu (C4996 corrigé, BUG-010).
+Validation Windows 2026-10-28 (docs/reports/WINDOWS_VALIDATION_REPORT.md) : PARTIEL. Poste actuel = Qt 6.12.0 (6.11.2 absent,
+presets inutilisables tels quels), CMake 4.5.0-rc1, profil non ASCII ; Release Ninja dans build-windows-validation : TSA et TSALab
+compilés, 27 avertissements (dépréciations OCCT, masquages, [[nodiscard]] dans les tests), 42 suites réussies, Custom2D 58/58,
+TSA.exe démarre. OpenSees absent du poste (thirdparty/OpenSees/bin mis à la Corbeille le 2026-10-28) : 14 suites non exécutées.
+CMake télécharge désormais OpenSees s'il est absent (SHA-256 vérifié), mais le serveur officiel est en 404 (BUG-133).
+Dépendances (2026-10-28, branche build/dependency-detection) : les presets n'imposent plus Qt ; tsa_find_qt choisit la Qt
+compatible la plus récente ; rapport <build>/tsa-dependencies.txt ; politique de versions : docs/DEPENDENCIES.md.
 Note: MSVC francisé → lanceur généré `build-*/msvc_codepage.cmd` (page de code de la génération imposée à cl) :
 dépendances d'en-têtes Ninja fiables quelle que soit la console (BUG-011, vérifié `ninja -t deps`).
 

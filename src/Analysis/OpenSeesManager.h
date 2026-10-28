@@ -55,6 +55,9 @@ public:
     // Emplacement par défaut centralisé
     static QString defaultSearchDirectory();
     static QString officialDownloadUrl();
+    // SHA-256 de l'archive officielle (manifeste winget OpenSees.OpenSees 3.8.0, comme TSA_OPENSEES_SHA256 de
+    // cmake/SetupDependencies.cmake) : une archive d'empreinte différente n'est jamais extraite.
+    static QString officialArchiveSha256();
 
     // État et chemins
     bool isAvailable() const;
