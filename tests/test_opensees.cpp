@@ -6,6 +6,7 @@
 #include <QTemporaryDir>
 
 #include "Analysis/OpenSeesManager.h"
+#include "AI/Models/ModelManager.h"
 #include "Analysis/CalculationSnapshot.h"
 #include "Analysis/ResultsModel.h"
 #include "Analysis/OpenSeesAnalysisBuilder.h"
@@ -61,6 +62,22 @@ bool runSuite_OpenSees(int& passed)
         QTemporaryDir tmp;
         TEST_CHECK(tmp.isValid(), "Dossier temporaire");
         TEST_CHECK(mgr.checkExecutable(tmp.filePath("absent/OpenSees")).status == S::NotFound, "Fichier absent : introuvable");
+
+        // Archive téléchargée (W-3) : une page d'erreur ou une autre archive n'a pas l'empreinte officielle → rejetée.
+        {
+            const QString fake = tmp.filePath("OpenSees.zip");
+            QFile f(fake);
+            TEST_CHECK(f.open(QIODevice::WriteOnly) && f.write("<html>404 Not Found</html>") > 0, "Écriture de la fausse archive");
+            f.close();
+            QString actual;
+            TEST_CHECK(!TSA::AI::ModelManager::verifySha256(fake, OpenSeesManager::officialArchiveSha256(), &actual) &&
+                       actual.size() == 64, "Archive d'empreinte inattendue : rejetée");
+            // Même empreinte que le téléchargement par CMake (TSA_OPENSEES_SHA256) : une seule archive de référence.
+            QFile cmake(QStringLiteral(TSA_SOURCE_DIR "/cmake/SetupDependencies.cmake"));
+            TEST_CHECK(cmake.open(QIODevice::ReadOnly) &&
+                       QString::fromUtf8(cmake.readAll()).contains(OpenSeesManager::officialArchiveSha256(), Qt::CaseInsensitive),
+                       "Empreinte de l'archive identique dans OpenSeesManager et SetupDependencies.cmake");
+        }
 
         // Fichier présent mais non exécutable (sans droit d'exécution ; sous Windows, .exe non PE).
 #ifdef Q_OS_WIN

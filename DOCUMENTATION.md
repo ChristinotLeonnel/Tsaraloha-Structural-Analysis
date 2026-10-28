@@ -321,12 +321,19 @@ La console inférieure dispose d'un interpréteur de commandes en langage nature
 - **Système** : Windows 10 ou Windows 11 (architecture **x64** obligatoire).
 - **Compilateur** :
   - **MSVC** (Visual Studio 2022 / 2026 x64) avec support complet standard **C++20** *(recommandé, sélectionné par défaut si installé)*.
-  - **MinGW-w64** (GCC 13+ / 16+ x64) avec POSIX threads et SEH exceptions *(sélectionné automatiquement si MSVC est absent, ou téléchargé à la volée)*.
+  - **MinGW-w64** : détecté par `scripts/setup_build.ps1`, mais **TSA ne se compile pas avec MinGW sous Windows** : le
+    SDK OpenCASCADE téléchargé est un SDK MSVC (`vc14`) et l'intégration Gmsh Windows est propre à MSVC. La configuration
+    refuse désormais cette combinaison avec explication (`docs/DEPENDENCIES.md` §2).
 - **Outils** : CMake 3.20+ et Ninja ou MSBuild.
-- **Bibliothèques** :
-  - Qt 6.2+ (`Core`, `Gui`, `Widgets`, `Svg`) — *ex. `C:\Qt\6.11.2\msvc2022_64` ou `C:\Qt\6.11.2\mingw_64`*.
-  - OpenCASCADE Technology 8.0.1 (**téléchargé et installé automatiquement par CMake** si non présent).
+- **Bibliothèques** (versions acceptées et validées, détection, diagnostic : **[`docs/DEPENDENCIES.md`](docs/DEPENDENCIES.md)**) :
+  - Qt 6 ≥ 6.2 (`Core`, `Gui`, `Widgets`, `Svg`, `Network`), kit MSVC x64 ; validées 6.11.2 et 6.12.0 ; traductions
+    à partir de 6.9. **Détectée automatiquement** dans `C:\Qt\<version>\msvc20xx_64` (version la plus récente
+    compatible) : aucun chemin Qt dans les presets ; `-DQt6_DIR=…` ou `-DCMAKE_PREFIX_PATH=…` pour en imposer une.
+  - OpenCASCADE Technology ≥ 8.0, validée 8.0.1 (**téléchargée et installée automatiquement par CMake** si absente).
   - Dépendances tierces 3rdparty (**téléchargées automatiquement par CMake** si non présentes).
+  - Facultatives : Gmsh 4.15.2, IfcOpenShell 0.9.0post1, OpenSees 3.8.0 (exécutable externe).
+- **Diagnostic** : bloc « Dépendances retenues » à chaque configuration, `<build>/tsa-dependencies.txt`,
+  `cmake --build <build> --target tsa-dependency-report`.
 
 ---
 
@@ -364,12 +371,16 @@ En C++, le mélange arbitraire d'ABI (Application Binary Interface) provoque des
 | Compilateur Sélectionné | Toolchain Qt Requise | Toolchain OCCT Requise |
 |---|---|---|
 | **MSVC** | `Qt 6 MSVC` (ex. `msvc2022_64`) | `OCCT MSVC` (`opencascade-8.0.1-vc14-64`) |
-| **MinGW** | `Qt 6 MinGW` (ex. `mingw_64`) | `OCCT MinGW` |
+| **MinGW** | `Qt 6 MinGW` (ex. `mingw_64`) | `OCCT MinGW` (non fourni : TSA n'est pas compilable avec MinGW sous Windows) |
 
 Si la version de Qt détectée ne correspond pas au compilateur sélectionné, le système stoppe immédiatement la configuration et affiche l'erreur explicite :
 ```text
 Erreur : la version de Qt détectée n'est pas compatible avec le compilateur sélectionné.
 ```
+La même politique est appliquée par CMake lui-même (`tsa_validate_dependencies`, `cmake/SetupDependencies.cmake`),
+quel que soit le mode de configuration (presets, Visual Studio, scripts) : kit Qt et SDK OCCT de la chaîne du
+compilateur, kit `msvcAAAA` avec Visual Studio AAAA ou plus récent, x64, aucun module Qt d'une autre installation.
+VTK n'est pas une dépendance de TSA (il fait seulement partie de l'archive 3rdparty d'OCCT).
 
 ---
 
@@ -378,6 +389,11 @@ Erreur : la version de Qt détectée n'est pas compatible avec le compilateur s�
 Grâce au module CMake [`cmake/SetupDependencies.cmake`](file:///e:/Book/Dev/TSA/cmake/SetupDependencies.cmake) :
 - Si `opencascade-8.0.1-vc14-64` ou `3rdparty-vc14-64` ne sont pas présents localement (ex. clone Git frais), CMake télécharge automatiquement les archives officielles de **OCCT 8.0.1** (~53 Mo) et **3rdparty** (~188 Mo) depuis GitHub Releases avec affichage de la progression en direct (`SHOW_PROGRESS`).
 - Les archives imbriquées sont décompressées directement à la racine du projet et les fichiers d'archive temporaires sont purgés.
+- Si `thirdparty/OpenSees` ne contient aucun exécutable (`bin/OpenSees.exe` ou `bin/gOpenSees.exe`), CMake télécharge l'archive officielle Windows d'**OpenSees 3.8.0** (`TSA_OPENSEES_URL`) et ne l'installe que si son empreinte SHA-256 correspond (`TSA_OPENSEES_SHA256`, manifeste winget). Un échec (serveur indisponible, empreinte différente) n'émet qu'un avertissement : OpenSees est facultatif.
+  **Depuis 2026-10, le serveur officiel ne publie plus cette archive (404, W-3)** : CMake installe désormais OpenSees
+  3.8.0 depuis **conda-forge** (compilé depuis l'étiquette officielle `v3.8.0`, 12 paquets épinglés, SHA-256 vérifiés,
+  seuls l'exécutable, ses DLL et Tcl 8.6 sont copiés) ; OpenSees déjà présent dans le PATH est utilisé tel quel ; une
+  archive officielle déjà obtenue s'installe par `-DTSA_OPENSEES_ARCHIVE=<zip>`. Voir `docs/DEPENDENCIES.md` §5.
 - Cette automatisation peut être désactivée si nécessaire via `-DTSA_AUTO_DOWNLOAD_DEPS=OFF`.
 
 ---

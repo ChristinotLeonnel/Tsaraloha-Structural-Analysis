@@ -4,7 +4,8 @@ cmake_minimum_required(VERSION 3.20)
 # le lancer depuis le dossier de compilation. Le paquet distribuable est produit par PackageTSA.cmake
 # (cible package_<produit>), dans un dossier propre.
 #
-# Paramètres (-D) : TARGET_DIR, SOURCE_DIR, TARGET_FILE, WINDEPLOYQT_EXECUTABLE (facultatif)
+# Paramètres (-D) : TARGET_DIR, SOURCE_DIR, TARGET_FILE, WINDEPLOYQT_EXECUTABLE (facultatif),
+#                   OCCT_BIN_DIR (facultatif : DLL de l'OCCT retenu, sinon le SDK par défaut)
 
 if(NOT TARGET_DIR)
     message(FATAL_ERROR "TARGET_DIR non défini.")
@@ -26,6 +27,9 @@ if(EXISTS "${TARGET_FILE}")
         UNRESOLVED_VAR unresolved)
     list(LENGTH copied n)
     message(STATUS "Dépendances résolues copiées : ${n}")
+    # Qt : déployé par windeployqt (étape 2), donc jamais « introuvable » ici (W-8). Le paquet (PackageTSA.cmake)
+    # garde le contrôle strict : une DLL Qt non résolue y reste une erreur.
+    list(FILTER unresolved EXCLUDE REGEX "^[Qq]t6")
     if(unresolved)
         message(WARNING "DLL introuvables : ${unresolved}")
     endif()

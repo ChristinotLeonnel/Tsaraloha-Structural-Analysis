@@ -21,7 +21,8 @@ toute diffusion, en particulier commerciale.
 | Boost | 1.92.0 (statique, dans les DLL d'IfcOpenShell) | — | Boost Software License 1.0 | `licenses/Boost/LICENSE_1_0.txt` | aucune pour le code objet ; texte fourni par précaution |
 | Eigen | 3.4.1 (en-têtes, dans les DLL d'IfcOpenShell) | — | MPL 2.0 (quelques fichiers BSD / LGPL, voir `COPYING.README`) | `licenses/Eigen/COPYING.MPL2`, `COPYING.README` | indiquer où obtenir la source (URL et empreinte dans `licenses/IfcOpenShell/SOURCE.txt`) ; non modifié |
 | OpenSees | (binaire de `thirdparty/OpenSees`) | `engines/OpenSees/bin/OpenSees.exe` | © The Regents of the University of California : usage **éducatif, de recherche et non lucratif** sans redevance ; **usage commercial soumis à accord** | **absent du dépôt : à ajouter** | **voir ci-dessous** |
-| Intel OpenMP | (fourni avec OpenSees) | `engines/OpenSees/bin/libiomp5md.dll` | licence de redistribution Intel | **absent : à ajouter** | redistribution sans modification |
+| Bibliothèques d'OpenSees (build conda-forge, Windows, depuis 2026-10-28) | HDF5 1.14.6, OpenBLAS 0.3.34 (libblas / liblapack), libaec 1.1.5, curl 8.23.0, zlib 1.3.2, OpenSSL 3.5.9, libssh2 1.11.1, libpsl 0.23.1, ICU 78.3 | `engines/OpenSees/bin/*.dll` (seulement si `TSA_PACKAGE_OPENSEES=ON`) | HDF5 (BSD), BSD-3 (OpenBLAS, libaec, libssh2), curl (MIT/X), zlib, Apache-2.0 (OpenSSL), MIT (libpsl), Unicode (ICU) ; liste exacte : `thirdparty/OpenSees/SOURCE.txt` | **absent : à ajouter avant toute diffusion** | mention et textes ; paquet non diffusé par défaut |
+| Intel OpenMP | (fourni avec l'archive officielle d'OpenSees) | `engines/OpenSees/bin/libiomp5md.dll` | licence de redistribution Intel | **absent : à ajouter** | redistribution sans modification |
 | Tcl | 8.6 | `engines/OpenSees/lib/tcl8.6` (scripts) | licence Tcl/Tk (type BSD) | **absent : à ajouter** | mention et texte |
 
 ## Gmsh : licence GPL, point bloquant pour une diffusion non libre

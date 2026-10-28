@@ -11,8 +11,17 @@
 #   tsa_add_product(NAME TSA PRODUCT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/product RESOURCES …)
 
 get_filename_component(TSA_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+# Dépendances (cmake/SetupDependencies.cmake, inclus par le produit avant find_package) : contrôles, puis rapport en fin
+# de configuration, quand Gmsh, IfcOpenShell et les outils ont été enregistrés.
+tsa_validate_dependencies()
 include("${CMAKE_CURRENT_LIST_DIR}/Gmsh.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/IfcOpenShell.cmake")
+cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" CALL tsa_write_dependency_report)
+# Diagnostic à la demande (lecture seule) : rapport de configuration + présence actuelle des fichiers retenus.
+add_custom_target(tsa-dependency-report
+    COMMAND ${CMAKE_COMMAND} "-DREPORT=${CMAKE_BINARY_DIR}/tsa-dependencies.txt" "-DSOURCE_DIR=${TSA_ROOT}"
+            -P "${CMAKE_CURRENT_LIST_DIR}/DependencyReport.cmake"
+    COMMENT "Rapport des dépendances" VERBATIM)
 # Cœur scientifique : dépôt TSALab voisin (TSALab/science).
 set(TSALAB_ROOT_DIR "${TSA_ROOT}/../TSALab" CACHE PATH "Racine du dépôt TSALab (cœur scientifique tsalab_science)")
 get_filename_component(TSALAB_ROOT_DIR "${TSALAB_ROOT_DIR}" ABSOLUTE)
@@ -1502,6 +1511,21 @@ function(tsaraloha_add_mcp_bridge target)
     endif()
 endfunction()
 
+# windeployqt de la Qt retenue (bin/ de Qt6::qmake). Jamais par find_program en cache : après un changement de Qt, un
+# windeployqt d'une autre installation déploierait des DLL d'une autre version (mélange).
+function(tsa_find_windeployqt out)
+    get_target_property(_qmake_loc Qt6::qmake IMPORTED_LOCATION)
+    get_filename_component(_qt_bin_dir "${_qmake_loc}" DIRECTORY)
+    set(_exe "${_qt_bin_dir}/windeployqt${CMAKE_EXECUTABLE_SUFFIX}")
+    if(EXISTS "${_exe}")
+        set(${out} "${_exe}" PARENT_SCOPE)
+        tsa_dependency_record(windeployqt "TROUVÉE" "${Qt6_VERSION}" "${_exe}")
+    else()
+        set(${out} "" PARENT_SCOPE)
+        tsa_dependency_record(windeployqt "ABSENTE" "" "" "DLL Qt non déployées à côté de l'exécutable : lancer depuis Qt Creator ou ajouter ${_qt_bin_dir} au PATH")
+    endif()
+endfunction()
+
 # Exécutable Qt d'une application de l'écosystème : sous-système Windows et déploiement des DLL
 # (Qt, OCCT, 3rdparty, Extensions/ de la base commune) à côté de l'exécutable.
 function(tsaraloha_configure_application target)
@@ -1516,15 +1540,14 @@ function(tsaraloha_configure_application target)
         )
     endif()
     if(WIN32)
-        get_target_property(_qmake_loc Qt6::qmake IMPORTED_LOCATION)
-        get_filename_component(_qt_bin_dir "${_qmake_loc}" DIRECTORY)
-        find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt_bin_dir}")
+        tsa_find_windeployqt(_windeployqt)
         add_custom_command(TARGET ${target} POST_BUILD
             COMMAND ${CMAKE_COMMAND}
                 -DTARGET_DIR=$<TARGET_FILE_DIR:${target}>
                 -DSOURCE_DIR=${TSA_ROOT}
                 -DTARGET_FILE=$<TARGET_FILE:${target}>
-                -DWINDEPLOYQT_EXECUTABLE=${WINDEPLOYQT_EXECUTABLE}
+                -DWINDEPLOYQT_EXECUTABLE=${_windeployqt}
+                "-DOCCT_BIN_DIR=${OpenCASCADE_BINARY_DIR}"
                 -P "${TSA_ROOT}/cmake/DeployDependencies.cmake"
             COMMENT "Copie automatique de toutes les DLLs (Qt, OCCT, 3rdparty) vers le dossier du .exe..."
         )
@@ -1621,9 +1644,7 @@ function(tsaraloha_add_package_target target binaries)
     tsaraloha_read_identity(_ SourceRepositoryUrl)
     string(REGEX MATCH "gmsh-([0-9]+\\.[0-9]+\\.[0-9]+)" _gmsh_match "${TSA_GMSH_LICENSE_DIR}")
     set(_gmsh_version "${CMAKE_MATCH_1}")
-    get_target_property(_qmake_loc Qt6::qmake IMPORTED_LOCATION)
-    get_filename_component(_qt_bin_dir "${_qmake_loc}" DIRECTORY)
-    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt_bin_dir}")
+    tsa_find_windeployqt(_windeployqt)
     list(REMOVE_ITEM binaries "${target}.exe")
     string(REPLACE ";" "|" _extra "${binaries}")
     add_custom_target(package_${target}
@@ -1635,7 +1656,8 @@ function(tsaraloha_add_package_target target binaries)
             -DPRODUCT_LICENSE=${CMAKE_SOURCE_DIR}/LICENSE
             -DVERSION=${PROJECT_VERSION}
             -DCONFIG=$<CONFIG>
-            -DWINDEPLOYQT_EXECUTABLE=${WINDEPLOYQT_EXECUTABLE}
+            -DWINDEPLOYQT_EXECUTABLE=${_windeployqt}
+            "-DOCCT_BIN_DIR=${OpenCASCADE_BINARY_DIR}"
             -DVCREDIST_DIR=${TSA_VCREDIST_DIR}
             -DPACKAGE_OPENSEES=${TSA_PACKAGE_OPENSEES}
             "-DGMSH_DLL=$<$<BOOL:${TSA_PACKAGE_GMSH}>:${TSA_GMSH_DLL}>"
@@ -1714,7 +1736,11 @@ function(tsa_add_product)
     # dans l'application et dans la suite de tests. Mise à jour des .ts : tools/i18n/update_translations.py.
     find_package(Qt6 QUIET COMPONENTS LinguistTools)
     set(_tsa_qm_files "")
-    if(TARGET Qt6::lrelease)
+    if(TARGET Qt6::lrelease AND Qt6_VERSION VERSION_LESS TSA_QT_TRANSLATIONS_MIN_VERSION)
+        # Forme qt_add_lrelease(TS_FILES …) : 6.7 ; QM_OUTPUT_DIRECTORY : 6.9 (sinon .qm hors de BASE, ressources fausses).
+        message(WARNING "Qt ${Qt6_VERSION} < ${TSA_QT_TRANSLATIONS_MIN_VERSION} : ${name} sera compilé sans traductions "
+                        "anglaise et malgache (qt_add_lrelease de cette version incompatible).")
+    elseif(TARGET Qt6::lrelease)
         qt_add_lrelease(TS_FILES ${TSA_ROOT}/translations/tsa_en.ts ${TSA_ROOT}/translations/tsa_mg.ts
             LRELEASE_TARGET ${name}_lrelease NO_GLOBAL_TARGET
             QM_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/i18n_${name}
@@ -1723,6 +1749,11 @@ function(tsa_add_product)
     else()
         message(WARNING "Qt LinguistTools (lrelease) introuvable : ${name} sera compilé sans traductions anglaise et "
                         "malgache (textes en français ; la suite « i18n » le signale).")
+    endif()
+    if(_tsa_qm_files)
+        tsa_dependency_record("Qt LinguistTools" "TROUVÉE" "${Qt6_VERSION}" "" "traductions en, mg")
+    else()
+        tsa_dependency_record("Qt LinguistTools" "DÉSACTIVÉE" "" "" "facultative : interface en français seulement")
     endif()
 
     add_executable(${name} ${TSA_APP_SOURCES} ${P_RESOURCES})

@@ -13,7 +13,11 @@ set(CMAKE_AUTOUIC ON)
 # =============================================================================
 # Configuration Qt 6
 # =============================================================================
-find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Svg Network)
+# Versions prises en charge et détection (docs/DEPENDENCIES.md) : sans Qt6_DIR valide ni Qt dans CMAKE_PREFIX_PATH,
+# la Qt compatible la plus récente installée est retenue (tsa_find_qt).
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/SetupDependencies.cmake")
+tsa_find_qt()
+find_package(Qt6 ${TSA_QT_MIN_VERSION} REQUIRED COMPONENTS Core Gui Widgets Svg Network)
 find_package(Qt6 QUIET COMPONENTS Test)   # facultatif : tests des raccourcis (frappes simulées)
 
 # =============================================================================
@@ -21,7 +25,6 @@ find_package(Qt6 QUIET COMPONENTS Test)   # facultatif : tests des raccourcis (f
 # =============================================================================
 # Gestion automatique : si OCCT ou 3rdparty sont absents, CMake les télécharge
 # automatiquement depuis les dépôts officiels GitHub (V8.0.1).
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/SetupDependencies.cmake")
 setup_external_dependencies()
 
 find_package(OpenCASCADE REQUIRED)
