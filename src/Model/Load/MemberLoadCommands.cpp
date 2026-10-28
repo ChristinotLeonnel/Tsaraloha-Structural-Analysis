@@ -2,6 +2,7 @@
 
 #include "LoadManager.h"
 #include "../Model.h"
+#include "../../UndoRedo/EditTransaction.h"
 
 #include <QCoreApplication>
 
@@ -77,7 +78,8 @@ std::vector<int> applyMemberLoad(Model& model, const MemberLoad& prototype,
     if (!model.loadManager().getLoadCase(prototype.loadCaseId()))
         return fail(QCoreApplication::translate("TSA::Model::MemberLoadCommands", "Le cas de charge choisi n'existe pas.").toStdString());
 
-    model.pushUndoState(undoLabel);
+    // Une transaction : une entrée, et une exception (observateur) annule TOUTES les charges ajoutées (BUG-129).
+    TSA::UndoRedo::EditTransaction tx(model, undoLabel);
     std::vector<int> ids;
     ids.reserve(targets.size());
     for (const auto& t : targets)
@@ -90,6 +92,7 @@ std::vector<int> applyMemberLoad(Model& model, const MemberLoad& prototype,
         model.notifyMemberLoadAdded(id);
         ids.push_back(id);
     }
+    tx.commit();
     if (error) error->clear();
     return ids;
 }
@@ -104,7 +107,7 @@ int removeLoads(Model& model, const std::set<int>& nodalLoadIds, const std::set<
         if (model.loadManager().getMemberLoad(id)) member.push_back(id);
     if (nodal.empty() && member.empty()) return 0;
 
-    model.pushUndoState(undoLabel);
+    TSA::UndoRedo::EditTransaction tx(model, undoLabel);
     for (int id : nodal)
     {
         model.loadManager().removeNodalLoad(id);
@@ -115,6 +118,7 @@ int removeLoads(Model& model, const std::set<int>& nodalLoadIds, const std::set<
         model.loadManager().removeMemberLoad(id);
         model.notifyMemberLoadRemoved(id);
     }
+    tx.commit();
     return static_cast<int>(nodal.size() + member.size());
 }
 

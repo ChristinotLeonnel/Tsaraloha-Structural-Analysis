@@ -2,6 +2,7 @@
 #include "../HelpLauncher.h"
 #include "../../Model/Model.h"
 #include "../../Model/Load/LoadManager.h"
+#include "../../UndoRedo/EditTransaction.h"
 #include "../../Analysis/LoadValidation.h"
 #include "../../Analysis/OpenSeesAdapter.h"
 
@@ -228,9 +229,10 @@ void LoadCaseDialog::onRemoveLoadCase()
                               tr("Voulez-vous supprimer le cas de charge #%1 et toutes ses charges associées ?").arg(caseId))
         == QMessageBox::Yes)
     {
-        m_model->pushUndoState(tr("Supprimer Cas de Charge").toStdString());
-        m_model->loadManager().removeLoadCase(caseId);
-        m_model->notifyLoadCaseChanged(m_model->loadManager().activeLoadCaseId());
+        // Modèle : charges retirées notifiées une à une (BUG-128) ; transaction : tout ou rien.
+        TSA::UndoRedo::EditTransaction tx(*m_model, tr("Supprimer Cas de Charge").toStdString());
+        m_model->removeLoadCase(caseId);
+        tx.commit();
         refreshCasesTable();
         refreshCombinationsTable();
         onValidateModel();
@@ -244,9 +246,9 @@ void LoadCaseDialog::onResetEurocodes()
                               tr("Voulez-vous réinitialiser les cas de charges et combinaisons selon les valeurs Eurocode par défaut ?"))
         == QMessageBox::Yes)
     {
-        m_model->pushUndoState(tr("Réinitialiser Cas Eurocodes").toStdString());
-        m_model->loadManager().resetToDefaults();
-        m_model->notifyLoadCaseChanged(m_model->loadManager().activeLoadCaseId());
+        TSA::UndoRedo::EditTransaction tx(*m_model, tr("Réinitialiser Cas Eurocodes").toStdString());
+        m_model->resetLoadCasesToDefaults();   // charges retirées notifiées une à une (BUG-128)
+        tx.commit();
         refreshCasesTable();
         refreshCombinationsTable();
         onValidateModel();

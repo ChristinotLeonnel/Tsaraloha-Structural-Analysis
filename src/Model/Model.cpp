@@ -1304,6 +1304,44 @@ void Model::notifyLoadCaseChanged(int caseId)
     }
 }
 
+namespace
+{
+/// Identifiants des charges nodales et sur barre présents dans le gestionnaire.
+std::pair<std::vector<int>, std::vector<int>> loadIds(const LoadManager& lm)
+{
+    std::pair<std::vector<int>, std::vector<int>> ids;
+    for (const auto& [id, l] : lm.nodalLoads()) ids.first.push_back(id);
+    for (const auto& [id, l] : lm.memberLoads()) ids.second.push_back(id);
+    return ids;
+}
+} // namespace
+
+void Model::notifyLoadsRemovedSince(const std::pair<std::vector<int>, std::vector<int>>& before)
+{
+    for (int id : before.first)
+        if (!m_loadManager.getNodalLoad(id)) notifyNodalLoadRemoved(id);
+    for (int id : before.second)
+        if (!m_loadManager.getMemberLoad(id)) notifyMemberLoadRemoved(id);
+}
+
+bool Model::removeLoadCase(int caseId)
+{
+    if (!m_loadManager.getLoadCase(caseId)) return false;
+    const auto before = loadIds(m_loadManager);
+    if (!m_loadManager.removeLoadCase(caseId)) return false;
+    notifyLoadsRemovedSince(before);
+    notifyLoadCaseChanged(m_loadManager.activeLoadCaseId());
+    return true;
+}
+
+void Model::resetLoadCasesToDefaults()
+{
+    const auto before = loadIds(m_loadManager);
+    m_loadManager.resetToDefaults();
+    notifyLoadsRemovedSince(before);
+    notifyLoadCaseChanged(m_loadManager.activeLoadCaseId());
+}
+
 int Model::addCable(int startNodeId, int endNodeId, double diameter, const std::string& name, CableGeometryMode mode, double sag)
 {
     CableDefinition def;

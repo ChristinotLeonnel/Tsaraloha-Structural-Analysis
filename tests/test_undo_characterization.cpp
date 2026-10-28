@@ -680,7 +680,7 @@ bool runSuite_UndoCharacterization(int& passed)
             TEST_CHECK(p.undoDelta() == 0 && p.obs.events.empty(), "Test 515: saisie annulée → aucun effet");
             modal.acceptInputs = true;
         }
-        // Suppression d'un cas portant des charges (231) : charges supprimées SANS notification Removed (DÉFAUT FIGÉ, C6).
+        // Suppression d'un cas portant des charges : chaque charge retirée est notifiée (BUG-128 corrigé, Model::removeLoadCase).
         {
             const int q = 2; // cas « Q » des valeurs par défaut (LoadManager.cpp:37)
             const int nl = m.loadManager().addNodalLoad(NodalLoad(0, n2, q, 0, 0, -3));
@@ -693,8 +693,8 @@ bool runSuite_UndoCharacterization(int& passed)
             modal.answer = QMessageBox::Yes;
             QMetaObject::invokeMethod(&fresh, "onRemoveLoadCase", Qt::DirectConnection);
             TEST_CHECK(p.undoDelta() == 1 && !m.loadManager().getNodalLoad(nl) && !m.loadManager().getMemberLoad(ml), "Test 515: cas et charges supprimés");
-            TEST_CHECK(p.obs.count("NodalLoadRemoved") == 0 && p.obs.count("MemberLoadRemoved") == 0 && p.obs.count("LoadCaseChanged") == 1,
-                       "Test 515: seule LoadCaseChanged est émise (DÉFAUT FIGÉ : " << p.obs.specificSequence() << ")");
+            TEST_CHECK(p.obs.count("NodalLoadRemoved", nl) == 1 && p.obs.count("MemberLoadRemoved", ml) == 1 && p.obs.count("LoadCaseChanged") == 1,
+                       "Test 515: charges retirées notifiées, puis LoadCaseChanged (" << p.obs.specificSequence() << ")");
             TEST_CHECK(m.undo() && fingerprint(m) == fp0, "Test 515: Annuler rend le cas et ses charges");
         }
         // Suppression refusée (question → Non) : aucune entrée.
@@ -710,10 +710,13 @@ bool runSuite_UndoCharacterization(int& passed)
             modal.answer = QMessageBox::Yes;
             // Réinitialisation Eurocodes (247) : toutes les charges effacées, une seule LoadCaseChanged.
             m.loadManager().addNodalLoad(NodalLoad(0, n2, 1, 0, 0, -1));
+            const int nodalBefore = static_cast<int>(m.loadManager().nodalLoads().size());
+            const int memberBefore = static_cast<int>(m.loadManager().memberLoads().size());
             UndoProbe p2(m);
             QMetaObject::invokeMethod(&fresh, "onResetEurocodes", Qt::DirectConnection);
-            TEST_CHECK(p2.undoDelta() == 1 && m.loadManager().nodalLoads().empty() && p2.obs.count("NodalLoadRemoved") == 0,
-                       "Test 515: réinitialisation — charges effacées sans notification Removed (DÉFAUT FIGÉ)");
+            TEST_CHECK(p2.undoDelta() == 1 && m.loadManager().nodalLoads().empty() && p2.obs.count("NodalLoadRemoved") == nodalBefore &&
+                           p2.obs.count("MemberLoadRemoved") == memberBefore,
+                       "Test 515: réinitialisation — chaque charge effacée est notifiée (BUG-128 corrigé ; " << nodalBefore << " nodale(s))");
             // Combinaison : création (263) → 1 entrée, LoadCaseChanged seule, Annuler / Rétablir.
             const size_t combos0 = m.loadManager().combinations().size();
             const int active = m.loadManager().activeLoadCaseId();
@@ -777,11 +780,12 @@ bool runSuite_UndoCharacterization(int& passed)
             TEST_CHECK(applyMemberLoad(m, proto, { { b }, { 424242 } }, "x", &err).empty() && p.undoDelta() == 0 && p.obs.events.empty(),
                        "Test 515: cible invalide → aucun effet");
             p.obs.throwOnKind = "MemberLoadAdded";
+            const size_t membersBefore = m.loadManager().memberLoads().size();
             bool thrown = false;
             try { applyMemberLoad(m, proto, { { b }, { b } }, "deux", &err); } catch (const std::runtime_error&) { thrown = true; }
-            TEST_CHECK(thrown && p.undoDelta() == 1 && m.loadManager().memberLoads().size() == 1,
-                       "Test 515: exception après la 1re charge — entrée créée, application PARTIELLE (DÉFAUT FIGÉ)");
-            TEST_CHECK(m.undo(), "Test 515: Annuler après exception");
+            TEST_CHECK(thrown && p.undoDelta() == 0 && m.loadManager().memberLoads().size() == membersBefore,
+                       "Test 515: exception après la 1re charge — tout est annulé, aucune entrée (BUG-129 corrigé)");
+            p.obs.throwOnKind.clear();
             const int removed = removeLoads(m, { 99999 }, { 99999 }, "rien");
             TEST_CHECK(removed == 0 && p.undoDelta() == 0, "Test 515: removeLoads sans charge existante → aucune entrée (MemberLoadCommands.cpp:105)");
             // removeLoads avec charges existantes (107) : 1 entrée, une notification Removed par charge, Annuler / Rétablir.
