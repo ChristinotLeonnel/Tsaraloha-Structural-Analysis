@@ -9,6 +9,8 @@
 #include "test_common.h"
 #include "undo_characterization.h"
 
+#include <algorithm>
+
 #include "AI/Tools/AIToolRegistry.h"
 #include "Analysis/ResultsModel.h"
 #include "Analysis/ResultsValidityGuard.h"
@@ -335,8 +337,14 @@ bool runSuite_UndoCharacterization(int& passed)
             TEST_CHECK((staleCalls == 1) == stale && guard.resultsUpToDate() == !stale, label << " : résultats périmés " << staleCalls);
             TEST_CHECK((fingerprint(m) == before) == sameState, label << " : état");
             if (!diffPayload.empty())
-                TEST_CHECK(p.obs.count("ModelDiffApplied") == 1 && p.obs.events.back().payload == diffPayload,
+            {
+                // Le différentiel n'est pas forcément le dernier événement (un commit ultérieur émet ModelEdited).
+                const auto diffEvent = std::find_if(p.obs.events.begin(), p.obs.events.end(),
+                                                    [](const UndoChar::Event& e) { return e.kind == "ModelDiffApplied"; });
+                TEST_CHECK(p.obs.count("ModelDiffApplied") == 1 && diffEvent != p.obs.events.end() &&
+                               diffEvent->payload == diffPayload,
                            label << " : différentiel publié " << p.obs.specificSequence());
+            }
             else
                 TEST_CHECK(p.obs.count("ModelDiffApplied") == 0, label << " : aucun différentiel");
             return true;
@@ -349,26 +357,26 @@ bool runSuite_UndoCharacterization(int& passed)
                 tx.commit();
             }, 1, true, true, false, ""))
             return false;
-        if (!guardCase("Test 513: commit sans modification (DÉFAUT FIGÉ : entrée et invalidation)", [&] {
+        if (!guardCase("Test 513: commit sans modification (BUG-127 : ni entrée, ni révision, ni invalidation)", [&] {
                 EditTransaction tx(m, "rien");
                 tx.commit();
-            }, 1, true, true, true, ""))
+            }, 0, false, false, true, ""))
             return false;
         if (!guardCase("Test 513: rollback explicite après modification", [&] {
                 EditTransaction tx(m, "annulée");
                 m.getBeam(b)->setRotation(12.0);
                 tx.rollback();
-            }, 0, true, true, true, "B{c:;m:" + bs + ";d:}"))
+            }, 0, false, true, true, "B{c:;m:" + bs + ";d:}"))
             return false;
-        if (!guardCase("Test 513: rollback sans modification (DÉFAUT FIGÉ : diff vide, isModified forcé, résultats périmés)", [&] {
+        if (!guardCase("Test 513: rollback sans modification (BUG-127 : ni différentiel, ni révision, isModified inchangé)", [&] {
                 EditTransaction tx(m, "vide");
                 tx.rollback();
-            }, 0, true, true, true, "<vide>"))
+            }, 0, false, false, true, ""))
             return false;
         if (!guardCase("Test 513: destructeur sans commit", [&] {
                 EditTransaction tx(m, "abandon");
                 m.getBeam(b)->setRotation(13.0);
-            }, 0, true, true, true, "B{c:;m:" + bs + ";d:}"))
+            }, 0, false, true, true, "B{c:;m:" + bs + ";d:}"))
             return false;
         if (!guardCase("Test 513: exception dans la transaction", [&] {
                 try
@@ -378,30 +386,47 @@ bool runSuite_UndoCharacterization(int& passed)
                     throw std::runtime_error("échec");
                 }
                 catch (const std::runtime_error&) {}
-            }, 0, true, true, true, "B{c:;m:" + bs + ";d:}"))
+            }, 0, false, true, true, "B{c:;m:" + bs + ";d:}"))
             return false;
         if (!guardCase("Test 513: discardUnchanged", [&] {
                 EditTransaction tx(m, "inchangé");
                 tx.discardUnchanged();
             }, 0, false, false, true, ""))
             return false;
-        if (!guardCase("Test 513: modifier puis restaurer, commit (DÉFAUT FIGÉ : entrée créée)", [&] {
+        if (!guardCase("Test 513: modification sous les tolérances de ModelDiff (1e-9°) : entrée créée (comparaison exacte)", [&] {
+                EditTransaction tx(m, "infime");
+                m.getBeam(b)->setRotation(m.getBeam(b)->rotation() + 1e-9);
+                tx.commit();
+            }, 1, true, true, false, ""))
+            return false;
+        if (!guardCase("Test 513: modifier puis restaurer, commit (BUG-127 : aucune entrée)", [&] {
                 EditTransaction tx(m, "aller-retour");
                 const double r0 = m.getBeam(b)->rotation();
                 m.getBeam(b)->setRotation(r0 + 1.0);
                 m.getBeam(b)->setRotation(r0);
                 tx.commit();
-            }, 1, true, true, true, ""))
+            }, 0, false, false, true, ""))
             return false;
         if (!guardCase("Test 513: imbrication, rollback interne puis commit externe", [&] {
                 EditTransaction outer(m, "externe");
                 m.getBeam(b)->setRotation(15.0);
                 {
                     EditTransaction inner(m, "interne");
-                    inner.rollback(); // profondeur remise à 0 (UndoManager.cpp:194) : le commit externe sort sans entrée (178-179)
+                    inner.rollback(); // état de début de la transaction englobante rétabli ; elle reste ouverte
                 }
+                outer.commit();   // rien ne diffère du début : aucune entrée
+            }, 0, false, true, true, "B{c:;m:" + bs + ";d:}"))
+            return false;
+        if (!guardCase("Test 513: imbrication, rollback interne, nouvelle modification, commit externe (BUG-127 (3))", [&] {
+                EditTransaction outer(m, "externe");
+                m.getBeam(b)->setRotation(16.0);
+                {
+                    EditTransaction inner(m, "interne");
+                    inner.rollback();
+                }
+                m.getBeam(b)->setRotation(17.0);   // autrefois hors historique : profondeur remise à 0 par le rollback
                 outer.commit();
-            }, 0, true, true, true, "B{c:;m:" + bs + ";d:}"))
+            }, 1, true, true, false, "B{c:;m:" + bs + ";d:}"))
             return false;
         {
             // pushUndoState absorbé dans une transaction : révision +1 par appel (UndoManager.cpp:70-76).
@@ -411,6 +436,7 @@ bool runSuite_UndoCharacterization(int& passed)
                 EditTransaction tx(m, "absorbe");
                 m.pushUndoState("x", "x");
                 m.pushUndoState("y");
+                m.getBeam(b)->setRotation(21.0);
                 TEST_CHECK(!m.canUndo(), "Test 513: Annuler indisponible pendant une transaction (UndoManager.h:41)");
                 tx.commit();
             }
@@ -1103,7 +1129,7 @@ bool runSuite_UndoCharacterization(int& passed)
                 EditTransaction tx(m, "sans modification");
                 tx.commit();
             });
-            if (!checkTransition(t, 1, 1, 0, "", "Test 520: transaction validée sans modification (DÉFAUT FIGÉ : entrée créée)")) return false;
+            if (!checkTransition(t, 0, 0, 0, "", "Test 520: transaction validée sans modification (BUG-127 : aucune entrée, révision inchangée)")) return false;
             TEST_CHECK(t.fOp == t.f0, "Test 520: transaction sans modification — état inchangé");
         }
         {
@@ -1111,7 +1137,7 @@ bool runSuite_UndoCharacterization(int& passed)
                 EditTransaction tx(m, "annulée");
                 tx.rollback();
             });
-            if (!checkTransition(t, 0, 1, 0, "", "Test 520: transaction annulée sans modification (DÉFAUT FIGÉ : révision incrémentée)")) return false;
+            if (!checkTransition(t, 0, 0, 0, "", "Test 520: transaction annulée sans modification (BUG-127 : révision inchangée)")) return false;
             TEST_CHECK(t.fOp == t.f0, "Test 520: transaction annulée — état inchangé");
         }
         {

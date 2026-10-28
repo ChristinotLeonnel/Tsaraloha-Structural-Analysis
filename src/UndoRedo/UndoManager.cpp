@@ -163,6 +163,45 @@ std::string UndoManager::lastRedoActionName() const
     return m_redoStack.empty() ? "" : m_redoStack.back().snapshot.actionName;
 }
 
+bool UndoManager::sameContent(const TSA::Model::Model::ModelStateSnapshot& a,
+                              const TSA::Model::Model::ModelStateSnapshot& b)
+{
+    if (a.nextNodeId != b.nextNodeId || a.nextBeamId != b.nextBeamId || a.nextColumnId != b.nextColumnId ||
+        a.nextSlabId != b.nextSlabId || a.nextWallId != b.nextWallId || a.nextFoundationId != b.nextFoundationId ||
+        a.nextTrussMemberId != b.nextTrussMemberId || a.nextCableId != b.nextCableId)
+        return false;
+    if (a.coordinatesJson != b.coordinatesJson || a.gridsJson != b.gridsJson || !(a.dimensions == b.dimensions))
+        return false;
+    // Accélérateur : un différentiel non vide prouve une différence ; vide, il ne prouve rien (tolérances).
+    if (!TSA::Model::ModelDiff::compute(a, b).isEmpty())
+        return false;
+    const ContentEncoder& encode = contentEncoder();
+    return encode && encode(a) == encode(b);
+}
+
+UndoManager::ContentEncoder& UndoManager::contentEncoder()
+{
+    static ContentEncoder encoder;   // initialisation à la première utilisation (aucune initialisation statique du noyau)
+    return encoder;
+}
+
+void UndoManager::setContentEncoder(ContentEncoder encoder)
+{
+    contentEncoder() = std::move(encoder);
+}
+
+UndoManager::OutOfSnapshotState UndoManager::outOfSnapshotState(const TSA::Model::Model& model)
+{
+    return { model.analysisSettingsJson(), model.topologySettingsJson(), model.exchangeExtensionsJson(),
+             model.meshProjectJson(), model.namedViews() };
+}
+
+bool UndoManager::transactionChanged(const TSA::Model::Model& model,
+                                     const TSA::Model::Model::ModelStateSnapshot& current) const
+{
+    return !(outOfSnapshotState(model) == m_transactionOutside) || !sameContent(m_transaction.snapshot, current);
+}
+
 void UndoManager::beginTransaction(TSA::Model::Model& model, const std::string& actionName)
 {
     if (m_transactionDepth++ > 0)
@@ -171,6 +210,8 @@ void UndoManager::beginTransaction(TSA::Model::Model& model, const std::string& 
     m_transaction = HistoryEntry{};
     m_transaction.snapshot = model.createSnapshot(actionName);
     m_transaction.timestamp = nowTimestamp();
+    m_transactionOutside = outOfSnapshotState(model);
+    m_transactionWasModified = model.isModified();
 }
 
 void UndoManager::commitTransaction(TSA::Model::Model& model)
@@ -180,7 +221,11 @@ void UndoManager::commitTransaction(TSA::Model::Model& model)
     if (--m_transactionDepth > 0)
         return;
 
-    pushEntry(std::move(m_transaction), model);
+    // BUG-127 : aucune entrée, révision ni marque « modifié » pour une transaction sans effet (y compris un
+    // aller-retour, ou une transaction dont un rollback interne a déjà tout restauré).
+    const auto current = model.createSnapshot(m_transaction.snapshot.actionName);
+    if (transactionChanged(model, current))
+        pushEntry(std::move(m_transaction), model);
     m_transaction = HistoryEntry{};
 }
 
@@ -189,11 +234,19 @@ void UndoManager::rollbackTransaction(TSA::Model::Model& model)
     if (m_transactionDepth == 0)
         return;
 
-    // Un rollback annule toute la transaction englobante : un état partiellement appliqué
-    // ne doit jamais subsister.
-    m_transactionDepth = 0;
+    // Un rollback annule toute la transaction englobante : un état partiellement appliqué ne doit jamais subsister.
+    // Rien n'a changé : ni restauration, ni différentiel, ni révision (BUG-127).
     const auto current = model.createSnapshot(m_transaction.snapshot.actionName);
-    restore(model, current, m_transaction.snapshot);
+    if (!sameContent(current, m_transaction.snapshot))
+    {
+        restore(model, current, m_transaction.snapshot);
+        if (!m_transactionWasModified)
+            model.setModified(false);   // état de début rétabli à l'identique
+    }
+    // Imbrication : la transaction englobante reste ouverte (son commit ou son rollback la clôt) ; son état de
+    // début reste la référence.
+    if (--m_transactionDepth > 0)
+        return;
     m_transaction = HistoryEntry{};
 }
 

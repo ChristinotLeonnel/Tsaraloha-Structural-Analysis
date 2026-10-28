@@ -1,7 +1,9 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <deque>
+#include <functional>
 #include <vector>
 #include <string>
 #include <memory>
@@ -20,6 +22,13 @@ namespace TSA::UndoRedo
  *   RAII EditTransaction) : une opération composée produit UNE seule entrée ; les pushState()
  *   émis pendant la transaction (ex. par les fonctions appelées) sont absorbés ; un rollback
  *   restaure le modèle et notifie les vues par différentiel.
+ * - Contrat des transactions (BUG-127, docs/EDIT_SYSTEM.md) :
+ *   commit : une entrée seulement si l'état a réellement changé (comparaison EXACTE avec l'état de début,
+ *   sameContent) ; sinon ni entrée, ni révision, ni document modifié.
+ *   rollback : restauration et différentiel seulement si quelque chose a changé ; l'indicateur « modifié »
+ *   du document reprend sa valeur de début.
+ *   imbrication : un rollback interne restaure l'état de début de la transaction englobante, qui reste
+ *   ouverte ; son commit final crée une entrée si, et seulement si, l'état final diffère du début.
  * - Chaque entrée porte des EditRecord (objet, propriété, avant/après, impact).
  */
 class UndoManager
@@ -70,6 +79,16 @@ public:
     void discardUnchangedTransaction() noexcept;
     bool inTransaction() const noexcept { return m_transactionDepth > 0; }
 
+    /// Égalité EXACTE de deux états : identifiants suivants, repères, grilles, cotations, puis contenu persistant
+    /// (encodeur fourni par la couche IO) — jamais à tolérance près (ModelDiff ne sert que d'accélérateur). Sans
+    /// encodeur (programme lié au seul noyau), répond « différent » : comportement prudent, aucune entrée perdue.
+    static bool sameContent(const TSA::Model::Model::ModelStateSnapshot& a,
+                            const TSA::Model::Model::ModelStateSnapshot& b);
+    /// Encodeur du contenu persistant d'un instantané (octets du format .tsa). Fourni par la couche IO au démarrage
+    /// (IO/TSAFile.cpp), comme les catalogues installés : le noyau ne dépend pas d'IO.
+    using ContentEncoder = std::function<std::vector<std::uint8_t>(const TSA::Model::Model::ModelStateSnapshot&)>;
+    static void setContentEncoder(ContentEncoder encoder);
+
     // --- Historique structuré ------------------------------------------------
     /// Ajoute un enregistrement à la transaction en cours, sinon à la dernière entrée Undo.
     void addRecord(const EditRecord& record);
@@ -99,8 +118,24 @@ private:
     size_t m_maxSteps = 50;
     size_t m_memoryBudgetBytes = 512ull * 1024ull * 1024ull;
 
+    /// Données persistées hors instantané (non annulables), relevées au début d'une transaction : si la transaction
+    /// les change, elle compte comme une modification (le document doit être marqué modifié pour être enregistré).
+    struct OutOfSnapshotState
+    {
+        std::string analysisSettings, topologySettings, exchangeExtensions, meshProject;
+        TSA::Model::NamedViewSet namedViews;
+        bool operator==(const OutOfSnapshotState&) const = default;
+    };
+    static OutOfSnapshotState outOfSnapshotState(const TSA::Model::Model& model);
+    static ContentEncoder& contentEncoder();
+    /// L'état du modèle diffère-t-il du début de la transaction ouverte ? (current : instantané actuel)
+    bool transactionChanged(const TSA::Model::Model& model,
+                            const TSA::Model::Model::ModelStateSnapshot& current) const;
+
     int m_transactionDepth = 0;
     HistoryEntry m_transaction; ///< snapshot de début + enregistrements de la transaction ouverte
+    OutOfSnapshotState m_transactionOutside; ///< données hors instantané au début de la transaction
+    bool m_transactionWasModified = false;   ///< Model::isModified() au début de la transaction
 };
 
 } // namespace TSA::UndoRedo
