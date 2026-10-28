@@ -46,7 +46,13 @@ QString PythonAIBridge::findPython()
 {
     const QString env = qEnvironmentVariable("TSA_AI_PYTHON");
     if (!env.isEmpty() && QFileInfo(env).isExecutable()) return env;
+#ifdef Q_OS_WIN
+    // « py » d'abord : le lanceur n'existe qu'avec un vrai Python, alors que « python » peut être l'alias de
+    // WindowsApps qui ne fait qu'inviter à installer Python depuis le Microsoft Store (code 9009).
+    for (const char* name : { "py", "python", "python3" })
+#else
     for (const char* name : { "python", "python3", "py" })
+#endif
         if (const QString path = QStandardPaths::findExecutable(QString::fromLatin1(name)); !path.isEmpty()) return path;
     return {};
 }

@@ -45,7 +45,7 @@ REQUIREMENTS = {
     "opensees": ["opensees"], "ndc": ["opensees"], "extraction": ["opensees"], "engines": ["opensees"],
     "tsa3d": ["opensees"], "templates": ["opensees"], "torsion": ["opensees"], "demo": ["opensees"],
     "audit": ["opensees"], "benchmarks": ["opensees"], "mdd": ["opensees"], "displaymodes": ["opensees"],
-    "mesh": ["gmsh"], "surfaces": ["gmsh", "opensees"], "meshview": ["gmsh", "display"],
+    "mesh": ["gmsh", "opensees"], "surfaces": ["gmsh", "opensees"], "meshview": ["gmsh", "display"],
     "ifc": ["ifcopenshell"],
     "display": ["display", "opensees"], "multidoc": ["display"],
 }

@@ -9,6 +9,7 @@
 
 #include "Analysis/LoadResolver.h"
 #include "Analysis/ResultsModel.h"
+#include "Core/Utf8Path.h"
 #include "Mesh/MeshDisplayModel.h"
 #include "Mesh/MeshGenerator.h"
 #include "Mesh/MeshGeometry.h"
@@ -456,7 +457,7 @@ bool runSuite_MeshView(int& passed)
         QTemporaryDir dir;
         const std::string path = dir.filePath("deux_groupes.msh").toStdString();
         {
-            std::ofstream f(path);
+            std::ofstream f(TSA::Core::utf8Path(path));
             f << "$MeshFormat\n4.1 0 8\n$EndMeshFormat\n"
                  "$PhysicalNames\n2\n2 10 \"A\"\n2 20 \"B\"\n$EndPhysicalNames\n"
                  "$Entities\n0 0 1 0\n1 0 0 0 1 1 0 2 10 20 0\n$EndEntities\n"

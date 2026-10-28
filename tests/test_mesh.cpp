@@ -8,6 +8,7 @@
 #include "test_common.h"
 
 #include "Analysis/Engine/AnalysisManager.h"
+#include "Core/Utf8Path.h"
 #include "IO/TSAFile.h"
 #include "Mesh/MeshProject.h"
 #include "Mesh/MeshQuality.h"
@@ -326,7 +327,7 @@ bool runSuite_Mesh(int& passed)
             if (e.source == rb)
                 for (int n : e.nodes) shared &= slabNodes.count(n) > 0;
         TEST_CHECK(shared, "Test 293: nœuds de la poutre partagés avec la dalle");
-        TEST_CHECK(std::filesystem::exists(o.writeMshTo), "Test 293: fichier .msh écrit par Gmsh");
+        TEST_CHECK(std::filesystem::exists(TSA::Core::utf8Path(o.writeMshTo)), "Test 293: fichier .msh écrit par Gmsh");
         FeMesh imported;
         std::vector<std::string> warn;
         std::string err;
@@ -334,7 +335,7 @@ bool runSuite_Mesh(int& passed)
                        elementsOf(imported, rs) == elementsOf(r.mesh, rs),
                    "Test 293: import .msh : objets retrouvés par les groupes physiques (" << err << ")");
         const std::string vtk = tmp.filePath("export.vtk").toStdString(), msh2 = tmp.filePath("export.msh").toStdString();
-        TEST_CHECK(MeshGenerator::exportMesh(r.mesh, vtk, &err) && std::filesystem::exists(vtk) && MeshGenerator::exportMesh(r.mesh, msh2, &err),
+        TEST_CHECK(MeshGenerator::exportMesh(r.mesh, vtk, &err) && std::filesystem::exists(TSA::Core::utf8Path(vtk)) && MeshGenerator::exportMesh(r.mesh, msh2, &err),
                    "Test 293: export VTK et MSH du maillage TSA (" << err << ")");
         FeMesh round;
         TEST_CHECK(MeshGenerator::importMesh(msh2, &round, &warn, &err) && round.elements.size() == r.mesh.elements.size() &&
