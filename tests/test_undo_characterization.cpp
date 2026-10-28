@@ -491,24 +491,24 @@ bool runSuite_UndoCharacterization(int& passed)
             view.setElementId(id);
             const std::string fp0 = fingerprint(m);
             m.clearUndoRedo();
-            // 1. Valider sans rien changer : 1 entrée (DÉFAUT FIGÉ), une notification spécifique, état inchangé.
+            // 1. Valider sans rien changer : ni entrée, ni notification, état inchangé (BUG-125, BUG-126, BUG-130 corrigés).
             {
+                (void)noopKeepsState;
                 UndoProbe p(m);
                 CoalesceClock clock;
                 view.applyChanges();
-                TEST_CHECK(p.undoDelta() == 1 && p.obs.count(modifiedKind, id) == 1, label << " : valider sans changement → 1 entrée, 1 " << modifiedKind
-                                                                                              << " (" << p.obs.specificSequence() << ")");
-                TEST_CHECK((fingerprint(m) == fp0) == noopKeepsState,
-                           label << " : valider sans changement " << (noopKeepsState ? "ne réécrit rien" : "RÉÉCRIT l'état (DÉFAUT FIGÉ)") << " ("
-                                 << firstDifference(fp0, fingerprint(m)) << ")");
-                // 2. Cran immédiat sur un champ : fondu dans la même entrée (garde temporelle).
+                TEST_CHECK(p.undoDelta() == 0 && p.obs.events.empty(), label << " : valider sans changement → aucune entrée, aucune notification ("
+                                                                             << p.obs.specificSequence() << ")");
+                TEST_CHECK(fingerprint(m) == fp0, label << " : valider sans changement ne réécrit rien (" << firstDifference(fp0, fingerprint(m)) << ")");
+                // 2. Deux crans immédiats sur un champ : une seule entrée (coalescence portée par la transaction).
                 if (fieldValue == fieldValue) // NaN = pas de champ numérique testé pour cette vue
                 {
                     QDoubleSpinBox* spin = spinWithValue(view, fieldValue);
                     TEST_CHECK(spin != nullptr, label << " : champ de valeur " << fieldValue << " trouvé (unique)");
-                    spin->setValue(newValue); // valueChanged → onWidgetChanged → applyChanges
+                    spin->setValue((fieldValue + newValue) / 2.0); // valueChanged → onWidgetChanged → applyChanges
+                    spin->setValue(newValue);
                     if (clock.safelyInside())
-                        TEST_CHECK(p.undoDelta() == 1, label << " : cran fondu dans la même entrée (coalescence)");
+                        TEST_CHECK(p.undoDelta() == 1, label << " : deux crans fondus dans une entrée (coalescence)");
                     else
                         std::cout << "[SKIP] " << label << " : coalescence non vérifiable (lenteur)" << std::endl;
                     TEST_CHECK(fingerprint(m) != fp0, label << " : champ appliqué");
@@ -575,7 +575,7 @@ bool runSuite_UndoCharacterization(int& passed)
                        "Test 514: nœud — coordonnées refusées : aucune entrée, état inchangé, avertissement affiché");
         }
         {
-            // Exception pendant la notification (observateur) : comportement actuel = entrée créée, mutation conservée.
+            // Exception pendant la notification (observateur) : la transaction est annulée (BUG-129 corrigé pour les panneaux).
             TSA::UI::BeamPropertiesView v(&m);
             v.setElementId(beam);
             m.clearUndoRedo();
@@ -586,12 +586,11 @@ bool runSuite_UndoCharacterization(int& passed)
             nameEdit->setText("B_exception");
             bool thrown = false;
             try { v.applyChanges(); } catch (const std::runtime_error&) { thrown = true; }
-            TEST_CHECK(thrown && p.undoDelta() == 1 && m.getBeam(beam)->name() == "B_exception",
-                       "Test 514: exception après mutation — entrée présente, mutation conservée (DÉFAUT FIGÉ : pas de rollback)");
-            TEST_CHECK(m.undo() && m.getBeam(beam)->name() == "B_test", "Test 514: Annuler après exception rend l'état initial");
+            TEST_CHECK(thrown && p.undoDelta() == 0 && m.getBeam(beam)->name() == "B_test",
+                       "Test 514: exception pendant la notification — aucune entrée, état initial rétabli (rollback)");
         }
         {
-            // ResultsValidityGuard : le push seul suffit à périmer les résultats (Model.cpp:35-42 via setModified).
+            // ResultsValidityGuard : une validation sans changement conserve les résultats ; une modification les périme.
             TSA::Analysis::ResultsValidityGuard guard(&m);
             int stale = 0;
             guard.setStaleCallback([&] { ++stale; });
@@ -599,7 +598,11 @@ bool runSuite_UndoCharacterization(int& passed)
             TSA::UI::WallPropertiesView v(&m);
             v.setElementId(wall);
             v.applyChanges();
-            TEST_CHECK(stale == 1 && !guard.resultsUpToDate(), "Test 514: résultats périmés une fois");
+            TEST_CHECK(stale == 0 && guard.resultsUpToDate(), "Test 514: validation sans changement — résultats conservés");
+            QDoubleSpinBox* thick = spinWithValue(v, 0.22);
+            TEST_CHECK(thick != nullptr, "Test 514: champ épaisseur du voile trouvé");
+            thick->setValue(0.25);
+            TEST_CHECK(stale == 1 && !guard.resultsUpToDate(), "Test 514: modification — résultats périmés une fois");
         }
 
         // LoadPropertiesView : charge nodale (339, sans clé, sans contrôle) et sur barre (380, validée, sans entrée si inchangée).
@@ -612,8 +615,14 @@ bool runSuite_UndoCharacterization(int& passed)
             UndoProbe p(m);
             v.applyChanges();
             v.applyChanges();
-            TEST_CHECK(p.undoDelta() == 2 && p.obs.count("NodalLoadModified", nl) == 2 && p.obs.count("LoadModified", nl) == 2,
-                       "Test 514: charge nodale — chaque validation crée une entrée (aucune clé, aucun contrôle : DÉFAUT FIGÉ)");
+            TEST_CHECK(p.undoDelta() == 0 && p.obs.events.empty(),
+                       "Test 514: charge nodale — validations sans changement : aucune entrée, aucune notification (BUG-130 corrigé)");
+            QDoubleSpinBox* fz = spinWithValue(v, -10.0);
+            TEST_CHECK(fz != nullptr, "Test 514: champ Fz de la charge nodale trouvé");
+            fz->setValue(-12.0);
+            v.applyChanges();
+            TEST_CHECK(p.undoDelta() == 1 && p.obs.count("NodalLoadModified", nl) == 1 && m.loadManager().getNodalLoad(nl)->fz() == -12.0,
+                       "Test 514: charge nodale modifiée → 1 entrée, 1 notification");
         }
         {
             TSA::UI::LoadPropertiesView v(&m);

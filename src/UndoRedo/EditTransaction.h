@@ -27,13 +27,14 @@ namespace TSA::UndoRedo
 class EditTransaction
 {
 public:
-    EditTransaction(TSA::Model::Model& model, const std::string& actionName)
+    /// @param coalesceKey voir UndoManager::beginTransaction (vide : jamais fondue).
+    EditTransaction(TSA::Model::Model& model, const std::string& actionName, const std::string& coalesceKey = "")
         : m_model(model)
         , m_undo(model.undoManager())
     {
         if (m_undo)
         {
-            m_undo->beginTransaction(model, actionName);
+            m_undo->beginTransaction(model, actionName, coalesceKey);
         }
     }
 
@@ -75,6 +76,14 @@ public:
         {
             m_model.setModified(true);
         }
+    }
+
+    /// L'état diffère-t-il exactement du début de la transaction ? Permet de ne notifier les vues (et de ne périmer
+    /// les résultats) que si quelque chose a réellement changé, AVANT commit : une exception d'observateur pendant la
+    /// notification annule alors toute la transaction. Sans historique : toujours vrai (prudence).
+    bool hasChanges() const
+    {
+        return !m_undo || m_undo->transactionHasChanges(m_model);
     }
 
     /// Fin sans effet quand l'appelant a vérifié que rien n'a changé (voir

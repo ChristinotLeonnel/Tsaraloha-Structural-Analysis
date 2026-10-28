@@ -1,4 +1,5 @@
 #include "FoundationPropertiesView.h"
+#include "../../UndoRedo/EditTransaction.h"
 #include "ElementColorField.h"
 #include "../../Model/Model.h"
 #include "../../Model/Foundation.h"
@@ -160,7 +161,7 @@ void FoundationPropertiesView::applyChanges()
 
     const std::string undoName = tr("Modification Fondation %1").arg(m_foundationId).toStdString();
     // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
-    m_model->pushUndoState(undoName, undoName);
+    TSA::UndoRedo::EditTransaction tx(*m_model, undoName, undoName);
 
     f->setName(m_editName->text().toStdString());
     f->setFoundationType(static_cast<TSA::Model::FoundationType>(m_comboType->currentData().toInt()));
@@ -169,7 +170,14 @@ void FoundationPropertiesView::applyChanges()
     f->setHeightH(m_spinHeightH->value());
     f->setColor(m_colorHex.toStdString());
 
-    m_model->notifyFoundationModified(m_foundationId);
+    // Rien de changé : ni entrée Annuler, ni notification, résultats conservés (BUG-130).
+    if (!tx.hasChanges())
+    {
+        tx.discardUnchanged();
+        return;
+    }
+    m_model->notifyFoundationModified(m_foundationId);   // dans la transaction : une exception d'observateur annule tout (BUG-129)
+    tx.commit();
     emit elementModified();
 }
 

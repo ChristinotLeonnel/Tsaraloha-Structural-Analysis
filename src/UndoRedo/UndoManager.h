@@ -71,13 +71,17 @@ public:
     static size_t estimateSnapshotBytes(const TSA::Model::Model::ModelStateSnapshot& snap) noexcept;
 
     // --- Transactions -------------------------------------------------------
-    void beginTransaction(TSA::Model::Model& model, const std::string& actionName);
+    /// @param coalesceKey comme pushState : la transaction validée se fond dans l'entrée précédente de même clé si elle
+    ///        a moins de COALESCE_WINDOW et que rien d'autre ne s'est intercalé (crans d'un champ de propriété).
+    void beginTransaction(TSA::Model::Model& model, const std::string& actionName, const std::string& coalesceKey = "");
     void commitTransaction(TSA::Model::Model& model);
     void rollbackTransaction(TSA::Model::Model& model);
     /// Clôt la transaction SANS entrée ni restauration : réservé au cas où l'appelant a vérifié
     /// que rien n'a changé (un rollback notifierait un différentiel vide et invaliderait les résultats).
     void discardUnchangedTransaction() noexcept;
     bool inTransaction() const noexcept { return m_transactionDepth > 0; }
+    /// L'état diffère-t-il (exactement) du début de la transaction ouverte ? (faux hors transaction)
+    bool transactionHasChanges(const TSA::Model::Model& model) const;
 
     /// Égalité EXACTE de deux états : identifiants suivants, repères, grilles, cotations, puis contenu persistant
     /// (encodeur fourni par la couche IO) — jamais à tolérance près (ModelDiff ne sert que d'accélérateur). Sans

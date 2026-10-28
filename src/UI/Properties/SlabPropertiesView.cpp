@@ -1,4 +1,5 @@
 #include "SlabPropertiesView.h"
+#include "../../UndoRedo/EditTransaction.h"
 #include "ElementColorField.h"
 #include "../../Model/Model.h"
 #include "../../Model/Slab.h"
@@ -187,7 +188,7 @@ void SlabPropertiesView::applyChanges()
 
     const std::string undoName = tr("Modification Dalle %1").arg(m_slabId).toStdString();
     // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
-    m_model->pushUndoState(undoName, undoName);
+    TSA::UndoRedo::EditTransaction tx(*m_model, undoName, undoName);
 
     slab->setName(m_editName->text().toStdString());
     // Seuls les champs modifiés sont réécrits (épaisseur, hauteur au-delà des décimales affichées, matériau hors liste).
@@ -203,7 +204,14 @@ void SlabPropertiesView::applyChanges()
 
     if (m_edited.changed(m_comboFormulation)) slab->setFormulation(static_cast<TSA::Model::SurfaceFormulation>(m_comboFormulation->currentData().toInt()));
     captureEditedFields();
-    m_model->notifySlabModified(m_slabId);
+    // Rien de changé : ni entrée Annuler, ni notification, résultats conservés (BUG-130).
+    if (!tx.hasChanges())
+    {
+        tx.discardUnchanged();
+        return;
+    }
+    m_model->notifySlabModified(m_slabId);   // dans la transaction : une exception d'observateur annule tout (BUG-129)
+    tx.commit();
     emit elementModified();
 }
 

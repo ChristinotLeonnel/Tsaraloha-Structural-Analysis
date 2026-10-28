@@ -1,4 +1,5 @@
 #include "TrussMemberPropertiesView.h"
+#include "../../UndoRedo/EditTransaction.h"
 #include "ElementColorField.h"
 #include "../../Model/Model.h"
 #include "../../Model/TrussMember.h"
@@ -171,7 +172,7 @@ void TrussMemberPropertiesView::applyChanges()
 
     const std::string undoName = tr("Modification Treillis %1").arg(m_memberId).toStdString();
     // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
-    m_model->pushUndoState(undoName, undoName);
+    TSA::UndoRedo::EditTransaction tx(*m_model, undoName, undoName);
 
     trm->setName(m_editName->text().toStdString());
     if (m_edited.changed(m_comboRole)) trm->setRole(static_cast<TSA::Model::TrussMemberRole>(m_comboRole->currentData().toInt()));
@@ -185,7 +186,14 @@ void TrussMemberPropertiesView::applyChanges()
     trm->setColor(m_colorHex.toStdString());
 
     captureEditedFields();
-    m_model->notifyTrussMemberModified(m_memberId);
+    // Rien de changé : ni entrée Annuler, ni notification, résultats conservés (BUG-130).
+    if (!tx.hasChanges())
+    {
+        tx.discardUnchanged();
+        return;
+    }
+    m_model->notifyTrussMemberModified(m_memberId);   // dans la transaction : une exception d'observateur annule tout (BUG-129)
+    tx.commit();
     emit elementModified();
 }
 

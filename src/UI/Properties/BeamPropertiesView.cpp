@@ -1,6 +1,6 @@
 #include "BeamPropertiesView.h"
 #include "ElementColorField.h"
-#include "../../UndoRedo/UndoManager.h"
+#include "../../UndoRedo/EditTransaction.h"
 #include "../Widgets/SectionPreviewWidget.h"
 #include "../../Model/Model.h"
 #include "../../Model/Beam.h"
@@ -421,7 +421,7 @@ void BeamPropertiesView::applyChanges()
     // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
     const std::string oldSection = beam->section().name;
     const std::string oldMaterial = beam->material().name;
-    m_model->pushUndoState(undoName, undoName);
+    TSA::UndoRedo::EditTransaction tx(*m_model, undoName, undoName);
 
     beam->setName(m_editName->text().toStdString());
     beam->setRole(static_cast<TSA::Model::BarRole>(m_comboRole->currentData().toInt()));
@@ -470,18 +470,22 @@ void BeamPropertiesView::applyChanges()
         m_previewWidget->setRotation(beam->rotation());
     }
     updateCalculatedProperties(sec);
-
-    if (auto* um = m_model->undoManager())
-    {
-        if (beam->section().name != oldSection)
-            um->addRecord({ "modify_property", "Beam", m_beamId, "section", oldSection, beam->section().name,
-                            { "geometry", "stiffness", "self_weight", "results_invalidated" } });
-        if (beam->material().name != oldMaterial)
-            um->addRecord({ "modify_property", "Beam", m_beamId, "material", oldMaterial, beam->material().name,
-                            { "stiffness", "self_weight", "results_invalidated" } });
-    }
     captureEditedFields();
-    m_model->notifyBeamModified(m_beamId);
+    // Rien de changé : ni entrée Annuler, ni notification, résultats conservés (BUG-130).
+    if (!tx.hasChanges())
+    {
+        tx.discardUnchanged();
+        return;
+    }
+
+    if (beam->section().name != oldSection)
+        tx.record({ "modify_property", "Beam", m_beamId, "section", oldSection, beam->section().name,
+                    { "geometry", "stiffness", "self_weight", "results_invalidated" } });
+    if (beam->material().name != oldMaterial)
+        tx.record({ "modify_property", "Beam", m_beamId, "material", oldMaterial, beam->material().name,
+                    { "stiffness", "self_weight", "results_invalidated" } });
+    m_model->notifyBeamModified(m_beamId);   // dans la transaction : une exception d'observateur annule tout (BUG-129)
+    tx.commit();
     emit elementModified();
 }
 

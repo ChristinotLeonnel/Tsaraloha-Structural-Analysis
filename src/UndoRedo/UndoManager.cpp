@@ -202,7 +202,12 @@ bool UndoManager::transactionChanged(const TSA::Model::Model& model,
     return !(outOfSnapshotState(model) == m_transactionOutside) || !sameContent(m_transaction.snapshot, current);
 }
 
-void UndoManager::beginTransaction(TSA::Model::Model& model, const std::string& actionName)
+bool UndoManager::transactionHasChanges(const TSA::Model::Model& model) const
+{
+    return m_transactionDepth > 0 && transactionChanged(model, model.createSnapshot(m_transaction.snapshot.actionName));
+}
+
+void UndoManager::beginTransaction(TSA::Model::Model& model, const std::string& actionName, const std::string& coalesceKey)
 {
     if (m_transactionDepth++ > 0)
         return; // transaction imbriquée : absorbée par la transaction englobante
@@ -210,6 +215,7 @@ void UndoManager::beginTransaction(TSA::Model::Model& model, const std::string& 
     m_transaction = HistoryEntry{};
     m_transaction.snapshot = model.createSnapshot(actionName);
     m_transaction.timestamp = nowTimestamp();
+    m_transaction.coalesceKey = coalesceKey;
     m_transactionOutside = outOfSnapshotState(model);
     m_transactionWasModified = model.isModified();
 }
@@ -225,7 +231,23 @@ void UndoManager::commitTransaction(TSA::Model::Model& model)
     // aller-retour, ou une transaction dont un rollback interne a déjà tout restauré).
     const auto current = model.createSnapshot(m_transaction.snapshot.actionName);
     if (transactionChanged(model, current))
-        pushEntry(std::move(m_transaction), model);
+    {
+        const auto now = std::chrono::steady_clock::now();
+        HistoryEntry* top = m_undoStack.empty() ? nullptr : &m_undoStack.back();
+        if (!m_transaction.coalesceKey.empty() && top && m_redoStack.empty() &&
+            top->coalesceKey == m_transaction.coalesceKey && now - top->lastPush < COALESCE_WINDOW)
+        {
+            // Même édition en cours (comme pushState) : l'état « avant » de l'entrée existante reste la référence.
+            top->lastPush = now;
+            top->records.insert(top->records.end(), m_transaction.records.begin(), m_transaction.records.end());
+            model.setModified(true);
+        }
+        else
+        {
+            m_transaction.lastPush = now;
+            pushEntry(std::move(m_transaction), model);
+        }
+    }
     m_transaction = HistoryEntry{};
 }
 

@@ -1,6 +1,6 @@
 #include "ColumnPropertiesView.h"
 #include "ElementColorField.h"
-#include "../../UndoRedo/UndoManager.h"
+#include "../../UndoRedo/EditTransaction.h"
 #include "../Widgets/SectionPreviewWidget.h"
 #include "../../Model/Model.h"
 #include "../../Model/Column.h"
@@ -342,7 +342,7 @@ void ColumnPropertiesView::applyChanges()
     // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
     const std::string oldSection = col->section().name;
     const std::string oldMaterial = col->material().name;
-    m_model->pushUndoState(undoName, undoName);
+    TSA::UndoRedo::EditTransaction tx(*m_model, undoName, undoName);
 
     col->setName(m_editName->text().toStdString());
 
@@ -364,17 +364,21 @@ void ColumnPropertiesView::applyChanges()
         m_previewWidget->setRotation(col->rotation());
     }
 
-    if (auto* um = m_model->undoManager())
-    {
-        if (col->section().name != oldSection)
-            um->addRecord({ "modify_property", "Column", m_columnId, "section", oldSection, col->section().name,
-                            { "geometry", "stiffness", "self_weight", "results_invalidated" } });
-        if (col->material().name != oldMaterial)
-            um->addRecord({ "modify_property", "Column", m_columnId, "material", oldMaterial, col->material().name,
-                            { "stiffness", "self_weight", "results_invalidated" } });
-    }
     captureEditedFields();
-    m_model->notifyColumnModified(m_columnId);
+    // Rien de changé : ni entrée Annuler, ni notification, résultats conservés (BUG-130).
+    if (!tx.hasChanges())
+    {
+        tx.discardUnchanged();
+        return;
+    }
+    if (col->section().name != oldSection)
+        tx.record({ "modify_property", "Column", m_columnId, "section", oldSection, col->section().name,
+                        { "geometry", "stiffness", "self_weight", "results_invalidated" } });
+    if (col->material().name != oldMaterial)
+        tx.record({ "modify_property", "Column", m_columnId, "material", oldMaterial, col->material().name,
+                        { "stiffness", "self_weight", "results_invalidated" } });
+    m_model->notifyColumnModified(m_columnId);   // dans la transaction : une exception d'observateur annule tout (BUG-129)
+    tx.commit();
     emit elementModified();
 }
 

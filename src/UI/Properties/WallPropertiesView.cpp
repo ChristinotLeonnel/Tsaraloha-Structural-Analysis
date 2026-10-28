@@ -1,4 +1,5 @@
 #include "WallPropertiesView.h"
+#include "../../UndoRedo/EditTransaction.h"
 #include "ElementColorField.h"
 #include "../../Model/Model.h"
 #include "../../Model/Wall.h"
@@ -181,7 +182,7 @@ void WallPropertiesView::applyChanges()
 
     const std::string undoName = tr("Modification Voile %1").arg(m_wallId).toStdString();
     // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
-    m_model->pushUndoState(undoName, undoName);
+    TSA::UndoRedo::EditTransaction tx(*m_model, undoName, undoName);
 
     wall->setName(m_editName->text().toStdString());
     // Seuls les champs modifiés sont réécrits (épaisseur, hauteur au-delà des décimales affichées, matériau hors liste).
@@ -197,7 +198,14 @@ void WallPropertiesView::applyChanges()
 
     if (m_edited.changed(m_comboFormulation)) wall->setFormulation(static_cast<TSA::Model::SurfaceFormulation>(m_comboFormulation->currentData().toInt()));
     captureEditedFields();
-    m_model->notifyWallModified(m_wallId);
+    // Rien de changé : ni entrée Annuler, ni notification, résultats conservés (BUG-130).
+    if (!tx.hasChanges())
+    {
+        tx.discardUnchanged();
+        return;
+    }
+    m_model->notifyWallModified(m_wallId);   // dans la transaction : une exception d'observateur annule tout (BUG-129)
+    tx.commit();
     emit elementModified();
 }
 
