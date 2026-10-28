@@ -4,6 +4,62 @@ Last Updated: 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, B
 
 ## Ouverts
 
+Validation Windows du 2026-10-28 (docs/reports/WINDOWS_VALIDATION_REPORT.md, identifiants W-n du rapport) :
+
+## BUG-131 (W-1)
+Area: tests — chemins UTF-8 sous MSVC
+Problem: test_thumbnail_provider.cpp:66, test_mesh.cpp:329/337, test_meshview.cpp:459 passaient un chemin UTF-8 étroit à
+std::fstream / std::ofstream / std::filesystem::exists (page de code ANSI) : échec avec un TEMP non ASCII (C:\Users\T. Léonnel).
+Status: FIXED (2026-10-28, TSA::Core::utf8Path ; thumbnail 3/3, meshview 12/12, test 293 réussi avec le TEMP non ASCII)
+
+## BUG-132 (W-2)
+Area: IA — PythonAIBridge::findPython
+Problem: sous Windows, « python » du PATH = alias WindowsApps du Microsoft Store (0 octet, code 9009) : pont IA inutilisable.
+Status: FIXED (2026-10-28, « py » essayé d'abord sous Q_OS_WIN ; test 489 réussi, ai 24/24, operator 8/8)
+
+## BUG-133 (W-3)
+Area: OpenSees — téléchargement à l'exécution
+Problem: OpenSeesManager::officialDownloadUrl en 404 (opensees.berkeley.edu redirige vers peer.berkeley.edu/openseesOpenSees/…,
+défaut du serveur, constaté le 2026-10-28) ; downloadAndInstall ne vérifie pas l'empreinte (winget : 5E37A5A9…FB41).
+Impact: HIGH pour le calcul OpenSees sur un poste neuf
+Status: OPEN
+
+## BUG-134 (W-5)
+Area: tools/ci/run_test_suites.py
+Problem: mesh déclarée dépendante de Gmsh seulement ; le test 294 calcule avec OpenSees.
+Status: FIXED (2026-10-28)
+
+## BUG-133 (W-3) — mise à jour 2026-10-28
+Source officielle de l'archive Windows disparue (404). Contournement : OpenSees 3.8.0 conda-forge épinglé
+(cmake/SetupDependencies.cmake, docs/DEPENDENCIES.md §5). Status: PARTIEL — installation vérifiée, exécution NON
+validée ; OpenSeesManager::downloadAndInstall (application) vise encore l'adresse officielle.
+
+## BUG-136 (W-10)
+Area: src/Diagnostics/Logger.cpp
+Problem: chemins UTF-8 étroits (ofstream, filesystem) : aucun journal écrit quand le dossier de journaux contient un
+caractère non ASCII (paquet installé, profil « T. Léonnel ») ; invisible depuis le dossier de compilation.
+Status: FIXED (2026-10-28, branche build/dependency-detection) — test 37.8 (échoue sans le correctif) ; journal constaté
+dans AppData après relance du paquet.
+
+## BUG-137 (dépendances, audit 2026-10-28)
+Area: cmake/ (presets, détection, déploiement)
+Problem: Qt figé 6.11.2 dans les presets (W-9) ; plancher Qt 6.2 faux pour les traductions (qt_add_lrelease exige 6.9) ;
+windeployqt en cache d'une autre Qt possible ; DLL OCCT déployées depuis un chemin figé ; aucun contrôle de chaîne de
+compilation / mélange dans CMake.
+Status: FIXED sous Windows (matrice m1-m7, docs/DEPENDENCIES.md) ; Linux NON TESTÉ ; TSALab sans détection auto de Qt
+(appel tsa_find_qt à ajouter dans TSALab, accord requis).
+
+## BUG-135 (W-6, W-7, W-8)
+Area: chemins UTF-8 restants, déploiement
+Problem: TSALab lab/Tests/LabTests.cpp:120 (L5, même défaut que BUG-131 : 17/27, 27/27 avec TEMP ASCII) ;
+test_torsion.cpp:724 (remove sur chemin étroit, fichier laissé dans TEMP) ; DeployDependencies.cmake:30 liste Qt6* comme
+« introuvables » malgré EXCLUDE_REGEXES (cosmétique).
+Status: PARTIEL (2026-10-28) — W-8 FIXED : DeployDependencies.cmake retire Qt6* de la liste des introuvables
+(filtre d'abord placé dans RuntimeDependencies.cmake, déplacé : il affaiblissait le contrôle strict du paquet ;
+vérifié : plus d'avertissement, package_TSA + verify_package OK). W-7 corrigé
+(TSA::Core::utf8Path, compilé) mais NON EXÉCUTÉ : la suite torsion s'arrête au test 321 sans OpenSees. W-6 OPEN
+(TSALab : autre dépôt, correctif d'une ligne à autoriser).
+
 Défauts BUG-125 à BUG-130 : constatés et FIGÉS par la suite « undo » (tests 513-523, branche test/etape2-caracterisation,
 non commitée) ; non corrigés volontairement (caractérisation avant l'étape 2). Une correction devra modifier le test
 marqué « DÉFAUT FIGÉ » explicitement.

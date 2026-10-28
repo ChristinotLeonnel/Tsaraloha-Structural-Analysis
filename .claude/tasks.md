@@ -1,6 +1,21 @@
 # Tasks
 
-Last Updated: 2026-10-26 (soir). Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-10-28. Uniquement des tâches réellement identifiées (voir known-issues.md).
+
+## Validation Windows (2026-10-28, docs/reports/WINDOWS_VALIDATION_REPORT.md, branche test/windows-validation)
+- [x] Compilation MSVC 19.51 Release de C (6a5bde1) + TSALab eea9cd9 ; 42 suites ; Custom2D 58/58 ; W-1, W-2, W-5 corrigés.
+- [ ] OpenSees : remettre l'exécutable (serveur officiel en 404, W-3) puis relancer les 14 suites, le banc et TSALab L9-L14.
+- [ ] W-6 : TSALab LabTests.cpp:120 → TSA::Core::utf8Path (autre dépôt, accord requis).
+- [x] W-8 corrigé et vérifié ; W-7 corrigé, compilé — [ ] à exécuter quand OpenSees sera présent (suite torsion, test 332).
+- [x] W-3 : SHA-256 + curl --fail dans OpenSeesManager ; TSA_OPENSEES_ARCHIVE ; OpenSees 3.8.0 conda-forge épinglé
+      (TSA_OPENSEES_CONDA_PACKAGES, thirdparty/OpenSees installé) ; [ ] EXÉCUTION non validée (lancement refusé par le
+      contrôle de sécurité de la session) : 14 suites OpenSees, banc, TSALab L9-L14 à lancer.
+- [ ] OpenSeesManager::downloadAndInstall vise encore l'archive officielle (404) : basculer vers conda-forge ou retirer.
+- [x] W-9 : presets sans Qt6_DIR, détection automatique (branche build/dependency-detection, non commitée).
+- [x] W-10 Logger non ASCII corrigé (test 37.8).
+- [x] TSALab : tsa_find_qt(), presets sans Qt figé, W-6 ; plancher Qt conservé à 6.2 (décision 2026-10-28).
+- [ ] Dépendances : Linux NON TESTÉ ; scripts PowerShell (setup_build/detect_*) à simplifier — rapport §11.8.
+- [ ] Procédure PROCEDURE_WINDOWS_v2 (A1, A2 dumpbin, B, B sans IFC) : NON exécutée ; Debug non testé ; commit à autoriser.
 
 ## TSA Core — préparation de l'étape 2 (2026-10-26 ; commits LOCAUX, non poussés ni fusionnés ; main = 39155c4)
 
