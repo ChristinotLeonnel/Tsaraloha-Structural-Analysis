@@ -38,6 +38,9 @@ public:
 
     /// Reconstruit tous les éléments depuis le graphe (après chargement, suppression…).
     void rebuild();
+    /// Étend la zone de travail (±4 000 au minimum) à tous les éléments, marge comprise : sans cela le défilement et le
+    /// cadrage s'arrêteraient au bord d'une zone fixe et un grand graphe resterait en partie inaccessible.
+    void fitSceneRectToItems();
     int addNode(const std::string& type, const QPointF& pos);
     void deleteSelection();
     /// Commentaire encadrant `rect` (scène) ; sélectionné.

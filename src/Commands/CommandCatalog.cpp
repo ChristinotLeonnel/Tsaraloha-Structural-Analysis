@@ -573,6 +573,36 @@ void CommandCatalog::initializeStandardCatalog() {
                    "", CommandCategory::Workspace});
   registerCommand({"cmd.window.console", QT_TRANSLATE_NOOP("CommandCatalog", "Console et messages"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer la console"), "F2",
                    "", CommandCategory::Workspace});
+  // Espace de travail central (docs/UI.md) : dispositions, partage, mode focus, disposition par défaut
+  registerCommand({"cmd.workspace.model3d", QT_TRANSLATE_NOOP("CommandCatalog", "Espace : modèle 3D"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher la vue 3D du modèle seule"), "Ctrl+Alt+1",
+                   ":/icons/workspace/model3d.svg", CommandCategory::Workspace});
+  registerCommand({"cmd.workspace.blueprint", QT_TRANSLATE_NOOP("CommandCatalog", "Espace : Blueprint"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher l'éditeur de Blueprint sur toute la surface centrale"), "Ctrl+Alt+2",
+                   ":/icons/workspace/blueprint.svg", CommandCategory::Workspace});
+  registerCommand({"cmd.workspace.split", QT_TRANSLATE_NOOP("CommandCatalog", "Espace : vue partagée"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher la vue 3D et le Blueprint côte à côte"), "Ctrl+Alt+3",
+                   ":/icons/workspace/split.svg", CommandCategory::Workspace});
+  registerCommand({"cmd.workspace.split_vertical", QT_TRANSLATE_NOOP("CommandCatalog", "Partage vertical"), QT_TRANSLATE_NOOP("CommandCatalog", "Vue partagée : la vue 3D au-dessus du Blueprint"), "",
+                   "", CommandCategory::Workspace});
+  registerCommand({"cmd.workspace.focus", QT_TRANSLATE_NOOP("CommandCatalog", "Mode focus"), QT_TRANSLATE_NOOP("CommandCatalog", "Masquer ou rétablir tous les panneaux"), "Ctrl+Shift+F",
+                   ":/icons/workspace/focus.svg", CommandCategory::Workspace});
+  registerCommand({"cmd.workspace.reset_layout", QT_TRANSLATE_NOOP("CommandCatalog", "Disposition par défaut"), QT_TRANSLATE_NOOP("CommandCatalog", "Rétablir la disposition par défaut des panneaux et de l'espace de travail"), "",
+                   ":/icons/workspace/reset_layout.svg", CommandCategory::Workspace});
+  // Blueprint (programmation structurelle) : commandes sans raccourci global (celles du graphe sont dans l'éditeur)
+  registerCommand({"cmd.blueprint.new", QT_TRANSLATE_NOOP("CommandCatalog", "Nouveau Blueprint"), QT_TRANSLATE_NOOP("CommandCatalog", "Nouveau programme de modélisation en blocs"), "",
+                   ":/icons/blueprint/new.svg", CommandCategory::Tools});
+  registerCommand({"cmd.blueprint.open", QT_TRANSLATE_NOOP("CommandCatalog", "Ouvrir un Blueprint"), QT_TRANSLATE_NOOP("CommandCatalog", "Ouvrir un fichier Blueprint (.tsbp)"), "",
+                   ":/icons/blueprint/open.svg", CommandCategory::Tools});
+  registerCommand({"cmd.blueprint.save", QT_TRANSLATE_NOOP("CommandCatalog", "Enregistrer le Blueprint"), QT_TRANSLATE_NOOP("CommandCatalog", "Enregistrer le Blueprint édité"), "",
+                   ":/icons/blueprint/save.svg", CommandCategory::Tools});
+  registerCommand({"cmd.blueprint.validate", QT_TRANSLATE_NOOP("CommandCatalog", "Valider le Blueprint"), QT_TRANSLATE_NOOP("CommandCatalog", "Contrôler le graphe sans l'exécuter"), "",
+                   "", CommandCategory::Tools});
+  registerCommand({"cmd.blueprint.run", QT_TRANSLATE_NOOP("CommandCatalog", "Exécuter le Blueprint"), QT_TRANSLATE_NOOP("CommandCatalog", "Exécuter le Blueprint sur le projet ouvert"), "",
+                   ":/icons/blueprint/run.svg", CommandCategory::Tools});
+  registerCommand({"cmd.blueprint.debug", QT_TRANSLATE_NOOP("CommandCatalog", "Déboguer le Blueprint"), QT_TRANSLATE_NOOP("CommandCatalog", "Exécuter en s'arrêtant aux points d'arrêt"), "",
+                   "", CommandCategory::Tools});
+  registerCommand({"cmd.blueprint.fit_all", QT_TRANSLATE_NOOP("CommandCatalog", "Cadrer le graphe"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher tout le Blueprint"), "",
+                   ":/icons/blueprint/fit_all.svg", CommandCategory::Tools});
+  registerCommand({"cmd.blueprint.fit_selection", QT_TRANSLATE_NOOP("CommandCatalog", "Cadrer la sélection du graphe"), QT_TRANSLATE_NOOP("CommandCatalog", "Cadrer les nœuds sélectionnés du Blueprint"), "",
+                   ":/icons/blueprint/fit_selection.svg", CommandCategory::Tools});
   registerCommand({"cmd.ai.assistant", QT_TRANSLATE_NOOP("CommandCatalog", "Assistant IA"), QT_TRANSLATE_NOOP("CommandCatalog", "Ouvrir l'assistant de co-ingénierie"), "Ctrl+Shift+I",
                    "", CommandCategory::Tools});
   registerCommand({"cmd.ai.config", QT_TRANSLATE_NOOP("CommandCatalog", "Configuration IA"), QT_TRANSLATE_NOOP("CommandCatalog", "Paramètres de l'assistant IA"), "",

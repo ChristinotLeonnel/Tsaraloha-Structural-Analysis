@@ -31,6 +31,7 @@ class QFormLayout;
 class QGraphicsView;
 class QLabel;
 class QLineEdit;
+class QSplitter;
 class QTabWidget;
 class QTreeWidget;
 
@@ -135,6 +136,26 @@ public:
     const TSA::Blueprint::ExecutionReport& lastReport() const { return m_lastReport; }
     TSA::Blueprint::EvaluationCache& cache() { return m_cache; }
 
+    // Navigation et surface du canevas
+    /// Tout le graphe dans la vue (zoom de 5 % à 150 %) ; touche Origine dans le graphe.
+    void fitAll();
+    /// Nœuds sélectionnés dans la vue, ou tout le graphe sans sélection ; touche F dans le graphe.
+    void fitSelection();
+    double zoomPercent() const;
+    /// Recherche de la palette (Ctrl+F dans le graphe) : palette affichée si elle était repliée.
+    void focusNodeSearch();
+    void setPaletteVisible(bool visible);
+    void setInspectorVisible(bool visible);
+    void setMinimapVisible(bool visible);
+    bool isPaletteVisible() const;
+    bool isInspectorVisible() const;
+    bool isMinimapVisible() const;
+    /// Disposition de l'éditeur (panneaux, mini-carte, tailles) : préférence de l'application, jamais dans le projet.
+    QByteArray saveLayoutState() const;
+    /// Faux si l'état est illisible : la disposition courante est conservée.
+    bool restoreLayoutState(const QByteArray& state);
+    QGraphicsView* view() const { return m_view; }
+
 signals:
     /// Message pour la console de l'application (type : SYS, INFO, WARN, ERROR).
     void logMessage(const QString& text, const QString& type);
@@ -144,6 +165,7 @@ signals:
 private:
     void buildPalette();
     void fitGraph();
+    void updateNavigation();
     void filterPalette(const QString& text);
     void showNodeProperties();
     void addFromPalette();
@@ -198,6 +220,14 @@ private:
 
     BlueprintScene* m_scene = nullptr;
     QGraphicsView* m_view = nullptr;
+    QGraphicsView* m_minimap = nullptr;
+    QSplitter* m_split = nullptr;                               ///< palette | canevas | inspecteur
+    QWidget* m_paletteHost = nullptr;
+    QWidget* m_inspectorHost = nullptr;
+    QLabel* m_zoomLabel = nullptr;
+    QAction* m_actPalette = nullptr;
+    QAction* m_actInspector = nullptr;
+    QAction* m_actMinimap = nullptr;
     QLineEdit* m_search = nullptr;
     QTreeWidget* m_palette = nullptr;
     QWidget* m_propertiesHost = nullptr;

@@ -41,6 +41,12 @@
 #include <QTreeWidget>
 #include <QVBoxLayout>
 #include <QWheelEvent>
+#include <QCoreApplication>
+#include <QDataStream>
+#include <QPainter>
+#include <QSignalBlocker>
+
+#include <cmath>
 
 #include <algorithm>
 #include <functional>
@@ -62,8 +68,42 @@ public:
     using QGraphicsView::QGraphicsView;
     std::function<bool(QKeyEvent*)> handles;   ///< touche traitée par l'éditeur
     std::function<void(QKeyEvent*)> onKey;
+    std::function<void()> onViewChanged;       ///< zoom ou déplacement (indicateur de zoom, mini-carte)
+    std::function<void()> onResized;
 
 protected:
+    /// Grille discrète (pas de 20, trait majeur tous les 100) : repère de placement sans concurrencer les nœuds ; la
+    /// grille fine disparaît en dessous de 50 % (lisibilité, coût de dessin sur les grands graphes).
+    void drawBackground(QPainter* p, const QRectF& rect) override
+    {
+        QGraphicsView::drawBackground(p, rect);
+        const double zoom = transform().m11();
+        const QColor base = palette().color(QPalette::Base);
+        const bool dark = base.lightness() < 128;
+        QColor minor = dark ? base.lighter(125) : base.darker(106);
+        QColor major = dark ? base.lighter(150) : base.darker(115);
+        auto lines = [&](double step, const QColor& color) {
+            QVector<QLineF> v;
+            for (double x = std::floor(rect.left() / step) * step; x < rect.right(); x += step) v.append(QLineF(x, rect.top(), x, rect.bottom()));
+            for (double y = std::floor(rect.top() / step) * step; y < rect.bottom(); y += step) v.append(QLineF(rect.left(), y, rect.right(), y));
+            p->setPen(QPen(color, 0));
+            p->drawLines(v);
+        };
+        if (zoom >= 0.5) lines(20.0, minor);
+        lines(100.0, major);
+    }
+    void scrollContentsBy(int dx, int dy) override
+    {
+        QGraphicsView::scrollContentsBy(dx, dy);
+        if (onViewChanged) onViewChanged();
+    }
+    void resizeEvent(QResizeEvent* e) override
+    {
+        QGraphicsView::resizeEvent(e);
+        if (onResized) onResized();
+        if (onViewChanged) onViewChanged();
+    }
+
     bool event(QEvent* e) override
     {
         if (e->type() == QEvent::ShortcutOverride && handles && handles(static_cast<QKeyEvent*>(e)))
@@ -90,6 +130,7 @@ protected:
         if ((f > 1 && current > 3.0) || (f < 1 && current < 0.2)) return;
         setTransformationAnchor(AnchorUnderMouse);
         scale(f, f);
+        if (onViewChanged) onViewChanged();
     }
     void mousePressEvent(QMouseEvent* e) override
     {
@@ -128,6 +169,56 @@ protected:
 private:
     bool m_pan = false;
     QPoint m_last;
+};
+
+/// Mini-carte : tout le graphe en réduction, cadre de la zone visible ; un clic ou un glisser y recentre la vue. Posée dans
+/// le coin inférieur droit du canevas (n'en masque que ce coin), masquable. Dessin sans antialiasing ni interaction avec
+/// les éléments : coût faible même sur un grand graphe.
+class BlueprintMinimap : public QGraphicsView
+{
+public:
+    BlueprintMinimap(QGraphicsScene* scene, QGraphicsView* main)
+        : QGraphicsView(scene, main->viewport()), m_main(main)
+    {
+        setInteractive(false);
+        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        setFrameShape(QFrame::Box);
+        setFixedSize(220, 140);
+        setToolTip(QCoreApplication::translate("TSA::UI::BlueprintEditor", "Mini-carte : cliquer ou glisser pour déplacer la vue"));
+        setCursor(Qt::PointingHandCursor);
+    }
+    void refit()
+    {
+        const QRectF r = scene()->itemsBoundingRect().adjusted(-60, -60, 60, 60);
+        if (!r.isEmpty()) fitInView(r, Qt::KeepAspectRatio);
+        viewport()->update();
+    }
+    void place()
+    {
+        const QWidget* host = m_main->viewport();
+        move(host->width() - width() - 8, host->height() - height() - 8);
+    }
+
+protected:
+    void drawForeground(QPainter* p, const QRectF&) override
+    {
+        const QRectF visible = m_main->mapToScene(m_main->viewport()->rect()).boundingRect();
+        p->setPen(QPen(palette().color(QPalette::Highlight), 0));
+        QColor fill = palette().color(QPalette::Highlight);
+        fill.setAlpha(40);
+        p->setBrush(fill);
+        p->drawRect(visible);
+    }
+    void mousePressEvent(QMouseEvent* e) override { m_main->centerOn(mapToScene(e->position().toPoint())); }
+    void mouseMoveEvent(QMouseEvent* e) override
+    {
+        if (e->buttons() & Qt::LeftButton) m_main->centerOn(mapToScene(e->position().toPoint()));
+    }
+    void wheelEvent(QWheelEvent* e) override { e->ignore(); }
+
+private:
+    QGraphicsView* m_main;
 };
 
 constexpr int kTypeRole = Qt::UserRole + 10;
@@ -386,6 +477,32 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     scriptButton->setMenu(scriptMenu);
     scriptButton->setPopupMode(QToolButton::InstantPopup);
     bar->addWidget(scriptButton);
+    // Navigation et surface du canevas : cadrages, indicateur de zoom, panneaux repliables, mini-carte
+    bar->addSeparator();
+    QAction* fitAllAction = bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/view/fit_all.svg")), tr("Cadrer tout"), this, &BlueprintEditor::fitAll);
+    fitAllAction->setToolTip(tr("Afficher tout le graphe (Origine, dans le graphe)"));
+    QAction* fitSelAction = bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/view/fit_selection.svg")), tr("Cadrer la sélection"), this, &BlueprintEditor::fitSelection);
+    fitSelAction->setToolTip(tr("Cadrer les nœuds sélectionnés, ou tout le graphe sans sélection (F, dans le graphe)"));
+    m_zoomLabel = new QLabel(bar);
+    m_zoomLabel->setMinimumWidth(54);
+    m_zoomLabel->setAlignment(Qt::AlignCenter);
+    m_zoomLabel->setToolTip(tr("Zoom du graphe (molette autour du curseur, bouton du milieu pour déplacer)"));
+    bar->addWidget(m_zoomLabel);
+    m_actPalette = bar->addAction(tr("Palette"));
+    m_actPalette->setCheckable(true);
+    m_actPalette->setChecked(true);
+    m_actPalette->setToolTip(tr("Afficher ou masquer la palette de nœuds (agrandit le canevas)"));
+    connect(m_actPalette, &QAction::toggled, this, &BlueprintEditor::setPaletteVisible);
+    m_actInspector = bar->addAction(tr("Inspecteur"));
+    m_actInspector->setCheckable(true);
+    m_actInspector->setChecked(true);
+    m_actInspector->setToolTip(tr("Afficher ou masquer l'inspecteur du nœud (propriétés, valeurs, problèmes)"));
+    connect(m_actInspector, &QAction::toggled, this, &BlueprintEditor::setInspectorVisible);
+    m_actMinimap = bar->addAction(tr("Mini-carte"));
+    m_actMinimap->setCheckable(true);
+    m_actMinimap->setChecked(true);
+    m_actMinimap->setToolTip(tr("Afficher ou masquer la mini-carte du graphe"));
+    connect(m_actMinimap, &QAction::toggled, this, &BlueprintEditor::setMinimapVisible);
     root->addWidget(bar);
 
     // Fil d'Ariane : corps de sous-graphe en cours d'édition
@@ -416,10 +533,12 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     root->addWidget(m_subgraphBar);
 
     auto* split = new QSplitter(Qt::Horizontal, this);
+    m_split = split;
     root->addWidget(split, 1);
 
     // Palette de nœuds
     auto* left = new QWidget(split);
+    m_paletteHost = left;
     auto* leftLay = new QVBoxLayout(left);
     leftLay->setContentsMargins(4, 4, 4, 4);
     m_search = new QLineEdit(left);
@@ -440,16 +559,29 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     view->handles = [](QKeyEvent* k) {
         const auto mods = k->modifiers() & ~Qt::KeypadModifier;
         return k->matches(QKeySequence::Copy) || k->matches(QKeySequence::Paste) || (k->key() == Qt::Key_D && mods == Qt::ControlModifier)
-               || (k->key() == Qt::Key_C && mods == Qt::NoModifier) || (k->key() == Qt::Key_F1 && mods == Qt::NoModifier);
+               || (k->key() == Qt::Key_C && mods == Qt::NoModifier) || (k->key() == Qt::Key_F1 && mods == Qt::NoModifier)
+               || (k->key() == Qt::Key_F && mods == Qt::NoModifier) || (k->key() == Qt::Key_Home && mods == Qt::NoModifier)
+               || k->matches(QKeySequence::Find);
     };
     view->onKey = [this](QKeyEvent* k) {
         if (k->matches(QKeySequence::Copy)) copySelection();
         else if (k->matches(QKeySequence::Paste)) paste();
+        else if (k->matches(QKeySequence::Find)) focusNodeSearch();
         else if (k->key() == Qt::Key_D) duplicateSelection();
         else if (k->key() == Qt::Key_C) addComment();
         else if (k->key() == Qt::Key_F1) showDocumentation();
+        else if (k->key() == Qt::Key_F) fitSelection();
+        else if (k->key() == Qt::Key_Home) fitAll();
+    };
+    view->onViewChanged = [this] { updateNavigation(); };
+    view->onResized = [this] {
+        if (m_minimap) static_cast<BlueprintMinimap*>(m_minimap)->place();
     };
     m_view = view;
+    m_minimap = new BlueprintMinimap(m_scene, view);
+    connect(m_scene, &QGraphicsScene::changed, this, [this] {
+        if (m_minimap && m_minimap->isVisible()) static_cast<BlueprintMinimap*>(m_minimap)->refit();
+    });
     m_view->setRenderHint(QPainter::Antialiasing);
     m_view->setDragMode(QGraphicsView::RubberBandDrag);
     m_view->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
@@ -477,6 +609,7 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
 
     // Valeurs du nœud sélectionné
     auto* right = new QWidget(split);
+    m_inspectorHost = right;
     auto* rightLay = new QVBoxLayout(right);
     rightLay->setContentsMargins(8, 8, 8, 8);
     m_nodeTitle = new QLabel(right);
@@ -534,6 +667,125 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     split->setSizes({ 240, 900, 280 });
 
     newBlueprint();
+    updateNavigation();
+}
+
+void BlueprintEditor::fitAll()
+{
+    // Tout le graphe, quelle que soit sa taille : jusqu'à 5 %, en dessous de la borne de la molette (20 %) — sinon les extrémités
+    // d'un grand graphe resteraient hors de la vue ; la molette ramène ensuite à une échelle lisible.
+    m_scene->fitSceneRectToItems();
+    const QRectF r = m_scene->itemsBoundingRect().adjusted(-40, -40, 40, 40);
+    if (r.isEmpty()) return;
+    const QSize vp = m_view->viewport()->size();
+    const double scale = std::clamp(std::min(vp.width() / r.width(), vp.height() / r.height()), 0.05, 1.5);
+    m_view->resetTransform();
+    m_view->scale(scale, scale);
+    m_view->centerOn(r.center());
+    updateNavigation();
+}
+
+void BlueprintEditor::fitSelection()
+{
+    QRectF r;
+    for (QGraphicsItem* item : m_scene->selectedItems()) r |= item->sceneBoundingRect();
+    if (r.isEmpty())
+    {
+        fitAll();
+        return;
+    }
+    r.adjust(-60, -60, 60, 60);
+    m_scene->fitSceneRectToItems();
+    const QSize vp = m_view->viewport()->size();
+    const double scale = std::clamp(std::min(vp.width() / r.width(), vp.height() / r.height()), 0.05, 1.5);
+    m_view->resetTransform();
+    m_view->scale(scale, scale);
+    m_view->centerOn(r.center());
+    updateNavigation();
+}
+
+double BlueprintEditor::zoomPercent() const
+{
+    return m_view ? m_view->transform().m11() * 100.0 : 100.0;
+}
+
+void BlueprintEditor::updateNavigation()
+{
+    if (m_zoomLabel) m_zoomLabel->setText(QStringLiteral("%1 %").arg(qRound(zoomPercent())));
+    if (m_minimap && m_minimap->isVisible()) m_minimap->viewport()->update();
+}
+
+void BlueprintEditor::focusNodeSearch()
+{
+    setPaletteVisible(true);
+    m_search->setFocus();
+    m_search->selectAll();
+}
+
+void BlueprintEditor::setPaletteVisible(bool visible)
+{
+    if (m_paletteHost) m_paletteHost->setVisible(visible);
+    if (m_actPalette && m_actPalette->isChecked() != visible)
+    {
+        QSignalBlocker block(m_actPalette);
+        m_actPalette->setChecked(visible);
+    }
+}
+
+void BlueprintEditor::setInspectorVisible(bool visible)
+{
+    if (m_inspectorHost) m_inspectorHost->setVisible(visible);
+    if (m_actInspector && m_actInspector->isChecked() != visible)
+    {
+        QSignalBlocker block(m_actInspector);
+        m_actInspector->setChecked(visible);
+    }
+}
+
+void BlueprintEditor::setMinimapVisible(bool visible)
+{
+    if (m_minimap)
+    {
+        m_minimap->setVisible(visible);
+        if (visible)
+        {
+            static_cast<BlueprintMinimap*>(m_minimap)->place();
+            static_cast<BlueprintMinimap*>(m_minimap)->refit();
+        }
+    }
+    if (m_actMinimap && m_actMinimap->isChecked() != visible)
+    {
+        QSignalBlocker block(m_actMinimap);
+        m_actMinimap->setChecked(visible);
+    }
+}
+
+bool BlueprintEditor::isPaletteVisible() const { return m_paletteHost && !m_paletteHost->isHidden(); }
+bool BlueprintEditor::isInspectorVisible() const { return m_inspectorHost && !m_inspectorHost->isHidden(); }
+bool BlueprintEditor::isMinimapVisible() const { return m_minimap && !m_minimap->isHidden(); }
+
+QByteArray BlueprintEditor::saveLayoutState() const
+{
+    QByteArray out;
+    QDataStream s(&out, QIODevice::WriteOnly);
+    s << quint8(1) << isPaletteVisible() << isInspectorVisible() << isMinimapVisible() << m_split->saveState();
+    return out;
+}
+
+bool BlueprintEditor::restoreLayoutState(const QByteArray& state)
+{
+    // État illisible (autre version, préférence corrompue) : disposition par défaut conservée, jamais d'échec bloquant
+    QDataStream s(state);
+    quint8 version = 0;
+    bool palette = true, inspector = true, minimap = true;
+    QByteArray split;
+    s >> version >> palette >> inspector >> minimap >> split;
+    if (s.status() != QDataStream::Ok || version != 1) return false;
+    if (!split.isEmpty()) m_split->restoreState(split);
+    setPaletteVisible(palette);
+    setInspectorVisible(inspector);
+    setMinimapVisible(minimap);
+    return true;
 }
 
 BlueprintEditor::~BlueprintEditor()
@@ -660,6 +912,7 @@ bool BlueprintEditor::open(const QString& path)
 void BlueprintEditor::fitGraph()
 {
     // Tout le Blueprint s'il tient lisiblement (zoom entre 45 % et 100 %) ; sinon, début du flux (à gauche).
+    m_scene->fitSceneRectToItems();
     const QRectF r = m_scene->itemsBoundingRect().adjusted(-40, -40, 40, 40);
     if (r.isEmpty()) return;
     const QSize vp = m_view->viewport()->size();
@@ -669,6 +922,7 @@ void BlueprintEditor::fitGraph()
     m_view->scale(scale, scale);
     const double visibleWidth = vp.width() / scale;
     m_view->centerOn(fit >= 0.45 ? r.center() : QPointF(r.left() + visibleWidth / 2, r.center().y()));
+    updateNavigation();
 }
 
 void BlueprintEditor::setGraph(Graph graph)

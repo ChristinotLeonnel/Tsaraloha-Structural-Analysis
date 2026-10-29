@@ -2147,6 +2147,118 @@
         <source>Informations de version</source>
         <translation>Mombamomba ny dikan-teny</translation>
     </message>
+    <message>
+        <source>Espace : modèle 3D</source>
+        <translation>Toerana fiasana: modely 3D</translation>
+    </message>
+    <message>
+        <source>Afficher la vue 3D du modèle seule</source>
+        <translation>Asehoy irery ny fijery 3D ny modely</translation>
+    </message>
+    <message>
+        <source>Espace : Blueprint</source>
+        <translation>Toerana fiasana: Blueprint</translation>
+    </message>
+    <message>
+        <source>Afficher l'éditeur de Blueprint sur toute la surface centrale</source>
+        <translation>Asehoy amin'ny faritra afovoany manontolo ny fanovana Blueprint</translation>
+    </message>
+    <message>
+        <source>Espace : vue partagée</source>
+        <translation>Toerana fiasana: fijery mizara</translation>
+    </message>
+    <message>
+        <source>Afficher la vue 3D et le Blueprint côte à côte</source>
+        <translation>Asehoy mifanila ny fijery 3D sy ny Blueprint</translation>
+    </message>
+    <message>
+        <source>Partage vertical</source>
+        <translation>Fizarana mitsangana</translation>
+    </message>
+    <message>
+        <source>Vue partagée : la vue 3D au-dessus du Blueprint</source>
+        <translation>Fijery mizara: ny fijery 3D eo ambonin'ny Blueprint</translation>
+    </message>
+    <message>
+        <source>Mode focus</source>
+        <translation>Fomba mifantoka</translation>
+    </message>
+    <message>
+        <source>Masquer ou rétablir tous les panneaux</source>
+        <translation>Afeno na averina ny tontonana rehetra</translation>
+    </message>
+    <message>
+        <source>Disposition par défaut</source>
+        <translation>Fandaminana tsotra</translation>
+    </message>
+    <message>
+        <source>Rétablir la disposition par défaut des panneaux et de l'espace de travail</source>
+        <translation>Averina ny fandaminana tsotra ny tontonana sy ny toerana fiasana</translation>
+    </message>
+    <message>
+        <source>Nouveau Blueprint</source>
+        <translation>Blueprint vaovao</translation>
+    </message>
+    <message>
+        <source>Nouveau programme de modélisation en blocs</source>
+        <translation>Fandaharana famolavolana amin'ny bloka vaovao</translation>
+    </message>
+    <message>
+        <source>Ouvrir un Blueprint</source>
+        <translation>Sokafy Blueprint</translation>
+    </message>
+    <message>
+        <source>Ouvrir un fichier Blueprint (.tsbp)</source>
+        <translation>Sokafy rakitra Blueprint (.tsbp)</translation>
+    </message>
+    <message>
+        <source>Enregistrer le Blueprint</source>
+        <translation>Tehirizo ny Blueprint</translation>
+    </message>
+    <message>
+        <source>Enregistrer le Blueprint édité</source>
+        <translation>Tehirizo ny Blueprint novaina</translation>
+    </message>
+    <message>
+        <source>Valider le Blueprint</source>
+        <translation>Hamarino ny Blueprint</translation>
+    </message>
+    <message>
+        <source>Contrôler le graphe sans l'exécuter</source>
+        <translation>Hamarino ny grafy nefa tsy tanterahina</translation>
+    </message>
+    <message>
+        <source>Exécuter le Blueprint</source>
+        <translation>Tanteraho ny Blueprint</translation>
+    </message>
+    <message>
+        <source>Exécuter le Blueprint sur le projet ouvert</source>
+        <translation>Tanteraho amin'ny tetikasa misokatra ny Blueprint</translation>
+    </message>
+    <message>
+        <source>Déboguer le Blueprint</source>
+        <translation>Tadiavo ny lesoka ao amin'ny Blueprint</translation>
+    </message>
+    <message>
+        <source>Exécuter en s'arrêtant aux points d'arrêt</source>
+        <translation>Tanteraho, mijanona eo amin'ny teboka fiatoana</translation>
+    </message>
+    <message>
+        <source>Cadrer le graphe</source>
+        <translation>Ampidiro ao anatin'ny fijery ny grafy</translation>
+    </message>
+    <message>
+        <source>Afficher tout le Blueprint</source>
+        <translation>Asehoy manontolo ny Blueprint</translation>
+    </message>
+    <message>
+        <source>Cadrer la sélection du graphe</source>
+        <translation>Ampidiro ao anatin'ny fijery ny voafidy ao amin'ny grafy</translation>
+    </message>
+    <message>
+        <source>Cadrer les nœuds sélectionnés du Blueprint</source>
+        <translation>Ampidiro ao anatin'ny fijery ny bloka voafidy ao amin'ny Blueprint</translation>
+    </message>
 </context>
 <context>
     <name>CommandCategory</name>
@@ -6278,6 +6390,134 @@ Jereo Fanampiana &gt; Môdiola.</translation>
     <message>
         <source>Champs et extensions non interprétés : conservés dans le projet et restitués à l'export TSA3D.</source>
         <translation>Saha sy fanitarana tsy voadika: voatahiry ao amin'ny tetikasa ary averina rehefa avoaka amin'ny TSA3D.</translation>
+    </message>
+    <message>
+        <source>Afficher tout le graphe</source>
+        <translation>Asehoy manontolo ny grafy</translation>
+    </message>
+    <message>
+        <source>Blueprint (*.tsbp)</source>
+        <translation>Blueprint (*.tsbp)</translation>
+    </message>
+    <message>
+        <source>Blueprint</source>
+        <translation>Blueprint</translation>
+    </message>
+    <message>
+        <source>Cadrer la sélection du graphe</source>
+        <translation>Ampidiro ao anatin'ny fijery ny voafidy ao amin'ny grafy</translation>
+    </message>
+    <message>
+        <source>Cadrer le graphe</source>
+        <translation>Ampidiro ao anatin'ny fijery ny grafy</translation>
+    </message>
+    <message>
+        <source>Cadrer les nœuds sélectionnés du Blueprint</source>
+        <translation>Ampidiro ao anatin'ny fijery ny bloka voafidy ao amin'ny Blueprint</translation>
+    </message>
+    <message>
+        <source>Contrôler le graphe sans l'exécuter (onglet Problèmes de l'inspecteur)</source>
+        <translation>Hamarino ny grafy nefa tsy tanterahina (takelaka Olana ao amin'ny mpandinika)</translation>
+    </message>
+    <message>
+        <source>Disposition par défaut rétablie.</source>
+        <translation>Naverina ny fandaminana tsotra.</translation>
+    </message>
+    <message>
+        <source>Disposition par défaut</source>
+        <translation>Fandaminana tsotra</translation>
+    </message>
+    <message>
+        <source>Déboguer</source>
+        <translation>Tadiavo ny lesoka</translation>
+    </message>
+    <message>
+        <source>Enregistrer le Blueprint édité (fichier .tsbp, distinct du projet)</source>
+        <translation>Tehirizo ny Blueprint novaina (rakitra .tsbp, misaraka amin'ny tetikasa)</translation>
+    </message>
+    <message>
+        <source>Enregistrer le Blueprint</source>
+        <translation>Tehirizo ny Blueprint</translation>
+    </message>
+    <message>
+        <source>Espace de travail : l'éditeur de Blueprint seul, toute la surface centrale (Ctrl+Alt+2)</source>
+        <translation>Toerana fiasana: ny fanovana Blueprint irery, amin'ny faritra afovoany manontolo (Ctrl+Alt+2)</translation>
+    </message>
+    <message>
+        <source>Espace de travail : la vue 3D du modèle seule (Ctrl+Alt+1)</source>
+        <translation>Toerana fiasana: ny fijery 3D ny modely irery (Ctrl+Alt+1)</translation>
+    </message>
+    <message>
+        <source>Espace de travail : vue 3D et Blueprint côte à côte, redimensionnables (Ctrl+Alt+3)</source>
+        <translation>Toerana fiasana: fijery 3D sy Blueprint mifanila, azo ovaina ny habeny (Ctrl+Alt+3)</translation>
+    </message>
+    <message>
+        <source>Exécuter en s'arrêtant aux points d'arrêt</source>
+        <translation>Tanteraho, mijanona eo amin'ny teboka fiatoana</translation>
+    </message>
+    <message>
+        <source>Exécuter le Blueprint sur le projet ouvert (une entrée Annuler par commande)</source>
+        <translation>Tanteraho amin'ny tetikasa misokatra ny Blueprint (fidirana Foano iray isaky ny baiko)</translation>
+    </message>
+    <message>
+        <source>Exécuter</source>
+        <translation>Tanteraho</translation>
+    </message>
+    <message>
+        <source>Masquer tous les panneaux pour agrandir l'espace de travail ; les rétablir ensuite (Ctrl+Maj+F)</source>
+        <translation>Afeno ny tontonana rehetra hanitarana ny toerana fiasana; averina avy eo (Ctrl+Maj+F)</translation>
+    </message>
+    <message>
+        <source>Mode focus : panneaux masqués (Ctrl+Maj+F pour les rétablir).</source>
+        <translation>Fomba mifantoka: tontonana miafina (Ctrl+Maj+F hamerenana azy).</translation>
+    </message>
+    <message>
+        <source>Mode focus</source>
+        <translation>Fomba mifantoka</translation>
+    </message>
+    <message>
+        <source>Modèle 3D</source>
+        <translation>Modely 3D</translation>
+    </message>
+    <message>
+        <source>Nouveau Blueprint</source>
+        <translation>Blueprint vaovao</translation>
+    </message>
+    <message>
+        <source>Nouveau programme de modélisation en blocs, exécuté sur ce projet</source>
+        <translation>Fandaharana famolavolana amin'ny bloka vaovao, tanterahina amin'ity tetikasa ity</translation>
+    </message>
+    <message>
+        <source>Ouvrir un Blueprint</source>
+        <translation>Sokafy Blueprint</translation>
+    </message>
+    <message>
+        <source>Ouvrir un Blueprint…</source>
+        <translation>Sokafy Blueprint…</translation>
+    </message>
+    <message>
+        <source>Ouvrir un fichier Blueprint (.tsbp)</source>
+        <translation>Sokafy rakitra Blueprint (.tsbp)</translation>
+    </message>
+    <message>
+        <source>Partage vertical</source>
+        <translation>Fizarana mitsangana</translation>
+    </message>
+    <message>
+        <source>Rétablir la disposition par défaut des panneaux et de l'espace de travail</source>
+        <translation>Averina ny fandaminana tsotra ny tontonana sy ny toerana fiasana</translation>
+    </message>
+    <message>
+        <source>Valider</source>
+        <translation>Hamarino</translation>
+    </message>
+    <message>
+        <source>Vue partagée : la vue 3D au-dessus du Blueprint plutôt qu'à côté</source>
+        <translation>Fijery mizara: ny fijery 3D eo ambonin'ny Blueprint fa tsy eo anilany</translation>
+    </message>
+    <message>
+        <source>Vue partagée</source>
+        <translation>Fijery mizara</translation>
     </message>
 </context>
 <context>
@@ -16691,6 +16931,50 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
         <source>Sous-graphe :</source>
         <translation>Zana-grafy:</translation>
     </message>
+    <message>
+        <source>Afficher ou masquer l'inspecteur du nœud (propriétés, valeurs, problèmes)</source>
+        <translation>Asehoy na afeno ny mpandinika ny bloka (toetra, sanda, olana)</translation>
+    </message>
+    <message>
+        <source>Afficher ou masquer la mini-carte du graphe</source>
+        <translation>Asehoy na afeno ny sarintany kely ny grafy</translation>
+    </message>
+    <message>
+        <source>Afficher ou masquer la palette de nœuds (agrandit le canevas)</source>
+        <translation>Asehoy na afeno ny lisitry ny bloka (manitatra ny faritra fiasana)</translation>
+    </message>
+    <message>
+        <source>Afficher tout le graphe (Origine, dans le graphe)</source>
+        <translation>Asehoy manontolo ny grafy (Origine, ao amin'ny grafy)</translation>
+    </message>
+    <message>
+        <source>Cadrer la sélection</source>
+        <translation>Jereo ny voafidy</translation>
+    </message>
+    <message>
+        <source>Cadrer les nœuds sélectionnés, ou tout le graphe sans sélection (F, dans le graphe)</source>
+        <translation>Ampidiro ao anatin'ny fijery ny bloka voafidy, na ny grafy manontolo raha tsy misy voafidy (F, ao amin'ny grafy)</translation>
+    </message>
+    <message>
+        <source>Cadrer tout</source>
+        <translation>Jereo daholo</translation>
+    </message>
+    <message>
+        <source>Inspecteur</source>
+        <translation>Mpandinika</translation>
+    </message>
+    <message>
+        <source>Mini-carte</source>
+        <translation>Sarintany kely</translation>
+    </message>
+    <message>
+        <source>Palette</source>
+        <translation>Lisitry ny bloka</translation>
+    </message>
+    <message>
+        <source>Zoom du graphe (molette autour du curseur, bouton du milieu pour déplacer)</source>
+        <translation>Fanakaikezana ny grafy (kodiarana manodidina ny tondro, bokotra afovoany hanetsehana)</translation>
+    </message>
 </context>
 <context>
     <name>TSA::UI::BlueprintScene</name>
@@ -24275,6 +24559,26 @@ Tsindrio indroa raha hanokatra</translation>
     <message>
         <source>Aide</source>
         <translation>Fanampiana</translation>
+    </message>
+    <message>
+        <source>Blueprint</source>
+        <translation>Blueprint</translation>
+    </message>
+    <message>
+        <source>Espace de travail</source>
+        <translation>Toerana fiasana</translation>
+    </message>
+    <message>
+        <source>Exécution</source>
+        <translation>Fanatanterahana</translation>
+    </message>
+    <message>
+        <source>Fichier</source>
+        <translation>Rakitra</translation>
+    </message>
+    <message>
+        <source>Navigation du graphe</source>
+        <translation>Fitetezana ny grafy</translation>
     </message>
 </context>
 <context>

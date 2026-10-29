@@ -12,11 +12,17 @@
 #include "Model/Load/LoadManager.h"
 #include "Project/ProjectSession.h"
 #include "UI/Blueprint/BlueprintEditor.h"
+#include "UI/Workspace/WorkspaceView.h"
 
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsView>
 
+#include <QElapsedTimer>
+#include <QLabel>
+#include <QScrollBar>
+#include <QSettings>
+#include <QSplitter>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QTemporaryDir>
@@ -1146,6 +1152,178 @@ bool runSuite_Blueprint(int& passed)
         std::cout << "[PASS] Test 393: sous-graphes dans l'éditeur — encapsulation, corps ouvert, versions, annuler, interface, imbrication, "
                      "graphe composé, .tsbps, contrôles du corps"
                   << std::endl;
+        ++passed;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------
+    // TEST 524 : espace de travail — dispositions Modèle 3D / Blueprint / Partagé, éditeur créé à la demande sur la MÊME
+    // session (un Blueprint exécuté modifie le modèle du document, Annuler le rétablit), préférences et état illisible.
+    // ------------------------------------------------------------------------------------------------------------------
+    {
+        using TSA::UI::WorkspaceView;
+        using Mode = WorkspaceView::Mode;
+        TSA::Project::ProjectSession session;
+        auto* model3d = new QWidget;
+        model3d->setObjectName(QStringLiteral("vue3d"));
+        auto ws = std::make_unique<WorkspaceView>(model3d);
+        ws->setSession(&session);
+        ws->resize(1200, 700);
+        ws->show();
+        int modeSignals = 0, created = 0;
+        QObject::connect(ws.get(), &WorkspaceView::modeChanged, [&] { ++modeSignals; });
+        QObject::connect(ws.get(), &WorkspaceView::blueprintCreated, [&] { ++created; });
+        TEST_CHECK(ws->mode() == Mode::Model3D && !ws->hasBlueprint() && model3d->isVisible(),
+                   "Test 524: démarrage en Modèle 3D, éditeur non créé (démarrage inchangé)");
+        ws->setMode(Mode::Blueprint);
+        QCoreApplication::processEvents();
+        TEST_CHECK(ws->hasBlueprint() && created == 1 && modeSignals == 1 && ws->blueprint()->isVisible() && !model3d->isVisible(),
+                   "Test 524: mode Blueprint — éditeur créé une fois, toute la surface, vue 3D masquée");
+        ws->setMode(Mode::Split);
+        QCoreApplication::processEvents();
+        const auto* split = ws->findChild<QSplitter*>(QStringLiteral("workspaceSplit"));
+        TEST_CHECK(split && model3d->isVisible() && ws->blueprint()->isVisible() && split->sizes().value(0) > 0 && split->sizes().value(1) > 0,
+                   "Test 524: vue partagée — les deux vues visibles, tailles non nulles");
+        ws->setSplitOrientation(Qt::Vertical);
+        TEST_CHECK(ws->splitOrientation() == Qt::Vertical && split->orientation() == Qt::Vertical, "Test 524: partage vertical");
+        ws->setMode(Mode::Split);
+        TEST_CHECK(modeSignals == 2 && created == 1, "Test 524: même mode redemandé — aucun signal, aucun second éditeur");
+
+        // Même projet : un Blueprint exécuté depuis l'espace de travail modifie le modèle de la session ; Annuler le rétablit
+        auto* editor = ws->blueprint();
+        const std::size_t nodes0 = session.model().nodes().size();
+        QString error;
+        TEST_CHECK(editor->importScript(QStringLiteral("model.create_node position=0,0,0"), &error), "Test 524: script importé (" << error.toStdString() << ")");
+        TEST_CHECK(editor->run() && session.model().nodes().size() == nodes0 + 1, "Test 524: Blueprint exécuté sur le modèle du document (nœud créé)");
+        TEST_CHECK(session.undo() && session.model().nodes().size() == nodes0, "Test 524: Annuler du projet retire le nœud créé par le Blueprint");
+
+        // Préférences : enregistrées puis relues par un nouvel espace de travail (sans éditeur au départ)
+        QTemporaryDir dir;
+        editor->setPaletteVisible(false);
+        {
+            QSettings settings(dir.filePath(QStringLiteral("ws.ini")), QSettings::IniFormat);
+            ws->saveState(settings);
+        }
+        {
+            QSettings settings(dir.filePath(QStringLiteral("ws.ini")), QSettings::IniFormat);
+            WorkspaceView again(new QWidget);
+            again.setSession(&session);
+            again.restoreState(settings);
+            TEST_CHECK(again.mode() == Mode::Split && again.splitOrientation() == Qt::Vertical && again.hasBlueprint() &&
+                           !again.blueprint()->isPaletteVisible() && again.blueprint()->isInspectorVisible(),
+                       "Test 524: disposition relue (mode partagé, vertical, palette repliée)");
+        }
+        // Préférences illisibles : disposition par défaut, aucun échec
+        {
+            QSettings settings(dir.filePath(QStringLiteral("bad.ini")), QSettings::IniFormat);
+            settings.setValue(QStringLiteral("Workspace/mode"), QStringLiteral("inconnu"));
+            settings.setValue(QStringLiteral("Workspace/splitSizes"), QVariantList{ QStringLiteral("a"), -5 });
+            settings.setValue(QStringLiteral("Workspace/blueprintLayout"), QByteArray("\x07garbage", 8));
+            WorkspaceView bad(new QWidget);
+            bad.restoreState(settings);
+            TEST_CHECK(bad.mode() == Mode::Model3D && !bad.hasBlueprint(), "Test 524: préférences illisibles — Modèle 3D, rien d'autre");
+            bad.setMode(Mode::Split);
+            TEST_CHECK(bad.blueprint()->isPaletteVisible() && bad.blueprint()->isMinimapVisible(),
+                       "Test 524: état d'éditeur illisible ignoré à la création (panneaux par défaut)");
+        }
+        Mode parsed = Mode::Split;
+        TEST_CHECK(!WorkspaceView::modeFromKey(QStringLiteral("x"), &parsed) && parsed == Mode::Split &&
+                       WorkspaceView::modeFromKey(WorkspaceView::modeKey(Mode::Blueprint), &parsed) && parsed == Mode::Blueprint,
+                   "Test 524: clés de mode (inconnue refusée)");
+        ws->resetLayout();
+        TEST_CHECK(ws->mode() == Mode::Model3D && ws->splitOrientation() == Qt::Horizontal && editor->isPaletteVisible() &&
+                       model3d->isVisible() && !editor->isVisible(),
+                   "Test 524: disposition par défaut (Modèle 3D, horizontal, panneaux de l'éditeur affichés)");
+        ws.reset();
+        std::cout << "[PASS] Test 524: espace de travail 3D / Blueprint / partagé, même session, préférences" << std::endl;
+        ++passed;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------
+    // TEST 525 : navigation et surface du canevas — cadrer tout / la sélection, indicateur de zoom, panneaux repliables,
+    // mini-carte, disposition de l'éditeur (aller-retour, état illisible refusé).
+    // ------------------------------------------------------------------------------------------------------------------
+    {
+        TSA::UI::BlueprintEditor editor;
+        editor.resize(1400, 800);
+        editor.show();
+        TSA::Blueprint::Graph g;
+        int far = 0;
+        for (int i = 0; i < 12; ++i) far = g.addNode("math.add", i * 400.0, (i % 3) * 300.0);
+        g.addNode("math.add", 0.0, 0.0);
+        editor.setGraph(g);
+        QCoreApplication::processEvents();
+        editor.fitAll();
+        const QRectF all = editor.view()->mapToScene(editor.view()->viewport()->rect()).boundingRect();
+        bool allVisible = true;
+        for (QGraphicsItem* item : editor.view()->scene()->items())
+            if (!item->parentItem() && item->isVisible()) allVisible &= all.contains(item->sceneBoundingRect().center());
+        TEST_CHECK(allVisible, "Test 525: Cadrer tout — tous les nœuds dans la vue (zoom " << editor.zoomPercent() << " %)");
+        const double zoomAll = editor.zoomPercent();
+        editor.selectNodes({ far });
+        editor.fitSelection();
+        TEST_CHECK(editor.zoomPercent() > zoomAll, "Test 525: Cadrer la sélection — zoom plus fort sur un seul nœud (" << editor.zoomPercent() << " %)");
+        editor.selectNodes({});
+        editor.fitSelection();
+        TEST_CHECK(std::abs(editor.zoomPercent() - zoomAll) < 0.5, "Test 525: Cadrer la sélection sans sélection = cadrer tout");
+        auto* zoomLabel = [&]() -> QLabel* {
+            for (QLabel* l : editor.findChildren<QLabel*>())
+                if (l->text().endsWith(QStringLiteral(" %"))) return l;
+            return nullptr;
+        }();
+        TEST_CHECK(zoomLabel && zoomLabel->text() == QStringLiteral("%1 %").arg(qRound(editor.zoomPercent())),
+                   "Test 525: indicateur de zoom à jour (" << (zoomLabel ? zoomLabel->text().toStdString() : std::string("absent")) << ")");
+
+        TEST_CHECK(editor.isPaletteVisible() && editor.isInspectorVisible() && editor.isMinimapVisible(), "Test 525: panneaux et mini-carte affichés par défaut");
+        const int canvasBefore = editor.view()->width();
+        editor.setPaletteVisible(false);
+        editor.setInspectorVisible(false);
+        QCoreApplication::processEvents();
+        TEST_CHECK(editor.view()->width() > canvasBefore + 300, "Test 525: palette et inspecteur repliés — canevas agrandi (" << canvasBefore << " → "
+                                                                                                                       << editor.view()->width() << " px)");
+        editor.setMinimapVisible(false);
+        const QByteArray state = editor.saveLayoutState();
+        TSA::UI::BlueprintEditor other;
+        TEST_CHECK(other.restoreLayoutState(state) && !other.isPaletteVisible() && !other.isInspectorVisible() && !other.isMinimapVisible(),
+                   "Test 525: disposition de l'éditeur relue");
+        TEST_CHECK(!other.restoreLayoutState(QByteArray("illisible")) && !other.isPaletteVisible(), "Test 525: état illisible refusé, disposition conservée");
+        editor.focusNodeSearch();
+        TEST_CHECK(editor.isPaletteVisible(), "Test 525: recherche de nœud (Ctrl+F) — palette réaffichée");
+        std::cout << "[PASS] Test 525: navigation du Blueprint — cadrages, zoom, panneaux repliables, mini-carte, disposition" << std::endl;
+        ++passed;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------
+    // TEST 526 : grand graphe (2 000 nœuds, 1 999 liens) — chargement, cadrage, rendu de la vue et de la mini-carte mesurés
+    // ------------------------------------------------------------------------------------------------------------------
+    {
+        TSA::UI::BlueprintEditor editor;
+        editor.resize(1600, 900);
+        editor.show();
+        TSA::Blueprint::Graph g;
+        int previous = 0;
+        for (int i = 0; i < 2000; ++i)
+        {
+            const int id = g.addNode("math.add", (i % 50) * 260.0, (i / 50) * 180.0);
+            if (previous) g.addLink({ previous, "result", id, "a" });
+            previous = id;
+        }
+        QElapsedTimer t;
+        t.start();
+        editor.setGraph(g);
+        QCoreApplication::processEvents();
+        const qint64 loadMs = t.restart();
+        editor.fitAll();
+        const QPixmap frame = editor.view()->grab();
+        const qint64 renderMs = t.restart();
+        editor.view()->horizontalScrollBar()->setValue(editor.view()->horizontalScrollBar()->value() + 200);
+        QCoreApplication::processEvents();
+        const QPixmap moved = editor.view()->grab();
+        const qint64 panMs = t.elapsed();
+        TEST_CHECK(!frame.isNull() && !moved.isNull() && editor.view()->scene()->items().size() >= 2000,
+                   "Test 526: grand graphe affiché (" << editor.view()->scene()->items().size() << " éléments)");
+        TEST_CHECK(loadMs < 20000 && renderMs < 10000 && panMs < 10000,
+                   "Test 526: durées raisonnables — chargement " << loadMs << " ms, cadrage + rendu " << renderMs << " ms, déplacement + rendu " << panMs << " ms");
+        std::cout << "[PASS] Test 526: grand graphe — chargement " << loadMs << " ms, rendu " << renderMs << " ms, déplacement " << panMs << " ms" << std::endl;
         ++passed;
     }
     return true;

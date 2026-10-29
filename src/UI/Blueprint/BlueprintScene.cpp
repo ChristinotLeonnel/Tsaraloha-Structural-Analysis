@@ -431,6 +431,12 @@ void BlueprintScene::rebuild()
         m_items[id] = item;
     }
     rebuildLinks();
+    fitSceneRectToItems();
+}
+
+void BlueprintScene::fitSceneRectToItems()
+{
+    setSceneRect(QRectF(-4000, -4000, 8000, 8000).united(itemsBoundingRect().adjusted(-2000, -2000, 2000, 2000)));
 }
 
 void BlueprintScene::rebuildLinks()

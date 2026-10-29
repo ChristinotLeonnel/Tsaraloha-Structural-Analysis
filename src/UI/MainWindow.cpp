@@ -21,6 +21,7 @@
 #include "Dialogs/WorkPlaneDialog.h"
 #include "Dialogs/SectionCutDialog.h"
 #include "Ruler/ViewportContainer.h"
+#include "Workspace/WorkspaceView.h"
 #include "Diagrams/Diagram2DWidget.h"
 #include "../NDC/NDCViewerWidget.h"
 #include "../Viewer/MeshVisual.h"
@@ -251,6 +252,7 @@ MainWindow::MainWindow(QWidget* parent)
     {
         m_windowManager->restoreLayout();
     }
+    restoreWorkspaceState();   // après les panneaux : le mode Blueprint masque ceux du modèle
 
     updateWindowTitle();
 }
@@ -306,10 +308,14 @@ void MainWindow::setupUi()
     m_occView->setSelectionManager(m_selectionManager.get());
     m_viewportContainer = new TSA::UI::ViewportContainer(m_occView, this);
     m_viewportContainer->setModel(m_model);
-    setCentralWidget(m_viewportContainer);
+    // Espace de travail : la vue 3D et, à la demande, l'éditeur de Blueprint sur la même session (même projet)
+    m_workspace = new TSA::UI::WorkspaceView(m_viewportContainer, this);
+    m_workspace->setSession(m_session.get());
+    setCentralWidget(m_workspace);
     createPreviewCapture();
 
     createActions();
+    createWorkspaceActions();
     createDockWindows();
     createMenus();
     createRibbon();
@@ -1471,10 +1477,12 @@ bool MainWindow::prepareToClose()
     if (!maybeSave())
         return false;
     capturePreview(true); // dernier état du modèle pour le Start Center
+    restoreContextualDocks();   // jamais un masquage temporaire (Blueprint, focus) dans la disposition enregistrée
     if (m_windowManager)
     {
         m_windowManager->saveLayout();
     }
+    saveWorkspaceState();
     return true;
 }
 

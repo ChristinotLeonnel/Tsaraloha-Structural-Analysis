@@ -2147,6 +2147,118 @@
         <source>Informations de version</source>
         <translation>Version information</translation>
     </message>
+    <message>
+        <source>Espace : modèle 3D</source>
+        <translation>Workspace: 3D model</translation>
+    </message>
+    <message>
+        <source>Afficher la vue 3D du modèle seule</source>
+        <translation>Show the 3D model view only</translation>
+    </message>
+    <message>
+        <source>Espace : Blueprint</source>
+        <translation>Workspace: Blueprint</translation>
+    </message>
+    <message>
+        <source>Afficher l'éditeur de Blueprint sur toute la surface centrale</source>
+        <translation>Show the Blueprint editor over the whole central area</translation>
+    </message>
+    <message>
+        <source>Espace : vue partagée</source>
+        <translation>Workspace: split view</translation>
+    </message>
+    <message>
+        <source>Afficher la vue 3D et le Blueprint côte à côte</source>
+        <translation>Show the 3D view and the Blueprint side by side</translation>
+    </message>
+    <message>
+        <source>Partage vertical</source>
+        <translation>Vertical split</translation>
+    </message>
+    <message>
+        <source>Vue partagée : la vue 3D au-dessus du Blueprint</source>
+        <translation>Split view: 3D view above the Blueprint</translation>
+    </message>
+    <message>
+        <source>Mode focus</source>
+        <translation>Focus mode</translation>
+    </message>
+    <message>
+        <source>Masquer ou rétablir tous les panneaux</source>
+        <translation>Hide or restore all panels</translation>
+    </message>
+    <message>
+        <source>Disposition par défaut</source>
+        <translation>Default layout</translation>
+    </message>
+    <message>
+        <source>Rétablir la disposition par défaut des panneaux et de l'espace de travail</source>
+        <translation>Restore the default layout of the panels and the workspace</translation>
+    </message>
+    <message>
+        <source>Nouveau Blueprint</source>
+        <translation>New Blueprint</translation>
+    </message>
+    <message>
+        <source>Nouveau programme de modélisation en blocs</source>
+        <translation>New block-based modelling program</translation>
+    </message>
+    <message>
+        <source>Ouvrir un Blueprint</source>
+        <translation>Open Blueprint</translation>
+    </message>
+    <message>
+        <source>Ouvrir un fichier Blueprint (.tsbp)</source>
+        <translation>Open a Blueprint file (.tsbp)</translation>
+    </message>
+    <message>
+        <source>Enregistrer le Blueprint</source>
+        <translation>Save Blueprint</translation>
+    </message>
+    <message>
+        <source>Enregistrer le Blueprint édité</source>
+        <translation>Save the edited Blueprint</translation>
+    </message>
+    <message>
+        <source>Valider le Blueprint</source>
+        <translation>Validate Blueprint</translation>
+    </message>
+    <message>
+        <source>Contrôler le graphe sans l'exécuter</source>
+        <translation>Check the graph without running it</translation>
+    </message>
+    <message>
+        <source>Exécuter le Blueprint</source>
+        <translation>Run Blueprint</translation>
+    </message>
+    <message>
+        <source>Exécuter le Blueprint sur le projet ouvert</source>
+        <translation>Run the Blueprint on the open project</translation>
+    </message>
+    <message>
+        <source>Déboguer le Blueprint</source>
+        <translation>Debug Blueprint</translation>
+    </message>
+    <message>
+        <source>Exécuter en s'arrêtant aux points d'arrêt</source>
+        <translation>Run, stopping at breakpoints</translation>
+    </message>
+    <message>
+        <source>Cadrer le graphe</source>
+        <translation>Fit graph</translation>
+    </message>
+    <message>
+        <source>Afficher tout le Blueprint</source>
+        <translation>Show the whole Blueprint</translation>
+    </message>
+    <message>
+        <source>Cadrer la sélection du graphe</source>
+        <translation>Fit graph selection</translation>
+    </message>
+    <message>
+        <source>Cadrer les nœuds sélectionnés du Blueprint</source>
+        <translation>Fit the selected Blueprint nodes</translation>
+    </message>
 </context>
 <context>
     <name>CommandCategory</name>
@@ -6278,6 +6390,134 @@ See Help &gt; Modules.</translation>
     <message>
         <source>Champs et extensions non interprétés : conservés dans le projet et restitués à l'export TSA3D.</source>
         <translation>Fields and extensions not interpreted: kept in the project and restored on TSA3D export.</translation>
+    </message>
+    <message>
+        <source>Afficher tout le graphe</source>
+        <translation>Show the whole graph</translation>
+    </message>
+    <message>
+        <source>Blueprint (*.tsbp)</source>
+        <translation>Blueprint (*.tsbp)</translation>
+    </message>
+    <message>
+        <source>Blueprint</source>
+        <translation>Blueprint</translation>
+    </message>
+    <message>
+        <source>Cadrer la sélection du graphe</source>
+        <translation>Fit graph selection</translation>
+    </message>
+    <message>
+        <source>Cadrer le graphe</source>
+        <translation>Fit graph</translation>
+    </message>
+    <message>
+        <source>Cadrer les nœuds sélectionnés du Blueprint</source>
+        <translation>Fit the selected Blueprint nodes</translation>
+    </message>
+    <message>
+        <source>Contrôler le graphe sans l'exécuter (onglet Problèmes de l'inspecteur)</source>
+        <translation>Check the graph without running it (Problems tab of the inspector)</translation>
+    </message>
+    <message>
+        <source>Disposition par défaut rétablie.</source>
+        <translation>Default layout restored.</translation>
+    </message>
+    <message>
+        <source>Disposition par défaut</source>
+        <translation>Default layout</translation>
+    </message>
+    <message>
+        <source>Déboguer</source>
+        <translation>Debug</translation>
+    </message>
+    <message>
+        <source>Enregistrer le Blueprint édité (fichier .tsbp, distinct du projet)</source>
+        <translation>Save the edited Blueprint (.tsbp file, separate from the project)</translation>
+    </message>
+    <message>
+        <source>Enregistrer le Blueprint</source>
+        <translation>Save Blueprint</translation>
+    </message>
+    <message>
+        <source>Espace de travail : l'éditeur de Blueprint seul, toute la surface centrale (Ctrl+Alt+2)</source>
+        <translation>Workspace: the Blueprint editor alone, over the whole central area (Ctrl+Alt+2)</translation>
+    </message>
+    <message>
+        <source>Espace de travail : la vue 3D du modèle seule (Ctrl+Alt+1)</source>
+        <translation>Workspace: the 3D model view alone (Ctrl+Alt+1)</translation>
+    </message>
+    <message>
+        <source>Espace de travail : vue 3D et Blueprint côte à côte, redimensionnables (Ctrl+Alt+3)</source>
+        <translation>Workspace: 3D view and Blueprint side by side, resizable (Ctrl+Alt+3)</translation>
+    </message>
+    <message>
+        <source>Exécuter en s'arrêtant aux points d'arrêt</source>
+        <translation>Run, stopping at breakpoints</translation>
+    </message>
+    <message>
+        <source>Exécuter le Blueprint sur le projet ouvert (une entrée Annuler par commande)</source>
+        <translation>Run the Blueprint on the open project (one Undo entry per command)</translation>
+    </message>
+    <message>
+        <source>Exécuter</source>
+        <translation>Run</translation>
+    </message>
+    <message>
+        <source>Masquer tous les panneaux pour agrandir l'espace de travail ; les rétablir ensuite (Ctrl+Maj+F)</source>
+        <translation>Hide all panels to enlarge the workspace; restore them afterwards (Ctrl+Shift+F)</translation>
+    </message>
+    <message>
+        <source>Mode focus : panneaux masqués (Ctrl+Maj+F pour les rétablir).</source>
+        <translation>Focus mode: panels hidden (Ctrl+Shift+F to restore them).</translation>
+    </message>
+    <message>
+        <source>Mode focus</source>
+        <translation>Focus mode</translation>
+    </message>
+    <message>
+        <source>Modèle 3D</source>
+        <translation>3D model</translation>
+    </message>
+    <message>
+        <source>Nouveau Blueprint</source>
+        <translation>New Blueprint</translation>
+    </message>
+    <message>
+        <source>Nouveau programme de modélisation en blocs, exécuté sur ce projet</source>
+        <translation>New block-based modelling program, run on this project</translation>
+    </message>
+    <message>
+        <source>Ouvrir un Blueprint</source>
+        <translation>Open Blueprint</translation>
+    </message>
+    <message>
+        <source>Ouvrir un Blueprint…</source>
+        <translation>Open Blueprint…</translation>
+    </message>
+    <message>
+        <source>Ouvrir un fichier Blueprint (.tsbp)</source>
+        <translation>Open a Blueprint file (.tsbp)</translation>
+    </message>
+    <message>
+        <source>Partage vertical</source>
+        <translation>Vertical split</translation>
+    </message>
+    <message>
+        <source>Rétablir la disposition par défaut des panneaux et de l'espace de travail</source>
+        <translation>Restore the default layout of the panels and the workspace</translation>
+    </message>
+    <message>
+        <source>Valider</source>
+        <translation>Validate</translation>
+    </message>
+    <message>
+        <source>Vue partagée : la vue 3D au-dessus du Blueprint plutôt qu'à côté</source>
+        <translation>Split view: the 3D view above the Blueprint rather than beside it</translation>
+    </message>
+    <message>
+        <source>Vue partagée</source>
+        <translation>Split view</translation>
     </message>
 </context>
 <context>
@@ -16694,6 +16934,50 @@ Fix the subgraph body or discard its changes.</translation>
         <source>Sous-graphe :</source>
         <translation>Subgraph:</translation>
     </message>
+    <message>
+        <source>Afficher ou masquer l'inspecteur du nœud (propriétés, valeurs, problèmes)</source>
+        <translation>Show or hide the node inspector (properties, values, problems)</translation>
+    </message>
+    <message>
+        <source>Afficher ou masquer la mini-carte du graphe</source>
+        <translation>Show or hide the graph minimap</translation>
+    </message>
+    <message>
+        <source>Afficher ou masquer la palette de nœuds (agrandit le canevas)</source>
+        <translation>Show or hide the node palette (enlarges the canvas)</translation>
+    </message>
+    <message>
+        <source>Afficher tout le graphe (Origine, dans le graphe)</source>
+        <translation>Show the whole graph (Home, in the graph)</translation>
+    </message>
+    <message>
+        <source>Cadrer la sélection</source>
+        <translation>Fit selection</translation>
+    </message>
+    <message>
+        <source>Cadrer les nœuds sélectionnés, ou tout le graphe sans sélection (F, dans le graphe)</source>
+        <translation>Fit the selected nodes, or the whole graph when nothing is selected (F, in the graph)</translation>
+    </message>
+    <message>
+        <source>Cadrer tout</source>
+        <translation>Fit all</translation>
+    </message>
+    <message>
+        <source>Inspecteur</source>
+        <translation>Inspector</translation>
+    </message>
+    <message>
+        <source>Mini-carte</source>
+        <translation>Minimap</translation>
+    </message>
+    <message>
+        <source>Palette</source>
+        <translation>Palette</translation>
+    </message>
+    <message>
+        <source>Zoom du graphe (molette autour du curseur, bouton du milieu pour déplacer)</source>
+        <translation>Graph zoom (wheel around the cursor, middle button to pan)</translation>
+    </message>
 </context>
 <context>
     <name>TSA::UI::BlueprintScene</name>
@@ -24279,6 +24563,26 @@ Double-click to open</translation>
     <message>
         <source>Aide</source>
         <translation>Help</translation>
+    </message>
+    <message>
+        <source>Blueprint</source>
+        <translation>Blueprint</translation>
+    </message>
+    <message>
+        <source>Espace de travail</source>
+        <translation>Workspace</translation>
+    </message>
+    <message>
+        <source>Exécution</source>
+        <translation>Execution</translation>
+    </message>
+    <message>
+        <source>Fichier</source>
+        <translation>File</translation>
+    </message>
+    <message>
+        <source>Navigation du graphe</source>
+        <translation>Graph navigation</translation>
     </message>
 </context>
 <context>

@@ -1651,6 +1651,20 @@ void MainWindow::createRibbon()
     if (m_propertiesDock) acts.actionToggleProperties = m_propertiesDock->toggleViewAction();
     if (m_visibilityDock) acts.actionToggleVisibility = m_visibilityDock->toggleViewAction();
     if (m_consoleDock) acts.actionToggleConsole = m_consoleDock->toggleViewAction();
+    acts.actionWorkspace3D = m_actionWorkspace3D;
+    acts.actionWorkspaceBlueprint = m_actionWorkspaceBlueprint;
+    acts.actionWorkspaceSplit = m_actionWorkspaceSplit;
+    acts.actionWorkspaceVertical = m_actionWorkspaceVertical;
+    acts.actionFocusMode = m_actionFocusMode;
+    acts.actionResetLayout = m_actionResetLayout;
+    acts.actionBlueprintNew = m_actionBlueprintNew;
+    acts.actionBlueprintOpen = m_actionBlueprintOpen;
+    acts.actionBlueprintSave = m_actionBlueprintSave;
+    acts.actionBlueprintValidate = m_actionBlueprintValidate;
+    acts.actionBlueprintRun = m_actionBlueprintRun;
+    acts.actionBlueprintDebug = m_actionBlueprintDebug;
+    acts.actionBlueprintFitAll = m_actionBlueprintFitAll;
+    acts.actionBlueprintFitSelection = m_actionBlueprintFitSelection;
 
     acts.actionMeasure = m_actionMeasure;
     acts.actionToggleTheme = m_actionToggleTheme;

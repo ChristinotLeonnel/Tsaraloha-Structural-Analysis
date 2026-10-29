@@ -99,6 +99,17 @@
         <file alias="view/display_fe.svg">icons/view/display_fe.svg</file>
         <file alias="view/visibility.svg">icons/view/visibility.svg</file>
         <file alias="view/fullscreen.svg">icons/view/fullscreen.svg</file>
+        <file alias="workspace/blueprint.svg">icons/workspace/blueprint.svg</file>
+        <file alias="workspace/split.svg">icons/workspace/split.svg</file>
+        <file alias="workspace/focus.svg">icons/workspace/focus.svg</file>
+        <file alias="workspace/model3d.svg">icons/workspace/model3d.svg</file>
+        <file alias="workspace/reset_layout.svg">icons/workspace/reset_layout.svg</file>
+        <file alias="blueprint/new.svg">icons/blueprint/new.svg</file>
+        <file alias="blueprint/open.svg">icons/blueprint/open.svg</file>
+        <file alias="blueprint/save.svg">icons/blueprint/save.svg</file>
+        <file alias="blueprint/run.svg">icons/blueprint/run.svg</file>
+        <file alias="blueprint/fit_all.svg">icons/blueprint/fit_all.svg</file>
+        <file alias="blueprint/fit_selection.svg">icons/blueprint/fit_selection.svg</file>
 
         <!-- 6. Opérations Structurelles (Structure) -->
         <file alias="structure/struct_move.svg">icons/structure/struct_move.svg</file>

@@ -82,6 +82,7 @@ set(UI_MAINWINDOW_SOURCES
     ${TSA_ROOT}/src/UI/MainWindow_Topology.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Dimensions.cpp
     ${TSA_ROOT}/src/UI/MainWindow_DisplayMode.cpp
+    ${TSA_ROOT}/src/UI/MainWindow_Workspace.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Shortcuts.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Tsa3d.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Reports.cpp
@@ -317,6 +318,8 @@ set(UI_WIDGETS_SOURCES
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintObjectViewer.cpp
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintSubgraphDialog.h
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintSubgraphDialog.cpp
+    ${TSA_ROOT}/src/UI/Workspace/WorkspaceView.h
+    ${TSA_ROOT}/src/UI/Workspace/WorkspaceView.cpp
     ${TSA_ROOT}/src/UI/Common/EcosystemApplication.h
     ${TSA_ROOT}/src/UI/Common/EcosystemApplication.cpp
     ${TSA_ROOT}/src/UI/Common/SelectionSynchronizer.h
