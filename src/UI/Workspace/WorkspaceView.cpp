@@ -23,7 +23,13 @@ WorkspaceView::WorkspaceView(QWidget* modelView, QWidget* parent)
     m_split->setChildrenCollapsible(false);
     m_split->setHandleWidth(5);
     layout->addWidget(m_split);
-    if (m_modelView) m_split->addWidget(m_modelView);
+    if (m_modelView)
+    {
+        // Vue partagée : la vue 3D garde une surface utile (sinon, en partage vertical, la fenêtre OCCT pouvait tomber à
+        // 0 px de haut sous le Blueprint ; le séparateur ne garantissait que la barre du conteneur).
+        m_modelView->setMinimumSize(m_modelView->minimumSize().expandedTo(QSize(240, 160)));
+        m_split->addWidget(m_modelView);
+    }
     connect(m_split, &QSplitter::splitterMoved, this, [this] {
         if (m_mode == Mode::Split) m_splitSizes = m_split->sizes();
     });

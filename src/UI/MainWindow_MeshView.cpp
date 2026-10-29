@@ -202,7 +202,7 @@ void MainWindow::createMeshViewActions()
             m_meshInspectDock->raise();
         }
         if (!on && m_meshVisual) m_meshVisual->clearHighlight();
-        if (m_occView) m_occView->view()->Redraw();
+        if (m_occView && !m_occView->view().IsNull()) m_occView->view()->Redraw();
     });
     m_actionMeshFit = new QAction(tr("Cadrer sur le maillage"), this);
     connect(m_actionMeshFit, &QAction::triggered, this, [this]() {
@@ -368,7 +368,8 @@ void MainWindow::setMeshOnly(bool on)
         m_occView->setNodesVisible(m_meshOnlySavedNodes);
         m_meshOnlySavedCategories.clear();
     }
-    m_occView->view()->Redraw();
+    // Vue 3D jamais affichée (démarrage en mode Blueprint) : pas encore de V3d_View
+    if (!m_occView->view().IsNull()) m_occView->view()->Redraw();
 }
 
 void MainWindow::refreshMeshOverlay()

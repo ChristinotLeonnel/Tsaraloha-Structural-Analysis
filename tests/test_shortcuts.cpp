@@ -381,10 +381,10 @@ bool runSuite_Shortcuts(int& passed)
         TEST_CHECK(nNode == 2, "Test 263: commande indisponible : raccourci sans effet");
         qApp->removeEventFilter(guard.get());
         std::cout << "[PASS] Test 263: Frappes clavier simulées" << std::endl;
-#else
-        std::cout << "[PASS] Test 263: Frappes clavier simulées — NON EXÉCUTÉ (Qt Test absent)" << std::endl;
-#endif
         ++passed;
+#else
+        std::cout << "[SKIP] Test 263: Frappes clavier simulées — NON EXÉCUTÉ (Qt Test absent)" << std::endl;
+#endif
     }
 
     // -------------------------------------------------------------------------
@@ -527,10 +527,10 @@ bool runSuite_Shortcuts(int& passed)
         TEST_CHECK(!ok2 && !errors.isEmpty() && errors.join(";").contains("écriture impossible") && ms2 < 3000 && save.shortcut() == QKeySequence("Ctrl+Shift+F11"),
                    "Test 377: fichier verrouillé durablement — échec explicite en " << ms2 << " ms, raccourcis inchangés");
         std::cout << "[PASS] Test 377: shortcut.txt enregistré malgré un verrou temporaire d'un autre processus" << std::endl;
-#else
-        std::cout << "[PASS] Test 377: verrou de fichier Windows — NON EXÉCUTÉ (hors Windows)" << std::endl;
-#endif
         ++passed;
+#else
+        std::cout << "[SKIP] Test 377: verrou de fichier Windows — NON EXÉCUTÉ (hors Windows)" << std::endl;
+#endif
     }
     // -------------------------------------------------------------------------
     // TEST 378 : répéter la dernière commande avec plusieurs documents (onglets) — la commande est rejouée dans le
@@ -582,6 +582,61 @@ bool runSuite_Shortcuts(int& passed)
         TEST_CHECK(nB == 3, "Test 378: aucun document visible — rien n'est déclenché");
         std::cout << "[PASS] Test 378: Répéter la dernière commande avec plusieurs documents" << std::endl;
         ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 529 : AltGr (Ctrl+Alt sous Windows) — dans un champ, une touche qui produit un caractère (« ~ » sur AltGr+é en
+    // AZERTY) est saisie et ne déclenche pas Ctrl+Alt+2 (espace de travail) ; hors champ, ou sans caractère, le raccourci
+    // reste actif. Défaut constaté dans TSA.exe (clavier français) : « ~ » et « # » impossibles à taper.
+    // -------------------------------------------------------------------------
+    {
+#ifdef TSA_HAVE_QTTEST
+        QWidget window;
+        window.setAttribute(Qt::WA_DontShowOnScreen);
+        auto* lay = new QVBoxLayout(&window);
+        auto* edit = new QLineEdit(&window);
+        auto* focusSink = new QWidget(&window);
+        focusSink->setFocusPolicy(Qt::StrongFocus);
+        lay->addWidget(edit);
+        lay->addWidget(focusSink);
+        QAction workspace(QStringLiteral("Espace : Blueprint"));
+        workspace.setShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+2")));
+        window.addAction(&workspace);
+        int triggered = 0;
+        QObject::connect(&workspace, &QAction::triggered, [&] { ++triggered; });
+        auto guard = std::make_unique<ShortcutInputGuard>();
+        qApp->installEventFilter(guard.get());
+        window.show();
+        QT_WARNING_PUSH
+        QT_WARNING_DISABLE_DEPRECATED
+        QApplication::setActiveWindow(&window);
+        QT_WARNING_POP
+        waitFor([&] { return QApplication::activeWindow() == &window; }, 2000);
+        TEST_CHECK(QApplication::activeWindow() == &window, "Test 529: fenêtre de test active");
+        const auto altGr = Qt::ControlModifier | Qt::AltModifier;
+        edit->setFocus();
+        QTest::sendKeyEvent(QTest::Click, edit, Qt::Key_2, QStringLiteral("~"), altGr);
+        TEST_CHECK(edit->text() == QStringLiteral("~") && triggered == 0,
+                   "Test 529: AltGr+é dans un champ — « ~ » saisi, raccourci non déclenché (texte « " << edit->text().toStdString() << " », " << triggered << ")");
+        QTest::sendKeyEvent(QTest::Click, edit, Qt::Key_2, QString(), altGr);
+        TEST_CHECK(triggered == 1, "Test 529: Ctrl+Alt+2 sans caractère dans un champ — raccourci actif");
+        // Clavier US (constaté dans TSA.exe) : Qt joint le caractère de la touche, « 2 » ; c'est le raccourci, pas une saisie
+        QTest::sendKeyEvent(QTest::Click, edit, Qt::Key_2, QStringLiteral("2"), altGr);
+        TEST_CHECK(triggered == 2 && edit->text() == QStringLiteral("~"),
+                   "Test 529: Ctrl+Alt+2 (clavier US, texte « 2 ») dans un champ — raccourci actif, rien saisi (texte « " << edit->text().toStdString() << " »)");
+        focusSink->setFocus();
+        QTest::sendKeyEvent(QTest::Click, focusSink, Qt::Key_2, QStringLiteral("~"), altGr);
+        TEST_CHECK(triggered == 3, "Test 529: hors champ de saisie — raccourci actif");
+        edit->setReadOnly(true);
+        edit->setFocus();
+        QTest::sendKeyEvent(QTest::Click, edit, Qt::Key_2, QStringLiteral("~"), altGr);
+        TEST_CHECK(triggered == 4 && edit->text() == QStringLiteral("~"), "Test 529: champ en lecture seule — raccourci actif");
+        qApp->removeEventFilter(guard.get());
+        std::cout << "[PASS] Test 529: AltGr dans les champs de saisie, raccourcis Ctrl+Alt ailleurs" << std::endl;
+        ++passed;
+#else
+        std::cout << "[SKIP] Test 529: AltGr dans les champs de saisie — NON EXÉCUTÉ (Qt Test absent)" << std::endl;
+#endif
     }
     return true;
 }

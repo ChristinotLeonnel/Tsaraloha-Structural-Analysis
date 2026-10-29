@@ -21,6 +21,7 @@
 #include "Dialogs/WorkPlaneDialog.h"
 #include "Dialogs/SectionCutDialog.h"
 #include "Ruler/ViewportContainer.h"
+#include "Blueprint/BlueprintEditor.h"
 #include "Workspace/WorkspaceView.h"
 #include "Diagrams/Diagram2DWidget.h"
 #include "../NDC/NDCViewerWidget.h"
@@ -1463,6 +1464,14 @@ bool MainWindow::maybeSave()
 
 bool MainWindow::confirmNoRunningAnalysis(const QString& action)
 {
+    // Blueprint en cours d'exécution ou en pause dans le débogueur (boucle d'événements imbriquée) : il agit sur la
+    // session de ce document, qui ne doit être ni vidée ni détruite sous lui.
+    if (m_workspace && m_workspace->hasBlueprint() && m_workspace->blueprint()->isRunning())
+    {
+        QMessageBox::information(this, tr("Blueprint en cours"),
+                                 tr("Un Blueprint est en cours d'exécution : arrêtez-le ou attendez sa fin avant de %1.").arg(action));
+        return false;
+    }
     if (!m_analysis->isRunning())
         return true;
     QMessageBox::information(this, tr("Calcul en cours"),

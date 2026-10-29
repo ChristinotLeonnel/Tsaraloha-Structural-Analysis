@@ -107,61 +107,67 @@ void MainWindow::onWorkspaceModeChanged()
     const Mode mode = m_workspace->mode();
     QAction* checked = mode == Mode::Blueprint ? m_actionWorkspaceBlueprint : mode == Mode::Split ? m_actionWorkspaceSplit : m_actionWorkspace3D;
     if (checked && !checked->isChecked()) checked->setChecked(true);
-
-    // Panneaux contextuels : en mode Blueprint, l'éditeur porte sa palette (explorateur) et son inspecteur ; les panneaux
-    // du modèle 3D (arbre, propriétés structurelles, visibilité…) s'effacent, la console (journal du Blueprint) reste.
-    // Ils reviennent à l'identique en quittant le mode Blueprint. Mode focus : il gère lui-même tous les panneaux.
-    if (mode == Mode::Blueprint)
-    {
-        if (m_docksHiddenForBlueprint.isEmpty() && !m_actionFocusMode->isChecked())
-        {
-            for (QDockWidget* dock : findChildren<QDockWidget*>())
-            {
-                if (dock == m_consoleDock || !dock->isVisible() || dock->isFloating()) continue;
-                m_docksHiddenForBlueprint << dock;
-                dock->hide();
-            }
-        }
-    }
-    else
-    {
-        for (const QPointer<QDockWidget>& dock : std::as_const(m_docksHiddenForBlueprint))
-            if (dock) dock->show();
-        m_docksHiddenForBlueprint.clear();
-    }
+    applyContextualDocks();
 }
 
 void MainWindow::setFocusMode(bool on)
 {
-    if (on)
+    applyContextualDocks();
+    if (on && m_consoleDock) m_consoleDock->appendLog(tr("Mode focus : panneaux masqués (Ctrl+Maj+F pour les rétablir)."), "SYS");
+}
+
+void MainWindow::applyContextualDocks()
+{
+    // Panneaux contextuels, recalculés à chaque changement de mode ou du mode focus (quel que soit l'ordre) :
+    //  - mode focus : tous les panneaux ancrés masqués ;
+    //  - mode Blueprint : l'éditeur porte sa palette (explorateur) et son inspecteur ; les panneaux du modèle 3D
+    //    s'effacent, la console (journal du Blueprint) reste ;
+    //  - sinon : chaque panneau masqué ici revient à l'identique.
+    // Seuls les panneaux masqués par l'espace de travail sont rétablis ; les panneaux flottants ne sont jamais touchés.
+    // isHidden() (état explicite) et non isVisible() : à la restauration des préférences la fenêtre n'est pas encore
+    // affichée, et un panneau en onglet inactif n'est pas visible sans être fermé.
+    const bool focus = m_actionFocusMode && m_actionFocusMode->isChecked();
+    const bool blueprint = m_workspace && m_workspace->mode() == TSA::UI::WorkspaceView::Mode::Blueprint;
+    auto shouldHide = [&](QDockWidget* dock) { return focus || (blueprint && dock != m_consoleDock); };
+    QList<QDockWidget*> restored;
+    for (auto it = m_docksHiddenByWorkspace.begin(); it != m_docksHiddenByWorkspace.end();)
     {
-        // Tous les panneaux visibles, console comprise, mémorisés puis masqués ; ceux déjà masqués pour le Blueprint aussi
-        // (ils reviendront à la sortie du mode focus, ou du mode Blueprint, selon l'ordre de sortie).
-        for (QDockWidget* dock : findChildren<QDockWidget*>())
+        if (!*it) it = m_docksHiddenByWorkspace.erase(it);
+        else if (!shouldHide(*it))
         {
-            if (!dock->isVisible() || dock->isFloating()) continue;
-            m_docksHiddenForFocus << dock;
-            dock->hide();
+            (*it)->show();
+            restored << *it;
+            it = m_docksHiddenByWorkspace.erase(it);
         }
-        if (m_consoleDock) m_consoleDock->appendLog(tr("Mode focus : panneaux masqués (Ctrl+Maj+F pour les rétablir)."), "SYS");
+        else ++it;
     }
-    else
+    // Panneaux en onglets : chaque réaffichage change l'onglet actif ; l'onglet affiché avant le masquage revient devant
+    for (QDockWidget* dock : std::as_const(restored))
+        if (m_docksOnTopBeforeHide.contains(dock)) dock->raise();
+    m_docksOnTopBeforeHide.removeIf([&](const QPointer<QDockWidget>& d) { return !d || restored.contains(d.data()); });
+    QList<QDockWidget*> toHide;
+    for (QDockWidget* dock : findChildren<QDockWidget*>())
+        if (!dock->isHidden() && !dock->isFloating() && shouldHide(dock)) toHide << dock;
+    // Onglets actifs relevés AVANT tout masquage : masquer l'onglet actif d'un groupe amène aussitôt le suivant devant
+    // (constaté dans TSA.exe : « Calques » remplacé par « Arbre du modèle » au retour du mode Blueprint).
+    for (QDockWidget* dock : std::as_const(toHide))
+        if (dock->isVisible()) m_docksOnTopBeforeHide << dock;   // fenêtre affichée : onglet actif de son groupe
+    for (QDockWidget* dock : std::as_const(toHide))
     {
-        for (const QPointer<QDockWidget>& dock : std::as_const(m_docksHiddenForFocus))
-            if (dock) dock->show();
-        m_docksHiddenForFocus.clear();
+        m_docksHiddenByWorkspace << dock;
+        dock->hide();
     }
 }
 
 void MainWindow::restoreContextualDocks()
 {
     // Avant d'enregistrer la disposition des panneaux : jamais un masquage temporaire (Blueprint, focus) dans l'état sauvé.
-    for (auto* list : { &m_docksHiddenForFocus, &m_docksHiddenForBlueprint })
-    {
-        for (const QPointer<QDockWidget>& dock : std::as_const(*list))
-            if (dock) dock->show();
-        list->clear();
-    }
+    for (const QPointer<QDockWidget>& dock : std::as_const(m_docksHiddenByWorkspace))
+        if (dock) dock->show();
+    for (const QPointer<QDockWidget>& dock : std::as_const(m_docksOnTopBeforeHide))
+        if (dock) dock->raise();
+    m_docksHiddenByWorkspace.clear();
+    m_docksOnTopBeforeHide.clear();
     if (m_actionFocusMode && m_actionFocusMode->isChecked())
     {
         QSignalBlocker block(m_actionFocusMode);

@@ -14,12 +14,14 @@
 #include "UI/Blueprint/BlueprintEditor.h"
 #include "UI/Workspace/WorkspaceView.h"
 
+#include <QAction>
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsView>
 
 #include <QElapsedTimer>
 #include <QLabel>
+#include <QLineEdit>
 #include <QScrollBar>
 #include <QSettings>
 #include <QSplitter>
@@ -1288,6 +1290,21 @@ bool runSuite_Blueprint(int& passed)
         TEST_CHECK(!other.restoreLayoutState(QByteArray("illisible")) && !other.isPaletteVisible(), "Test 525: état illisible refusé, disposition conservée");
         editor.focusNodeSearch();
         TEST_CHECK(editor.isPaletteVisible(), "Test 525: recherche de nœud (Ctrl+F) — palette réaffichée");
+        // Mini-carte : mise de côté sur un canevas trop petit (fenêtre minimale, vue partagée), choix de l'utilisateur conservé
+        {
+            TSA::UI::BlueprintEditor small;
+            small.setPaletteVisible(false);
+            small.setInspectorVisible(false);
+            small.resize(300, 300);   // canevas à sa largeur minimale (280 px)
+            small.show();
+            QCoreApplication::processEvents();
+            QGraphicsView* minimap = small.view()->viewport()->findChild<QGraphicsView*>();
+            TEST_CHECK(minimap && !minimap->isVisible() && small.isMinimapVisible(),
+                       "Test 525: canevas étroit — mini-carte mise de côté, toujours demandée (" << small.view()->viewport()->width() << " px)");
+            small.resize(1400, 800);
+            QCoreApplication::processEvents();
+            TEST_CHECK(minimap->isVisible() && minimap->width() <= 220 && minimap->width() >= 120, "Test 525: canevas large — mini-carte revenue (" << minimap->width() << " px)");
+        }
         std::cout << "[PASS] Test 525: navigation du Blueprint — cadrages, zoom, panneaux repliables, mini-carte, disposition" << std::endl;
         ++passed;
     }
@@ -1324,6 +1341,134 @@ bool runSuite_Blueprint(int& passed)
         TEST_CHECK(loadMs < 20000 && renderMs < 10000 && panMs < 10000,
                    "Test 526: durées raisonnables — chargement " << loadMs << " ms, cadrage + rendu " << renderMs << " ms, déplacement + rendu " << panMs << " ms");
         std::cout << "[PASS] Test 526: grand graphe — chargement " << loadMs << " ms, rendu " << renderMs << " ms, déplacement " << panMs << " ms" << std::endl;
+        ++passed;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------
+    // TEST 527 : espace de travail réel — éditeur construit masqué puis affiché (le graphe reste dans la vue : défaut vu
+    // dans TSA.exe, nœud « Début » hors champ), canevas jamais écrasé en vue partagée étroite, Annuler PUIS Rétablir.
+    // ------------------------------------------------------------------------------------------------------------------
+    {
+        using TSA::UI::WorkspaceView;
+        using Mode = WorkspaceView::Mode;
+        TSA::Project::ProjectSession session;
+        auto ws = std::make_unique<WorkspaceView>(new QWidget);
+        ws->setSession(&session);
+        ws->resize(1400, 800);
+        ws->show();
+        QCoreApplication::processEvents();
+        ws->setMode(Mode::Blueprint);
+        QCoreApplication::processEvents();
+        auto* editor = ws->blueprint();
+        const QRectF seen = editor->view()->mapToScene(editor->view()->viewport()->rect()).boundingRect();
+        const QRectF graph = editor->view()->scene()->itemsBoundingRect();
+        TEST_CHECK(!graph.isEmpty() && seen.contains(graph),
+                   "Test 527: éditeur affiché après construction masquée — graphe dans la vue (vue " << seen.x() << "," << seen.y() << " "
+                       << seen.width() << "x" << seen.height() << ", graphe " << graph.x() << "," << graph.y() << ")");
+
+        // Réaffiché après avoir quitté le mode sur une zone vide : la vue revient sur le graphe (vu dans TSA.exe)
+        editor->view()->centerOn(3500, 3500);
+        ws->setMode(Mode::Model3D);
+        QCoreApplication::processEvents();
+        ws->setMode(Mode::Blueprint);
+        QCoreApplication::processEvents();
+        QCoreApplication::processEvents();
+        const QRectF back = editor->view()->mapToScene(editor->view()->viewport()->rect()).boundingRect();
+        TEST_CHECK(back.intersects(editor->view()->scene()->itemsBoundingRect()), "Test 527: canevas réaffiché sur une zone vide — graphe ramené dans la vue");
+        ws->resize(760, 600);
+        ws->setMode(Mode::Split);
+        QCoreApplication::processEvents();
+        TEST_CHECK(editor->view()->width() >= 280, "Test 527: vue partagée étroite — canevas lisible (" << editor->view()->width() << " px)");
+        ws->setSplitOrientation(Qt::Vertical);
+        ws->resize(760, 420);
+        QCoreApplication::processEvents();
+        const QWidget* model = ws->findChild<QSplitter*>(QStringLiteral("workspaceSplit"))->widget(0);
+        TEST_CHECK(model->height() >= 160 && model->width() >= 240, "Test 527: partage vertical bas — vue 3D jamais réduite à rien (" << model->width() << "x" << model->height() << ")");
+
+        const std::size_t nodes0 = session.model().nodes().size();
+        QString error;
+        TEST_CHECK(editor->importScript(QStringLiteral("model.create_node position=1,2,0"), &error) && editor->run(),
+                   "Test 527: Blueprint exécuté (" << error.toStdString() << ")");
+        TEST_CHECK(session.model().nodes().size() == nodes0 + 1, "Test 527: nœud créé dans le modèle du document");
+        TEST_CHECK(session.undo() && session.model().nodes().size() == nodes0, "Test 527: Annuler retire le nœud");
+        TEST_CHECK(session.redo() && session.model().nodes().size() == nodes0 + 1, "Test 527: Rétablir le recrée");
+        std::cout << "[PASS] Test 527: espace de travail — cadrage à l'affichage, vue partagée étroite, Annuler / Rétablir" << std::endl;
+        ++passed;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------
+    // TEST 528 : recherche dans le graphe — instances placées (titre, type, numéro) distinctes des types de la palette,
+    // activées = sélection et centrage sans ajout, résultats tenus à jour (suppression, Annuler du graphe), texte vide.
+    // ------------------------------------------------------------------------------------------------------------------
+    {
+        TSA::UI::BlueprintEditor editor;
+        editor.resize(1400, 800);
+        editor.show();
+        TSA::Blueprint::Graph g;
+        const int a1 = g.addNode("math.add", 0.0, 0.0);
+        const int a2 = g.addNode("math.add", 3000.0, 2000.0);
+        const int m1 = g.addNode("math.multiply", 600.0, 0.0);
+        editor.setGraph(g);
+        QCoreApplication::processEvents();
+        TEST_CHECK(editor.findPlacedNodes(QStringLiteral("math.add")) == (std::vector<int>{ a1, a2 }), "Test 528: recherche par type");
+        TEST_CHECK(editor.findPlacedNodes(QStringLiteral("#%1").arg(m1)) == std::vector<int>{ m1 }
+                       && editor.findPlacedNodes(QString::number(m1)) == std::vector<int>{ m1 },
+                   "Test 528: recherche par numéro (#n et n)");
+        TEST_CHECK(editor.findPlacedNodes(QString()).empty() && editor.findPlacedNodes(QStringLiteral("introuvable")).empty(),
+                   "Test 528: texte vide ou sans correspondance — aucun résultat");
+
+        QLineEdit* search = nullptr;
+        for (auto* e : editor.findChildren<QLineEdit*>())
+            if (e->placeholderText().startsWith(QStringLiteral("Rechercher"))) search = e;
+        QTreeWidget* palette = nullptr;
+        for (auto* t : editor.findChildren<QTreeWidget*>())
+            if (t->topLevelItemCount() > 0 && !palette) palette = t;
+        TEST_CHECK(search && palette, "Test 528: champ de recherche et palette trouvés");
+        const int categories = palette->topLevelItemCount();
+        search->setText(QStringLiteral("math.add"));
+        QTreeWidgetItem* group = palette->topLevelItem(0);
+        TEST_CHECK(palette->topLevelItemCount() == categories + 1 && group && group->text(0).contains(QStringLiteral("(2)")) && group->childCount() == 2,
+                   "Test 528: groupe « Dans le graphe » en tête, deux instances (" << (group ? group->text(0).toStdString() : std::string()) << ")");
+        bool typesKept = false;
+        for (int i = 1; i < palette->topLevelItemCount(); ++i)
+            if (!palette->topLevelItem(i)->isHidden()) typesKept = true;
+        TEST_CHECK(typesKept, "Test 528: types de la palette toujours proposés à côté des instances");
+
+        // Activer une instance : sélectionnée et centrée, aucun nœud ajouté
+        const std::size_t count0 = editor.graph().nodes().size();
+        QTreeWidgetItem* second = group->child(1);
+        palette->setCurrentItem(second);
+        editor.fitAll();   // graphe vu de loin : l'instance trouvée doit redevenir lisible
+        emit palette->itemActivated(second, 0);
+        QCoreApplication::processEvents();
+        const QRectF seen = editor.view()->mapToScene(editor.view()->viewport()->rect()).boundingRect();
+        QGraphicsItem* selected = editor.view()->scene()->selectedItems().value(0);
+        TEST_CHECK(editor.graph().nodes().size() == count0 && editor.view()->scene()->selectedItems().size() == 1 && selected
+                       && seen.contains(selected->sceneBoundingRect().center()) && editor.zoomPercent() >= 100.0,
+                   "Test 528: instance activée (double-clic ou Entrée) — sélectionnée, cadrée lisiblement (" << editor.zoomPercent() << " %), aucun ajout");
+
+        // Entrée dans la recherche : premier résultat activé (instance placée), au clavier seul
+        search->setText(QStringLiteral("#%1").arg(m1));
+        editor.fitAll();
+        emit search->returnPressed();
+        QCoreApplication::processEvents();
+        TEST_CHECK(editor.graph().nodes().size() == count0 && editor.view()->scene()->selectedItems().size() == 1 && editor.zoomPercent() >= 100.0,
+                   "Test 528: Entrée dans la recherche — instance trouvée sélectionnée et cadrée, aucun ajout");
+        search->setText(QStringLiteral("math.add"));
+        // Résultats à jour : suppression puis Annuler du graphe
+        editor.selectNodes({ a1 });
+        QCoreApplication::processEvents();
+        for (QAction* a : editor.findChildren<QAction*>())
+            if (a->text() == QStringLiteral("Supprimer")) a->trigger();
+        group = palette->topLevelItem(0);
+        TEST_CHECK(editor.graph().nodes().size() == count0 - 1 && group && group->childCount() == 1,
+                   "Test 528: nœud supprimé — résultat retiré (" << (group ? group->childCount() : -1) << ")");
+        editor.undo();
+        group = palette->topLevelItem(0);
+        TEST_CHECK(editor.graph().nodes().size() == count0 && group && group->childCount() == 2, "Test 528: Annuler du graphe — résultat revenu");
+        search->clear();
+        TEST_CHECK(palette->topLevelItemCount() == categories, "Test 528: recherche effacée — groupe retiré, palette intacte");
+        std::cout << "[PASS] Test 528: recherche des nœuds placés, distincte de la palette" << std::endl;
         ++passed;
     }
     return true;

@@ -83,6 +83,8 @@ public:
 signals:
     void message(const QString& text);
     void graphChanged();
+    /// Éléments reconstruits depuis le graphe (chargement, Annuler, collage, sous-graphe…).
+    void rebuilt();
     /// Des nœuds ont été déplacés à la souris (fin du glisser).
     void nodesMoved();
     /// Double-clic sur un commentaire : modifier son texte.

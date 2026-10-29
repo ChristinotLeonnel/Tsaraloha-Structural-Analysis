@@ -432,6 +432,7 @@ void BlueprintScene::rebuild()
     }
     rebuildLinks();
     fitSceneRectToItems();
+    emit rebuilt();
 }
 
 void BlueprintScene::fitSceneRectToItems()

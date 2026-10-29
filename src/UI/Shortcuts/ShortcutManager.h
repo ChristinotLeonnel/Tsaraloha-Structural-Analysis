@@ -118,7 +118,8 @@ private:
 
 /// Garde des champs de saisie : dans un champ de texte, une touche de saisie (lettre, chiffre, Suppr,
 /// flèches) ou d'édition standard (Ctrl+C, Ctrl+V, Ctrl+Z…) va au champ et ne déclenche aucun raccourci
-/// de commande ; dans un enregistreur de raccourci (QKeySequenceEdit), toutes les touches vont au champ.
+/// de commande ; de même une touche AltGr (Ctrl+Alt sous Windows) qui produit un caractère ; dans un enregistreur de
+/// raccourci (QKeySequenceEdit), toutes les touches vont au champ.
 class ShortcutInputGuard : public QObject
 {
     Q_OBJECT

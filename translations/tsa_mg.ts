@@ -6519,6 +6519,14 @@ Jereo Fanampiana &gt; Môdiola.</translation>
         <source>Vue partagée</source>
         <translation>Fijery mizara</translation>
     </message>
+    <message>
+        <source>Blueprint en cours</source>
+        <translation>Blueprint mandeha</translation>
+    </message>
+    <message>
+        <source>Un Blueprint est en cours d'exécution : arrêtez-le ou attendez sa fin avant de %1.</source>
+        <translation>Misy Blueprint mandeha: ajanony na andraso ho vita alohan'ny %1.</translation>
+    </message>
 </context>
 <context>
     <name>OccView</name>
@@ -16974,6 +16982,18 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
     <message>
         <source>Zoom du graphe (molette autour du curseur, bouton du milieu pour déplacer)</source>
         <translation>Fanakaikezana ny grafy (kodiarana manodidina ny tondro, bokotra afovoany hanetsehana)</translation>
+    </message>
+    <message>
+        <source>Nœuds déjà placés dans le graphe : double-cliquer pour sélectionner et centrer le nœud</source>
+        <translation>Bloka efa napetraka ao amin'ny grafy: tsindrio indroa hisafidianana sy hametrahana eo afovoany ny bloka</translation>
+    </message>
+    <message>
+        <source>Dans le graphe (%1, %2 premiers affichés)</source>
+        <translation>Ao amin'ny grafy (%1, ny %2 voalohany no aseho)</translation>
+    </message>
+    <message>
+        <source>Dans le graphe (%1)</source>
+        <translation>Ao amin'ny grafy (%1)</translation>
     </message>
 </context>
 <context>

@@ -44,6 +44,7 @@
 #include <QCoreApplication>
 #include <QDataStream>
 #include <QPainter>
+#include <QShortcut>
 #include <QSignalBlocker>
 
 #include <cmath>
@@ -70,6 +71,7 @@ public:
     std::function<void(QKeyEvent*)> onKey;
     std::function<void()> onViewChanged;       ///< zoom ou déplacement (indicateur de zoom, mini-carte)
     std::function<void()> onResized;
+    std::function<void()> onShown;             ///< canevas affiché (changement de mode de l'espace de travail)
 
 protected:
     /// Grille discrète (pas de 20, trait majeur tous les 100) : repère de placement sans concurrencer les nœuds ; la
@@ -102,6 +104,12 @@ protected:
         QGraphicsView::resizeEvent(e);
         if (onResized) onResized();
         if (onViewChanged) onViewChanged();
+    }
+    void showEvent(QShowEvent* e) override
+    {
+        QGraphicsView::showEvent(e);
+        // Différé : la géométrie définitive (fenêtre agrandie, panneaux masqués) n'est posée qu'après l'affichage
+        if (onShown) QTimer::singleShot(0, this, [this] { if (onShown && isVisible()) onShown(); });
     }
 
     bool event(QEvent* e) override
@@ -194,11 +202,24 @@ public:
         if (!r.isEmpty()) fitInView(r, Qt::KeepAspectRatio);
         viewport()->update();
     }
+    /// Taille suivant le canevas (un quart de sa largeur, de 120 à 220 px) ; mise de côté sur un canevas trop petit pour
+    /// la loger sans cacher le graphe (fenêtre minimale, vue partagée : constaté dans TSA.exe), sans changer le choix de
+    /// l'utilisateur (wanted), qui reste enregistré et coché.
     void place()
     {
         const QWidget* host = m_main->viewport();
-        move(host->width() - width() - 8, host->height() - height() - 8);
+        const int w = std::clamp(host->width() / 4, 120, 220), h = w * 140 / 220;
+        setFixedSize(w, h);
+        move(host->width() - w - 8, host->height() - h - 8);
+        const bool fits = host->width() >= 3 * w && host->height() >= 2 * h + 16;
+        setVisible(m_wanted && fits);
     }
+    void setWanted(bool wanted)
+    {
+        m_wanted = wanted;
+        place();
+    }
+    bool wanted() const { return m_wanted; }
 
 protected:
     void drawForeground(QPainter* p, const QRectF&) override
@@ -219,6 +240,7 @@ protected:
 
 private:
     QGraphicsView* m_main;
+    bool m_wanted = true;
 };
 
 constexpr int kTypeRole = Qt::UserRole + 10;
@@ -550,7 +572,35 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     m_palette->setToolTip(tr("Double-cliquer pour ajouter le nœud au centre de la vue"));
     leftLay->addWidget(m_palette, 1);
     connect(m_search, &QLineEdit::textChanged, this, &BlueprintEditor::filterPalette);
-    connect(m_palette, &QTreeWidget::itemDoubleClicked, this, &BlueprintEditor::addFromPalette);
+    // Double-clic ou Entrée (itemActivated) : la palette se pilote aussi au clavier, après Ctrl+F
+    connect(m_palette, &QTreeWidget::itemActivated, this, &BlueprintEditor::addFromPalette);
+    // Clavier depuis la recherche : Entrée active le premier résultat (instance placée d'abord, sinon type), Bas descend
+    // dans la liste ; sans cela un résultat ne s'atteignait qu'à la souris (constaté dans TSA.exe).
+    auto firstResult = [this]() -> QTreeWidgetItem* {
+        for (int c = 0; c < m_palette->topLevelItemCount(); ++c)
+        {
+            QTreeWidgetItem* group = m_palette->topLevelItem(c);
+            if (group->isHidden()) continue;
+            for (int i = 0; i < group->childCount(); ++i)
+                if (!group->child(i)->isHidden()) return group->child(i);
+        }
+        return nullptr;
+    };
+    connect(m_search, &QLineEdit::returnPressed, this, [this, firstResult] {
+        if (QTreeWidgetItem* item = firstResult())
+        {
+            m_palette->setCurrentItem(item);
+            addFromPalette();
+        }
+    });
+    connect(new QShortcut(QKeySequence(Qt::Key_Down), m_search, nullptr, nullptr, Qt::WidgetShortcut), &QShortcut::activated, this,
+            [this, firstResult] {
+                if (QTreeWidgetItem* item = firstResult())
+                {
+                    m_palette->setCurrentItem(item);
+                    m_palette->setFocus();
+                }
+            });
     buildPalette();
 
     // Scène
@@ -574,8 +624,21 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
         else if (k->key() == Qt::Key_Home) fitAll();
     };
     view->onViewChanged = [this] { updateNavigation(); };
+    // Canevas réaffiché sans aucun élément du graphe dans la vue (constaté dans TSA.exe après un changement de géométrie
+    // de la fenêtre pendant que l'éditeur était masqué) : la vue revient sur le graphe, au zoom courant. Une vue qui montre
+    // encore une partie du graphe n'est pas touchée.
+    view->onShown = [this] {
+        const QRectF graph = m_scene->itemsBoundingRect();
+        if (graph.isEmpty()) return;
+        if (!m_view->mapToScene(m_view->viewport()->rect()).boundingRect().intersects(graph)) m_view->centerOn(graph.center());
+        updateNavigation();
+    };
     view->onResized = [this] {
-        if (m_minimap) static_cast<BlueprintMinimap*>(m_minimap)->place();
+        if (!m_minimap) return;
+        auto* minimap = static_cast<BlueprintMinimap*>(m_minimap);
+        const bool was = minimap->isVisible();
+        minimap->place();
+        if (!was && minimap->isVisible()) minimap->refit();
     };
     m_view = view;
     m_minimap = new BlueprintMinimap(m_scene, view);
@@ -583,6 +646,11 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
         if (m_minimap && m_minimap->isVisible()) static_cast<BlueprintMinimap*>(m_minimap)->refit();
     });
     m_view->setRenderHint(QPainter::Antialiasing);
+    // Centre conservé quand la vue change de taille : l'éditeur est construit masqué (espace de travail) ; sans ancre,
+    // le coin supérieur gauche restait fixe à l'affichage et le graphe sortait de la vue.
+    m_view->setResizeAnchor(QGraphicsView::AnchorViewCenter);
+    // Canevas jamais écrasé par la palette et l'inspecteur (vue partagée étroite) : la mini-carte fait 220 px.
+    m_view->setMinimumWidth(280);
     m_view->setDragMode(QGraphicsView::RubberBandDrag);
     m_view->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
     connect(m_scene, &BlueprintScene::message, this, [this](const QString& t) { emit logMessage(t, "WARN"); });
@@ -592,7 +660,9 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
         showNodeProperties();
         recordChange();
         refreshProblems();
+        refreshPlacedMatches();
     });
+    connect(m_scene, &BlueprintScene::rebuilt, this, &BlueprintEditor::refreshPlacedMatches);
     connect(m_scene, &BlueprintScene::nodesMoved, this, [this] { recordChange(); });
     connect(m_scene, &BlueprintScene::commentEditRequested, this, &BlueprintEditor::editComment);
     // Double-clic sur une instance : ouvrir son corps (différé : la scène reconstruit l'élément qui reçoit le clic)
@@ -746,12 +816,8 @@ void BlueprintEditor::setMinimapVisible(bool visible)
 {
     if (m_minimap)
     {
-        m_minimap->setVisible(visible);
-        if (visible)
-        {
-            static_cast<BlueprintMinimap*>(m_minimap)->place();
-            static_cast<BlueprintMinimap*>(m_minimap)->refit();
-        }
+        static_cast<BlueprintMinimap*>(m_minimap)->setWanted(visible);
+        if (m_minimap->isVisible()) static_cast<BlueprintMinimap*>(m_minimap)->refit();
     }
     if (m_actMinimap && m_actMinimap->isChecked() != visible)
     {
@@ -762,7 +828,7 @@ void BlueprintEditor::setMinimapVisible(bool visible)
 
 bool BlueprintEditor::isPaletteVisible() const { return m_paletteHost && !m_paletteHost->isHidden(); }
 bool BlueprintEditor::isInspectorVisible() const { return m_inspectorHost && !m_inspectorHost->isHidden(); }
-bool BlueprintEditor::isMinimapVisible() const { return m_minimap && !m_minimap->isHidden(); }
+bool BlueprintEditor::isMinimapVisible() const { return m_minimap && static_cast<const BlueprintMinimap*>(m_minimap)->wanted(); }
 
 QByteArray BlueprintEditor::saveLayoutState() const
 {
@@ -803,6 +869,7 @@ BlueprintEditor::~BlueprintEditor()
 void BlueprintEditor::buildPalette()
 {
     m_palette->clear();
+    m_placedMatches = nullptr;
     std::map<std::string, QTreeWidgetItem*> categories;
     const std::string current = currentSubgraph();
     for (const auto* d : m_effective.definitions())
@@ -836,6 +903,7 @@ void BlueprintEditor::filterPalette(const QString& text)
     for (int c = 0; c < m_palette->topLevelItemCount(); ++c)
     {
         auto* cat = m_palette->topLevelItem(c);
+        if (cat == m_placedMatches) continue;
         int visible = 0;
         for (int i = 0; i < cat->childCount(); ++i)
         {
@@ -847,11 +915,74 @@ void BlueprintEditor::filterPalette(const QString& text)
         }
         cat->setHidden(visible == 0);
     }
+    refreshPlacedMatches();
+}
+
+std::vector<int> BlueprintEditor::findPlacedNodes(const QString& text) const
+{
+    std::vector<int> found;
+    const QString needle = text.trimmed();
+    if (needle.isEmpty()) return found;
+    QString number = needle;
+    if (number.startsWith(QLatin1Char('#'))) number.remove(0, 1);
+    bool isNumber = false;
+    const int wanted = number.toInt(&isNumber);
+    for (const auto& [id, n] : m_graph.nodes())
+    {
+        const NodeDefinition* d = m_effective.find(n.type);
+        const bool match = (isNumber && id == wanted) || QString::fromStdString(n.type).contains(needle, Qt::CaseInsensitive)
+                           || (d && QString::fromStdString(displayText(d->title)).contains(needle, Qt::CaseInsensitive));
+        if (match) found.push_back(id);
+    }
+    return found;
+}
+
+void BlueprintEditor::refreshPlacedMatches()
+{
+    // Instances du graphe, distinctes des types de la palette : groupe en tête, éléments sans type (kNodeRole seul)
+    const std::vector<int> found = findPlacedNodes(m_search->text());
+    if (found.empty())
+    {
+        delete m_placedMatches;
+        m_placedMatches = nullptr;
+        return;
+    }
+    if (!m_placedMatches)
+    {
+        m_placedMatches = new QTreeWidgetItem();
+        m_placedMatches->setFlags(Qt::ItemIsEnabled);
+        QFont font = m_placedMatches->font(0);
+        font.setItalic(true);
+        m_placedMatches->setFont(0, font);
+        m_placedMatches->setToolTip(0, tr("Nœuds déjà placés dans le graphe : double-cliquer pour sélectionner et centrer le nœud"));
+        m_palette->insertTopLevelItem(0, m_placedMatches);
+        m_placedMatches->setExpanded(true);
+    }
+    qDeleteAll(m_placedMatches->takeChildren());
+    // Au-delà, la liste ne sert plus à trouver un nœud : affiner la recherche
+    constexpr std::size_t kMaxListed = 200;
+    m_placedMatches->setText(0, found.size() > kMaxListed ? tr("Dans le graphe (%1, %2 premiers affichés)").arg(found.size()).arg(kMaxListed)
+                                                          : tr("Dans le graphe (%1)").arg(found.size()));
+    for (std::size_t i = 0; i < std::min(found.size(), kMaxListed); ++i)
+    {
+        const auto* n = m_graph.node(found[i]);
+        const NodeDefinition* d = n ? m_effective.find(n->type) : nullptr;
+        auto* item = new QTreeWidgetItem(m_placedMatches, { QStringLiteral("#%1  %2").arg(found[i]).arg(
+                                                                d ? QString::fromStdString(displayText(d->title)) : QString::fromStdString(n ? n->type : std::string())) });
+        item->setData(0, kNodeRole, found[i]);
+    }
 }
 
 void BlueprintEditor::addFromPalette()
 {
     auto* item = m_palette->currentItem();
+    if (item && item->parent() == m_placedMatches && m_placedMatches)
+    {
+        // Sélectionné puis cadré : centré seulement, un nœud restait illisible après « Cadrer tout » (5 %, vu dans TSA.exe)
+        m_scene->focusNode(item->data(0, kNodeRole).toInt());
+        fitSelection();
+        return;
+    }
     if (!item || item->data(0, kTypeRole).toString().isEmpty()) return;
     const QPointF center = m_view->mapToScene(m_view->viewport()->rect().center());
     m_scene->addNode(item->data(0, kTypeRole).toString().toStdString(), center - QPointF(100, 30));

@@ -144,6 +144,10 @@ public:
     double zoomPercent() const;
     /// Recherche de la palette (Ctrl+F dans le graphe) : palette affichée si elle était repliée.
     void focusNodeSearch();
+    /// Nœuds déjà placés dans le graphe édité dont le titre, le type ou le numéro (#12, 12) contient le texte, par
+    /// numéro croissant. La recherche de la palette les présente à part (groupe « Dans le graphe », en tête) : les
+    /// activer sélectionne et centre le nœud, sans en ajouter.
+    std::vector<int> findPlacedNodes(const QString& text) const;
     void setPaletteVisible(bool visible);
     void setInspectorVisible(bool visible);
     void setMinimapVisible(bool visible);
@@ -167,6 +171,7 @@ private:
     void fitGraph();
     void updateNavigation();
     void filterPalette(const QString& text);
+    void refreshPlacedMatches();
     void showNodeProperties();
     void addFromPalette();
     bool execute(bool debugging, bool stepFromStart);
@@ -230,6 +235,7 @@ private:
     QAction* m_actMinimap = nullptr;
     QLineEdit* m_search = nullptr;
     QTreeWidget* m_palette = nullptr;
+    QTreeWidgetItem* m_placedMatches = nullptr;   // groupe « Dans le graphe » de la palette (null : absent)
     QWidget* m_propertiesHost = nullptr;
     QFormLayout* m_properties = nullptr;
     QLabel* m_nodeTitle = nullptr;

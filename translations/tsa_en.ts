@@ -6519,6 +6519,14 @@ See Help &gt; Modules.</translation>
         <source>Vue partagée</source>
         <translation>Split view</translation>
     </message>
+    <message>
+        <source>Blueprint en cours</source>
+        <translation>Blueprint running</translation>
+    </message>
+    <message>
+        <source>Un Blueprint est en cours d'exécution : arrêtez-le ou attendez sa fin avant de %1.</source>
+        <translation>A Blueprint is running: stop it or wait for it to finish before you %1.</translation>
+    </message>
 </context>
 <context>
     <name>OccView</name>
@@ -16977,6 +16985,18 @@ Fix the subgraph body or discard its changes.</translation>
     <message>
         <source>Zoom du graphe (molette autour du curseur, bouton du milieu pour déplacer)</source>
         <translation>Graph zoom (wheel around the cursor, middle button to pan)</translation>
+    </message>
+    <message>
+        <source>Nœuds déjà placés dans le graphe : double-cliquer pour sélectionner et centrer le nœud</source>
+        <translation>Nodes already placed in the graph: double-click to select and centre the node</translation>
+    </message>
+    <message>
+        <source>Dans le graphe (%1, %2 premiers affichés)</source>
+        <translation>In the graph (%1, first %2 shown)</translation>
+    </message>
+    <message>
+        <source>Dans le graphe (%1)</source>
+        <translation>In the graph (%1)</translation>
     </message>
 </context>
 <context>

@@ -283,6 +283,7 @@ private:
     void connectBlueprintEditor(TSA::UI::BlueprintEditor* editor);
     /// Panneaux masqués temporairement (mode Blueprint, mode focus) réaffichés : avant d'enregistrer la disposition.
     void restoreContextualDocks();
+    void applyContextualDocks();
     void saveWorkspaceState();
     void restoreWorkspaceState();
     void createToolBars();
@@ -319,8 +320,8 @@ private:
     QAction* m_actionBlueprintDebug = nullptr;
     QAction* m_actionBlueprintFitAll = nullptr;
     QAction* m_actionBlueprintFitSelection = nullptr;
-    QList<QPointer<QDockWidget>> m_docksHiddenForBlueprint;    ///< panneaux du modèle masqués en mode Blueprint
-    QList<QPointer<QDockWidget>> m_docksHiddenForFocus;        ///< panneaux masqués par le mode focus
+    QList<QPointer<QDockWidget>> m_docksHiddenByWorkspace;     ///< panneaux masqués par le mode Blueprint ou le mode focus
+    QList<QPointer<QDockWidget>> m_docksOnTopBeforeHide;       ///< parmi eux, onglets actifs de leur groupe au masquage
     QDockWidget* m_diagramDock = nullptr;
     TSA::UI::Diagram2DWidget* m_diagramWidget = nullptr;
     QDockWidget* m_ndcDock = nullptr;
