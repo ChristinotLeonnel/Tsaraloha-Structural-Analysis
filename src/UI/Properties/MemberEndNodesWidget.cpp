@@ -1,4 +1,5 @@
 #include "MemberEndNodesWidget.h"
+#include "../../UndoRedo/EditTransaction.h"
 
 #include "../../Model/Model.h"
 #include "../../Model/SupportDefinition.h"
@@ -140,10 +141,11 @@ void MemberEndNodesWidget::onSupportChosen(int end)
         return;
 
     const std::string label = tr("Appui : %1 (N%2)").arg(QCoreApplication::translate("TSA::Model::SupportDefinition", chosen.typeName().c_str())).arg(node->id()).toStdString();
-    m_model->pushUndoState(label, label);
+    TSA::UndoRedo::EditTransaction tx(*m_model, label, label);
     node->setSupport(chosen);
     // Notification du nœud : vue 3D, arbre, panneau (cette barre comprise) et résultats invalidés.
     m_model->notifyNodeModified(node->id());
+    tx.commit();
 }
 
 } // namespace TSA::UI

@@ -1,4 +1,6 @@
 #include "GridSettingsDialog.h"
+#include <optional>
+#include "../../UndoRedo/EditTransaction.h"
 #include "UI/Theme/ThemedIcon.h"
 #include "GridDialog.h"
 #include "../../Viewer/OccView.h"
@@ -391,9 +393,12 @@ void GridSettingsDialog::onDuplicateGrid()
         return;
 
     std::string id = item->data(Qt::UserRole).toString().toStdString();
+    // Sans vue 3D, le modèle n'est pas joignable d'ici : duplication hors historique (BUG-130, documenté).
+    std::optional<TSA::UndoRedo::EditTransaction> tx;
     if (m_occView && m_occView->model())
-        m_occView->model()->pushUndoState(tr("Dupliquer la grille").toStdString());
+        tx.emplace(*m_occView->model(), tr("Dupliquer la grille").toStdString());
     auto* dup = m_gridManager->duplicateGrid(id);
+    if (tx) tx->commit();
     if (dup)
     {
         refreshGridList();
@@ -470,9 +475,11 @@ void GridSettingsDialog::onDeleteGrid()
     if (QMessageBox::question(this, tr("Confirmer la suppression"),
                               tr("Voulez-vous vraiment supprimer cette grille ?")) == QMessageBox::Yes)
     {
+        std::optional<TSA::UndoRedo::EditTransaction> tx;
         if (m_occView && m_occView->model())
-            m_occView->model()->pushUndoState(tr("Supprimer la grille").toStdString());
+            tx.emplace(*m_occView->model(), tr("Supprimer la grille").toStdString());
         m_gridManager->removeGrid(id);
+        if (tx) tx->commit();
         refreshGridList();
     }
 }

@@ -2,6 +2,7 @@
 // l'affichage du maillage dans la vue 3D et la transmission au calcul au contrôleur de maillage (Gmsh).
 
 #include "MainWindow.h"
+#include "../UndoRedo/EditTransaction.h"
 #include "../Interaction/PropertyAssignment.h"
 #include "Dialogs/SurfaceLoadsDialog.h"
 #include "Dialogs/SurfaceSupportsDialog.h"
@@ -323,7 +324,9 @@ void MainWindow::onActionSurfaceLoads()
     }
     TSA::UI::SurfaceLoadsDialog dlg(*m_model, surfaces, this);
     if (dlg.exec() != QDialog::Accepted) return;
-    m_model->pushUndoState(tr("Charges surfaciques").toStdString());
+    // Transaction (une entrée, rien si inchangé). Les charges surfaciques n'ont pas encore de notification
+    // d'observateur dans le modèle : la vue est mise à jour explicitement ci-dessous.
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Charges surfaciques").toStdString());
     auto& lm = m_model->loadManager();
     for (const auto& [kind, id] : surfaces) lm.removeSurfaceLoadsForSurface(kind, id);
     int added = 0;
@@ -333,7 +336,7 @@ void MainWindow::onActionSurfaceLoads()
         lm.addSurfaceLoad(l);
         ++added;
     }
-    m_model->setModified(true);
+    tx.commit();
     if (m_occView) m_occView->updateAllLoadShapes();
     if (m_statusInfo)
         m_statusInfo->setText(tr("%1 charge(s) surfacique(s) sur %2 surface(s) (%3 nouvelle(s)) : calculées sur le maillage des surfaces")
@@ -356,17 +359,24 @@ void MainWindow::onActionSurfaceSupports()
     }
     TSA::UI::SurfaceSupportsDialog dlg(*m_model, surfaces, this);
     if (dlg.exec() != QDialog::Accepted) return;
-    m_model->pushUndoState(tr("Appuis linéiques").toStdString());
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Appuis linéiques").toStdString());
     for (const auto& [kind, id] : surfaces)
     {
         if (kind == TSA::Model::SurfaceTargetKind::Slab)
         {
-            if (auto* s = m_model->getSlab(id)) s->setEdgeSupports(dlg.supportsOf(kind, id));
+            if (auto* s = m_model->getSlab(id))
+            {
+                s->setEdgeSupports(dlg.supportsOf(kind, id));
+                m_model->notifySlabModified(id);   // vues et résultats informés (BUG-130)
+            }
         }
         else if (auto* w = m_model->getWall(id))
+        {
             w->setEdgeSupports(dlg.supportsOf(kind, id));
+            m_model->notifyWallModified(id);
+        }
     }
-    m_model->setModified(true);
+    tx.commit();
     if (m_occView) m_occView->updateAllLoadShapes();
     if (m_statusInfo)
         m_statusInfo->setText(tr("%1 appui(s) linéique(s) sur %2 surface(s) : appliqués aux nœuds du maillage au calcul").arg(dlg.entries().size()).arg(surfaces.size()));

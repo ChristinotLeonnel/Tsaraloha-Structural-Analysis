@@ -212,10 +212,11 @@ void LoadCaseDialog::onAddLoadCase()
     else if (catChoice.contains("Snow")) cat = TSA::Model::LoadCaseCategory::Snow;
     else if (catChoice.contains("Seismic")) cat = TSA::Model::LoadCaseCategory::Seismic;
 
-    m_model->pushUndoState(tr("Créer Cas de Charge").toStdString());
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Créer Cas de Charge").toStdString());
     TSA::Model::LoadCase lc(0, name.trimmed().toStdString(), cat, false, 1.0, "");
     m_model->loadManager().addLoadCase(lc);
     m_model->notifyLoadCaseChanged(m_model->loadManager().activeLoadCaseId());   // arbre du modèle, vue 3D
+    tx.commit();
     refreshCasesTable();
 }
 
@@ -262,7 +263,7 @@ void LoadCaseDialog::onAddCombination()
     QString name = QInputDialog::getText(this, tr("Nouvelle Combinaison"), tr("Nom de la combinaison :"), QLineEdit::Normal, "1.35G + 1.5Q", &ok);
     if (!ok || name.trimmed().isEmpty()) return;
 
-    m_model->pushUndoState(tr("Créer Combinaison").toStdString());
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Créer Combinaison").toStdString());
     TSA::Model::LoadCombination combo(0, name.trimmed().toStdString(), TSA::Model::LoadCombinationType::ULS_Fundamental);
     // Par défaut associer le cas 1 (G) à 1.35 et le cas 2 (Q) à 1.50 s'ils existent
     if (m_model->loadManager().getLoadCase(1)) combo.setFactor(1, 1.35);
@@ -270,6 +271,7 @@ void LoadCaseDialog::onAddCombination()
 
     m_model->loadManager().addCombination(combo);
     m_model->notifyLoadCaseChanged(m_model->loadManager().activeLoadCaseId());
+    tx.commit();
     refreshCombinationsTable();
 }
 
@@ -279,9 +281,10 @@ void LoadCaseDialog::onRemoveCombination()
     if (row < 0 || !m_model) return;
 
     int comboId = m_tableCombinations->item(row, 0)->text().toInt();
-    m_model->pushUndoState(tr("Supprimer Combinaison").toStdString());
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Supprimer Combinaison").toStdString());
     m_model->loadManager().removeCombination(comboId);
     m_model->notifyLoadCaseChanged(m_model->loadManager().activeLoadCaseId());
+    tx.commit();
     refreshCombinationsTable();
 }
 

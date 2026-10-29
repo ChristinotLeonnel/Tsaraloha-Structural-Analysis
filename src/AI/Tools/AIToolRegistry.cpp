@@ -1,4 +1,5 @@
 #include "AIToolRegistry.h"
+#include "../../UndoRedo/EditTransaction.h"
 
 #include "../Operator/AIOperator.h"
 #include "../RAG/EngineeringKnowledgeBase.h"
@@ -389,7 +390,7 @@ bool AIToolRegistry::applyProposal(const ActionProposal& proposal, TSA::Model::M
     }
 
     // Une seule entrée Undo pour l'ensemble, puis notification par élément (vues, résultats).
-    model.pushUndoState(QStringLiteral("IA : section %1").arg(QString::fromStdString(section->name)).toStdString());
+    TSA::UndoRedo::EditTransaction tx(model, QStringLiteral("IA : section %1").arg(QString::fromStdString(section->name)).toStdString());
     for (int id : ids)
     {
         if (type == "beam")
@@ -403,6 +404,7 @@ bool AIToolRegistry::applyProposal(const ActionProposal& proposal, TSA::Model::M
             model.notifyColumnModified(id);
         }
     }
+    tx.commit();   // proposition sans effet réel : aucune entrée (BUG-130)
     return true;
 }
 

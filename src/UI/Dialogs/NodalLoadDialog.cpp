@@ -1,4 +1,5 @@
 #include "NodalLoadDialog.h"
+#include "../../UndoRedo/EditTransaction.h"
 #include "../HelpLauncher.h"
 #include "../../Model/Model.h"
 #include "../../Model/Load/LoadManager.h"
@@ -296,12 +297,11 @@ void NodalLoadDialog::onApplyClicked()
 
     std::string name = m_editName->text().trimmed().toStdString();
 
-    m_model->pushUndoState(tr("Appliquer Charge Nodale sur N%1").arg(nodeId).toStdString());
-
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Appliquer Charge Nodale sur N%1").arg(nodeId).toStdString());
     TSA::Model::NodalLoad nl(0, nodeId, loadCaseId, fx, fy, fz, mx, my, mz, coordSys, name);
     int newId = m_model->loadManager().addNodalLoad(nl);
-
     m_model->notifyNodalLoadAdded(newId);
+    tx.commit();
 
     QMessageBox::information(this, tr("Succès"),
                              tr("Charge nodale NL#%1 appliquée avec succès sur le nœud N%2 !").arg(newId).arg(nodeId));

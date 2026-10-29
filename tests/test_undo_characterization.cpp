@@ -555,13 +555,13 @@ bool runSuite_UndoCharacterization(int& passed)
             TSA::UI::CablePropertiesView v(&m);
             // Câble : applyChanges réécrit tous les champs depuis l'affichage arrondi (CablePropertiesView.cpp:275-280). CONSTATÉ
             // (essai local 2026-10-26) : valider sans rien changer modifie l'aire de la définition (dArea 0x1.6b2f7682c2457p-12 →
-            // 0x1.6b3a0abdc923cp-12 pour Ø 21 mm) — DÉFAUT FIGÉ.
+            // 0x1.6b3a0abdc923cp-12 pour Ø 21 mm) — BUG-125, corrigé : seuls les champs modifiés sont réécrits.
             if (!panel(v, cable, "CableModified", "K_test", noField, 0, "Test 514: câble (CablePropertiesView.cpp:269)", false)) return false;
         }
         {
             TSA::UI::NodePropertiesView v(&m);
             // CONSTATÉ (essai local) : valider sans changement impose la couleur par défaut « #2563EB » à un nœud sans couleur
-            // (NodePropertiesView.cpp:269 et 526 ; même défaut que celui corrigé pour les poteaux au test 221) — DÉFAUT FIGÉ.
+            // (même défaut que celui corrigé pour les poteaux au test 221) — BUG-126, corrigé : couleur par défaut affichée seulement.
             if (!panel(v, n4, "NodeModified", "", 4.0, 4.5, "Test 514: nœud (NodePropertiesView.cpp:522)", false)) return false;
             // Donnée invalide : n1 sur n2 (poutre de longueur nulle) → refus AVANT le push (NodePropertiesView.cpp:510-517).
             v.setElementId(n1);
@@ -950,8 +950,8 @@ bool runSuite_UndoCharacterization(int& passed)
             QMetaObject::invokeMethod(&dlg, "onCreateClicked", Qt::DirectConnection);
             const int id = dlg.createdNodeId();
             TEST_CHECK(p.undoDelta() == 1 && id > 0 && m.getNode(id)->supportType() == TSA::Model::SupportType::Fixed, "Test 518: nœud créé encastré");
-            TEST_CHECK(p.obs.specificSequence() == "NodeAdded(" + std::to_string(id) + ")",
-                       "Test 518: NodeAdded seul — appui posé sans NodeModified (DÉFAUT FIGÉ, NewNodeDialog.cpp:186-191)");
+            TEST_CHECK(p.obs.specificSequence() == "NodeAdded(" + std::to_string(id) + ") NodeModified(" + std::to_string(id) + ")",
+                       "Test 518: NodeAdded puis NodeModified — appui posé notifié (BUG-130 corrigé ; " << p.obs.specificSequence() << ")");
             const std::string fp1 = fingerprint(m);
             if (!undoRedoRoundTrip(m, nullptr, fp0, fp1, "Test 518: création de nœud")) return false;
         }
@@ -994,8 +994,8 @@ bool runSuite_UndoCharacterization(int& passed)
             Model empty;
             lib.addStructureTemplate(QStringLiteral("UndoChar_518_vide"), "Tests", "", empty.createSnapshot("vide"));
             UndoProbe p2(m);
-            TEST_CHECK(lib.instantiateTemplateInModel(QStringLiteral("UndoChar_518_vide"), &m) && p2.undoDelta() == 1 && p2.obs.specificSequence().empty(),
-                       "Test 518: gabarit vide → entrée sans changement (DÉFAUT FIGÉ)");
+            TEST_CHECK(lib.instantiateTemplateInModel(QStringLiteral("UndoChar_518_vide"), &m) && p2.undoDelta() == 0 && p2.obs.specificSequence().empty(),
+                       "Test 518: gabarit vide → aucune entrée (BUG-130 corrigé)");
         }
         std::cout << "[PASS] Test 518: F5 création de nœud et insertion de bibliothèque" << std::endl;
         ++passed;
@@ -1031,8 +1031,8 @@ bool runSuite_UndoCharacterization(int& passed)
         const std::string fp1 = fingerprint(m);
         if (!undoRedoRoundTrip(m, nullptr, fp0, fp1, "Test 519: proposition IA")) return false;
         UndoProbe p2(m);
-        TEST_CHECK(TSA::AI::AIToolRegistry::applyProposal(proposal("IPE 300", "beam", {}), m, &err) && p2.undoDelta() == 1 && p2.obs.specificSequence().empty(),
-                   "Test 519: liste d'ids vide → entrée sans changement (DÉFAUT FIGÉ)");
+        TEST_CHECK(TSA::AI::AIToolRegistry::applyProposal(proposal("IPE 300", "beam", {}), m, &err) && p2.undoDelta() == 0 && p2.obs.specificSequence().empty(),
+                   "Test 519: liste d'ids vide → aucune entrée (BUG-130 corrigé)");
         std::cout << "[PASS] Test 519: F6 proposition IA" << std::endl;
         ++passed;
     }
