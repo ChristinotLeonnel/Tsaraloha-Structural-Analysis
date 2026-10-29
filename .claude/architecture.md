@@ -13,7 +13,9 @@ TSALab (dépôt voisin `../TSA` → `TSA_ROOT_DIR`) appelle la même fonction av
                (données), grilles (données), historique par instantanés, journal ; QtCore + TKernel + TKMath seulement,
                PCH propre sans widget ; périmètre établi par fermeture à l'édition de liens, 2026-10-26)
  └── <P>_Model    (OBJECT, TSARALOHA_MODEL_SOURCES : commandes, IO, calcul, normes, NDC, IA, bibliothèques… ; lie
-     │             <P>_Core en PUBLIC, porte le PCH Qt/OCCT complet)
+     │             <P>_Core en PUBLIC ; liaisons : Core, tsalab_science, Qt Core/Gui/Network, TKernel, TKMath — QtWidgets
+     │             et OCCT de rendu déclarés par Graphics / Widgets / application / tests (B, 2026-10-29) ; porte le PCH Qt/OCCT
+     │             complet, QtWidgets en $<COMPILE_ONLY:…> pour des commandes de compilation identiques)
      ├── <P>_Graphics (OBJECT : viewport, géométrie, rendu des grilles, outils) → <P>_Widgets (OBJECT : interface partagée)
      ├── <P>                  (exe : UI, AppShell, MainWindow…) — src/main.cpp → EcosystemApplication
      ├── <P>_Tests            (exe <P>_TestSuite : tests/*.cpp + product/ProductTests.cpp)
@@ -130,7 +132,8 @@ Status: partiel (barres/treillis/câbles/appuis ; pas de dalles ni voiles ; exé
 ## 4. Flux principaux
 
 ```text
-Édition propriété : PropertyView::applyChanges → pushUndoState(nom, nom) → mutation → notify*Modified
+Édition propriété : PropertyView::applyChanges → EditTransaction(nom, clé) → champs MODIFIÉS seulement (EditedFields)
+  → hasChanges ? notify*Modified puis commit : discardUnchanged (docs/EDIT_SYSTEM.md ; plus de pushUndoState dans l'UI)
   → OccView::update*Shape (forme locale) / ModelTree ligne / ResultsValidityGuard (invalide résultats)
 Undo : UndoManager::undo → ModelDiff::compute → applySnapshotData → notifyModelDiffApplied (mise à jour ciblée)
 Ouverture .tsa : MainWindow::loadFile → ProjectManager::openProject → TSAFileReader → Model::restoreSnapshot

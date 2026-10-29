@@ -2,6 +2,15 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-29 — étape 2 : API d'édition unique, défauts Undo/Redo, dépendances du modèle (branche refactor/core-edit-api)
+Contrat des transactions (BUG-127 : commit / rollback sans effet, imbrication, comparaison exacte par les octets du contenu
+persistant, encodeur fourni par IO au noyau), clé de coalescence et hasChanges ; tous les appels pushUndoState de
+l'interface migrés vers EditTransaction (panneaux, chargements, appuis, grilles, création, bibliothèque, IA) ; BUG-125,
+126, 128, 129 corrigés, BUG-130 partiel ; Model::removeLoadCase / resetLoadCasesToDefaults. B repris (cherry-pick
+8695035) et validé sous MSVC : relinks seuls (commandes de compilation inchangées), build complet sans IfcOpenShell
+550/550 sans C4605/C4651. Windows : 29 suites sans OpenSees 29/29, banc Custom2D 58/58, CoreTests 5/5. OpenSees, Linux :
+non exécutés. docs/EDIT_SYSTEM.md (contrat, périmètre de l'annulation).
+
 ## 2026-10-28 (soir) — dépendances portables (branche build/dependency-detection, non commitée)
 SetupDependencies.cmake étendu (pas de module parallèle) : tsa_find_qt (Qt la plus récente compatible, cache périmé
 remplacé, Qt6*_DIR étrangers effacés), tsa_validate_dependencies (x64, chaîne MSVC/MinGW/ELF, kit msvcAAAA, mélange,

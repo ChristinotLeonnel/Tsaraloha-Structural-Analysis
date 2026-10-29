@@ -34,6 +34,14 @@ Source officielle de l'archive Windows disparue (404). Contournement : OpenSees 
 (cmake/SetupDependencies.cmake, docs/DEPENDENCIES.md §5). Status: PARTIEL — installation vérifiée, exécution NON
 validée ; OpenSeesManager::downloadAndInstall (application) vise encore l'adresse officielle.
 
+## BUG-138
+Area: SDK — tsa3d_roundtrip_example
+Problem: l'exemple est produit dans <build>/sdk sans les DLL (Qt, OCCT) : lancé depuis un autre dossier courant, il échoue
+(0xC0000135, DLL introuvable) ; il fonctionne depuis le dossier de compilation (dossier courant dans la recherche des DLL).
+Constaté le 2026-10-29 en validant B ; antérieur à B (RUNTIME_OUTPUT_DIRECTORY sdk/ inchangé).
+Impact: LOW (exemple de développement, non livré)
+Status: OPEN
+
 ## BUG-136 (W-10)
 Area: src/Diagnostics/Logger.cpp
 Problem: chemins UTF-8 étroits (ofstream, filesystem) : aucun journal écrit quand le dossier de journaux contient un
@@ -70,14 +78,16 @@ Problem: valider le panneau sans rien changer modifie l'aire de la définition :
 depuis l'affichage arrondi (CablePropertiesView.cpp:93, 275-280 ; aire 0x1.6b2f7682c2457p-12 → 0x1.6b3a0abdc923cp-12 m²
 pour Ø 21 mm). Même famille que le défaut corrigé pour les poteaux (test 221) et BUG-106.
 Impact: MEDIUM (modification silencieuse d'une donnée mécanique)
-Status: OPEN — figé au test 514
+Status: FIXED (2026-10-29, branche refactor/core-edit-api, 13848cb) — EditedFields : seuls les champs modifiés sont réécrits ;
+test 514 « valider sans changement ne réécrit rien » (câble Ø 21 mm).
 
 ## BUG-126
 Area: Panneau Propriétés — nœud
 Problem: valider le panneau sans rien changer impose la couleur « #2563EB » à un nœud sans couleur
 (NodePropertiesView.cpp:269, 526).
 Impact: LOW
-Status: OPEN — figé au test 514
+Status: FIXED (2026-10-29, 13848cb) — couleur par défaut affichée seulement ; coordonnées (3 décimales) et appui réécrits
+seulement s'ils ont changé ; test 514 (nœud sans couleur).
 
 ## BUG-127
 Area: Undo/Redo — EditTransaction
@@ -86,21 +96,25 @@ Problem: (1) commit sans modification : entrée Annuler créée, révision +1, r
 forcé (Model_Snapshots.cpp:172, applySnapshotData), résultats périmés par ResultsValidityGuard ; (3) imbrication : un
 rollback interne remet la profondeur à 0 (UndoManager.cpp:194), le commit externe ne crée pas d'entrée (178-179).
 Impact: MEDIUM (une commande échouée périme les résultats ; à traiter avant la migration de l'étape 2)
-Status: OPEN — figé aux tests 513 et 520
+Status: FIXED (2026-10-29, 121f2a8) — contrat : commit sans changement exact → ni entrée ni révision ; rollback sans
+changement → rien ; rollback interne → transaction englobante ouverte ; comparaison exacte (octets du contenu persistant,
+encodeur fourni par IO). Tests 513, 520 (dont exactitude sous les tolérances de ModelDiff, imbrication), TSA_CoreTests.
 
 ## BUG-128
 Area: Cas de charge — notifications
 Problem: supprimer un cas de charge (LoadCaseDialog.cpp:231-236) ou réinitialiser les cas Eurocodes (247) efface des
 charges sans notification NodalLoadRemoved / MemberLoadRemoved ; seule LoadCaseChanged est émise.
 Impact: MEDIUM (vues et arbre non informés du retrait des charges)
-Status: OPEN — figé au test 515
+Status: FIXED (2026-10-29, 31ef85b) — Model::removeLoadCase / resetLoadCasesToDefaults notifient chaque charge retirée ;
+test 515.
 
 ## BUG-129
 Area: Undo/Redo — exception après l'enregistrement
 Problem: une exception levée après pushUndoState (notification d'observateur, MemberLoadCommands.cpp:80-92 ; panneaux)
 laisse l'entrée Annuler et une application partielle (aucun rollback). Annuler rend l'état initial.
 Impact: LOW (aucun observateur de production ne lève aujourd'hui ; à traiter par la migration vers EditTransaction)
-Status: OPEN — figé aux tests 514 et 515
+Status: FIXED (2026-10-29, 13848cb, 31ef85b, d84eefa) — toutes les modifications de l'interface passent par EditTransaction,
+notification dans la transaction : une exception annule tout. Tests 514 (panneau), 515 (applyMemberLoad).
 
 ## BUG-130
 Area: Undo/Redo — défauts mineurs caractérisés
@@ -110,7 +124,10 @@ AIToolRegistry.cpp:392 ; charge nodale validée sans contrôle, LoadPropertiesVi
 grilles et charges de surface de MainWindow_Mesh (326, 359) sans notification d'observateur ; validation de la grille
 active sans changement : xIsBold / yIsBold / zIsBold normalisés (vides → false), sans effet visible (test 522).
 Impact: LOW
-Status: OPEN — figés aux tests 515 à 522 (MainWindow_Mesh : lecture du code seulement, non atteignable par les tests)
+Status: PARTIEL (2026-10-29, d84eefa) — corrigés : entrées sans changement (bibliothèque, IA, charge nodale), appui posé sans
+NodeModified, appuis linéiques notifiés. Restent : duplication de grille sans vue 3D hors historique (GridSettingsDialog ne
+joint le modèle que par la vue) ; charges surfaciques sans notification d'observateur (aucune API) ; normalisation des
+gras de grille (sans effet visible). Tests 514-522.
 
 ## BUG-119
 Area: Vue 3D — destruction d'OccView avec le rendu logiciel Mesa (llvmpipe)
