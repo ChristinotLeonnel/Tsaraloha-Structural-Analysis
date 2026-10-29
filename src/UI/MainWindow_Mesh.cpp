@@ -324,8 +324,7 @@ void MainWindow::onActionSurfaceLoads()
     }
     TSA::UI::SurfaceLoadsDialog dlg(*m_model, surfaces, this);
     if (dlg.exec() != QDialog::Accepted) return;
-    // Transaction (une entrée, rien si inchangé). Les charges surfaciques n'ont pas encore de notification
-    // d'observateur dans le modèle : la vue est mise à jour explicitement ci-dessous.
+    // Transaction (une entrée, rien si inchangé) ; vues informées par notifySurfaceLoadsChanged (BUG-130).
     TSA::UndoRedo::EditTransaction tx(*m_model, tr("Charges surfaciques").toStdString());
     auto& lm = m_model->loadManager();
     for (const auto& [kind, id] : surfaces) lm.removeSurfaceLoadsForSurface(kind, id);
@@ -336,8 +335,8 @@ void MainWindow::onActionSurfaceLoads()
         lm.addSurfaceLoad(l);
         ++added;
     }
+    m_model->notifySurfaceLoadsChanged();
     tx.commit();
-    if (m_occView) m_occView->updateAllLoadShapes();
     if (m_statusInfo)
         m_statusInfo->setText(tr("%1 charge(s) surfacique(s) sur %2 surface(s) (%3 nouvelle(s)) : calculées sur le maillage des surfaces")
                                   .arg(dlg.loads().size())

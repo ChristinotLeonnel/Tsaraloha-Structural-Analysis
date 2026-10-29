@@ -20,6 +20,11 @@
 namespace TSA::UI
 {
 
+TSA::Model::Model* GridSettingsDialog::historyModel() const
+{
+    return m_model ? m_model : (m_occView ? m_occView->model() : nullptr);
+}
+
 GridSettingsDialog::GridSettingsDialog(TSA::Grid::GridManager* gridManager,
                                        TSA::Grid::GridSnapManager* snapManager,
                                        OccView* occView,
@@ -393,10 +398,9 @@ void GridSettingsDialog::onDuplicateGrid()
         return;
 
     std::string id = item->data(Qt::UserRole).toString().toStdString();
-    // Sans vue 3D, le modèle n'est pas joignable d'ici : duplication hors historique (BUG-130, documenté).
     std::optional<TSA::UndoRedo::EditTransaction> tx;
-    if (m_occView && m_occView->model())
-        tx.emplace(*m_occView->model(), tr("Dupliquer la grille").toStdString());
+    if (auto* model = historyModel())
+        tx.emplace(*model, tr("Dupliquer la grille").toStdString());
     auto* dup = m_gridManager->duplicateGrid(id);
     if (tx) tx->commit();
     if (dup)
@@ -476,8 +480,8 @@ void GridSettingsDialog::onDeleteGrid()
                               tr("Voulez-vous vraiment supprimer cette grille ?")) == QMessageBox::Yes)
     {
         std::optional<TSA::UndoRedo::EditTransaction> tx;
-        if (m_occView && m_occView->model())
-            tx.emplace(*m_occView->model(), tr("Supprimer la grille").toStdString());
+        if (auto* model = historyModel())
+            tx.emplace(*model, tr("Supprimer la grille").toStdString());
         m_gridManager->removeGrid(id);
         if (tx) tx->commit();
         refreshGridList();

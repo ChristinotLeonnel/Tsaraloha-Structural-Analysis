@@ -92,6 +92,8 @@ public:
     virtual void onLoadModified(int /*loadId*/) {}
     virtual void onLoadRemoved(int /*loadId*/) {}
     virtual void onLoadCaseChanged(int /*caseId*/) {}
+    /// Charges surfaciques ajoutées, modifiées ou retirées (pas d'identifiant : elles sont redessinées ensemble).
+    virtual void onSurfaceLoadsChanged() {}
 
     virtual void onModelDiffApplied(const ModelDiff& /*diff*/) {}
     /// Cotations ajoutées, modifiées ou supprimées (ids ; vide = toutes, ex. style ou rechargement).
@@ -370,6 +372,7 @@ public:
     void notifyLoadModified(int loadId);
     void notifyLoadRemoved(int loadId);
     void notifyLoadCaseChanged(int caseId);
+    void notifySurfaceLoadsChanged();
 
     // État de modification du document (Dirty state)
     /// Paramètres d'analyse du projet (AnalysisContext::toJson, schéma versionné), persistés dans le

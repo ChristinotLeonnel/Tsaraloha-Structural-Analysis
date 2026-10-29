@@ -14,6 +14,7 @@ class QDoubleSpinBox;
 class QLabel;
 
 class OccView;
+namespace TSA::Model { class Model; }
 
 namespace TSA::UI
 {
@@ -28,6 +29,10 @@ public:
                                 OccView* occView,
                                 QWidget* parent = nullptr);
     ~GridSettingsDialog() override = default;
+
+    /// Modèle dont l'historique reçoit les modifications de grilles. Sans lui, celui de la vue 3D ; sans l'un ni
+    /// l'autre, les modifications restent hors historique (BUG-130).
+    void setModel(TSA::Model::Model* model) { m_model = model; }
 
 private slots:
     void onAddGrid();
@@ -54,6 +59,8 @@ private:
     TSA::Grid::GridManager* m_gridManager = nullptr;
     TSA::Grid::GridSnapManager* m_snapManager = nullptr;
     OccView* m_occView = nullptr;
+    TSA::Model::Model* m_model = nullptr;
+    TSA::Model::Model* historyModel() const;
 
     QListWidget* m_gridList = nullptr;
     QPushButton* m_addBtn = nullptr;

@@ -176,6 +176,7 @@ public:
     void onLoadModified(int id) override { rec("LoadModified", id); }
     void onLoadRemoved(int id) override { rec("LoadRemoved", id); }
     void onLoadCaseChanged(int id) override { rec("LoadCaseChanged", id); }
+    void onSurfaceLoadsChanged() override { rec("SurfaceLoadsChanged", -1); }
     void onModelDiffApplied(const TSA::Model::ModelDiff& d) override { rec("ModelDiffApplied", -1, summarize(d)); }
     void onDimensionsChanged(const std::vector<int>& ids) override { rec("DimensionsChanged", -1, joinIds(ids)); }
     void onModelCleared() override { rec("ModelCleared", -1); }

@@ -921,13 +921,25 @@ bool runSuite_UndoCharacterization(int& passed)
             view.setModel(nullptr);
         }
         {
-            // Sans vue 3D : duplication HORS historique (DÉFAUT FIGÉ : GridSettingsDialog.cpp:394-396).
+            // Sans vue 3D ni modèle : aucun historique joignable, duplication hors historique (cas limite assumé).
             TSA::UI::GridSettingsDialog settings(&gm, nullptr, nullptr);
             settings.findChild<QListWidget*>()->setCurrentRow(0);
             const size_t before = gm.grids().size();
             UndoProbe p(m);
             QMetaObject::invokeMethod(&settings, "onDuplicateGrid", Qt::DirectConnection);
-            TEST_CHECK(p.undoDelta() == 0 && gm.grids().size() == before + 1, "Test 517: sans vue — grille dupliquée sans entrée Annuler");
+            TEST_CHECK(p.undoDelta() == 0 && gm.grids().size() == before + 1, "Test 517: sans vue ni modèle — grille dupliquée sans entrée Annuler");
+        }
+        {
+            // Sans vue 3D mais avec le modèle (setModel) : duplication dans l'historique (BUG-130 corrigé).
+            TSA::UI::GridSettingsDialog settings(&gm, nullptr, nullptr);
+            settings.setModel(&m);
+            settings.findChild<QListWidget*>()->setCurrentRow(0);
+            const size_t before = gm.grids().size();
+            m.clearUndoRedo();
+            UndoProbe p(m);
+            QMetaObject::invokeMethod(&settings, "onDuplicateGrid", Qt::DirectConnection);
+            TEST_CHECK(p.undoDelta() == 1 && gm.grids().size() == before + 1, "Test 517: sans vue, avec modèle — 1 entrée Annuler");
+            TEST_CHECK(m.undo() && gm.grids().size() == before, "Test 517: sans vue — Annuler retire la grille dupliquée");
         }
         std::cout << "[PASS] Test 517: F4 grilles (création, duplication, suppression)" << std::endl;
         ++passed;
@@ -1526,6 +1538,22 @@ bool runSuite_UndoCharacterization(int& passed)
             watcher.clear();
             doomed.reset();
             TEST_CHECK(watcher.fullSequence() == "ModelDestroyed", "Test 523: ModelDestroyed seul à la destruction (" << watcher.fullSequence() << ")");
+        }
+        // Charges surfaciques (BUG-130) : une dalle chargée supprimée notifie le retrait de ses charges.
+        {
+            Model ms;
+            const int a = ms.addNode(0, 0, 0), b = ms.addNode(4, 0, 0), c = ms.addNode(4, 3, 0), d = ms.addNode(0, 3, 0);
+            const int s = ms.addSlab({ a, b, c, d }, 0.2);
+            TSA::Model::SurfaceLoad sl;
+            sl.targetKind = TSA::Model::SurfaceTargetKind::Slab;
+            sl.surfaceId = s;
+            sl.loadCaseId = ms.loadManager().loadCases().begin()->first;
+            sl.value = -5.0;
+            ms.loadManager().addSurfaceLoad(sl);
+            UndoChar::RecordingObserver watcher(&ms);
+            ms.removeSlab(s);
+            TEST_CHECK(watcher.count("SlabRemoved", s) == 1 && watcher.count("SurfaceLoadsChanged") == 1 && ms.loadManager().surfaceLoads().empty(),
+                       "Test 523: dalle chargée supprimée — SurfaceLoadsChanged (" << watcher.specificSequence() << ")");
         }
         std::cout << "[PASS] Test 523: notifications Added / Removed, DimensionsChanged, ModelCleared, ModelDestroyed" << std::endl;
         ++passed;

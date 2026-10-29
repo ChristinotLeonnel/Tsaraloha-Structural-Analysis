@@ -880,13 +880,14 @@ bool Model::removeSlab(int slabId)
     }
 
     m_slabs.erase(it);
-    m_loadManager.removeSurfaceLoadsForSurface(SurfaceTargetKind::Slab, slabId); // ses charges disparaissent avec elle
+    const bool hadSurfaceLoads = !m_loadManager.removeSurfaceLoadsForSurface(SurfaceTargetKind::Slab, slabId).empty(); // ses charges disparaissent avec elle
 
     bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onSlabRemoved(slabId);
     }
+    if (hadSurfaceLoads) notifySurfaceLoadsChanged();
 
     return true;
 }
@@ -975,13 +976,14 @@ bool Model::removeWall(int wallId)
     }
 
     m_walls.erase(it);
-    m_loadManager.removeSurfaceLoadsForSurface(SurfaceTargetKind::Wall, wallId);
+    const bool hadSurfaceLoads = !m_loadManager.removeSurfaceLoadsForSurface(SurfaceTargetKind::Wall, wallId).empty();
 
     bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onWallRemoved(wallId);
     }
+    if (hadSurfaceLoads) notifySurfaceLoadsChanged();
 
     return true;
 }
@@ -1292,6 +1294,15 @@ void Model::notifyLoadRemoved(int loadId)
     for (auto* obs : m_observers)
     {
         obs->onLoadRemoved(loadId);
+    }
+}
+
+void Model::notifySurfaceLoadsChanged()
+{
+    bumpRevision();
+    for (auto* obs : m_observers)
+    {
+        obs->onSurfaceLoadsChanged();
     }
 }
 

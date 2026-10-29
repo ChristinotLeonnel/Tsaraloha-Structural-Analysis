@@ -34,6 +34,11 @@ Source officielle de l'archive Windows disparue (404). Contournement : OpenSees 
 (cmake/SetupDependencies.cmake, docs/DEPENDENCIES.md §5). Status: PARTIEL — installation vérifiée, exécution NON
 validée ; OpenSeesManager::downloadAndInstall (application) vise encore l'adresse officielle.
 
+Mise à jour 2026-10-29 : avec thirdparty/OpenSees (build conda-forge), la suite opensees échoue à
+« mgr.isAvailable() » (test_opensees.cpp:133) : le contrôle de l'exécutable (OpenSeesManager::checkExecutable) ne le
+déclare pas opérationnel. Cause NON déterminée : l'exécution directe d'OpenSees.exe pour lire sa sortie est refusée par le
+contrôle de sécurité de la session. Pistes [H] : Tcl (tcl86t.dll cherche lib/tcl8.6 à côté de l'exécutable : présent),
+DLL d'exécution, délai de 5 s du contrôle. À diagnostiquer en lançant le script de contrôle à la main.
 ## BUG-138
 Area: SDK — tsa3d_roundtrip_example
 Problem: l'exemple est produit dans <build>/sdk sans les DLL (Qt, OCCT) : lancé depuis un autre dossier courant, il échoue
@@ -124,10 +129,10 @@ AIToolRegistry.cpp:392 ; charge nodale validée sans contrôle, LoadPropertiesVi
 grilles et charges de surface de MainWindow_Mesh (326, 359) sans notification d'observateur ; validation de la grille
 active sans changement : xIsBold / yIsBold / zIsBold normalisés (vides → false), sans effet visible (test 522).
 Impact: LOW
-Status: PARTIEL (2026-10-29, d84eefa) — corrigés : entrées sans changement (bibliothèque, IA, charge nodale), appui posé sans
-NodeModified, appuis linéiques notifiés. Restent : duplication de grille sans vue 3D hors historique (GridSettingsDialog ne
-joint le modèle que par la vue) ; charges surfaciques sans notification d'observateur (aucune API) ; normalisation des
-gras de grille (sans effet visible). Tests 514-522.
+Status: FIXED (2026-10-29) sauf un point cosmétique — corrigés : entrées sans changement (bibliothèque, IA, charge nodale),
+appui posé sans NodeModified, appuis linéiques notifiés, duplication de grille sans vue 3D (GridSettingsDialog::setModel),
+charges surfaciques notifiées (IModelObserver::onSurfaceLoadsChanged / Model::notifySurfaceLoadsChanged). Reste : gras de
+grille normalisés à la validation (sans effet visible). Tests 514-523.
 
 ## BUG-119
 Area: Vue 3D — destruction d'OccView avec le rendu logiciel Mesa (llvmpipe)
