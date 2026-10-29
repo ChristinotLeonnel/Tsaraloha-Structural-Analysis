@@ -7836,8 +7836,8 @@ Atomboka ve ny kajy?</translation>
         <translation>%1: enta miparitaka amin'ny ampahany amin'ny tsorakazo</translation>
     </message>
     <message>
-        <source>Méthode des déplacements (Fem3D) : éléments poutre 3D d'Euler–Bernoulli à rigidité exacte, charges réparties par forces nodales équivalentes exactes, rotules par condensation statique, appuis élastiques sur la diagonale de K, résolution LDLᵀ creuse (Eigen SimplicialLDLT).</source>
-        <translation>Fomba fifindrana (Fem3D): singa andry mitsivalana 3D Euler–Bernoulli manana hahenjana marina, enta miparitaka amin'ny alalan'ny hery mitovy marina eo amin'ny fihaonana, tonona amin'ny alalan'ny fanafohezana statika, fanohanana elastika eo amin'ny diagonalin'ny K, famahana LDLᵀ ho an'ny matrisy tsy feno (Eigen SimplicialLDLT).</translation>
+        <source>Méthode des déplacements (Fem3D) : éléments poutre 3D d'Euler–Bernoulli à rigidité exacte, charges sur barre (réparties sur tout ou partie de la barre, ponctuelles, moments répartis) par forces nodales équivalentes exactes, rotules par condensation statique, appuis élastiques sur la diagonale de K, résolution LDLᵀ creuse (Eigen SimplicialLDLT).</source>
+        <translation>Fomba fifindrana (Fem3D): singa andry mitsivalana 3D Euler–Bernoulli manana hahenjana marina, enta amin'ny andry (miparitaka amin'ny andry manontolo na amin'ny ampahany, enta iray toerana, momenta miparitaka) amin'ny alalan'ny hery mitovy marina eo amin'ny fihaonana, tonona amin'ny alalan'ny fanafohezana statika, fanohanana elastika eo amin'ny diagonalin'ny K, famahana LDLᵀ ho an'ny matrisy tsy feno (Eigen SimplicialLDLT).</translation>
     </message>
     <message>
         <source>Partition DDL libres / imposés</source>

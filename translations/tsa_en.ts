@@ -7836,8 +7836,8 @@ Run the analysis?</translation>
         <translation>%1: distributed load over part of the member</translation>
     </message>
     <message>
-        <source>Méthode des déplacements (Fem3D) : éléments poutre 3D d'Euler–Bernoulli à rigidité exacte, charges réparties par forces nodales équivalentes exactes, rotules par condensation statique, appuis élastiques sur la diagonale de K, résolution LDLᵀ creuse (Eigen SimplicialLDLT).</source>
-        <translation>Displacement method (Fem3D): exact-stiffness 3D Euler–Bernoulli beam elements, distributed loads by exact equivalent nodal forces, hinges by static condensation, elastic supports on the diagonal of K, sparse LDLᵀ solution (Eigen SimplicialLDLT).</translation>
+        <source>Méthode des déplacements (Fem3D) : éléments poutre 3D d'Euler–Bernoulli à rigidité exacte, charges sur barre (réparties sur tout ou partie de la barre, ponctuelles, moments répartis) par forces nodales équivalentes exactes, rotules par condensation statique, appuis élastiques sur la diagonale de K, résolution LDLᵀ creuse (Eigen SimplicialLDLT).</source>
+        <translation>Displacement method (Fem3D): exact-stiffness 3D Euler–Bernoulli beam elements, member loads (distributed over all or part of the member, point loads, distributed moments) by exact equivalent nodal forces, hinges by static condensation, elastic supports on the diagonal of K, sparse LDLᵀ solution (Eigen SimplicialLDLT).</translation>
     </message>
     <message>
         <source>Partition DDL libres / imposés</source>

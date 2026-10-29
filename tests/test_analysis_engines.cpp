@@ -810,7 +810,7 @@ bool runSuite_Engines(int& passed)
                    "Test 476: périmètre déclaré (3D, poutres, ressorts, statique)");
         TEST_CHECK(!c.supportsTruss && !c.supportsCable && !c.supportsShell && !c.supportsNonlinear && !c.supportsModal && !c.supportsMesh,
                    "Test 476: rien de plus que le périmètre qualifié");
-        TEST_CHECK(fem->info().version == "0.2.0" && fem->availability().available, "Test 476: version réelle de la bibliothèque");
+        TEST_CHECK(fem->info().version == "0.3.0" && fem->availability().available, "Test 476: version réelle de la bibliothèque");
         TEST_CHECK(fem->defaultSettings().value("mode").toString() == "fem3d" && fem->defaultSettings().value("fallback").toString() == "none",
                    "Test 476: par défaut, Fem3D seul et aucun secours");
         std::cout << "[PASS] Test 476: Moteur Fem3D enregistré" << std::endl;
@@ -919,12 +919,75 @@ bool runSuite_Engines(int& passed)
         ++passed;
     }
     {
-        // Hors périmètre (charge ponctuelle sur barre) : refus explicite, ou secours OpenSees choisi et étiqueté.
+        // Hors périmètre de Fem3D (barre de treillis) : refus motivé, ou secours OpenSees choisi et étiqueté.
+        // Depuis Fem3D 0.3.0, les charges ponctuelles et partielles et les moments répartis sur barre sont calculés
+        // (test 530) : ils ne déclenchent plus ce chemin. Les treillis et les coques sont déjà refusés pour Fem3D par
+        // les contrôles communs d'AnalysisManager (familles d'éléments), avant la décision propre au moteur : celle-ci est
+        // donc vérifiée directement sur le moteur, avec le modèle préparé pour OpenSees (qui calcule les treillis).
         Model m;
         GridManager gm;
         Frames f = buildFrames(m, false);
+        m.addTrussMember(f.nodes['A'][0], f.nodes['A'][2], 0.002);   // diagonale articulée dans l'axe A
         const int lc = m.loadManager().addLoadCase(LoadCase(0, "P", LoadCaseCategory::Live));
-        m.loadManager().addMemberLoad(MemberLoad::pointOnMember(f.members['A'][1], lc, -25.0, 2.0, LoadDirection::GlobalZ, "P"));
+        m.loadManager().addNodalLoad(NodalLoad(0, f.nodes['A'][1], lc, 10.0, 0.0, -25.0));
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        AnalysisManager mgr(reg);
+        AnalysisContext c;
+        c.engineId = "opensees";
+        c.loadCaseIds = { lc };
+        c.common.includeSelfWeight = false;
+        const auto prepared = mgr.prepare(m, &gm, c);
+        TEST_CHECK(prepared.canRun(), "Test 478: modèle avec treillis préparé");
+        AnalysisEngine* fem = reg.engine("fem3d");
+        TEST_CHECK(fem != nullptr, "Test 478: moteur Fem3D enregistré");
+        c.engineId = "fem3d";
+
+        const ValidationResult refused = fem->validate(c, prepared.model);
+        const auto errors = refused.texts(ValidationSeverity::Error);
+        TEST_CHECK(!refused.isValid() && std::any_of(errors.begin(), errors.end(), [](const std::string& e) {
+                       return e.find("Hors du périmètre de Fem3D") != std::string::npos && e.find("treillis") != std::string::npos;
+                   }),
+                   "Test 478: refus explicite, raison donnée");
+        TEST_CHECK(!fem->run(c, prepared.model, {}).success, "Test 478: aucun calcul sans secours choisi");
+
+        c.engineSettings["fem3d"] = QJsonObject { { "mode", "fem3d" }, { "fallback", "opensees" } };
+        const ValidationResult withFallback = fem->validate(c, prepared.model);
+        const auto warnings = withFallback.texts(ValidationSeverity::Warning);
+        TEST_CHECK(withFallback.isValid() && std::any_of(warnings.begin(), warnings.end(), [](const std::string& w) {
+                       return w.find("Calcul confié à OpenSees") != std::string::npos;
+                   }),
+                   "Test 478: secours annoncé avant le calcul");
+        const auto run = fem->run(c, prepared.model, {});
+        TEST_CHECK(run.success && run.producedBy && run.producedBy->id == "opensees" && run.results.executionMetadata().solverEngine == "OpenSees",
+                   "Test 478: résultats étiquetés OpenSees, jamais Fem3D (" << (run.producedBy ? run.producedBy->id : std::string("?")) << ")");
+        const auto& w = run.results.executionMetadata().warnings;
+        TEST_CHECK(std::any_of(w.begin(), w.end(), [](const std::string& x) { return x.find("secours de Fem3D") != std::string::npos; }),
+                   "Test 478: raison du secours dans la traçabilité");
+        std::cout << "[PASS] Test 478: Hors périmètre : refus ou secours OpenSees explicite" << std::endl;
+        ++passed;
+    }
+    {
+        // TEST 530 : charges sur barre calculées par Fem3D (0.3.0) — forces ponctuelles (repères global et local, sur poutre
+        // et sur poteau), charges uniformes et trapézoïdales sur une partie de la barre, moments répartis (torsion et
+        // flexion) ; comparaison automatique à OpenSees (mode « compare ») et efforts aux stations identiques.
+        Model m;
+        GridManager gm;
+        Frames f = buildFrames(m, true);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        auto& lm = m.loadManager();
+        lm.addMemberLoad(MemberLoad::pointOnMember(f.members['A'][1], lc, -25.0, 2.0, LoadDirection::GlobalZ, "P"));
+        lm.addMemberLoad(MemberLoad::pointOnMember(f.members['B'][1], lc, 8.0, 0.35, LoadDirection::LocalY, LoadCoordSystem::Local, true, "P local"));
+        lm.addMemberLoad(MemberLoad(0, f.members['C'][0], lc, LoadType::MemberPoint, 6.0, 0.0, LoadDirection::GlobalX, LoadCoordSystem::Global, 1.2, 0.0,
+                                    false, "choc", MemberTargetType::Column));
+        lm.addMemberLoad(MemberLoad::trapezoidal(f.members['A'][1], lc, -9.0, -9.0, 1.0, 4.5, LoadDirection::GlobalZ, "uniforme partielle"));
+        lm.addMemberLoad(MemberLoad::trapezoidal(f.members['C'][1], lc, -3.0, -12.0, 0.2, 0.7, LoadDirection::GlobalZ, LoadCoordSystem::Global, true,
+                                                 "trapèze partiel"));
+        lm.addMemberLoad(MemberLoad(0, f.transverse[0], lc, LoadType::MemberMoment, 2.0, 2.0, LoadDirection::LocalX,
+                                    MemberLoad::coordSystemFor(LoadDirection::LocalX), 0.0, 0.0));   // torsion répartie
+        lm.addMemberLoad(MemberLoad(0, f.members['B'][1], lc, LoadType::MemberMoment, 1.5, 4.0, LoadDirection::LocalZ,
+                                    MemberLoad::coordSystemFor(LoadDirection::LocalZ), 1.0, 5.0));   // couple de flexion partiel
+
         AnalysisEngineRegistry reg;
         registerBuiltInEngines(reg);
         AnalysisManager mgr(reg);
@@ -932,28 +995,37 @@ bool runSuite_Engines(int& passed)
         c.engineId = "fem3d";
         c.loadCaseIds = { lc };
         c.common.includeSelfWeight = false;
-        auto refused = mgr.prepare(m, &gm, c);
-        const auto errors = refused.validation.texts(ValidationSeverity::Error);
-        TEST_CHECK(!refused.canRun() && std::any_of(errors.begin(), errors.end(), [](const std::string& e) {
-                       return e.find("Hors du périmètre de Fem3D") != std::string::npos && e.find("charge ponctuelle") != std::string::npos;
-                   }),
-                   "Test 478: refus explicite, raison donnée");
-        TEST_CHECK(!mgr.run(c, refused).success, "Test 478: aucun calcul sans secours choisi");
-
-        c.engineSettings["fem3d"] = QJsonObject { { "mode", "fem3d" }, { "fallback", "opensees" } };
+        c.engineSettings["fem3d"] = QJsonObject { { "mode", "compare" }, { "fallback", "none" } };
         const auto prep = mgr.prepare(m, &gm, c);
-        const auto warnings = prep.validation.texts(ValidationSeverity::Warning);
-        TEST_CHECK(prep.canRun() && std::any_of(warnings.begin(), warnings.end(), [](const std::string& w) {
-                       return w.find("Calcul confié à OpenSees") != std::string::npos;
-                   }),
-                   "Test 478: secours annoncé avant le calcul");
+        const auto errors = prep.validation.texts(ValidationSeverity::Error);
+        TEST_CHECK(prep.canRun(), "Test 530: charges sur barre dans le périmètre de Fem3D (" << (errors.empty() ? std::string() : errors.front()) << ")");
         const auto run = mgr.run(c, prep);
-        TEST_CHECK(run.success && run.results.executionMetadata().engineId == "opensees" && run.results.executionMetadata().solverEngine == "OpenSees",
-                   "Test 478: résultats étiquetés OpenSees, jamais Fem3D (" << run.results.executionMetadata().engineId << ")");
-        const auto& w = run.results.executionMetadata().warnings;
-        TEST_CHECK(std::any_of(w.begin(), w.end(), [](const std::string& x) { return x.find("secours de Fem3D") != std::string::npos; }),
-                   "Test 478: raison du secours dans la traçabilité");
-        std::cout << "[PASS] Test 478: Hors périmètre : refus ou secours OpenSees explicite" << std::endl;
+        TEST_CHECK(run.success && run.results.executionMetadata().solverEngine == "Fem3D", "Test 530: calcul Fem3D (" << run.message << ")");
+        TEST_CHECK(run.message.find(" 0 hors tolérance") != std::string::npos, "Test 530: Fem3D = OpenSees (" << run.message << ")");
+
+        AnalysisContext os = c;
+        os.engineId = "opensees";
+        const auto osRun = mgr.run(os, mgr.prepare(m, &gm, os));
+        TEST_CHECK(osRun.success, "Test 530: calcul OpenSees de référence");
+        double worst = 0.0, scale = 0.0;
+        for (const auto& [key, e] : osRun.results.allElementResults())
+        {
+            const ElementResults* a = run.results.getElementResults(key);
+            TEST_CHECK(a && a->intermediateStations.size() == e.intermediateStations.size(), "Test 530: mêmes stations");
+            for (std::size_t i = 0; i < e.intermediateStations.size(); ++i)
+            {
+                const auto& x = a->intermediateStations[i];
+                const auto& y = e.intermediateStations[i];
+                for (const auto& [u, v] : { std::pair{ x.My, y.My }, std::pair{ x.Mz, y.Mz }, std::pair{ x.Vy, y.Vy }, std::pair{ x.Vz, y.Vz },
+                                            std::pair{ x.N, y.N }, std::pair{ x.Mx, y.Mx } })
+                {
+                    worst = std::max(worst, std::abs(u - v));
+                    scale = std::max(scale, std::abs(v));
+                }
+            }
+        }
+        TEST_CHECK(scale > 1.0 && worst <= 1e-6 * scale, "Test 530: efforts aux stations identiques (écart " << worst << " / " << scale << ")");
+        std::cout << "[PASS] Test 530: Fem3D calcule les charges ponctuelles, partielles et les moments répartis (= OpenSees)" << std::endl;
         ++passed;
     }
     {

@@ -4,6 +4,13 @@ Last Updated: 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, B
 
 ## Ouverts
 
+## BUG-144
+Status: OPEN (constat, 2026-10-29) — secours OpenSees de Fem3D sans cas atteignable depuis l'interface : depuis
+Fem3D 0.3.0 les charges sur barre sont calculées ; les seuls « hors périmètre » restants (treillis, câbles, coques)
+sont refusés avant par AnalysisManager (familles d'éléments ; coques non transmises si !supportsShell). L'option
+« secours OpenSees » ne change donc plus rien. Logique testée directement sur le moteur (test 478). Décision à
+prendre : retirer l'option, ou faire passer ces familles par la décision du moteur quand un secours est choisi.
+
 Validation Windows du 2026-10-28 (docs/reports/WINDOWS_VALIDATION_REPORT.md, identifiants W-n du rapport) :
 
 ## BUG-131 (W-1)

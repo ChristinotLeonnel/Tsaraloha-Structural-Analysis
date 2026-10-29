@@ -2,6 +2,14 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-29 (soir) — Fem3D 0.3.0 : charges sur barre (branches feature/fem3d-charges-sur-barre, Fem3D feature/charges-sur-barre)
+Fem3D (dépôt ../3DDesplacement) : forces ponctuelles, charges réparties sur [a, b], moments répartis ; forces nodales
+équivalentes exactes (Betti ; couples : rotation de section, Θ = v′ − γ en Timoshenko), efforts et déformée par
+morceaux (PiecewisePolynomial), équilibre global étendu ; 49/49 tests (8 nouveaux, dont 2 mutations détectées) ;
+benchmarks 21-22 : EB OK (2 × 168 valeurs), Timoshenko non comparable (ElasticTimoshenkoBeam3d ignore -beamPoint et
+-beamUniform partiel). TSA : Fem3DAdapter transmet Point / Linear partiel / Couple au lieu de les refuser ; test 530
+(Fem3D = OpenSees, stations identiques) ; test 478 réécrit sur le moteur (treillis). 57/57 suites, TSALab 27/27.
+
 ## 2026-10-29 — étape 2 : API d'édition unique, défauts Undo/Redo, dépendances du modèle (branche refactor/core-edit-api)
 Contrat des transactions (BUG-127 : commit / rollback sans effet, imbrication, comparaison exacte par les octets du contenu
 persistant, encodeur fourni par IO au noyau), clé de coalescence et hasChanges ; tous les appels pushUndoState de
