@@ -34,7 +34,12 @@ Source officielle de l'archive Windows disparue (404). Contournement : OpenSees 
 (cmake/SetupDependencies.cmake, docs/DEPENDENCIES.md §5). Status: PARTIEL — installation vérifiée, exécution NON
 validée ; OpenSeesManager::downloadAndInstall (application) vise encore l'adresse officielle.
 
-Mise à jour 2026-10-29 : avec thirdparty/OpenSees (build conda-forge), la suite opensees échoue à
+RÉSOLU 2026-10-29 (soir) : cause = libblas.dll / liblapack.dll de conda-forge ne font que TRANSFÉRER leurs exports à
+openblas.dll (paquet libopenblas), invisible pour dumpbin /dependents → 0xC0000135 au chargement. openblas.dll ajouté
+(TSA_OPENSEES_CONDA_PACKAGES). Vérifié : commande de contrôle → OPENSEES_CHECK_OK_3.8.0 ; 57/57 suites (dont les 15
+OpenSees) ; banc OpenSees 88/88 ; TSALab 27/27 sans partie ignorée. Status: FIXED (exécutable) ; OpenSeesManager::
+downloadAndInstall (application) vise encore l'adresse officielle (échec propre).
+Historique : Mise à jour 2026-10-29 : avec thirdparty/OpenSees (build conda-forge), la suite opensees échoue à
 « mgr.isAvailable() » (test_opensees.cpp:133) : le contrôle de l'exécutable (OpenSeesManager::checkExecutable) ne le
 déclare pas opérationnel. Cause NON déterminée : l'exécution directe d'OpenSees.exe pour lire sa sortie est refusée par le
 contrôle de sécurité de la session. Pistes [H] : Tcl (tcl86t.dll cherche lib/tcl8.6 à côté de l'exécutable : présent),

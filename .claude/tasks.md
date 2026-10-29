@@ -7,6 +7,7 @@ Last Updated: 2026-10-28. Uniquement des tâches réellement identifiées (voir 
 - [ ] OpenSees : remettre l'exécutable (serveur officiel en 404, W-3) puis relancer les 14 suites, le banc et TSALab L9-L14.
 - [ ] W-6 : TSALab LabTests.cpp:120 → TSA::Core::utf8Path (autre dépôt, accord requis).
 - [x] W-8 corrigé et vérifié ; W-7 corrigé, compilé — [ ] à exécuter quand OpenSees sera présent (suite torsion, test 332).
+- [x] OpenSees conda-forge VALIDÉ (2026-10-29) : 57/57 suites, banc 88/88, TSALab 27/27 (openblas.dll ajouté).
 - [x] W-3 : SHA-256 + curl --fail dans OpenSeesManager ; TSA_OPENSEES_ARCHIVE ; OpenSees 3.8.0 conda-forge épinglé
       (TSA_OPENSEES_CONDA_PACKAGES, thirdparty/OpenSees installé) ; [ ] EXÉCUTION non validée (lancement refusé par le
       contrôle de sécurité de la session) : 14 suites OpenSees, banc, TSALab L9-L14 à lancer.

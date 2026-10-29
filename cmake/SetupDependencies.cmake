@@ -612,7 +612,8 @@ endfunction()
 # OpenSees 3.8.0 pour Windows depuis conda-forge (W-3) : compilé depuis l'étiquette officielle v3.8.0 par la recette
 # publique github.com/conda-forge/opensees-feedstock. Paquets épinglés, empreintes SHA-256 publiées par anaconda.org
 # (une archive d'empreinte différente n'est jamais extraite). Seuls OpenSees.exe, les DLL qu'il importe (fermeture
-# dumpbin établie le 2026-10-28) et la bibliothèque Tcl 8.6 de tcl86t.dll sont installés : <dest>/bin et <dest>/lib,
+# dumpbin /dependents ET exports transférés, établie les 2026-10-28 et 29 ; chargement et commande de contrôle vérifiés)
+# et la bibliothèque Tcl 8.6 de tcl86t.dll sont installés : <dest>/bin et <dest>/lib,
 # disposition attendue par OpenSeesManager (Tcl dans <bin>/../lib/tcl8.6). Runtime MSVC : celui de Windows / du paquet.
 # Entrées : « fichier|sha256|fichiers de Library/bin à installer (séparés par des virgules) ».
 set(TSA_OPENSEES_CONDA_PACKAGES
@@ -621,6 +622,9 @@ set(TSA_OPENSEES_CONDA_PACKAGES
     "hdf5-1.14.6-nompi_hae35d4c_110|54f5211e698a468fd74def162e277d834e956c5b24a9ba4f9cf6298209328475|hdf5.dll"
     "libblas-3.9.0-43_h0adab6e_openblas|6299f79ab67ff5f5c0bd702bf14437c290747a3e00cd1ce1455b5800a8dab2f6|libblas.dll"
     "liblapack-3.9.0-43_hd232482_openblas|6f19096892015cd1fcb4cdfbab443fe201dc89209cdf93c45544d07f393ff272|liblapack.dll"
+    # libblas.dll / liblapack.dll ne contiennent aucun code : leurs exports sont TRANSFÉRÉS à openblas.dll (invisible pour
+    # dumpbin /dependents ; sans lui, OpenSees.exe ne se charge pas : 0xC0000135, constaté le 2026-10-29).
+    "libopenblas-0.3.34-pthreads_h952cde7_2|138056f68cf8f92cb1830fe1ed950d70856cc840f5f4b2569f9e849cb109bf7e|openblas.dll"
     "libaec-1.1.5-haf901d7_0|e54c08964262c73671d9e80e400333e59c617e0b454476ad68933c0c458156c8|szip.dll"
     "libcurl-8.23.0-hdb0ef4a_0|d3088e1fd049fe0c1905ba6174e77279ddb4817739a204aaf4bd31d59d38ea6a|libcurl.dll"
     "libzlib-1.3.2-hfd05255_3|0629c2cc0404d3bb29d6baa7b4ba62da80797015e86de050db81ea5a07050527|zlib.dll"

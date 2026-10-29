@@ -134,9 +134,10 @@ Statuts : VALIDÉE, NON VALIDÉE, TROUVÉE (outil sans plage de versions), ABSEN
   les préférences ; sinon installation ci-dessus (si `TSA_AUTO_DOWNLOAD_DEPS=ON`). Le téléchargement intégré à
   l'application (`OpenSeesManager::downloadAndInstall`) vise encore l'archive officielle : il échoue proprement
   (404, message explicite) tant qu'elle n'est pas republiée.
-- **Différences avec l'archive officielle** : BLAS/LAPACK OpenBLAS (au lieu de la build officielle), HDF5 1.14.6 ;
-  les résultats doivent être confirmés par les suites OpenSees et le banc (références externes) avant d'être tenus
-  pour validés.
+- **Différences avec l'archive officielle** : BLAS/LAPACK OpenBLAS, HDF5 1.14.6. **Validé le 2026-10-29** (Windows,
+  MSVC 19.51) : 57/57 suites dont les 15 OpenSees, banc OpenSees 88/88 contre les références externes (tolérances
+  inchangées), TSALab 27/27. Piège : `libblas.dll` / `liblapack.dll` transfèrent leurs exports à `openblas.dll`
+  (13 paquets installés, dont `libopenblas`).
 - **Linux** : compilation depuis `v3.8.0` (`docs/LINUX_BUILD.md` §7) ; conda-forge publie aussi `linux-64` (non
   intégré).
 - **Sans OpenSees** : TSA se construit et fonctionne (moteur Custom2D, modélisation, IFC, maillage…) ;
