@@ -335,6 +335,12 @@ cmd.window.properties               | Ctrl+2                | on   | Ctrl+2     
 cmd.window.results                  | Ctrl+1                | on   | Ctrl+1                | Panneau Résultats — Afficher ou masquer le panneau Résultats structuraux 3D
 cmd.window.visibility               | Ctrl+5                | on   | Ctrl+5                | Calques et visibilité — Afficher ou masquer le panneau Calques et visibilité
 cmd.window.work_planes              | Ctrl+4                | on   | Ctrl+4                | Plans de travail et vues — Afficher ou masquer le panneau des plans de travail
+cmd.workspace.blueprint             | Ctrl+Alt+2            | on   | Ctrl+Alt+2            | Espace : Blueprint — Afficher l'éditeur de Blueprint sur toute la surface centrale
+cmd.workspace.focus                 | Ctrl+Shift+F          | on   | Ctrl+Shift+F          | Mode focus — Masquer ou rétablir tous les panneaux
+cmd.workspace.model3d               | Ctrl+Alt+1            | on   | Ctrl+Alt+1            | Espace : modèle 3D — Afficher la vue 3D du modèle seule
+cmd.workspace.reset_layout          |                       | on   |                       | Disposition par défaut — Rétablir la disposition par défaut des panneaux et de l'espace de travail
+cmd.workspace.split                 | Ctrl+Alt+3            | on   | Ctrl+Alt+3            | Espace : vue partagée — Afficher la vue 3D et le Blueprint côte à côte
+cmd.workspace.split_vertical        |                       | on   |                       | Partage vertical — Vue partagée : la vue 3D au-dessus du Blueprint
 
 [Outils généraux]
 # identifiant                       | raccourci(s)          | état | par défaut            | description
@@ -343,6 +349,14 @@ cmd.ai.assistant                    | Ctrl+Shift+I          | on   | Ctrl+Shift+
 cmd.ai.check                        |                       | on   |                       | Vérifier la structure (IA) — Vérification de la structure par l'assistant
 cmd.ai.config                       |                       | on   |                       | Configuration IA — Paramètres de l'assistant IA
 cmd.ai.explain                      |                       | on   |                       | Expliquer avec l'IA — Explication des résultats par l'assistant
+cmd.blueprint.debug                 |                       | on   |                       | Déboguer le Blueprint — Exécuter en s'arrêtant aux points d'arrêt
+cmd.blueprint.fit_all               |                       | on   |                       | Cadrer le graphe — Afficher tout le Blueprint
+cmd.blueprint.fit_selection         |                       | on   |                       | Cadrer la sélection du graphe — Cadrer les nœuds sélectionnés du Blueprint
+cmd.blueprint.new                   |                       | on   |                       | Nouveau Blueprint — Nouveau programme de modélisation en blocs
+cmd.blueprint.open                  |                       | on   |                       | Ouvrir un Blueprint — Ouvrir un fichier Blueprint (.tsbp)
+cmd.blueprint.run                   |                       | on   |                       | Exécuter le Blueprint — Exécuter le Blueprint sur le projet ouvert
+cmd.blueprint.save                  |                       | on   |                       | Enregistrer le Blueprint — Enregistrer le Blueprint édité
+cmd.blueprint.validate              |                       | on   |                       | Valider le Blueprint — Contrôler le graphe sans l'exécuter
 
 [Paramètres]
 # identifiant                       | raccourci(s)          | état | par défaut            | description

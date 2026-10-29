@@ -5,9 +5,18 @@ Last Updated: 2026-10-28. Uniquement des tâches réellement identifiées (voir 
 ## Fem3D 0.3.0 — charges sur barre (2026-10-29)
 - [x] Moteur : ponctuelles, partielles, moments répartis ; tests 49/49 ; benchmarks 21-22 ; documentation Fem3D.
 - [x] TSA : adaptateur, test 530, test 478 adapté ; 57/57 suites ; TSALab 27/27.
-- [ ] Commits (deux dépôts) : accord de l'utilisateur requis.
+- [x] Commits et fusion dans main (TSA 5c943af, Fem3D ca4513d), puis push (2026-10-29).
 - [ ] Niveau 4 des charges sur barre (audit indépendant) ; référence pour Timoshenko et moments répartis.
 - [ ] BUG-144 : avenir de l'option « secours OpenSees ».
+
+## Espace de travail 3D / Blueprint (2026-10-29, branche feature/blueprint-workspace, fusionnée dans main)
+- [x] WorkspaceView (3 modes, partage H/V, préférences), navigation du Blueprint, ruban, raccourcis, icônes, traductions ; tests 524–529.
+- [x] Suite complète 57/57 (528 tests, run_test_suites.py, 149 s), TSALab 27/27, check_shortcuts --strict, check_layers.
+- [x] Essai graphique réel de MainWindow (UI Automation + captures) : modes, panneaux, focus, défaut, relance, Annuler / Rétablir.
+- [x] Recherche des nœuds placés (groupe distinct, clavier).
+- [ ] BUG-139 (vue partagée à la taille minimale), BUG-140 (Ctrl+Z dans le Blueprint : décision), BUG-141 (mini-carte).
+- [ ] Compilation et tests Linux ; CI non consultée (gh absent du poste).
+- [ ] BUG-143 : répondeur modal global pour les tests, délai du solveur OpenSees.
 
 ## Validation Windows (2026-10-28, docs/reports/WINDOWS_VALIDATION_REPORT.md, branche test/windows-validation)
 - [x] Compilation MSVC 19.51 Release de C (6a5bde1) + TSALab eea9cd9 ; 42 suites ; Custom2D 58/58 ; W-1, W-2, W-5 corrigés.

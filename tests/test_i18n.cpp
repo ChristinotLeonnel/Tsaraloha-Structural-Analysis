@@ -595,6 +595,10 @@ struct FullRibbonActions
     F(actionMeasure); F(actionAIAssistant); F(actionAIConfig); F(actionExtensionManager);
     F(actionModules); F(actionHelp); F(actionOnlineDocs); F(actionShortcuts);
     F(actionAbout); F(actionReportProblem); F(actionExportDiagnostic);
+    F(actionWorkspace3D); F(actionWorkspaceBlueprint); F(actionWorkspaceSplit); F(actionWorkspaceVertical);
+    F(actionFocusMode); F(actionResetLayout); F(actionBlueprintNew); F(actionBlueprintOpen);
+    F(actionBlueprintSave); F(actionBlueprintValidate); F(actionBlueprintRun); F(actionBlueprintDebug);
+    F(actionBlueprintFitAll); F(actionBlueprintFitSelection);
 #undef F
         for (auto* list : { &acts.drawTools, &acts.advancedModifyTools, &acts.dimensionCommands })
             for (int i = 0; i < 3; ++i) list->push_back(make(QStringLiteral("liste%1_%2").arg(reinterpret_cast<quintptr>(list)).arg(i)));
@@ -630,9 +634,9 @@ bool runSuite_Ribbon(int& passed)
         RibbonBuilder::buildAllTabs(&bar, full.acts, nullptr);
         QStringList titles;
         for (int i = 0; i < bar.tabCount(); ++i) titles << bar.tabTitle(i);
-        TEST_CHECK(titles == QStringList({ QString::fromUtf8("Accueil"), QString::fromUtf8("Modélisation"), "Modifier", "Grille et plans", "Charges",
-                                           "Maillage", "Analyse", QString::fromUtf8("Résultats"), "Affichage", "Outils" }),
-                   "Test 464: dix onglets dans l'ordre du travail (" << titles.join(", ").toStdString() << ")");
+        TEST_CHECK(titles == QStringList({ QString::fromUtf8("Accueil"), QString::fromUtf8("Modélisation"), "Modifier", "Blueprint", "Grille et plans",
+                                           "Charges", "Maillage", "Analyse", QString::fromUtf8("Résultats"), "Affichage", "Outils" }),
+                   "Test 464: onze onglets dans l'ordre du travail (" << titles.join(", ").toStdString() << ")");
         const auto placed = RibbonBuilder::placedActions(full.acts);
         const auto locations = bar.actionLocations();
         QStringList missing, extra, duplicated;
@@ -658,7 +662,7 @@ bool runSuite_Ribbon(int& passed)
         TEST_CHECK(extra.isEmpty(), "Test 464: boutons sans action réelle de la fenêtre : " << extra.join(", ").toStdString());
         TEST_CHECK(duplicated.isEmpty(), "Test 464: commandes placées deux fois : " << duplicated.join(", ").toStdString());
         TEST_CHECK(placed.size() > 200 && !locations.contains(full.acts.actionExit), "Test 464: " << placed.size() << " commandes placées (« Quitter » au menu de l'application)");
-        std::cout << "[PASS] Test 464: Ruban en dix onglets : " << placed.size() << " commandes, chacune à une place, aucune fictive" << std::endl;
+        std::cout << "[PASS] Test 464: Ruban en onze onglets : " << placed.size() << " commandes, chacune à une place, aucune fictive" << std::endl;
         ++passed;
     }
 

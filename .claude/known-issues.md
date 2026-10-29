@@ -10,6 +10,33 @@ Fem3D 0.3.0 les charges sur barre sont calculées ; les seuls « hors périmètr
 sont refusés avant par AnalysisManager (familles d'éléments ; coques non transmises si !supportsShell). L'option
 « secours OpenSees » ne change donc plus rien. Logique testée directement sur le moteur (test 478). Décision à
 prendre : retirer l'option, ou faire passer ces familles par la décision du moteur quand un secours est choisi.
+Espace de travail (2026-10-29, essais réels dans TSA.exe, branche feature/blueprint-workspace) :
+
+## BUG-139
+Status: OPEN — vue partagée à la taille minimale de la fenêtre (960 × 560 logiques) avec les panneaux gauche et droit
+ouverts : zone centrale plus étroite que les minimums vue 3D (240 px) + canevas (280 px) ; le Blueprint est rogné.
+Contournement : mode Blueprint, mode focus (Ctrl+Shift+F) ou fermer une colonne de panneaux. Piste : replier palette et
+inspecteur de l'éditeur sous un seuil, ou relever la largeur minimale du workspace en vue partagée.
+
+## BUG-140
+Status: OPEN (ergonomie, décision à prendre) — Ctrl+Z dans le canevas du Blueprint annule le PROJET (modèle structurel),
+pas l'édition du graphe (boutons propres à l'éditeur). Cohérent avec la documentation, peut surprendre en éditant un graphe.
+
+## BUG-141
+Status: OPEN (mineur) — mini-carte peu lisible pour un graphe très allongé (une rangée de 400 nœuds : bande quasi
+invisible) ; « Cadrer tout » plafonné à 5 % : un tel graphe n'entre pas entier dans la vue.
+
+## BUG-142
+Status: FIXED (2026-10-29, test 529 + essai réel sous US et AZERTY) — Ctrl+Alt+chiffre dans un champ. Correction en deux
+temps : (1) une touche Ctrl+Alt produisant un caractère était rendue au champ ; essai réel : au clavier US, Qt joint « 2 »
+à Ctrl+Alt+2 → le raccourci ne marchait plus dans un champ (régression introduite puis corrigée) ; (2) règle finale : seul
+un caractère différent de celui de la touche (code virtuel natif) est une saisie. NB : le défaut AZERTY initial
+(« ~ », « # » pris par le raccourci) n'a PAS été observé avant correction (premier essai fait par erreur au clavier US).
+
+## BUG-143
+Status: OPEN (tests, inspection du code, non reproduit) — risques de blocage : boîtes modales sans répondeur (suite
+mesh 390 / 299), OpenSeesSolver sans délai, wait() sans délai des contrôleurs ; TSA_TestSuite sans délai interne et
+écrivant dans le dossier courant (fichiers test_bug110_*.tsa, empty_project.tsa à la racine du dépôt). docs/TESTING.md.
 
 Validation Windows du 2026-10-28 (docs/reports/WINDOWS_VALIDATION_REPORT.md, identifiants W-n du rapport) :
 

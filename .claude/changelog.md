@@ -9,6 +9,21 @@ morceaux (PiecewisePolynomial), équilibre global étendu ; 49/49 tests (8 nouve
 benchmarks 21-22 : EB OK (2 × 168 valeurs), Timoshenko non comparable (ElasticTimoshenkoBeam3d ignore -beamPoint et
 -beamUniform partiel). TSA : Fem3DAdapter transmet Point / Linear partiel / Couple au lieu de les refuser ; test 530
 (Fem3D = OpenSees, stations identiques) ; test 478 réécrit sur le moteur (treillis). 57/57 suites, TSALab 27/27.
+## 2026-10-29 (suite) — validation graphique réelle et stabilisation de l'espace de travail
+Essais dans TSA.exe (UI Automation, SendKeys, captures DPI-aware). Corrigés et vérifiés à l'écran : panneaux masqués selon
+l'état explicite (démarrage en Blueprint) et calcul unique Blueprint / focus, onglet actif rétabli, canevas centré à
+l'affichage et ramené sur le graphe, canevas ≥ 280 px, vue 3D ≥ 240 × 160 en vue partagée, mini-carte adaptative, AltGr
+(BUG-142), recherche des nœuds placés + clavier, fermeture refusée pendant un Blueprint, Redraw OCCT protégé (vue jamais
+affichée). Tests 527–529 ; [SKIP] au lieu de [PASS] pour les tests non exécutés (263, 377, 529). docs/TESTING.md.
+
+## 2026-10-29 — espace de travail 3D / Blueprint / partagé (branche feature/blueprint-workspace)
+WorkspaceView (QSplitter autour de ViewportContainer, éditeur Blueprint créé à la demande, même ProjectSession) ; modes
+Ctrl+Alt+1/2/3, partage vertical, mode focus Ctrl+Shift+F, disposition par défaut ; MainWindow_Workspace.cpp (docks
+masqués en mode Blueprint et rétablis, persistance QSettings « Workspace »). BlueprintEditor : grille, mini-carte, cadrer
+tout / sélection (F, Origine), zoom 5–150 %, indicateur, panneaux repliables, état de disposition versionné ;
+BlueprintScene::fitSceneRectToItems (zone fixe ±4 000 : un graphe plus grand n'était pas entièrement cadrable). Ruban :
+onglet Blueprint, panneau Espace de travail. 14 commandes au catalogue, 8 icônes dédiées (test 462), 76 traductions
+EN / MG. Tests 524–526 ; 525/525, TSALab 27/27. Intégration MainWindow non testée en interface réelle.
 
 ## 2026-10-29 — étape 2 : API d'édition unique, défauts Undo/Redo, dépendances du modèle (branche refactor/core-edit-api)
 Contrat des transactions (BUG-127 : commit / rollback sans effet, imbrication, comparaison exacte par les octets du contenu

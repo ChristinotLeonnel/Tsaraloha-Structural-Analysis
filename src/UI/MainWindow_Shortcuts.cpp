@@ -83,6 +83,14 @@ void MainWindow::setupShortcuts()
         { "cmd.view.xz", m_actionViewXZ }, { "cmd.view.yz", m_actionViewYZ }, { "cmd.view.rotate_left", m_actionRotateLeft },
         { "cmd.view.rotate_right", m_actionRotateRight }, { "cmd.view.section_cut", m_actionSectionCut },
         { "cmd.view.coord_system", m_actionCoordSystem }, { "cmd.view.fullscreen", m_actionFullScreen },
+        // Espace de travail et Blueprint
+        { "cmd.workspace.model3d", m_actionWorkspace3D }, { "cmd.workspace.blueprint", m_actionWorkspaceBlueprint },
+        { "cmd.workspace.split", m_actionWorkspaceSplit }, { "cmd.workspace.split_vertical", m_actionWorkspaceVertical },
+        { "cmd.workspace.focus", m_actionFocusMode }, { "cmd.workspace.reset_layout", m_actionResetLayout },
+        { "cmd.blueprint.new", m_actionBlueprintNew }, { "cmd.blueprint.open", m_actionBlueprintOpen },
+        { "cmd.blueprint.save", m_actionBlueprintSave }, { "cmd.blueprint.validate", m_actionBlueprintValidate },
+        { "cmd.blueprint.run", m_actionBlueprintRun }, { "cmd.blueprint.debug", m_actionBlueprintDebug },
+        { "cmd.blueprint.fit_all", m_actionBlueprintFitAll }, { "cmd.blueprint.fit_selection", m_actionBlueprintFitSelection },
         // Affichage
         { "cmd.display.nodes", m_actionNodesVisible }, { "cmd.display.node_labels", m_actionNodeLabelsVisible },
         { "cmd.display.supports", m_actionSupportsVisible }, { "cmd.display.support_labels", m_actionSupportLabelsVisible },

@@ -91,6 +91,18 @@ Annuler / Rétablir de la barre de titre, redimensionnement par les bords en mod
 l'interface (appuis via le menu Structure). Réduire depuis l'état agrandi : crash corrigé le 2026-10-07 (FIX-2026-10-07-MINIMIZE). Non vérifié : multi-écrans / DPI mixte, Snap layouts Win11 (BUG-033).
 
 ## UI
+Espace de travail (2026-10-29, branche feature/blueprint-workspace) : IMPLEMENTED — WorkspaceView (src/UI/Workspace) autour
+de la vue 3D : modes Modèle 3D / Blueprint / vue partagée (horizontale ou verticale), mode focus, disposition par défaut ;
+onglet de ruban Blueprint, panneau Affichage › Espace de travail ; préférences QSettings « Workspace » sous
+HKCU\Software\TSA Engineering\TSA (docs/UI.md). Éditeur : cadrages, zoom, mini-carte adaptative, grille, panneaux
+repliables, recherche Ctrl+F (types ET nœuds placés, clavier : Entrée / Bas), scène étendue aux éléments.
+Vérifié automatiquement : tests 524–529 ; 57/57 suites (528 tests, 149 s, run_test_suites.py), TSALab 27/27.
+Vérifié dans TSA.exe réel (2026-10-29, pilotage UI Automation + captures, Windows 125 %) : lancement, Ctrl+Alt+1/2/3,
+panneaux masqués / rétablis (onglet actif conservé), mode focus, disposition par défaut, fermeture puis relance (mode
+et panneaux restaurés, démarrage en Blueprint), Blueprint → modèle (2 nœuds + 1 poutre) puis Annuler ×3 / Rétablir ×3,
+graphe de 401 nœuds (≈ 0,5 s), recherche #250 au clavier, AltGr AZERTY et clavier US, fenêtre minimale.
+Limites : vue partagée à la taille minimale avec les deux colonnes de panneaux = Blueprint écrasé (BUG-139) ;
+Linux non compilé ; rendu OCCT masqué / réaffiché non couvert par un test automatique (vérifié à l'écran seulement).
 Ruban : responsive sans scroll (Full → IconOnly → Collapsed → « Plus »), barre d'accès rapide dans la
 rangée d'onglets, infobulles riches. Limite : `ThemeManager::ribbonScrollStyleSheet` devenu inutilisé ;
 pas de commandes Wireframe/Shaded/Offset/Trim… (inexistantes dans TSA, donc non ajoutées) ; fenêtre < ~700 px non vérifiée.

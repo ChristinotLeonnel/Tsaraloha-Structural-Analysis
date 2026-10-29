@@ -218,6 +218,23 @@ struct RibbonActions
     QAction* actionToggleProperties = nullptr;
     QAction* actionToggleVisibility = nullptr;
     QAction* actionToggleConsole = nullptr;
+    // Espace de travail central (docs/UI.md) : dispositions, partage vertical, mode focus, disposition par défaut
+    QAction* actionWorkspace3D = nullptr;
+    QAction* actionWorkspaceBlueprint = nullptr;
+    QAction* actionWorkspaceSplit = nullptr;
+    QAction* actionWorkspaceVertical = nullptr;
+    QAction* actionFocusMode = nullptr;
+    QAction* actionResetLayout = nullptr;
+
+    // Blueprint (programmation structurelle)
+    QAction* actionBlueprintNew = nullptr;
+    QAction* actionBlueprintOpen = nullptr;
+    QAction* actionBlueprintSave = nullptr;
+    QAction* actionBlueprintValidate = nullptr;
+    QAction* actionBlueprintRun = nullptr;
+    QAction* actionBlueprintDebug = nullptr;
+    QAction* actionBlueprintFitAll = nullptr;
+    QAction* actionBlueprintFitSelection = nullptr;
 
     // Outils
     QAction* actionMeasure = nullptr;
@@ -240,7 +257,7 @@ class RibbonBuilder
     Q_DECLARE_TR_FUNCTIONS(TSA::UI::RibbonBuilder)
 
 public:
-    /// Construit les dix onglets et la barre d'accès rapide.
+    /// Construit les onze onglets et la barre d'accès rapide.
     static void buildAllTabs(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
     /// Actions que le ruban doit rendre atteignables (toutes celles de RibbonActions sauf « Quitter »), sans doublon.
     static std::vector<QAction*> placedActions(const RibbonActions& acts);
@@ -249,6 +266,7 @@ private:
     static void buildHomeTab(RibbonBar* bar, const RibbonActions& acts);
     static void buildModelingTab(RibbonBar* bar, const RibbonActions& acts);
     static void buildModifyTab(RibbonBar* bar, const RibbonActions& acts);
+    static void buildBlueprintTab(RibbonBar* bar, const RibbonActions& acts);
     static void buildGridTab(RibbonBar* bar, const RibbonActions& acts);
     static void buildLoadsTab(RibbonBar* bar, const RibbonActions& acts);
     static void buildMeshTab(RibbonBar* bar, const RibbonActions& acts);

@@ -90,12 +90,16 @@ void RibbonBuilder::buildAllTabs(RibbonBar* bar, const RibbonActions& acts, QWid
 
     // Barre d'accès rapide : les commandes de tous les jours, quel que soit l'onglet actif.
     // Nouveau, Ouvrir, Enregistrer, Annuler et Rétablir sont dans la barre de titre (AppShell).
-    bar->setQuickAccess({ acts.actionSelectMode, acts.actionFitAll, acts.actionView3D, acts.actionRunSolve });
+    // Les trois dispositions de l'espace de travail y sont toujours atteignables, quel que soit l'onglet.
+    bar->setQuickAccess({ acts.actionSelectMode, acts.actionFitAll, acts.actionView3D, acts.actionRunSolve,
+                          acts.actionWorkspace3D, acts.actionWorkspaceBlueprint, acts.actionWorkspaceSplit });
 
-    // Ordre du travail : projet → modèle → modification → repères → charges → maillage → calcul → résultats → vues → outils.
+    // Ordre du travail : projet → modèle → modification → programmation (Blueprint) → repères → charges → maillage → calcul
+    // → résultats → vues → outils.
     buildHomeTab(bar, acts);
     buildModelingTab(bar, acts);
     buildModifyTab(bar, acts);
+    buildBlueprintTab(bar, acts);
     buildGridTab(bar, acts);
     buildLoadsTab(bar, acts);
     buildMeshTab(bar, acts);
@@ -148,6 +152,19 @@ void RibbonBuilder::buildModifyTab(RibbonBar* bar, const RibbonActions& a)
     PanelBuilder(tab, tr("Symétrie et topologie")).large({ a.actionMirror }).small({ a.actionSplitBars, a.actionMergeNodes, a.actionCleanModel });
     PanelBuilder(tab, tr("Outils de modification")).large({ a.actionToolInputMode }).small(a.advancedModifyTools);
     PanelBuilder(tab, tr("Suppression")).large({ a.actionDelete });
+}
+
+// -----------------------------------------------------------------------------
+// 3 bis. Blueprint : programmes de modélisation en blocs (éditeur dans l'espace de travail, même projet)
+// Les commandes du graphe (copier, sous-graphes, débogage pas à pas…) restent dans la barre de l'éditeur, au contact du
+// graphe ; le ruban porte l'accès, le fichier, l'exécution et la navigation.
+// -----------------------------------------------------------------------------
+void RibbonBuilder::buildBlueprintTab(RibbonBar* bar, const RibbonActions& a)
+{
+    RibbonTab* tab = bar->addTab(tr("Blueprint"));
+    PanelBuilder(tab, tr("Fichier")).large({ a.actionBlueprintNew }).small({ a.actionBlueprintOpen, a.actionBlueprintSave });
+    PanelBuilder(tab, tr("Exécution")).large({ a.actionBlueprintRun }).small({ a.actionBlueprintValidate, a.actionBlueprintDebug });
+    PanelBuilder(tab, tr("Navigation du graphe")).large({ a.actionBlueprintFitAll }).small({ a.actionBlueprintFitSelection });
 }
 
 // -----------------------------------------------------------------------------
@@ -254,6 +271,8 @@ void RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& a)
     }
     PanelBuilder(tab, tr("Visibilité")).small({ a.actionNodesVisible, a.actionNodeLabelsVisible, a.actionSupportsVisible })
         .small({ a.actionSupportLabelsVisible, a.actionFullScreen });
+    PanelBuilder(tab, tr("Espace de travail")).large({ a.actionWorkspace3D, a.actionWorkspaceBlueprint, a.actionWorkspaceSplit })
+        .small({ a.actionWorkspaceVertical, a.actionFocusMode, a.actionResetLayout });
     PanelBuilder(tab, tr("Fenêtres")).small({ a.actionToggleModelTree, a.actionToggleProperties })
         .small({ a.actionToggleVisibility, a.actionToggleConsole });
 }
@@ -331,6 +350,9 @@ std::vector<QAction*> RibbonBuilder::placedActions(const RibbonActions& a)
         a.renderEdges, a.renderLightweight, a.actionNodesVisible, a.actionNodeLabelsVisible, a.actionSupportsVisible,
         a.actionSupportLabelsVisible, a.actionFullScreen, a.actionToggleModelTree, a.actionToggleProperties,
         a.actionToggleVisibility, a.actionToggleConsole,
+        a.actionWorkspace3D, a.actionWorkspaceBlueprint, a.actionWorkspaceSplit, a.actionWorkspaceVertical, a.actionFocusMode,
+        a.actionResetLayout, a.actionBlueprintNew, a.actionBlueprintOpen, a.actionBlueprintSave, a.actionBlueprintValidate,
+        a.actionBlueprintRun, a.actionBlueprintDebug, a.actionBlueprintFitAll, a.actionBlueprintFitSelection,
         a.actionMeasure, a.actionAIAssistant, a.actionAIConfig, a.actionExtensionManager, a.actionModules, a.actionHelp,
         a.actionOnlineDocs, a.actionShortcuts, a.actionAbout, a.actionReportProblem, a.actionExportDiagnostic,
     };

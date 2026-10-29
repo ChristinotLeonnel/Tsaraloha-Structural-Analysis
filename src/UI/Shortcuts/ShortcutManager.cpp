@@ -563,6 +563,15 @@ bool ShortcutInputGuard::eventFilter(QObject* watched, QEvent* event)
     static const int editingKeys[] = { Qt::Key_Delete, Qt::Key_Backspace, Qt::Key_Home, Qt::Key_End, Qt::Key_Left,
                                        Qt::Key_Right, Qt::Key_Up, Qt::Key_Down, Qt::Key_Plus, Qt::Key_Minus };
     bool forField = mods == Qt::NoModifier && (!ke->text().isEmpty() || std::find(std::begin(editingKeys), std::end(editingKeys), key) != std::end(editingKeys));
+    // AltGr : Windows le transmet comme Ctrl+Alt. Une touche Ctrl+Alt qui produit un AUTRE caractère que celui de la touche
+    // (« ~ » sur la touche 2 en AZERTY) est une saisie, pas le raccourci Ctrl+Alt+2. Le caractère de la touche elle-même
+    // (« 2 » sur un clavier US, constaté dans TSA.exe) ou aucun caractère : le raccourci reste actif.
+    if (mods == (Qt::ControlModifier | Qt::AltModifier) && !ke->text().isEmpty() && ke->text().at(0).isPrint())
+    {
+        // Touche physique : code virtuel natif (VK_2 = « 2 » quelle que soit la disposition) ; événement synthétique : key()
+        const int base = ke->nativeVirtualKey() ? int(ke->nativeVirtualKey()) : key;
+        forField |= ke->text().at(0).toUpper().unicode() != base;
+    }
     for (auto sk : { QKeySequence::Copy, QKeySequence::Cut, QKeySequence::Paste, QKeySequence::Undo, QKeySequence::Redo,
                      QKeySequence::SelectAll, QKeySequence::Delete })
         forField |= ke->matches(sk);

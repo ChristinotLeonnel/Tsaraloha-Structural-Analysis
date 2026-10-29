@@ -92,7 +92,7 @@ class QPlainTextEdit;
 class QStatusBar;
 class QLabel;
 class QDockWidget;
-namespace TSA::UI { class DisplayMenus; }
+namespace TSA::UI { class DisplayMenus; class WorkspaceView; class BlueprintEditor; }
 
 /// ProjectWorkspace de TSA : viewport, ruban, docks et barre d'état d'un projet ouvert.
 /// Embarqué dans TSA::UI::AppShell (page du mode Workspace) ; créé au premier projet ouvert ou créé.
@@ -222,6 +222,11 @@ private slots:
     void onToggleDarkMode(bool checked);
     void onToggleFullScreen(bool checked);
 
+    // Espace de travail central : Modèle 3D / Blueprint / Partagé (MainWindow_Workspace.cpp, docs/UI.md)
+    void onWorkspaceModeChanged();
+    void setFocusMode(bool on);
+    void resetWorkspaceLayout();
+
     // Modes d'interaction (Dessin 3D)
     void onModeSelect();
     void onModeDrawNode();
@@ -274,6 +279,13 @@ private:
     void createActions();
     void createMenus();
     void createRibbon();
+    void createWorkspaceActions();
+    void connectBlueprintEditor(TSA::UI::BlueprintEditor* editor);
+    /// Panneaux masqués temporairement (mode Blueprint, mode focus) réaffichés : avant d'enregistrer la disposition.
+    void restoreContextualDocks();
+    void applyContextualDocks();
+    void saveWorkspaceState();
+    void restoreWorkspaceState();
     void createToolBars();
     void createDockWindows();
     void createStatusBar();
@@ -292,6 +304,24 @@ private:
 
     OccView* m_occView = nullptr;
     TSA::UI::ViewportContainer* m_viewportContainer = nullptr;
+    TSA::UI::WorkspaceView* m_workspace = nullptr;             ///< widget central : vue 3D et Blueprint
+    QActionGroup* m_workspaceModeGroup = nullptr;
+    QAction* m_actionWorkspace3D = nullptr;
+    QAction* m_actionWorkspaceBlueprint = nullptr;
+    QAction* m_actionWorkspaceSplit = nullptr;
+    QAction* m_actionWorkspaceVertical = nullptr;
+    QAction* m_actionFocusMode = nullptr;
+    QAction* m_actionResetLayout = nullptr;
+    QAction* m_actionBlueprintNew = nullptr;
+    QAction* m_actionBlueprintOpen = nullptr;
+    QAction* m_actionBlueprintSave = nullptr;
+    QAction* m_actionBlueprintValidate = nullptr;
+    QAction* m_actionBlueprintRun = nullptr;
+    QAction* m_actionBlueprintDebug = nullptr;
+    QAction* m_actionBlueprintFitAll = nullptr;
+    QAction* m_actionBlueprintFitSelection = nullptr;
+    QList<QPointer<QDockWidget>> m_docksHiddenByWorkspace;     ///< panneaux masqués par le mode Blueprint ou le mode focus
+    QList<QPointer<QDockWidget>> m_docksOnTopBeforeHide;       ///< parmi eux, onglets actifs de leur groupe au masquage
     QDockWidget* m_diagramDock = nullptr;
     TSA::UI::Diagram2DWidget* m_diagramWidget = nullptr;
     QDockWidget* m_ndcDock = nullptr;

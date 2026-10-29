@@ -21,6 +21,8 @@
 #include "Dialogs/WorkPlaneDialog.h"
 #include "Dialogs/SectionCutDialog.h"
 #include "Ruler/ViewportContainer.h"
+#include "Blueprint/BlueprintEditor.h"
+#include "Workspace/WorkspaceView.h"
 #include "Diagrams/Diagram2DWidget.h"
 #include "../NDC/NDCViewerWidget.h"
 #include "../Viewer/MeshVisual.h"
@@ -251,6 +253,7 @@ MainWindow::MainWindow(QWidget* parent)
     {
         m_windowManager->restoreLayout();
     }
+    restoreWorkspaceState();   // après les panneaux : le mode Blueprint masque ceux du modèle
 
     updateWindowTitle();
 }
@@ -306,10 +309,14 @@ void MainWindow::setupUi()
     m_occView->setSelectionManager(m_selectionManager.get());
     m_viewportContainer = new TSA::UI::ViewportContainer(m_occView, this);
     m_viewportContainer->setModel(m_model);
-    setCentralWidget(m_viewportContainer);
+    // Espace de travail : la vue 3D et, à la demande, l'éditeur de Blueprint sur la même session (même projet)
+    m_workspace = new TSA::UI::WorkspaceView(m_viewportContainer, this);
+    m_workspace->setSession(m_session.get());
+    setCentralWidget(m_workspace);
     createPreviewCapture();
 
     createActions();
+    createWorkspaceActions();
     createDockWindows();
     createMenus();
     createRibbon();
@@ -1457,6 +1464,14 @@ bool MainWindow::maybeSave()
 
 bool MainWindow::confirmNoRunningAnalysis(const QString& action)
 {
+    // Blueprint en cours d'exécution ou en pause dans le débogueur (boucle d'événements imbriquée) : il agit sur la
+    // session de ce document, qui ne doit être ni vidée ni détruite sous lui.
+    if (m_workspace && m_workspace->hasBlueprint() && m_workspace->blueprint()->isRunning())
+    {
+        QMessageBox::information(this, tr("Blueprint en cours"),
+                                 tr("Un Blueprint est en cours d'exécution : arrêtez-le ou attendez sa fin avant de %1.").arg(action));
+        return false;
+    }
     if (!m_analysis->isRunning())
         return true;
     QMessageBox::information(this, tr("Calcul en cours"),
@@ -1471,10 +1486,12 @@ bool MainWindow::prepareToClose()
     if (!maybeSave())
         return false;
     capturePreview(true); // dernier état du modèle pour le Start Center
+    restoreContextualDocks();   // jamais un masquage temporaire (Blueprint, focus) dans la disposition enregistrée
     if (m_windowManager)
     {
         m_windowManager->saveLayout();
     }
+    saveWorkspaceState();
     return true;
 }
 
