@@ -41,6 +41,9 @@ presets inutilisables tels quels), CMake 4.5.0-rc1, profil non ASCII ; Release N
 compilés, 27 avertissements (dépréciations OCCT, masquages, [[nodiscard]] dans les tests), 42 suites réussies, Custom2D 58/58,
 TSA.exe démarre. OpenSees absent du poste (thirdparty/OpenSees/bin mis à la Corbeille le 2026-10-28) : 14 suites non exécutées.
 CMake télécharge désormais OpenSees s'il est absent (SHA-256 vérifié), mais le serveur officiel est en 404 (BUG-133).
+Édition (2026-10-29, branche refactor/core-edit-api, NON fusionnée, NON poussée) : toute modification de l'interface passe par
+EditTransaction (contrat exact, coalescence, hasChanges) ; BUG-125 à 129 corrigés ; Windows : 42 suites / 0 échec / 15 non
+exécutées (OpenSees masqué), banc Custom2D 58/58, TSALab 27/27 ; Linux non vérifié.
 Dépendances (2026-10-28, branche build/dependency-detection) : les presets n'imposent plus Qt ; tsa_find_qt choisit la Qt
 compatible la plus récente ; rapport <build>/tsa-dependencies.txt ; politique de versions : docs/DEPENDENCIES.md.
 Note: MSVC francisé → lanceur généré `build-*/msvc_codepage.cmd` (page de code de la génération imposée à cl) :

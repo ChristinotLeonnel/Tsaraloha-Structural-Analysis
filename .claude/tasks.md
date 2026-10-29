@@ -18,7 +18,8 @@ Last Updated: 2026-10-28. Uniquement des tâches réellement identifiées (voir 
 - [ ] Procédure PROCEDURE_WINDOWS_v2 (A1, A2 dumpbin, B, B sans IFC) : NON exécutée ; Debug non testé ; commit à autoriser.
 
 ## TSA Core — préparation de l'étape 2 (2026-10-26) ; état au 2026-10-29 : C fusionné dans main (f31ca9c, poussé), B repris
-## sur refactor/core-edit-api (validation MSVC), A non fusionné (moteur dumpbin A2 jamais essayé sous Windows)
+## sur refactor/core-edit-api (validé MSVC, avec et sans IfcOpenShell), A repris (2749db0 : contrôle ELF, non enregistré sous
+## MSVC — configuration et CTest Windows vérifiés) ; A2 (moteur dumpbin) : patch du worktree Linux, inaccessible ici, non appliqué
 
 Branches distinctes, base 39155c4 (TSALab : 58063a7) ; preuves dans ../TSA-rapports/2026-10-26/mission3 à mission10.
 Commits locaux : A 9a45d46, B 8695035, TSALab B1 eea9cd9, C 3b65ac3, documentation bf88548 (docs/architecture-tsa).
