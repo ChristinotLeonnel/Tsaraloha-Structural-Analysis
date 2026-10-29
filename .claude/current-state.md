@@ -91,6 +91,14 @@ Annuler / Rétablir de la barre de titre, redimensionnement par les bords en mod
 l'interface (appuis via le menu Structure). Réduire depuis l'état agrandi : crash corrigé le 2026-10-07 (FIX-2026-10-07-MINIMIZE). Non vérifié : multi-écrans / DPI mixte, Snap layouts Win11 (BUG-033).
 
 ## UI
+Espace de travail (2026-10-29, branche feature/blueprint-workspace) : IMPLEMENTED — WorkspaceView (src/UI/Workspace) autour
+de la vue 3D : modes Modèle 3D / Blueprint / vue partagée (horizontale ou verticale), mode focus, disposition par défaut ;
+onglet de ruban Blueprint, panneau Affichage › Espace de travail ; préférences QSettings « Workspace » (docs/UI.md).
+Éditeur Blueprint : cadrer tout / la sélection, indicateur de zoom, mini-carte, grille, palette / inspecteur repliables,
+recherche Ctrl+F, scène étendue aux éléments. Vérifié : tests 524–526 (526 : 2 000 nœuds, chargement 221 ms, rendu
+276 ms, déplacement 501 ms, Release, ce poste), 525/525 PASS, TSALab 27/27. NON VÉRIFIÉ : intégration dans MainWindow
+(masquage des docks en mode Blueprint, mode focus, menus, persistance à la fermeture) — couche app non liée aux tests,
+aucun essai graphique réel effectué ; Linux non compilé.
 Ruban : responsive sans scroll (Full → IconOnly → Collapsed → « Plus »), barre d'accès rapide dans la
 rangée d'onglets, infobulles riches. Limite : `ThemeManager::ribbonScrollStyleSheet` devenu inutilisé ;
 pas de commandes Wireframe/Shaded/Offset/Trim… (inexistantes dans TSA, donc non ajoutées) ; fenêtre < ~700 px non vérifiée.

@@ -2,6 +2,15 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-29 — espace de travail 3D / Blueprint / partagé (branche feature/blueprint-workspace)
+WorkspaceView (QSplitter autour de ViewportContainer, éditeur Blueprint créé à la demande, même ProjectSession) ; modes
+Ctrl+Alt+1/2/3, partage vertical, mode focus Ctrl+Shift+F, disposition par défaut ; MainWindow_Workspace.cpp (docks
+masqués en mode Blueprint et rétablis, persistance QSettings « Workspace »). BlueprintEditor : grille, mini-carte, cadrer
+tout / sélection (F, Origine), zoom 5–150 %, indicateur, panneaux repliables, état de disposition versionné ;
+BlueprintScene::fitSceneRectToItems (zone fixe ±4 000 : un graphe plus grand n'était pas entièrement cadrable). Ruban :
+onglet Blueprint, panneau Espace de travail. 14 commandes au catalogue, 8 icônes dédiées (test 462), 76 traductions
+EN / MG. Tests 524–526 ; 525/525, TSALab 27/27. Intégration MainWindow non testée en interface réelle.
+
 ## 2026-10-29 — étape 2 : API d'édition unique, défauts Undo/Redo, dépendances du modèle (branche refactor/core-edit-api)
 Contrat des transactions (BUG-127 : commit / rollback sans effet, imbrication, comparaison exacte par les octets du contenu
 persistant, encodeur fourni par IO au noyau), clé de coalescence et hasChanges ; tous les appels pushUndoState de

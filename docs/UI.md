@@ -47,6 +47,9 @@ Architecture en Ruban structurée en 9 onglets métier :
 8. **Affichage** : Projections standards 2D/3D, navigation caméra, plans de travail & coupes 3D, aides visuelles (grilles, niveaux, nœuds) et bascule des panneaux docks.
 9. **Outils** : Mesure spatiale 3D, bascule de thème sombre/clair, aide et raccourcis clavier.
 
+> État actuel du code (test 464) : onze onglets — Accueil, Modélisation, Modifier, Blueprint, Grille et plans, Charges,
+> Maillage, Analyse, Résultats, Affichage, Outils. La liste ci-dessus décrit l'organisation historique.
+
 ## `ResultsDockWidget` (`src/UI/Dock`)
 
 Panneau latéral de pilotage des résultats 3D issu du solveur OpenSees :
@@ -132,3 +135,52 @@ Application ─► AppShell (seule fenêtre top-level, sans cadre système)
   sans géométrie quand la fenêtre principale est embarquée).
 - Taille minimale du workspace : 960 × 560 px logiques (les minima cumulés des panneaux dépassaient la largeur d'un
   écran 1920 px à 125 %).
+
+## Espace de travail central : 3D / Blueprint / partagé (`src/UI/Workspace`)
+
+Un seul document, une seule session (`ProjectSession`), trois présentations de la zone centrale :
+
+```text
+MainWindow (central widget)
+└── WorkspaceView (QSplitter « workspaceSplit »)
+    ├── ViewportContainer → OccView        — vue 3D, unique (jamais détruite : masquée, BUG-119)
+    └── BlueprintEditor « workspaceBlueprint » — créé à la première demande (blueprintCreated)
+```
+
+| Mode | Commande | Raccourci | Effet |
+|------|----------|-----------|-------|
+| Modèle 3D | `cmd.workspace.model3d` | Ctrl+Alt+1 | vue 3D seule |
+| Blueprint | `cmd.workspace.blueprint` | Ctrl+Alt+2 | éditeur seul ; panneaux ancrés masqués (sauf console), rétablis en quittant le mode |
+| Vue partagée | `cmd.workspace.split` | Ctrl+Alt+3 | 3D et Blueprint côte à côte, séparateur redimensionnable ; `cmd.workspace.split_vertical` pour l'un au-dessus de l'autre |
+| Mode focus | `cmd.workspace.focus` | Ctrl+Shift+F | masque / rétablit tous les panneaux ancrés, quel que soit le mode |
+| Disposition par défaut | `cmd.workspace.reset_layout` | — | `WindowManager::resetLayout` + `WorkspaceView::resetLayout` (horizontal, panneaux de l'éditeur affichés, mode 3D) |
+
+- **Même modèle** : le Blueprint agit par les commandes du `CommandRegistry` sur la session ouverte ; chaque commande
+  exécutée est une entrée Annuler du projet (test 524 : création d'un nœud par le Blueprint puis `session.undo()`).
+  Le graphe reste un fichier `.tsbp` distinct du projet : le format `.tsa` est inchangé.
+- **Navigation du graphe** (`BlueprintEditor`) : molette autour du curseur, bouton du milieu pour déplacer, grille de
+  fond (pas de 20, lignes majeures tous les 100), **Cadrer tout** (Origine), **Cadrer la sélection** (F ; sans sélection =
+  tout), recherche de nœud (Ctrl+F : palette réaffichée, champ de recherche actif), indicateur de zoom, mini-carte
+  cliquable (coin inférieur droit), palette / inspecteur / mini-carte repliables. La zone de scène s'étend aux éléments
+  (`BlueprintScene::fitSceneRectToItems`, ±4 000 au minimum) : un grand graphe reste entièrement accessible.
+- **Ruban** : onglet *Blueprint* (Fichier, Exécution, Navigation du graphe) ; panneau *Espace de travail* dans
+  *Affichage* ; les trois modes dans l'accès rapide. Chaque commande a une image propre (test 462).
+- **Préférences** (application, pas le projet) : `QSettings` groupe `Workspace` — `mode`, `orientation`, `splitSizes`,
+  `blueprintLayout` (palette, inspecteur, mini-carte, séparateur de l'éditeur ; `QDataStream` version 1). Lues après
+  `LayoutManager::restoreLayout`, écrites à la fermeture après rétablissement des panneaux masqués par le mode
+  Blueprint ou le mode focus (la disposition enregistrée est toujours la disposition « complète »). Valeur illisible ou
+  inconnue → valeur par défaut.
+
+### Principes ergonomiques appliqués (ISO 9241-110:2020)
+
+Repères de conception, **sans prétention de conformité** (aucune évaluation selon la norme n'a été conduite) :
+
+| Principe | Application |
+|----------|-------------|
+| Adaptation à la tâche | le Blueprint obtient toute la surface centrale ; panneaux contextuels repliés en mode Blueprint, rétablis au retour |
+| Autodescription | infobulles des commandes (raccourci indiqué pour les modes et le mode focus) ; indicateur de zoom ; état coché des modes dans le ruban |
+| Conformité aux attentes | gestes de navigation identiques à la vue 3D (molette, bouton du milieu, F pour cadrer) |
+| Facilité d'apprentissage | mêmes commandes dans le ruban, l'accès rapide, la palette de commandes et les raccourcis |
+| Contrôlabilité | modes réversibles, séparateur libre, panneaux repliables, disposition par défaut rétablie en une commande |
+| Robustesse aux erreurs | Annuler / Rétablir du projet sur les commandes du Blueprint ; préférences illisibles ignorées |
+| Engagement de l'utilisateur | mini-carte et retour visuel immédiat du cadrage |

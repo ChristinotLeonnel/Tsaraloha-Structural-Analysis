@@ -2,6 +2,13 @@
 
 Last Updated: 2026-10-28. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
+## Espace de travail 3D / Blueprint (2026-10-29, branche feature/blueprint-workspace)
+- [x] WorkspaceView (3 modes, partage H/V, préférences), navigation du Blueprint, ruban, raccourcis, icônes, traductions ; tests 524–526.
+- [x] Suite complète 525/525 (Windows Release), TSALab 27/27, check_shortcuts --strict, check_layers.
+- [ ] Essai graphique réel de MainWindow : bascule des modes, docks masqués / rétablis, mode focus, fermeture puis réouverture.
+- [ ] Compilation et tests Linux.
+- [ ] Recherche de nœud : aujourd'hui la palette (filtre par type) ; pas de recherche parmi les nœuds déjà placés.
+
 ## Validation Windows (2026-10-28, docs/reports/WINDOWS_VALIDATION_REPORT.md, branche test/windows-validation)
 - [x] Compilation MSVC 19.51 Release de C (6a5bde1) + TSALab eea9cd9 ; 42 suites ; Custom2D 58/58 ; W-1, W-2, W-5 corrigés.
 - [ ] OpenSees : remettre l'exécutable (serveur officiel en 404, W-3) puis relancer les 14 suites, le banc et TSALab L9-L14.
