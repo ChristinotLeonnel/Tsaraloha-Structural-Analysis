@@ -60,7 +60,7 @@ EngineInfo Fem3DEngine::info() const
     EngineInfo i;
     i.id = kId;
     i.name = "Fem3D";
-    const std::string v = Fem3D::kEngineVersion;              // « TSA Fem3D 0.2.0 »
+    const std::string v = Fem3D::kEngineVersion;              // « TSA Fem3D 0.3.0 »
     i.version = v.substr(v.find_last_of(' ') + 1);
     i.description = tr("Moteur éléments finis 3D de TSA (poutres d'Euler–Bernoulli exactes, rotules, appuis élastiques), "
                        "validé contre OpenSees sur son périmètre. Moteur secondaire : OpenSees reste le moteur par défaut.")

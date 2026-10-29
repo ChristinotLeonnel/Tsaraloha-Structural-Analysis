@@ -2,6 +2,13 @@
 
 Last Updated: 2026-10-28. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
+## Fem3D 0.3.0 — charges sur barre (2026-10-29)
+- [x] Moteur : ponctuelles, partielles, moments répartis ; tests 49/49 ; benchmarks 21-22 ; documentation Fem3D.
+- [x] TSA : adaptateur, test 530, test 478 adapté ; 57/57 suites ; TSALab 27/27.
+- [ ] Commits (deux dépôts) : accord de l'utilisateur requis.
+- [ ] Niveau 4 des charges sur barre (audit indépendant) ; référence pour Timoshenko et moments répartis.
+- [ ] BUG-144 : avenir de l'option « secours OpenSees ».
+
 ## Validation Windows (2026-10-28, docs/reports/WINDOWS_VALIDATION_REPORT.md, branche test/windows-validation)
 - [x] Compilation MSVC 19.51 Release de C (6a5bde1) + TSALab eea9cd9 ; 42 suites ; Custom2D 58/58 ; W-1, W-2, W-5 corrigés.
 - [ ] OpenSees : remettre l'exécutable (serveur officiel en 404, W-3) puis relancer les 14 suites, le banc et TSALab L9-L14.

@@ -153,21 +153,23 @@ Conversion convert(const AnalysisContext& context, const AnalysisModel& analysis
         for (const auto& [tag, list] : OpenSeesAnalysisBuilder::beamElementLoads(snapshot, c.params, pattern))
         {
             const SnapshotElement* el = snapshot.getElementByTag(tag);
-            const QString who = el ? QString::fromStdString(elementLabel(*el)) : QString::number(tag);
             for (const auto& l : list)
             {
                 c.memberLoads[tag].push_back(l);
+                // Positions relatives de TSA → abscisses depuis le nœud i (longueur de la barre du calcul) ; une charge
+                // sur toute la longueur reste sans bornes (forme historique, mêmes résultats)
+                const double length = el ? el->length : 0.0;
                 const bool fullLength = l.relativePosition <= kFullLengthTolerance && l.relativeEnd >= 1.0 - kFullLengthTolerance;
+                const double a = fullLength ? 0.0 : l.relativePosition * length;
+                const std::optional<double> b = fullLength ? std::nullopt : std::optional<double>(l.relativeEnd * length);
                 if (l.kind == BeamElementLoad::Kind::Uniform)
                     loadCase.distributedLoads.push_back({ tag, Fem3D::LoadFrame::Local, Fem3D::Vector3(l.wx, l.wy, l.wz), Fem3D::Vector3(l.wx, l.wy, l.wz) });
-                else if (l.kind == BeamElementLoad::Kind::Linear && fullLength)
-                    loadCase.distributedLoads.push_back({ tag, Fem3D::LoadFrame::Local, Fem3D::Vector3(l.wx, l.wy, l.wz), Fem3D::Vector3(l.wxB, l.wyB, l.wzB) });
+                else if (l.kind == BeamElementLoad::Kind::Linear)
+                    loadCase.distributedLoads.push_back({ tag, Fem3D::LoadFrame::Local, Fem3D::Vector3(l.wx, l.wy, l.wz), Fem3D::Vector3(l.wxB, l.wyB, l.wzB), a, b });
                 else if (l.kind == BeamElementLoad::Kind::Point)
-                    c.outOfScope.push_back(tr("%1 : charge ponctuelle sur barre").arg(who).toStdString());
+                    loadCase.pointLoads.push_back({ tag, Fem3D::LoadFrame::Local, l.relativePosition * length, Fem3D::Vector3(l.wx, l.wy, l.wz) });
                 else if (l.kind == BeamElementLoad::Kind::Couple)
-                    c.outOfScope.push_back(tr("%1 : moment réparti").arg(who).toStdString());
-                else
-                    c.outOfScope.push_back(tr("%1 : charge répartie sur une partie de la barre").arg(who).toStdString());
+                    loadCase.distributedMoments.push_back({ tag, Fem3D::LoadFrame::Local, Fem3D::Vector3(l.wx, l.wy, l.wz), Fem3D::Vector3(l.wxB, l.wyB, l.wzB), a, b });
             }
         }
         // Charges sur treillis / câbles : sans objet (barres articulées hors périmètre, déjà signalées).
@@ -234,7 +236,8 @@ ResultsModel mapResults(const Conversion& c, const AnalysisModel& analysisModel,
     meta.solverEngine = "Fem3D";
     meta.solverVersion = Fem3D::kEngineVersion;
     meta.calculationMethod = tr("Méthode des déplacements (Fem3D) : éléments poutre 3D d'Euler–Bernoulli à rigidité exacte, "
-                                "charges réparties par forces nodales équivalentes exactes, rotules par condensation statique, "
+                                "charges sur barre (réparties sur tout ou partie de la barre, ponctuelles, moments répartis) par forces nodales "
+                                "équivalentes exactes, rotules par condensation statique, "
                                 "appuis élastiques sur la diagonale de K, résolution LDLᵀ creuse (Eigen SimplicialLDLT).").toStdString();
     meta.modelBuilder = "Fem3D, 6 DDL par nœud";
     meta.systemSolver = "SimplicialLDLT (Eigen)";
