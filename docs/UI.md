@@ -163,6 +163,20 @@ MainWindow (central widget)
   tout), recherche de nœud (Ctrl+F : palette réaffichée, champ de recherche actif), indicateur de zoom, mini-carte
   cliquable (coin inférieur droit), palette / inspecteur / mini-carte repliables. La zone de scène s'étend aux éléments
   (`BlueprintScene::fitSceneRectToItems`, ±4 000 au minimum) : un grand graphe reste entièrement accessible.
+- **Recherche** (Ctrl+F dans le graphe) : les types de la palette ET, dans un groupe distinct en tête « Dans le graphe (n) »,
+  les nœuds déjà placés (titre, type, numéro `#12` ou `12`, 200 listés au plus). Activer une instance (double-clic, ou
+  Entrée) la sélectionne et la cadre, sans rien ajouter ; Entrée dans le champ active le premier résultat, Bas descend
+  dans la liste. Résultats tenus à jour (édition, Annuler du graphe, chargement).
+- **Canevas** : centre conservé au redimensionnement (`AnchorViewCenter`) ; réaffiché sans aucun élément visible, il revient
+  sur le graphe ; largeur minimale 280 px (palette et inspecteur cèdent d'abord). Mini-carte de 120 à 220 px selon le
+  canevas, mise de côté quand il est trop petit, le choix de l'utilisateur restant enregistré.
+- **Panneaux** : un seul calcul (`MainWindow::applyContextualDocks`) pour le mode Blueprint et le mode focus, quel que
+  soit l'ordre ; état explicite (`isHidden`, valable avant l'affichage de la fenêtre) ; onglet actif d'un groupe rétabli.
+  La vue 3D garde 240 × 160 px en vue partagée. Fermer un document pendant l'exécution d'un Blueprint est refusé.
+- **AltGr** (Ctrl+Alt sous Windows) : dans un champ de saisie, une touche qui produit un autre caractère que celui de la
+  touche (« ~ », « # » en AZERTY) est saisie et ne déclenche pas Ctrl+Alt+chiffre (`ShortcutInputGuard`) ; hors champ,
+  ou au clavier US, le raccourci agit. Vérifié dans TSA.exe sous les deux dispositions.
+- **Ctrl+Z dans le Blueprint** : Annuler du **projet** (modèle structurel) ; l'historique du graphe a ses propres boutons.
 - **Ruban** : onglet *Blueprint* (Fichier, Exécution, Navigation du graphe) ; panneau *Espace de travail* dans
   *Affichage* ; les trois modes dans l'accès rapide. Chaque commande a une image propre (test 462).
 - **Préférences** (application, pas le projet) : `QSettings` groupe `Workspace` — `mode`, `orientation`, `splitSizes`,

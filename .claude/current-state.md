@@ -93,12 +93,16 @@ l'interface (appuis via le menu Structure). Réduire depuis l'état agrandi : cr
 ## UI
 Espace de travail (2026-10-29, branche feature/blueprint-workspace) : IMPLEMENTED — WorkspaceView (src/UI/Workspace) autour
 de la vue 3D : modes Modèle 3D / Blueprint / vue partagée (horizontale ou verticale), mode focus, disposition par défaut ;
-onglet de ruban Blueprint, panneau Affichage › Espace de travail ; préférences QSettings « Workspace » (docs/UI.md).
-Éditeur Blueprint : cadrer tout / la sélection, indicateur de zoom, mini-carte, grille, palette / inspecteur repliables,
-recherche Ctrl+F, scène étendue aux éléments. Vérifié : tests 524–526 (526 : 2 000 nœuds, chargement 221 ms, rendu
-276 ms, déplacement 501 ms, Release, ce poste), 525/525 PASS, TSALab 27/27. NON VÉRIFIÉ : intégration dans MainWindow
-(masquage des docks en mode Blueprint, mode focus, menus, persistance à la fermeture) — couche app non liée aux tests,
-aucun essai graphique réel effectué ; Linux non compilé.
+onglet de ruban Blueprint, panneau Affichage › Espace de travail ; préférences QSettings « Workspace » sous
+HKCU\Software\TSA Engineering\TSA (docs/UI.md). Éditeur : cadrages, zoom, mini-carte adaptative, grille, panneaux
+repliables, recherche Ctrl+F (types ET nœuds placés, clavier : Entrée / Bas), scène étendue aux éléments.
+Vérifié automatiquement : tests 524–529 ; 57/57 suites (528 tests, 149 s, run_test_suites.py), TSALab 27/27.
+Vérifié dans TSA.exe réel (2026-10-29, pilotage UI Automation + captures, Windows 125 %) : lancement, Ctrl+Alt+1/2/3,
+panneaux masqués / rétablis (onglet actif conservé), mode focus, disposition par défaut, fermeture puis relance (mode
+et panneaux restaurés, démarrage en Blueprint), Blueprint → modèle (2 nœuds + 1 poutre) puis Annuler ×3 / Rétablir ×3,
+graphe de 401 nœuds (≈ 0,5 s), recherche #250 au clavier, AltGr AZERTY et clavier US, fenêtre minimale.
+Limites : vue partagée à la taille minimale avec les deux colonnes de panneaux = Blueprint écrasé (BUG-139) ;
+Linux non compilé ; rendu OCCT masqué / réaffiché non couvert par un test automatique (vérifié à l'écran seulement).
 Ruban : responsive sans scroll (Full → IconOnly → Collapsed → « Plus »), barre d'accès rapide dans la
 rangée d'onglets, infobulles riches. Limite : `ThemeManager::ribbonScrollStyleSheet` devenu inutilisé ;
 pas de commandes Wireframe/Shaded/Offset/Trim… (inexistantes dans TSA, donc non ajoutées) ; fenêtre < ~700 px non vérifiée.

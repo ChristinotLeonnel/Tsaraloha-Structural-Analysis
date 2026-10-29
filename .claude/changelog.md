@@ -2,6 +2,13 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-29 (suite) — validation graphique réelle et stabilisation de l'espace de travail
+Essais dans TSA.exe (UI Automation, SendKeys, captures DPI-aware). Corrigés et vérifiés à l'écran : panneaux masqués selon
+l'état explicite (démarrage en Blueprint) et calcul unique Blueprint / focus, onglet actif rétabli, canevas centré à
+l'affichage et ramené sur le graphe, canevas ≥ 280 px, vue 3D ≥ 240 × 160 en vue partagée, mini-carte adaptative, AltGr
+(BUG-142), recherche des nœuds placés + clavier, fermeture refusée pendant un Blueprint, Redraw OCCT protégé (vue jamais
+affichée). Tests 527–529 ; [SKIP] au lieu de [PASS] pour les tests non exécutés (263, 377, 529). docs/TESTING.md.
+
 ## 2026-10-29 — espace de travail 3D / Blueprint / partagé (branche feature/blueprint-workspace)
 WorkspaceView (QSplitter autour de ViewportContainer, éditeur Blueprint créé à la demande, même ProjectSession) ; modes
 Ctrl+Alt+1/2/3, partage vertical, mode focus Ctrl+Shift+F, disposition par défaut ; MainWindow_Workspace.cpp (docks

@@ -3,11 +3,13 @@
 Last Updated: 2026-10-28. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
 ## Espace de travail 3D / Blueprint (2026-10-29, branche feature/blueprint-workspace)
-- [x] WorkspaceView (3 modes, partage H/V, préférences), navigation du Blueprint, ruban, raccourcis, icônes, traductions ; tests 524–526.
-- [x] Suite complète 525/525 (Windows Release), TSALab 27/27, check_shortcuts --strict, check_layers.
-- [ ] Essai graphique réel de MainWindow : bascule des modes, docks masqués / rétablis, mode focus, fermeture puis réouverture.
-- [ ] Compilation et tests Linux.
-- [ ] Recherche de nœud : aujourd'hui la palette (filtre par type) ; pas de recherche parmi les nœuds déjà placés.
+- [x] WorkspaceView (3 modes, partage H/V, préférences), navigation du Blueprint, ruban, raccourcis, icônes, traductions ; tests 524–529.
+- [x] Suite complète 57/57 (528 tests, run_test_suites.py, 149 s), TSALab 27/27, check_shortcuts --strict, check_layers.
+- [x] Essai graphique réel de MainWindow (UI Automation + captures) : modes, panneaux, focus, défaut, relance, Annuler / Rétablir.
+- [x] Recherche des nœuds placés (groupe distinct, clavier).
+- [ ] BUG-139 (vue partagée à la taille minimale), BUG-140 (Ctrl+Z dans le Blueprint : décision), BUG-141 (mini-carte).
+- [ ] Compilation et tests Linux ; CI non consultée (gh absent du poste).
+- [ ] BUG-143 : répondeur modal global pour les tests, délai du solveur OpenSees.
 
 ## Validation Windows (2026-10-28, docs/reports/WINDOWS_VALIDATION_REPORT.md, branche test/windows-validation)
 - [x] Compilation MSVC 19.51 Release de C (6a5bde1) + TSALab eea9cd9 ; 42 suites ; Custom2D 58/58 ; W-1, W-2, W-5 corrigés.
