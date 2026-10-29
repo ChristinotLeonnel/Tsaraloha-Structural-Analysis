@@ -87,3 +87,6 @@ __pycache__/
 
 # Copies de travail temporaires des agents Claude Code
 .claude/worktrees/
+
+# Paramètres personnels de Claude Code (permissions du poste)
+.claude/settings.local.json
