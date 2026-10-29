@@ -6,6 +6,7 @@
 #include "../Standards/ModelValidator.h"
 #include "../Diagnostics/Logger.h"
 #include "../Core/Utf8Path.h"
+#include "../UndoRedo/UndoManager.h"
 
 #include <QSaveFile>
 #include <cmath>
@@ -236,6 +237,36 @@ TSAFileWriter::TSAFileWriter()
     , m_encryptor(std::make_shared<StandardEncryptionProvider>())
 {
 }
+
+std::vector<uint8_t> TSAFileWriter::snapshotContentBytes(const TSA::Model::Model::ModelStateSnapshot& snapshot)
+{
+    // Mêmes écrivains et même ordre que saveToFile ; repères, grilles et cotations sont comparés à part (JSON et
+    // operator== de l'instantané), l'aperçu et les métadonnées du projet ne font pas partie de l'état du modèle.
+    std::vector<uint8_t> payload;
+    writeNodeChunk(payload, snapshot.nodes);
+    writeSupportChunk(payload, snapshot.nodes);
+    writeBarChunk(payload, snapshot.beams);
+    writeColumnChunk(payload, snapshot.columns);
+    writeSlabChunk(payload, snapshot.slabs);
+    writeWallChunk(payload, snapshot.walls);
+    writeFoundationChunk(payload, snapshot.foundations);
+    writeTrussChunk(payload, snapshot.trussMembers);
+    writeCableChunk(payload, snapshot.cables);
+    writeLoadChunk(payload, snapshot.loadSnapshot);
+    writeBimChunk(payload, snapshot.bim);
+    writeSnapshotChunk(payload, snapshot.calculationSnapshots, snapshot.definitionReferences);
+    return payload;
+}
+
+// Comparaison exacte des états par l'historique (UndoManager::sameContent, BUG-127), fournie au noyau à
+// l'initialisation du programme : le noyau ne dépend pas de la couche IO (même principe que InstalledCatalogs).
+[[maybe_unused]] const bool kUndoContentEncoderProvided = [] {
+    TSA::UndoRedo::UndoManager::setContentEncoder([](const TSA::Model::Model::ModelStateSnapshot& snapshot) {
+        TSAFileWriter writer;
+        return writer.snapshotContentBytes(snapshot);
+    });
+    return true;
+}();
 
 bool TSAFileWriter::saveToFile(const std::string& filePath,
                               const TSA::Model::Model& model,

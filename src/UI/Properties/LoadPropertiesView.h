@@ -2,6 +2,7 @@
 
 #include <QWidget>
 #include "../../Model/Load/LoadEnums.h"
+#include "EditedFields.h"
 
 class QLineEdit;
 class QDoubleSpinBox;
@@ -68,6 +69,7 @@ private:
     int m_loadId = -1;
     DisplayMode m_mode = DisplayMode::None;
     bool m_isLoading = false;
+    EditedFields m_edited; ///< charge nodale : valeurs affichées au chargement (seuls les champs modifiés sont réécrits)
 
     // Identification
     QLabel* m_lblHeader = nullptr;

@@ -1,4 +1,5 @@
 #include "LibraryManager.h"
+#include "../UndoRedo/EditTransaction.h"
 #include "../Core/AppPaths.h"
 #include "../Model/MaterialLibrary.h"
 #include <QStandardPaths>
@@ -326,7 +327,8 @@ bool LibraryManager::instantiateTemplateInModel(const QString& templateId, TSA::
     }
     if (!selected) return false;
 
-    targetModel->pushUndoState(QString("Insertion %1").arg(selected->name).toStdString());
+    // Transaction : un gabarit vide ne crée aucune entrée (BUG-130) ; une exception n'insère rien.
+    TSA::UndoRedo::EditTransaction tx(*targetModel, QString("Insertion %1").arg(selected->name).toStdString());
 
     // Table de correspondance ancien ID nœud -> nouvel ID nœud
     std::map<int, int> nodeMap;
@@ -373,6 +375,7 @@ bool LibraryManager::instantiateTemplateInModel(const QString& templateId, TSA::
         }
     }
 
+    tx.commit();
     return true;
 }
 

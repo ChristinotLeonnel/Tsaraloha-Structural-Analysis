@@ -2,6 +2,7 @@
 
 #include "../../Model/Material.h"
 
+#include "EditedFields.h"
 #include "IElementPropertyView.h"
 #include "../../Model/Cable/CableTypes.h"
 
@@ -62,6 +63,8 @@ private:
     QPushButton* m_btnColor = nullptr;
     QString m_colorHex; ///< couleur propre à l'élément ; vide : apparence du matériau
     TSA::Model::Material m_colorMaterial; ///< matériau affiché quand aucune couleur propre n'est choisie
+    EditedFields m_edited; ///< valeurs affichées au chargement : seuls les champs modifiés sont réécrits (BUG-125)
+    void captureEditedFields();
 };
 
 } // namespace TSA::UI

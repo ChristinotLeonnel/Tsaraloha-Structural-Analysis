@@ -461,7 +461,7 @@ void MainWindow::assignSupport(const std::set<int>& nodeIds, const TSA::Model::S
     if (!m_model || nodeIds.empty()) return;
 
     // Une seule entrée Annuler pour tout le lot, puis notification par nœud (vues, invalidation des résultats).
-    m_model->pushUndoState(tr("Appui : %1").arg(label).toStdString());
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Appui : %1").arg(label).toStdString());
     QStringList ids;
     for (int id : nodeIds)
     {
@@ -472,6 +472,7 @@ void MainWindow::assignSupport(const std::set<int>& nodeIds, const TSA::Model::S
             ids << QString("#%1").arg(id);
         }
     }
+    tx.commit();
     updateUndoRedoActions();
     updateWindowTitle();
 

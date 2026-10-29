@@ -646,6 +646,7 @@ protected:
     void onLoadModified(int loadId) override;
     void onLoadRemoved(int loadId) override;
     void onLoadCaseChanged(int caseId) override;
+    void onSurfaceLoadsChanged() override;
 
     void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override;
     void onModelCleared() override;

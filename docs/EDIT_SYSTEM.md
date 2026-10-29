@@ -20,11 +20,15 @@ Action utilisateur (Propriétés, viewport, menu, console)
    ↓
 Validation (bornes des champs, Model::wouldCollapseConnectedElement, ...)
    ↓
-Entrée d'historique : Model::pushUndoState / EditTransaction / CommandManager
+EditTransaction (RAII, clé de coalescence facultative)            ← seul chemin de l'interface depuis 2026-10-29
    ↓
-Modification du modèle (source de vérité)
+Modification du modèle (source de vérité) — seuls les champs réellement modifiés
+   ↓
+tx.hasChanges() ? sinon tx.discardUnchanged() : ni entrée, ni notification, résultats conservés
    ↓
 Notification IModelObserver (notify*Modified, ModelDiff)  →  révision du modèle +1
+   ↓  (DANS la transaction : une exception d'observateur annule tout)
+tx.commit()  →  une entrée Annuler (ou fusion avec l'entrée de même clé < 2 s)
    ↓
 Vues : OccView (géométrie locale), ModelTreeWidget, PropertyPanel
    ↓
@@ -36,15 +40,22 @@ ResultsValidityGuard : résultats de calcul marqués obsolètes
 | Élément | Rôle |
 | :--- | :--- |
 | `UndoManager` | Pile de snapshots complets du modèle (`Model::ModelStateSnapshot`). L'annulation applique un `ModelDiff` : seules les formes modifiées sont reconstruites. |
-| `Model::pushUndoState(nom, cléDeCoalescence)` | Une entrée par action. Avec une clé, des appels successifs sur la même clé à moins de 2 s fusionnent (crans de spinbox). |
-| `EditTransaction` (RAII) | Opération composée = **une** entrée. `pushUndoState` imbriqués absorbés. `rollback()` (ou destruction sans `commit()`) restaure le modèle et notifie les vues. |
+| `Model::pushUndoState(nom, cléDeCoalescence)` | API de bas niveau (une entrée AVANT la modification, sans contrôle de changement ni rollback). Plus aucun appel dans l'interface : réservée au modèle et aux tests. Avec une clé, des appels successifs sur la même clé à moins de 2 s fusionnent. |
+| `EditTransaction(model, nom, clé = "")` (RAII) | Opération composée = **une** entrée. Contrat (BUG-127, 2026-10-29) : **commit** → entrée seulement si l'état diffère EXACTEMENT du début (sinon ni entrée, ni révision, ni document modifié) ; **rollback** (ou destruction sans `commit()`, exception) → restauration et différentiel seulement s'il y a eu un changement, indicateur « modifié » rendu ; **imbrication** → un rollback interne restaure l'état de début et la transaction englobante reste ouverte ; **clé** → fusion avec l'entrée précédente de même clé (< 2 s) ; `hasChanges()` permet de ne notifier que si quelque chose a changé ; `pushUndoState` imbriqués absorbés. |
+| Comparaison exacte | `UndoManager::sameContent` : identifiants suivants, repères, grilles, cotations, `ModelDiff` (accélérateur seulement : il compare à tolérance près), puis octets du contenu persistant fournis par IO (`TSAFileWriter::snapshotContentBytes`, enregistré au démarrage : le noyau ne dépend pas d'IO). Sans encodeur (programme lié au seul noyau) : « différent », comportement prudent. |
 | `CommandManager::executeCommand` | Exécute une `ICommand` dans une transaction : aucune entrée si la commande échoue, modification partielle annulée, exceptions interceptées. |
 | `EditRecord` / `HistoryItem` | Enregistrement structuré attaché à chaque entrée : action, objet, propriété, avant, après, impacts. `UndoManager::undoHistory()` l'expose (historique lisible, co-engineering). |
 
 Limites mesurées (Debug, 4 896 barres, test 100) : snapshot 10 ms, Undo 54 ms, ~3,2 Mio par
 snapshot. L'historique est borné à 50 niveaux **et** à un budget mémoire de 512 Mio
-(`UndoManager::setMemoryBudgetBytes`). Les snapshots ne couvrent pas les niveaux, grilles et
-plans de travail (voir § 6).
+(`UndoManager::setMemoryBudgetBytes`).
+
+**Périmètre de l'annulation (décision du 2026-10-29)** — annulables (dans l'instantané) : éléments, charges, cas et
+combinaisons, BIM, cotations, références de calcul, axes et niveaux (`CoordinateSystem`), grilles. **Non annulables** :
+plans de travail et vues nommées (état d'affichage, comme la caméra), réglages d'analyse, de topologie, d'échange et du
+maillage du projet (paramètres du projet ; le maillage est une donnée dérivée régénérable). Une transaction qui ne
+modifie que ces données compte néanmoins comme une modification (entrée créée, document marqué modifié pour être
+enregistré). Motifs : coût (instantanés plus gros à chaque cran), et aucun usage existant ne les annule.
 
 ### Exemple
 
@@ -63,8 +74,11 @@ tx.commit(); // une seule entrée « Rotation de 20 poteaux »
 
 - Les champs numériques n'appliquent leur valeur qu'à Entrée / perte du focus / cran de flèche
   (`keyboardTracking` désactivé centralement dans `PropertyPanel`).
-- Chaque vue utilise `pushUndoState(nom, nom)` : les crans successifs sur le même objet forment
-  une seule entrée.
+- Chaque vue ouvre `EditTransaction(nom, nom)` : les crans successifs sur le même objet forment une seule entrée.
+- Seuls les champs modifiés depuis le chargement sont écrits (`EditedFields`) : une valeur que le champ ne sait pas
+  représenter (décimales affichées, profil hors liste) n'est jamais remplacée en validant un autre champ (BUG-106,
+  BUG-125 câble, nœud : coordonnées, appui) ; la couleur par défaut d'un nœud est affichée, jamais écrite (BUG-126).
+- Valider sans changement : ni entrée, ni notification, résultats conservés.
 - Nœud : coordonnées refusées si un élément connecté deviendrait de longueur nulle.
 - Poutre / poteau : changement de section ou de matériau enregistré dans l'historique.
 
@@ -133,3 +147,5 @@ Menu Édition / ruban Édition « Symétrie & Topologie » ; chaque opération =
 | 102 | Division de poutres / poteaux, relâchements, charges, refus |
 | 103 | Fusion des nœuds confondus (appuis, fondations, charges, éléments dégénérés) |
 | 104 | Division dans une transaction : une entrée Undo, restauration exacte |
+| 513-523 (suite `undo`) | Contrat des transactions (commit / rollback sans effet, imbrication, exactitude sous les tolérances de `ModelDiff`), panneaux de propriétés (aucune réécriture à vide, rollback sur exception, résultats conservés), cas de charge (charges retirées notifiées), commandes de charges tout ou rien, allers-retours Annuler / Rétablir par les chemins de production |
+| `TSA_CoreTests` | Noyau seul : sans encodeur IO, comparaison prudente ; avec, transaction sans effet sans entrée |

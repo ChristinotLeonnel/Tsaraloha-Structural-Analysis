@@ -1,5 +1,6 @@
 #include "CablePropertiesView.h"
 #include "ElementColorField.h"
+#include "../../UndoRedo/EditTransaction.h"
 #include "../../Model/Model.h"
 #include "../../Model/Cable/Cable.h"
 #include "../../Library/CableLibrary.h"
@@ -207,6 +208,7 @@ void CablePropertiesView::refreshView()
     m_colorHex = QString::fromStdString(cable->color()); // vide : apparence du matériau
     TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, cable->material());
     m_colorMaterial = cable->material();
+    captureEditedFields();
 
     m_isLoading = false;
 }
@@ -266,26 +268,48 @@ void CablePropertiesView::applyChanges()
 
     const std::string undoName = tr("Modification Câble %1").arg(m_cableId).toStdString();
     // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
-    m_model->pushUndoState(undoName, undoName);
+    TSA::UndoRedo::EditTransaction tx(*m_model, undoName, undoName);
 
     cable->setName(m_editName->text().toStdString());
-    cable->setType(static_cast<TSA::Model::CableType>(m_comboType->currentData().toInt()));
-    cable->setGeometryMode(static_cast<TSA::Model::CableGeometryMode>(m_comboGeomMode->currentData().toInt()));
+    if (m_edited.changed(m_comboType)) cable->setType(static_cast<TSA::Model::CableType>(m_comboType->currentData().toInt()));
+    if (m_edited.changed(m_comboGeomMode))
+        cable->setGeometryMode(static_cast<TSA::Model::CableGeometryMode>(m_comboGeomMode->currentData().toInt()));
 
-    cable->setDiameter(m_spinDiameter->value() / 1000.0);
-    cable->definition().setArea(m_spinArea->value() / 1e6);
-    cable->definition().setElasticModulus(m_spinModulus->value() * 1e9);
-    cable->prestress().initialTension = m_spinPrestress->value() * 1000.0;
-    cable->definition().setInitialTension(cable->prestress().initialTension);
-    cable->geometry().setSag(m_spinSag->value());
+    // Seuls les champs modifiés sont réécrits : les valeurs affichées sont arrondies (1 décimale en mm, mm², GPa) et
+    // les réécrire changerait silencieusement l'aire ou le module de la définition (BUG-125).
+    if (m_edited.changed(m_spinDiameter)) cable->setDiameter(m_spinDiameter->value() / 1000.0);
+    if (m_edited.changed(m_spinArea)) cable->definition().setArea(m_spinArea->value() / 1e6);
+    if (m_edited.changed(m_spinModulus)) cable->definition().setElasticModulus(m_spinModulus->value() * 1e9);
+    if (m_edited.changed(m_spinPrestress))
+    {
+        cable->prestress().initialTension = m_spinPrestress->value() * 1000.0;
+        cable->definition().setInitialTension(cable->prestress().initialTension);
+    }
+    if (m_edited.changed(m_spinSag)) cable->geometry().setSag(m_spinSag->value());
 
-    cable->startAnchor().setType(static_cast<TSA::Model::AnchorType>(m_comboStartAnchor->currentData().toInt()));
-    cable->endAnchor().setType(static_cast<TSA::Model::AnchorType>(m_comboEndAnchor->currentData().toInt()));
-    cable->analysisProperties().tensionOnly = m_chkTensionOnly->isChecked();
+    if (m_edited.changed(m_comboStartAnchor))
+        cable->startAnchor().setType(static_cast<TSA::Model::AnchorType>(m_comboStartAnchor->currentData().toInt()));
+    if (m_edited.changed(m_comboEndAnchor))
+        cable->endAnchor().setType(static_cast<TSA::Model::AnchorType>(m_comboEndAnchor->currentData().toInt()));
+    if (m_edited.changed(m_chkTensionOnly)) cable->analysisProperties().tensionOnly = m_chkTensionOnly->isChecked();
     cable->setColor(m_colorHex.toStdString());
+    captureEditedFields();
 
-    m_model->notifyCableModified(m_cableId);
+    // Rien de changé : ni entrée Annuler, ni notification, résultats conservés (BUG-130).
+    if (!tx.hasChanges())
+    {
+        tx.discardUnchanged();
+        return;
+    }
+    m_model->notifyCableModified(m_cableId);   // dans la transaction : une exception d'observateur annule tout (BUG-129)
+    tx.commit();
     emit elementModified();
+}
+
+void CablePropertiesView::captureEditedFields()
+{
+    m_edited.capture({ m_comboType, m_comboGeomMode, m_spinDiameter, m_spinArea, m_spinModulus, m_spinPrestress, m_spinSag,
+                       m_comboStartAnchor, m_comboEndAnchor, m_chkTensionOnly });
 }
 
 } // namespace TSA::UI

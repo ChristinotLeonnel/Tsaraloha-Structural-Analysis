@@ -1,4 +1,6 @@
 #include "GridDialog.h"
+#include <optional>
+#include "../../UndoRedo/EditTransaction.h"
 #include "UI/Theme/ThemedIcon.h"
 #include "../HelpLauncher.h"
 #include "App/ProductInfo.h"
@@ -1340,8 +1342,10 @@ void GridDialog::onApply()
     }
 
     // Historique : grille et niveaux qui en découlent sont annulables (BUG-003).
+    // Transaction : validation sans changement → aucune entrée ; une exception ne laisse pas de grille à moitié appliquée.
+    std::optional<TSA::UndoRedo::EditTransaction> tx;
     if (auto* model = m_model ? m_model : (m_occView ? m_occView->model() : nullptr))
-        model->pushUndoState(m_isEditMode ? tr("Modifier la grille").toStdString() : tr("Créer une grille").toStdString());
+        tx.emplace(*model, m_isEditMode ? tr("Modifier la grille").toStdString() : tr("Créer une grille").toStdString());
 
     // Mettre à jour la grille existante ou ajouter une nouvelle grille dans le GridManager
     if (m_gridManager)
@@ -1398,6 +1402,8 @@ void GridDialog::onApply()
                 TSA::Grid::applyGridLevels(def, *m_model->levelManager());
         }
     }
+
+    if (tx) tx->commit();
 
     // Reconstruire immédiatement la vue 3D
     if (m_occView)

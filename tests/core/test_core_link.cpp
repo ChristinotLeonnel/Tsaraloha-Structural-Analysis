@@ -98,6 +98,47 @@ int main()
         ++passed;
     }
 
-    std::cout << "RESULTS: " << passed << " / 4 tests passed successfully!" << std::endl;
+    // Historique : comparaison exacte des états fournie par la couche IO (BUG-127). Sans encodeur (programme lié au
+    // seul noyau), une transaction sans effet garde l'ancien comportement prudent (une entrée) ; avec, aucune entrée.
+    {
+        using TSA::UndoRedo::UndoManager;
+        Model m;
+        m.addNode(0.0, 0.0, 0.0);
+        m.clearUndoRedo();
+        const auto s = m.createSnapshot("contrôle");
+        CORE_CHECK(!UndoManager::sameContent(s, s), "sans encodeur : états jamais déclarés identiques (prudence)");
+        {
+            TSA::UndoRedo::EditTransaction tx(m, "sans effet");
+            tx.commit();
+        }
+        CORE_CHECK(m.canUndo(), "sans encodeur : transaction sans effet enregistrée (comportement prudent)");
+        UndoManager::setContentEncoder([](const Model::ModelStateSnapshot& snap) {
+            std::vector<std::uint8_t> bytes;
+            for (const auto& [id, n] : snap.nodes)
+                for (double v : { double(id), n.x(), n.y(), n.z() })
+                {
+                    const auto* p = reinterpret_cast<const std::uint8_t*>(&v);
+                    bytes.insert(bytes.end(), p, p + sizeof v);
+                }
+            return bytes;
+        });
+        m.clearUndoRedo();
+        {
+            TSA::UndoRedo::EditTransaction tx(m, "sans effet");
+            tx.commit();
+        }
+        CORE_CHECK(!m.canUndo(), "avec encodeur : transaction sans effet, aucune entrée");
+        {
+            TSA::UndoRedo::EditTransaction tx(m, "déplacement");
+            m.getNode(m.nodes().begin()->first)->setX(1.0);
+            tx.commit();
+        }
+        CORE_CHECK(m.canUndo(), "avec encodeur : transaction effective, une entrée");
+        UndoManager::setContentEncoder({});
+        std::cout << "[PASS] Core: comparaison exacte des états par l'historique (encodeur fourni par IO)" << std::endl;
+        ++passed;
+    }
+
+    std::cout << "RESULTS: " << passed << " / 5 tests passed successfully!" << std::endl;
     return 0;
 }

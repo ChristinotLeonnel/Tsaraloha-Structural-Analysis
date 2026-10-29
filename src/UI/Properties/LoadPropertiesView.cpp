@@ -4,6 +4,7 @@
 #include "../../Model/Load/NodalLoad.h"
 #include "../../Model/Load/MemberLoad.h"
 #include "../../Model/Load/MemberLoadCommands.h"
+#include "../../UndoRedo/EditTransaction.h"
 
 #include <QCoreApplication>
 #include <QMessageBox>
@@ -264,6 +265,7 @@ void LoadPropertiesView::refreshView()
         m_spinMx->setValue(nl->mx());
         m_spinMy->setValue(nl->my());
         m_spinMz->setValue(nl->mz());
+        m_edited.capture({ m_comboLoadCase, m_comboCoordSys, m_spinFx, m_spinFy, m_spinFz, m_spinMx, m_spinMy, m_spinMz });
 
         m_groupForces->setVisible(true);
         m_groupMoments->setVisible(true);
@@ -336,15 +338,25 @@ void LoadPropertiesView::applyChanges()
         auto* nl = m_model->loadManager().getNodalLoad(m_loadId);
         if (!nl) return;
 
-        m_model->pushUndoState(tr("Modifier Charge Nodale #%1").arg(m_loadId).toStdString());
-
+        // Une entrée par charge, crans successifs fondus ; seuls les champs modifiés sont réécrits (efforts affichés à
+        // 2 décimales) ; validation sans changement : ni entrée, ni notification (BUG-130).
+        const std::string undoName = tr("Modifier Charge Nodale #%1").arg(m_loadId).toStdString();
+        TSA::UndoRedo::EditTransaction tx(*m_model, undoName, undoName);
+        auto pick = [this](const QDoubleSpinBox* spin, double current) { return m_edited.changed(spin) ? spin->value() : current; };
         nl->setName(m_editName->text().trimmed().toStdString());
-        nl->setLoadCaseId(m_comboLoadCase->currentData().toInt());
-        nl->setCoordSystem(static_cast<TSA::Model::LoadCoordSystem>(m_comboCoordSys->currentData().toInt()));
-        nl->setForces(m_spinFx->value(), m_spinFy->value(), m_spinFz->value());
-        nl->setMoments(m_spinMx->value(), m_spinMy->value(), m_spinMz->value());
-
-        m_model->notifyNodalLoadModified(m_loadId);
+        if (m_edited.changed(m_comboLoadCase)) nl->setLoadCaseId(m_comboLoadCase->currentData().toInt());
+        if (m_edited.changed(m_comboCoordSys))
+            nl->setCoordSystem(static_cast<TSA::Model::LoadCoordSystem>(m_comboCoordSys->currentData().toInt()));
+        nl->setForces(pick(m_spinFx, nl->fx()), pick(m_spinFy, nl->fy()), pick(m_spinFz, nl->fz()));
+        nl->setMoments(pick(m_spinMx, nl->mx()), pick(m_spinMy, nl->my()), pick(m_spinMz, nl->mz()));
+        m_edited.capture({ m_comboLoadCase, m_comboCoordSys, m_spinFx, m_spinFy, m_spinFz, m_spinMx, m_spinMy, m_spinMz });
+        if (!tx.hasChanges())
+        {
+            tx.discardUnchanged();
+            return;
+        }
+        m_model->notifyNodalLoadModified(m_loadId);   // dans la transaction : une exception d'observateur annule tout
+        tx.commit();
     }
     else if (m_mode == DisplayMode::Member)
     {
@@ -377,9 +389,10 @@ void LoadPropertiesView::applyChanges()
             && same(edited.x1(), ml->x1()) && same(edited.x2(), ml->x2()))
             return;   // rien n'a changé : pas d'entrée Annuler
 
-        m_model->pushUndoState(tr("Modifier Charge sur Barre #%1").arg(m_loadId).toStdString());
+        TSA::UndoRedo::EditTransaction tx(*m_model, tr("Modifier Charge sur Barre #%1").arg(m_loadId).toStdString());
         *ml = edited;
-        m_model->notifyMemberLoadModified(m_loadId);
+        m_model->notifyMemberLoadModified(m_loadId);   // dans la transaction : une exception d'observateur annule tout
+        tx.commit();
     }
 
     emit loadModified();

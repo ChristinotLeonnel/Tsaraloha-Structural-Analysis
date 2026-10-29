@@ -79,6 +79,10 @@ public:
                     const std::string& author = TSA::Product::kDefaultAuthor,
                     std::string* errorMessage = nullptr);
 
+    /// Contenu persistant d'un instantané (éléments, charges, BIM, références de calcul), octet pour octet comme dans
+    /// le fichier, sans en-tête ni compression : comparaison EXACTE de deux états (UndoManager, BUG-127).
+    std::vector<uint8_t> snapshotContentBytes(const TSA::Model::Model::ModelStateSnapshot& snapshot);
+
 private:
     void writeProjectChunk(std::vector<uint8_t>& buffer, const std::string& projectName, const std::string& author);
     void writeThumbnailChunk(std::vector<uint8_t>& buffer, const QByteArray& pngData);

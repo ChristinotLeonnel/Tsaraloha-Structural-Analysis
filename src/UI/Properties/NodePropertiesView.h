@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EditedFields.h"
 #include "IElementPropertyView.h"
 #include "../../Model/SupportDefinition.h"
 
@@ -54,6 +55,10 @@ private:
     QDoubleSpinBox* m_spinY = nullptr;
     QDoubleSpinBox* m_spinZ = nullptr;
     QPushButton* m_btnColor = nullptr;
+    EditedFields m_edited; ///< valeurs affichées au chargement : seuls les champs modifiés sont réécrits
+    void captureEditedFields();
+    /// Couleur affichée : celle du nœud, sinon la couleur par défaut (jamais écrite dans le modèle, BUG-126).
+    QString shownColor() const;
     QString m_colorHex = "#2563EB";
 
     // Liaisons et Appuis

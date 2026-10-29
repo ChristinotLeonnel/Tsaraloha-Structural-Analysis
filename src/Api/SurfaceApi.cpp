@@ -229,7 +229,9 @@ int SurfaceApi::addLoad(TSA::Model::Model& model, const TSA::Model::SurfaceLoad&
     if (load.zone && (load.zoneU1 <= load.zoneU0 || load.zoneV1 <= load.zoneV0)) return fail(error, "zone chargée vide"), 0;
     TSA::Model::SurfaceLoad l = load;
     l.id = 0;
-    return model.loadManager().addSurfaceLoad(l);
+    const int id = model.loadManager().addSurfaceLoad(l);
+    model.notifySurfaceLoadsChanged();   // vues et résultats informés
+    return id;
 }
 
 bool SurfaceApi::setFormulation(TSA::Model::Model& model, SurfaceTargetKind kind, int id, SurfaceFormulation f, std::string* error)

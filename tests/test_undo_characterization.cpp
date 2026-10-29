@@ -9,6 +9,8 @@
 #include "test_common.h"
 #include "undo_characterization.h"
 
+#include <algorithm>
+
 #include "AI/Tools/AIToolRegistry.h"
 #include "Analysis/ResultsModel.h"
 #include "Analysis/ResultsValidityGuard.h"
@@ -335,8 +337,14 @@ bool runSuite_UndoCharacterization(int& passed)
             TEST_CHECK((staleCalls == 1) == stale && guard.resultsUpToDate() == !stale, label << " : résultats périmés " << staleCalls);
             TEST_CHECK((fingerprint(m) == before) == sameState, label << " : état");
             if (!diffPayload.empty())
-                TEST_CHECK(p.obs.count("ModelDiffApplied") == 1 && p.obs.events.back().payload == diffPayload,
+            {
+                // Le différentiel n'est pas forcément le dernier événement (un commit ultérieur émet ModelEdited).
+                const auto diffEvent = std::find_if(p.obs.events.begin(), p.obs.events.end(),
+                                                    [](const UndoChar::Event& e) { return e.kind == "ModelDiffApplied"; });
+                TEST_CHECK(p.obs.count("ModelDiffApplied") == 1 && diffEvent != p.obs.events.end() &&
+                               diffEvent->payload == diffPayload,
                            label << " : différentiel publié " << p.obs.specificSequence());
+            }
             else
                 TEST_CHECK(p.obs.count("ModelDiffApplied") == 0, label << " : aucun différentiel");
             return true;
@@ -349,26 +357,26 @@ bool runSuite_UndoCharacterization(int& passed)
                 tx.commit();
             }, 1, true, true, false, ""))
             return false;
-        if (!guardCase("Test 513: commit sans modification (DÉFAUT FIGÉ : entrée et invalidation)", [&] {
+        if (!guardCase("Test 513: commit sans modification (BUG-127 : ni entrée, ni révision, ni invalidation)", [&] {
                 EditTransaction tx(m, "rien");
                 tx.commit();
-            }, 1, true, true, true, ""))
+            }, 0, false, false, true, ""))
             return false;
         if (!guardCase("Test 513: rollback explicite après modification", [&] {
                 EditTransaction tx(m, "annulée");
                 m.getBeam(b)->setRotation(12.0);
                 tx.rollback();
-            }, 0, true, true, true, "B{c:;m:" + bs + ";d:}"))
+            }, 0, false, true, true, "B{c:;m:" + bs + ";d:}"))
             return false;
-        if (!guardCase("Test 513: rollback sans modification (DÉFAUT FIGÉ : diff vide, isModified forcé, résultats périmés)", [&] {
+        if (!guardCase("Test 513: rollback sans modification (BUG-127 : ni différentiel, ni révision, isModified inchangé)", [&] {
                 EditTransaction tx(m, "vide");
                 tx.rollback();
-            }, 0, true, true, true, "<vide>"))
+            }, 0, false, false, true, ""))
             return false;
         if (!guardCase("Test 513: destructeur sans commit", [&] {
                 EditTransaction tx(m, "abandon");
                 m.getBeam(b)->setRotation(13.0);
-            }, 0, true, true, true, "B{c:;m:" + bs + ";d:}"))
+            }, 0, false, true, true, "B{c:;m:" + bs + ";d:}"))
             return false;
         if (!guardCase("Test 513: exception dans la transaction", [&] {
                 try
@@ -378,30 +386,47 @@ bool runSuite_UndoCharacterization(int& passed)
                     throw std::runtime_error("échec");
                 }
                 catch (const std::runtime_error&) {}
-            }, 0, true, true, true, "B{c:;m:" + bs + ";d:}"))
+            }, 0, false, true, true, "B{c:;m:" + bs + ";d:}"))
             return false;
         if (!guardCase("Test 513: discardUnchanged", [&] {
                 EditTransaction tx(m, "inchangé");
                 tx.discardUnchanged();
             }, 0, false, false, true, ""))
             return false;
-        if (!guardCase("Test 513: modifier puis restaurer, commit (DÉFAUT FIGÉ : entrée créée)", [&] {
+        if (!guardCase("Test 513: modification sous les tolérances de ModelDiff (1e-9°) : entrée créée (comparaison exacte)", [&] {
+                EditTransaction tx(m, "infime");
+                m.getBeam(b)->setRotation(m.getBeam(b)->rotation() + 1e-9);
+                tx.commit();
+            }, 1, true, true, false, ""))
+            return false;
+        if (!guardCase("Test 513: modifier puis restaurer, commit (BUG-127 : aucune entrée)", [&] {
                 EditTransaction tx(m, "aller-retour");
                 const double r0 = m.getBeam(b)->rotation();
                 m.getBeam(b)->setRotation(r0 + 1.0);
                 m.getBeam(b)->setRotation(r0);
                 tx.commit();
-            }, 1, true, true, true, ""))
+            }, 0, false, false, true, ""))
             return false;
         if (!guardCase("Test 513: imbrication, rollback interne puis commit externe", [&] {
                 EditTransaction outer(m, "externe");
                 m.getBeam(b)->setRotation(15.0);
                 {
                     EditTransaction inner(m, "interne");
-                    inner.rollback(); // profondeur remise à 0 (UndoManager.cpp:194) : le commit externe sort sans entrée (178-179)
+                    inner.rollback(); // état de début de la transaction englobante rétabli ; elle reste ouverte
                 }
+                outer.commit();   // rien ne diffère du début : aucune entrée
+            }, 0, false, true, true, "B{c:;m:" + bs + ";d:}"))
+            return false;
+        if (!guardCase("Test 513: imbrication, rollback interne, nouvelle modification, commit externe (BUG-127 (3))", [&] {
+                EditTransaction outer(m, "externe");
+                m.getBeam(b)->setRotation(16.0);
+                {
+                    EditTransaction inner(m, "interne");
+                    inner.rollback();
+                }
+                m.getBeam(b)->setRotation(17.0);   // autrefois hors historique : profondeur remise à 0 par le rollback
                 outer.commit();
-            }, 0, true, true, true, "B{c:;m:" + bs + ";d:}"))
+            }, 1, true, true, false, "B{c:;m:" + bs + ";d:}"))
             return false;
         {
             // pushUndoState absorbé dans une transaction : révision +1 par appel (UndoManager.cpp:70-76).
@@ -411,6 +436,7 @@ bool runSuite_UndoCharacterization(int& passed)
                 EditTransaction tx(m, "absorbe");
                 m.pushUndoState("x", "x");
                 m.pushUndoState("y");
+                m.getBeam(b)->setRotation(21.0);
                 TEST_CHECK(!m.canUndo(), "Test 513: Annuler indisponible pendant une transaction (UndoManager.h:41)");
                 tx.commit();
             }
@@ -465,24 +491,24 @@ bool runSuite_UndoCharacterization(int& passed)
             view.setElementId(id);
             const std::string fp0 = fingerprint(m);
             m.clearUndoRedo();
-            // 1. Valider sans rien changer : 1 entrée (DÉFAUT FIGÉ), une notification spécifique, état inchangé.
+            // 1. Valider sans rien changer : ni entrée, ni notification, état inchangé (BUG-125, BUG-126, BUG-130 corrigés).
             {
+                (void)noopKeepsState;
                 UndoProbe p(m);
                 CoalesceClock clock;
                 view.applyChanges();
-                TEST_CHECK(p.undoDelta() == 1 && p.obs.count(modifiedKind, id) == 1, label << " : valider sans changement → 1 entrée, 1 " << modifiedKind
-                                                                                              << " (" << p.obs.specificSequence() << ")");
-                TEST_CHECK((fingerprint(m) == fp0) == noopKeepsState,
-                           label << " : valider sans changement " << (noopKeepsState ? "ne réécrit rien" : "RÉÉCRIT l'état (DÉFAUT FIGÉ)") << " ("
-                                 << firstDifference(fp0, fingerprint(m)) << ")");
-                // 2. Cran immédiat sur un champ : fondu dans la même entrée (garde temporelle).
+                TEST_CHECK(p.undoDelta() == 0 && p.obs.events.empty(), label << " : valider sans changement → aucune entrée, aucune notification ("
+                                                                             << p.obs.specificSequence() << ")");
+                TEST_CHECK(fingerprint(m) == fp0, label << " : valider sans changement ne réécrit rien (" << firstDifference(fp0, fingerprint(m)) << ")");
+                // 2. Deux crans immédiats sur un champ : une seule entrée (coalescence portée par la transaction).
                 if (fieldValue == fieldValue) // NaN = pas de champ numérique testé pour cette vue
                 {
                     QDoubleSpinBox* spin = spinWithValue(view, fieldValue);
                     TEST_CHECK(spin != nullptr, label << " : champ de valeur " << fieldValue << " trouvé (unique)");
-                    spin->setValue(newValue); // valueChanged → onWidgetChanged → applyChanges
+                    spin->setValue((fieldValue + newValue) / 2.0); // valueChanged → onWidgetChanged → applyChanges
+                    spin->setValue(newValue);
                     if (clock.safelyInside())
-                        TEST_CHECK(p.undoDelta() == 1, label << " : cran fondu dans la même entrée (coalescence)");
+                        TEST_CHECK(p.undoDelta() == 1, label << " : deux crans fondus dans une entrée (coalescence)");
                     else
                         std::cout << "[SKIP] " << label << " : coalescence non vérifiable (lenteur)" << std::endl;
                     TEST_CHECK(fingerprint(m) != fp0, label << " : champ appliqué");
@@ -529,13 +555,13 @@ bool runSuite_UndoCharacterization(int& passed)
             TSA::UI::CablePropertiesView v(&m);
             // Câble : applyChanges réécrit tous les champs depuis l'affichage arrondi (CablePropertiesView.cpp:275-280). CONSTATÉ
             // (essai local 2026-10-26) : valider sans rien changer modifie l'aire de la définition (dArea 0x1.6b2f7682c2457p-12 →
-            // 0x1.6b3a0abdc923cp-12 pour Ø 21 mm) — DÉFAUT FIGÉ.
+            // 0x1.6b3a0abdc923cp-12 pour Ø 21 mm) — BUG-125, corrigé : seuls les champs modifiés sont réécrits.
             if (!panel(v, cable, "CableModified", "K_test", noField, 0, "Test 514: câble (CablePropertiesView.cpp:269)", false)) return false;
         }
         {
             TSA::UI::NodePropertiesView v(&m);
             // CONSTATÉ (essai local) : valider sans changement impose la couleur par défaut « #2563EB » à un nœud sans couleur
-            // (NodePropertiesView.cpp:269 et 526 ; même défaut que celui corrigé pour les poteaux au test 221) — DÉFAUT FIGÉ.
+            // (même défaut que celui corrigé pour les poteaux au test 221) — BUG-126, corrigé : couleur par défaut affichée seulement.
             if (!panel(v, n4, "NodeModified", "", 4.0, 4.5, "Test 514: nœud (NodePropertiesView.cpp:522)", false)) return false;
             // Donnée invalide : n1 sur n2 (poutre de longueur nulle) → refus AVANT le push (NodePropertiesView.cpp:510-517).
             v.setElementId(n1);
@@ -549,7 +575,7 @@ bool runSuite_UndoCharacterization(int& passed)
                        "Test 514: nœud — coordonnées refusées : aucune entrée, état inchangé, avertissement affiché");
         }
         {
-            // Exception pendant la notification (observateur) : comportement actuel = entrée créée, mutation conservée.
+            // Exception pendant la notification (observateur) : la transaction est annulée (BUG-129 corrigé pour les panneaux).
             TSA::UI::BeamPropertiesView v(&m);
             v.setElementId(beam);
             m.clearUndoRedo();
@@ -560,12 +586,11 @@ bool runSuite_UndoCharacterization(int& passed)
             nameEdit->setText("B_exception");
             bool thrown = false;
             try { v.applyChanges(); } catch (const std::runtime_error&) { thrown = true; }
-            TEST_CHECK(thrown && p.undoDelta() == 1 && m.getBeam(beam)->name() == "B_exception",
-                       "Test 514: exception après mutation — entrée présente, mutation conservée (DÉFAUT FIGÉ : pas de rollback)");
-            TEST_CHECK(m.undo() && m.getBeam(beam)->name() == "B_test", "Test 514: Annuler après exception rend l'état initial");
+            TEST_CHECK(thrown && p.undoDelta() == 0 && m.getBeam(beam)->name() == "B_test",
+                       "Test 514: exception pendant la notification — aucune entrée, état initial rétabli (rollback)");
         }
         {
-            // ResultsValidityGuard : le push seul suffit à périmer les résultats (Model.cpp:35-42 via setModified).
+            // ResultsValidityGuard : une validation sans changement conserve les résultats ; une modification les périme.
             TSA::Analysis::ResultsValidityGuard guard(&m);
             int stale = 0;
             guard.setStaleCallback([&] { ++stale; });
@@ -573,7 +598,11 @@ bool runSuite_UndoCharacterization(int& passed)
             TSA::UI::WallPropertiesView v(&m);
             v.setElementId(wall);
             v.applyChanges();
-            TEST_CHECK(stale == 1 && !guard.resultsUpToDate(), "Test 514: résultats périmés une fois");
+            TEST_CHECK(stale == 0 && guard.resultsUpToDate(), "Test 514: validation sans changement — résultats conservés");
+            QDoubleSpinBox* thick = spinWithValue(v, 0.22);
+            TEST_CHECK(thick != nullptr, "Test 514: champ épaisseur du voile trouvé");
+            thick->setValue(0.25);
+            TEST_CHECK(stale == 1 && !guard.resultsUpToDate(), "Test 514: modification — résultats périmés une fois");
         }
 
         // LoadPropertiesView : charge nodale (339, sans clé, sans contrôle) et sur barre (380, validée, sans entrée si inchangée).
@@ -586,8 +615,14 @@ bool runSuite_UndoCharacterization(int& passed)
             UndoProbe p(m);
             v.applyChanges();
             v.applyChanges();
-            TEST_CHECK(p.undoDelta() == 2 && p.obs.count("NodalLoadModified", nl) == 2 && p.obs.count("LoadModified", nl) == 2,
-                       "Test 514: charge nodale — chaque validation crée une entrée (aucune clé, aucun contrôle : DÉFAUT FIGÉ)");
+            TEST_CHECK(p.undoDelta() == 0 && p.obs.events.empty(),
+                       "Test 514: charge nodale — validations sans changement : aucune entrée, aucune notification (BUG-130 corrigé)");
+            QDoubleSpinBox* fz = spinWithValue(v, -10.0);
+            TEST_CHECK(fz != nullptr, "Test 514: champ Fz de la charge nodale trouvé");
+            fz->setValue(-12.0);
+            v.applyChanges();
+            TEST_CHECK(p.undoDelta() == 1 && p.obs.count("NodalLoadModified", nl) == 1 && m.loadManager().getNodalLoad(nl)->fz() == -12.0,
+                       "Test 514: charge nodale modifiée → 1 entrée, 1 notification");
         }
         {
             TSA::UI::LoadPropertiesView v(&m);
@@ -645,7 +680,7 @@ bool runSuite_UndoCharacterization(int& passed)
             TEST_CHECK(p.undoDelta() == 0 && p.obs.events.empty(), "Test 515: saisie annulée → aucun effet");
             modal.acceptInputs = true;
         }
-        // Suppression d'un cas portant des charges (231) : charges supprimées SANS notification Removed (DÉFAUT FIGÉ, C6).
+        // Suppression d'un cas portant des charges : chaque charge retirée est notifiée (BUG-128 corrigé, Model::removeLoadCase).
         {
             const int q = 2; // cas « Q » des valeurs par défaut (LoadManager.cpp:37)
             const int nl = m.loadManager().addNodalLoad(NodalLoad(0, n2, q, 0, 0, -3));
@@ -658,8 +693,8 @@ bool runSuite_UndoCharacterization(int& passed)
             modal.answer = QMessageBox::Yes;
             QMetaObject::invokeMethod(&fresh, "onRemoveLoadCase", Qt::DirectConnection);
             TEST_CHECK(p.undoDelta() == 1 && !m.loadManager().getNodalLoad(nl) && !m.loadManager().getMemberLoad(ml), "Test 515: cas et charges supprimés");
-            TEST_CHECK(p.obs.count("NodalLoadRemoved") == 0 && p.obs.count("MemberLoadRemoved") == 0 && p.obs.count("LoadCaseChanged") == 1,
-                       "Test 515: seule LoadCaseChanged est émise (DÉFAUT FIGÉ : " << p.obs.specificSequence() << ")");
+            TEST_CHECK(p.obs.count("NodalLoadRemoved", nl) == 1 && p.obs.count("MemberLoadRemoved", ml) == 1 && p.obs.count("LoadCaseChanged") == 1,
+                       "Test 515: charges retirées notifiées, puis LoadCaseChanged (" << p.obs.specificSequence() << ")");
             TEST_CHECK(m.undo() && fingerprint(m) == fp0, "Test 515: Annuler rend le cas et ses charges");
         }
         // Suppression refusée (question → Non) : aucune entrée.
@@ -675,10 +710,13 @@ bool runSuite_UndoCharacterization(int& passed)
             modal.answer = QMessageBox::Yes;
             // Réinitialisation Eurocodes (247) : toutes les charges effacées, une seule LoadCaseChanged.
             m.loadManager().addNodalLoad(NodalLoad(0, n2, 1, 0, 0, -1));
+            const int nodalBefore = static_cast<int>(m.loadManager().nodalLoads().size());
+            const int memberBefore = static_cast<int>(m.loadManager().memberLoads().size());
             UndoProbe p2(m);
             QMetaObject::invokeMethod(&fresh, "onResetEurocodes", Qt::DirectConnection);
-            TEST_CHECK(p2.undoDelta() == 1 && m.loadManager().nodalLoads().empty() && p2.obs.count("NodalLoadRemoved") == 0,
-                       "Test 515: réinitialisation — charges effacées sans notification Removed (DÉFAUT FIGÉ)");
+            TEST_CHECK(p2.undoDelta() == 1 && m.loadManager().nodalLoads().empty() && p2.obs.count("NodalLoadRemoved") == nodalBefore &&
+                           p2.obs.count("MemberLoadRemoved") == memberBefore,
+                       "Test 515: réinitialisation — chaque charge effacée est notifiée (BUG-128 corrigé ; " << nodalBefore << " nodale(s))");
             // Combinaison : création (263) → 1 entrée, LoadCaseChanged seule, Annuler / Rétablir.
             const size_t combos0 = m.loadManager().combinations().size();
             const int active = m.loadManager().activeLoadCaseId();
@@ -742,11 +780,12 @@ bool runSuite_UndoCharacterization(int& passed)
             TEST_CHECK(applyMemberLoad(m, proto, { { b }, { 424242 } }, "x", &err).empty() && p.undoDelta() == 0 && p.obs.events.empty(),
                        "Test 515: cible invalide → aucun effet");
             p.obs.throwOnKind = "MemberLoadAdded";
+            const size_t membersBefore = m.loadManager().memberLoads().size();
             bool thrown = false;
             try { applyMemberLoad(m, proto, { { b }, { b } }, "deux", &err); } catch (const std::runtime_error&) { thrown = true; }
-            TEST_CHECK(thrown && p.undoDelta() == 1 && m.loadManager().memberLoads().size() == 1,
-                       "Test 515: exception après la 1re charge — entrée créée, application PARTIELLE (DÉFAUT FIGÉ)");
-            TEST_CHECK(m.undo(), "Test 515: Annuler après exception");
+            TEST_CHECK(thrown && p.undoDelta() == 0 && m.loadManager().memberLoads().size() == membersBefore,
+                       "Test 515: exception après la 1re charge — tout est annulé, aucune entrée (BUG-129 corrigé)");
+            p.obs.throwOnKind.clear();
             const int removed = removeLoads(m, { 99999 }, { 99999 }, "rien");
             TEST_CHECK(removed == 0 && p.undoDelta() == 0, "Test 515: removeLoads sans charge existante → aucune entrée (MemberLoadCommands.cpp:105)");
             // removeLoads avec charges existantes (107) : 1 entrée, une notification Removed par charge, Annuler / Rétablir.
@@ -882,13 +921,25 @@ bool runSuite_UndoCharacterization(int& passed)
             view.setModel(nullptr);
         }
         {
-            // Sans vue 3D : duplication HORS historique (DÉFAUT FIGÉ : GridSettingsDialog.cpp:394-396).
+            // Sans vue 3D ni modèle : aucun historique joignable, duplication hors historique (cas limite assumé).
             TSA::UI::GridSettingsDialog settings(&gm, nullptr, nullptr);
             settings.findChild<QListWidget*>()->setCurrentRow(0);
             const size_t before = gm.grids().size();
             UndoProbe p(m);
             QMetaObject::invokeMethod(&settings, "onDuplicateGrid", Qt::DirectConnection);
-            TEST_CHECK(p.undoDelta() == 0 && gm.grids().size() == before + 1, "Test 517: sans vue — grille dupliquée sans entrée Annuler");
+            TEST_CHECK(p.undoDelta() == 0 && gm.grids().size() == before + 1, "Test 517: sans vue ni modèle — grille dupliquée sans entrée Annuler");
+        }
+        {
+            // Sans vue 3D mais avec le modèle (setModel) : duplication dans l'historique (BUG-130 corrigé).
+            TSA::UI::GridSettingsDialog settings(&gm, nullptr, nullptr);
+            settings.setModel(&m);
+            settings.findChild<QListWidget*>()->setCurrentRow(0);
+            const size_t before = gm.grids().size();
+            m.clearUndoRedo();
+            UndoProbe p(m);
+            QMetaObject::invokeMethod(&settings, "onDuplicateGrid", Qt::DirectConnection);
+            TEST_CHECK(p.undoDelta() == 1 && gm.grids().size() == before + 1, "Test 517: sans vue, avec modèle — 1 entrée Annuler");
+            TEST_CHECK(m.undo() && gm.grids().size() == before, "Test 517: sans vue — Annuler retire la grille dupliquée");
         }
         std::cout << "[PASS] Test 517: F4 grilles (création, duplication, suppression)" << std::endl;
         ++passed;
@@ -911,8 +962,8 @@ bool runSuite_UndoCharacterization(int& passed)
             QMetaObject::invokeMethod(&dlg, "onCreateClicked", Qt::DirectConnection);
             const int id = dlg.createdNodeId();
             TEST_CHECK(p.undoDelta() == 1 && id > 0 && m.getNode(id)->supportType() == TSA::Model::SupportType::Fixed, "Test 518: nœud créé encastré");
-            TEST_CHECK(p.obs.specificSequence() == "NodeAdded(" + std::to_string(id) + ")",
-                       "Test 518: NodeAdded seul — appui posé sans NodeModified (DÉFAUT FIGÉ, NewNodeDialog.cpp:186-191)");
+            TEST_CHECK(p.obs.specificSequence() == "NodeAdded(" + std::to_string(id) + ") NodeModified(" + std::to_string(id) + ")",
+                       "Test 518: NodeAdded puis NodeModified — appui posé notifié (BUG-130 corrigé ; " << p.obs.specificSequence() << ")");
             const std::string fp1 = fingerprint(m);
             if (!undoRedoRoundTrip(m, nullptr, fp0, fp1, "Test 518: création de nœud")) return false;
         }
@@ -955,8 +1006,8 @@ bool runSuite_UndoCharacterization(int& passed)
             Model empty;
             lib.addStructureTemplate(QStringLiteral("UndoChar_518_vide"), "Tests", "", empty.createSnapshot("vide"));
             UndoProbe p2(m);
-            TEST_CHECK(lib.instantiateTemplateInModel(QStringLiteral("UndoChar_518_vide"), &m) && p2.undoDelta() == 1 && p2.obs.specificSequence().empty(),
-                       "Test 518: gabarit vide → entrée sans changement (DÉFAUT FIGÉ)");
+            TEST_CHECK(lib.instantiateTemplateInModel(QStringLiteral("UndoChar_518_vide"), &m) && p2.undoDelta() == 0 && p2.obs.specificSequence().empty(),
+                       "Test 518: gabarit vide → aucune entrée (BUG-130 corrigé)");
         }
         std::cout << "[PASS] Test 518: F5 création de nœud et insertion de bibliothèque" << std::endl;
         ++passed;
@@ -992,8 +1043,8 @@ bool runSuite_UndoCharacterization(int& passed)
         const std::string fp1 = fingerprint(m);
         if (!undoRedoRoundTrip(m, nullptr, fp0, fp1, "Test 519: proposition IA")) return false;
         UndoProbe p2(m);
-        TEST_CHECK(TSA::AI::AIToolRegistry::applyProposal(proposal("IPE 300", "beam", {}), m, &err) && p2.undoDelta() == 1 && p2.obs.specificSequence().empty(),
-                   "Test 519: liste d'ids vide → entrée sans changement (DÉFAUT FIGÉ)");
+        TEST_CHECK(TSA::AI::AIToolRegistry::applyProposal(proposal("IPE 300", "beam", {}), m, &err) && p2.undoDelta() == 0 && p2.obs.specificSequence().empty(),
+                   "Test 519: liste d'ids vide → aucune entrée (BUG-130 corrigé)");
         std::cout << "[PASS] Test 519: F6 proposition IA" << std::endl;
         ++passed;
     }
@@ -1103,7 +1154,7 @@ bool runSuite_UndoCharacterization(int& passed)
                 EditTransaction tx(m, "sans modification");
                 tx.commit();
             });
-            if (!checkTransition(t, 1, 1, 0, "", "Test 520: transaction validée sans modification (DÉFAUT FIGÉ : entrée créée)")) return false;
+            if (!checkTransition(t, 0, 0, 0, "", "Test 520: transaction validée sans modification (BUG-127 : aucune entrée, révision inchangée)")) return false;
             TEST_CHECK(t.fOp == t.f0, "Test 520: transaction sans modification — état inchangé");
         }
         {
@@ -1111,7 +1162,7 @@ bool runSuite_UndoCharacterization(int& passed)
                 EditTransaction tx(m, "annulée");
                 tx.rollback();
             });
-            if (!checkTransition(t, 0, 1, 0, "", "Test 520: transaction annulée sans modification (DÉFAUT FIGÉ : révision incrémentée)")) return false;
+            if (!checkTransition(t, 0, 0, 0, "", "Test 520: transaction annulée sans modification (BUG-127 : révision inchangée)")) return false;
             TEST_CHECK(t.fOp == t.f0, "Test 520: transaction annulée — état inchangé");
         }
         {
@@ -1487,6 +1538,22 @@ bool runSuite_UndoCharacterization(int& passed)
             watcher.clear();
             doomed.reset();
             TEST_CHECK(watcher.fullSequence() == "ModelDestroyed", "Test 523: ModelDestroyed seul à la destruction (" << watcher.fullSequence() << ")");
+        }
+        // Charges surfaciques (BUG-130) : une dalle chargée supprimée notifie le retrait de ses charges.
+        {
+            Model ms;
+            const int a = ms.addNode(0, 0, 0), b = ms.addNode(4, 0, 0), c = ms.addNode(4, 3, 0), d = ms.addNode(0, 3, 0);
+            const int s = ms.addSlab({ a, b, c, d }, 0.2);
+            TSA::Model::SurfaceLoad sl;
+            sl.targetKind = TSA::Model::SurfaceTargetKind::Slab;
+            sl.surfaceId = s;
+            sl.loadCaseId = ms.loadManager().loadCases().begin()->first;
+            sl.value = -5.0;
+            ms.loadManager().addSurfaceLoad(sl);
+            UndoChar::RecordingObserver watcher(&ms);
+            ms.removeSlab(s);
+            TEST_CHECK(watcher.count("SlabRemoved", s) == 1 && watcher.count("SurfaceLoadsChanged") == 1 && ms.loadManager().surfaceLoads().empty(),
+                       "Test 523: dalle chargée supprimée — SurfaceLoadsChanged (" << watcher.specificSequence() << ")");
         }
         std::cout << "[PASS] Test 523: notifications Added / Removed, DimensionsChanged, ModelCleared, ModelDestroyed" << std::endl;
         ++passed;

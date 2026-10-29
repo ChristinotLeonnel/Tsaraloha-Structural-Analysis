@@ -484,6 +484,11 @@ void OccView::onLoadCaseChanged(int /*caseId*/)
     updateAllLoadShapes();
 }
 
+void OccView::onSurfaceLoadsChanged()
+{
+    updateAllLoadShapes();
+}
+
 void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
 {
     if (m_context.IsNull() || !m_model)

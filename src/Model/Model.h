@@ -92,6 +92,8 @@ public:
     virtual void onLoadModified(int /*loadId*/) {}
     virtual void onLoadRemoved(int /*loadId*/) {}
     virtual void onLoadCaseChanged(int /*caseId*/) {}
+    /// Charges surfaciques ajoutées, modifiées ou retirées (pas d'identifiant : elles sont redessinées ensemble).
+    virtual void onSurfaceLoadsChanged() {}
 
     virtual void onModelDiffApplied(const ModelDiff& /*diff*/) {}
     /// Cotations ajoutées, modifiées ou supprimées (ids ; vide = toutes, ex. style ou rechargement).
@@ -321,6 +323,13 @@ public:
     LoadManager& loadManager() noexcept { return m_loadManager; }
     const LoadManager& loadManager() const noexcept { return m_loadManager; }
 
+    /// Supprime un cas de charge et ses charges, en notifiant chaque charge retirée (NodalLoadRemoved / MemberLoadRemoved,
+    /// LoadRemoved) puis LoadCaseChanged (cas actif) : vues et arbre restent synchronisés (BUG-128). L'appelant encadre
+    /// l'opération par une transaction. Faux si le cas n'existe pas (rien n'est notifié).
+    bool removeLoadCase(int caseId);
+    /// Rétablit les cas et combinaisons Eurocode par défaut ; toutes les charges sont retirées et notifiées (BUG-128).
+    void resetLoadCasesToDefaults();
+
     // Historique Undo / Redo (Ctrl+Z / Ctrl+Y)
     void pushUndoState(const std::string& actionName = "", const std::string& coalesceKey = "");
     /// Entrée Annuler pour un changement d'étiquettes seulement (renumérotation) : révision inchangée.
@@ -363,6 +372,7 @@ public:
     void notifyLoadModified(int loadId);
     void notifyLoadRemoved(int loadId);
     void notifyLoadCaseChanged(int caseId);
+    void notifySurfaceLoadsChanged();
 
     // État de modification du document (Dirty state)
     /// Paramètres d'analyse du projet (AnalysisContext::toJson, schéma versionné), persistés dans le
@@ -484,6 +494,8 @@ private:
     std::vector<IModelObserver*> m_observers;
     std::uint64_t m_revision = 0;
     void bumpRevision();
+    /// Notifie le retrait des charges (nodales, sur barre) de « before » qui n'existent plus.
+    void notifyLoadsRemovedSince(const std::pair<std::vector<int>, std::vector<int>>& before);
 
     std::unique_ptr<TSA::UndoRedo::UndoManager> m_undoManager;
 

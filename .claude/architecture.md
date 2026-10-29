@@ -13,7 +13,9 @@ TSALab (dépôt voisin `../TSA` → `TSA_ROOT_DIR`) appelle la même fonction av
                (données), grilles (données), historique par instantanés, journal ; QtCore + TKernel + TKMath seulement,
                PCH propre sans widget ; périmètre établi par fermeture à l'édition de liens, 2026-10-26)
  └── <P>_Model    (OBJECT, TSARALOHA_MODEL_SOURCES : commandes, IO, calcul, normes, NDC, IA, bibliothèques… ; lie
-     │             <P>_Core en PUBLIC, porte le PCH Qt/OCCT complet)
+     │             <P>_Core en PUBLIC ; liaisons : Core, tsalab_science, Qt Core/Gui/Network, TKernel, TKMath — QtWidgets
+     │             et OCCT de rendu déclarés par Graphics / Widgets / application / tests (B, 2026-10-29) ; porte le PCH Qt/OCCT
+     │             complet, QtWidgets en $<COMPILE_ONLY:…> pour des commandes de compilation identiques)
      ├── <P>_Graphics (OBJECT : viewport, géométrie, rendu des grilles, outils) → <P>_Widgets (OBJECT : interface partagée)
      ├── <P>                  (exe : UI, AppShell, MainWindow…) — src/main.cpp → EcosystemApplication
      ├── <P>_Tests            (exe <P>_TestSuite : tests/*.cpp + product/ProductTests.cpp)
@@ -23,7 +25,13 @@ TSALab (dépôt voisin `../TSA` → `TSA_ROOT_DIR`) appelle la même fonction av
 ```
 Catalogues installés : le noyau lit `Model/InstalledCatalogs` (Section::defaultLibrary, CableDefinition::defaultDefinitions) ;
 la couche des bibliothèques enregistre le fournisseur (`ExtensionSystem/LibraryRegistry.cpp`, initialisation statique,
-toujours liée car <P>_Model est OBJECT). Le noyau ne doit contenir aucune initialisation statique (bibliothèque STATIC).
+toujours liée car <P>_Model est OBJECT). Le noyau ne doit contenir aucune initialisation ni terminaison statique
+(bibliothèque STATIC : l'éditeur de liens ne garde que les objets référencés, un enregistrement serait perdu).
+Contrôle `tools/check_core_static_init.py` (CTest `<P>_CoreStaticInit` + contre-épreuve `<P>_CoreStaticInitSelfTest`) :
+sections ELF non vides `.init_array[.*]`, `.preinit_array`, `.ctors[.*]`, `.fini_array[.*]`, `.dtors[.*]`, `.init`, `.fini`
+(objdump -h) ; objets LTO refusés ; codes 0 conforme, 1 constat, 2 contrôle impossible (outil absent, LTO, membre illisible).
+Vérifié avec GCC 13 / binutils 2.42 ; Clang non vérifié ; MSVC : non enregistré (objets COFF, aucun contrôle) ;
+-fsanitize / --coverage : faux positifs sur tous les objets (non utilisés aujourd'hui).
 Identité produit : `<ProductIdentity.h>` (C++ pur, chevrons, dossier product/ du produit compilé) et
 `src/App/ProductInfo.h` (helpers Qt : extension, filtres, QSettings, `sourceDirectory()` = `TSA_SOURCE_DIR`).
 Aucun littéral « TSA » / « .tsa » / chemin absolu dans src/ pour ces usages.
@@ -130,7 +138,8 @@ Status: partiel (barres/treillis/câbles/appuis ; pas de dalles ni voiles ; exé
 ## 4. Flux principaux
 
 ```text
-Édition propriété : PropertyView::applyChanges → pushUndoState(nom, nom) → mutation → notify*Modified
+Édition propriété : PropertyView::applyChanges → EditTransaction(nom, clé) → champs MODIFIÉS seulement (EditedFields)
+  → hasChanges ? notify*Modified puis commit : discardUnchanged (docs/EDIT_SYSTEM.md ; plus de pushUndoState dans l'UI)
   → OccView::update*Shape (forme locale) / ModelTree ligne / ResultsValidityGuard (invalide résultats)
 Undo : UndoManager::undo → ModelDiff::compute → applySnapshotData → notifyModelDiffApplied (mise à jour ciblée)
 Ouverture .tsa : MainWindow::loadFile → ProjectManager::openProject → TSAFileReader → Model::restoreSnapshot

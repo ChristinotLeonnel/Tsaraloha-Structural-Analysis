@@ -17,7 +17,9 @@ Last Updated: 2026-10-28. Uniquement des tâches réellement identifiées (voir 
 - [ ] Dépendances : Linux NON TESTÉ ; scripts PowerShell (setup_build/detect_*) à simplifier — rapport §11.8.
 - [ ] Procédure PROCEDURE_WINDOWS_v2 (A1, A2 dumpbin, B, B sans IFC) : NON exécutée ; Debug non testé ; commit à autoriser.
 
-## TSA Core — préparation de l'étape 2 (2026-10-26 ; commits LOCAUX, non poussés ni fusionnés ; main = 39155c4)
+## TSA Core — préparation de l'étape 2 (2026-10-26) ; état au 2026-10-29 : C fusionné dans main (f31ca9c, poussé), B repris
+## sur refactor/core-edit-api (validé MSVC, avec et sans IfcOpenShell), A repris (2749db0 : contrôle ELF, non enregistré sous
+## MSVC — configuration et CTest Windows vérifiés) ; A2 (moteur dumpbin) : patch du worktree Linux, inaccessible ici, non appliqué
 
 Branches distinctes, base 39155c4 (TSALab : 58063a7) ; preuves dans ../TSA-rapports/2026-10-26/mission3 à mission10.
 Commits locaux : A 9a45d46, B 8695035, TSALab B1 eea9cd9, C 3b65ac3, documentation bf88548 (docs/architecture-tsa).
@@ -40,8 +42,10 @@ Commits locaux : A 9a45d46, B 8695035, TSALab B1 eea9cd9, C 3b65ac3, documentati
 - [x] Commits locaux autorisés et faits (2026-10-26) ; [ ] push et fusion : après la validation Windows (plan d'intégration
       dans mission10_integration).
 - [x] Documentation d'architecture (docs/architecture/, Mermaid + SVG) : branche docs/architecture-tsa, commit bf88548.
-- [ ] Étape 2 (migration pushUndoState → EditTransaction) : NON autorisée. Préalables : clé de coalescence dans
-      EditTransaction (F1 et F3), contrat de BUG-127 (rollback sans modification), puis migration famille par famille.
+- [x] Étape 2 (2026-10-29, branche refactor/core-edit-api, mission autonome autorisée) : contrat des transactions (BUG-127),
+      clé de coalescence (F1), hasChanges ; 8 panneaux + charges (F1), chargements (F2), appuis (F3), grilles (F4),
+      création / bibliothèque (F5), IA (F6) migrés : plus aucun pushUndoState dans l'interface. BUG-125 à 129 corrigés,
+      BUG-130 partiel (voir known-issues). Suite undo 11/11, 29 suites sans OpenSees 29/29, TSA_CoreTests 5/5.
 
 Lacunes connues du filet C (non couvertes, ne pas les considérer comme testées) :
 - MainWindow_Mesh.cpp:326, :359 et MainWindow_Tools.cpp:464 (couche application, non liée aux tests) ;
@@ -63,7 +67,7 @@ Lacunes connues du filet C (non couvertes, ne pas les considérer comme testées
       (`Model/DefinitionReference.h`), alias dans `ExtensionSystem/ExtensionTypes.h` ; `NamedViews` dans le noyau ;
       aucun en-tête du noyau n'inclut un fichier hors du noyau ; test 512 (fournisseur, ordre, numérotation, repli).
 - [ ] Arête Grid/SnapMarker → Viewer/TextDisplayFallback.h (couche graphique, hors noyau) ; `CoreLink` hors CI (ctest -R).
-- [ ] Étape 2 (commandes) : à ne commencer qu'après revue du rapport d'étape 1.
+- [x] Étape 2 : réalisée le 2026-10-29 (voir « préparation de l'étape 2 »).
 
 Points encore ouverts de l'étape 0 (2026-10-26) : validation Windows MSVC 19.51 / Qt 6.11.2 ; BUG-121 (2) et (3) ;
 BUG-123 ; essais manuels 9, 11, 13, 14, 15 ; CI de main sur a8b310a (40306365407).
@@ -75,7 +79,7 @@ BUG-123 ; essais manuels 9, 11, 13, 14, 15 ; CI de main sur a8b310a (40306365407
 - [x] BUG-107 section du ruban annulable (test 494).
 - [x] BUG-108 injection Tcl (test 495).
 - [x] BUG-109 paquets .tsalib : id, chemins, tailles (test 496) ; [ ] extraction atomique, masquage.
-- [ ] BUG-110 rayon de congé figé dans le .tsa (format 1.13) — à présenter avant mise en œuvre.
+- [x] BUG-110 rayon de congé : format .tsa 2.0 (chunk SECP), voir la ligne BUG-110 plus bas (commit ea646c3).
 - [ ] BUG-111 traçabilité : manifeste de résultats, versions lues, empreinte, RSLT, annexe nationale figée.
 - [x] BUG-112 ModelDiff dalles/voiles (test 497) ; [x] BUG-113 notifications (test 498) ; [ ] BUG-115 poteau « Tube ».
 - [x] BUG-114 OpenSees : OFF par défaut, détection, aucun téléchargement implicite ; [ ] empreinte de l'archive, licence.

@@ -1,5 +1,5 @@
 #include "NodePropertiesView.h"
-#include "../../UndoRedo/UndoManager.h"
+#include "../../UndoRedo/EditTransaction.h"
 #include <QMessageBox>
 #include "../../Model/Model.h"
 #include "../../Model/Node.h"
@@ -266,10 +266,12 @@ void NodePropertiesView::refreshView()
     m_spinY->setValue(node->y());
     m_spinZ->setValue(node->z());
 
-    m_colorHex = QString::fromStdString(node->color().empty() ? "#2563EB" : node->color());
-    m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+    // Couleur propre au nœud ; vide : couleur par défaut, AFFICHÉE seulement (jamais écrite dans le modèle, BUG-126).
+    m_colorHex = QString::fromStdString(node->color());
+    m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(shownColor()));
 
     syncUiFromSupport(node->support());
+    captureEditedFields();
 
     // Connectivité
     bool isFree = m_model->isNodeFree(m_nodeId);
@@ -466,7 +468,7 @@ void NodePropertiesView::onOrientationChanged(int index)
 
 void NodePropertiesView::pickColor()
 {
-    QColor c = QColorDialog::getColor(QColor(m_colorHex), this, tr("Couleur du Nœud"));
+    QColor c = QColorDialog::getColor(QColor(shownColor()), this, tr("Couleur du Nœud"));
     if (c.isValid())
     {
         m_colorHex = c.name();
@@ -507,7 +509,12 @@ void NodePropertiesView::applyChanges()
 
     // Validation géométrique AVANT toute modification : refuser un déplacement qui rendrait un
     // élément connecté de longueur nulle (géométrie OCCT dégénérée, matrice de rigidité singulière).
-    if (m_model->wouldCollapseConnectedElement(m_nodeId, m_spinX->value(), m_spinY->value(), m_spinZ->value()))
+    // Seules les coordonnées modifiées sont reprises du panneau (3 décimales affichées : réécrire les autres les
+    // arrondirait, même famille que BUG-125).
+    const double newX = m_edited.changed(m_spinX) ? m_spinX->value() : node->x();
+    const double newY = m_edited.changed(m_spinY) ? m_spinY->value() : node->y();
+    const double newZ = m_edited.changed(m_spinZ) ? m_spinZ->value() : node->z();
+    if (m_model->wouldCollapseConnectedElement(m_nodeId, newX, newY, newZ))
     {
         QMessageBox::warning(this, tr("Coordonnées refusées"),
                              tr("Ces coordonnées confondraient le nœud %1 avec l'autre extrémité d'un élément connecté "
@@ -519,27 +526,47 @@ void NodePropertiesView::applyChanges()
     const double oldX = node->x(), oldY = node->y(), oldZ = node->z();
     const std::string undoName = tr("Modification Nœud %1").arg(m_nodeId).toStdString();
     // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
-    m_model->pushUndoState(undoName, undoName);
+    TSA::UndoRedo::EditTransaction tx(*m_model, undoName, undoName);
 
     node->setName(m_editName->text().toStdString());
-    node->setCoordinates(m_spinX->value(), m_spinY->value(), m_spinZ->value());
+    node->setCoordinates(newX, newY, newZ);
     node->setColor(m_colorHex.toStdString());
 
-    TSA::Model::SupportDefinition supp = buildSupportFromUi();
-    node->setSupport(supp);
+    // Appui : réécrit seulement si l'un de ses champs a changé (raideurs à 1 décimale, directions à 2).
+    if (m_edited.anyChanged({ m_comboPreset, m_comboTx, m_comboTy, m_comboTz, m_spinKx, m_spinKy, m_spinKz, m_comboRx, m_comboRy,
+                              m_comboRz, m_spinKrx, m_spinKry, m_spinKrz, m_comboOrientation, m_spinDirX, m_spinDirY, m_spinDirZ }))
+        node->setSupport(buildSupportFromUi());
+    captureEditedFields();
 
-    if (auto* um = m_model->undoManager();
-        um && (oldX != node->x() || oldY != node->y() || oldZ != node->z()))
+    // Rien de changé : ni entrée Annuler, ni notification, résultats conservés (BUG-130).
+    if (!tx.hasChanges())
+    {
+        tx.discardUnchanged();
+        return;
+    }
+    if (oldX != node->x() || oldY != node->y() || oldZ != node->z())
     {
         auto fmt = [](double x, double y, double z) {
             return QString("(%1, %2, %3) m").arg(x, 0, 'f', 3).arg(y, 0, 'f', 3).arg(z, 0, 'f', 3).toStdString();
         };
-        um->addRecord({ "modify_property", "Node", m_nodeId, "coordinates", fmt(oldX, oldY, oldZ),
-                        fmt(node->x(), node->y(), node->z()), { "geometry", "connected_elements", "results_invalidated" } });
+        tx.record({ "modify_property", "Node", m_nodeId, "coordinates", fmt(oldX, oldY, oldZ),
+                    fmt(node->x(), node->y(), node->z()), { "geometry", "connected_elements", "results_invalidated" } });
     }
-
-    m_model->notifyNodeModified(m_nodeId);
+    m_model->notifyNodeModified(m_nodeId);   // dans la transaction : une exception d'observateur annule tout (BUG-129)
+    tx.commit();
     emit elementModified();
+}
+
+QString NodePropertiesView::shownColor() const
+{
+    return m_colorHex.isEmpty() ? QStringLiteral("#2563EB") : m_colorHex;
+}
+
+void NodePropertiesView::captureEditedFields()
+{
+    m_edited.capture({ m_spinX, m_spinY, m_spinZ, m_comboPreset, m_comboTx, m_comboTy, m_comboTz, m_spinKx, m_spinKy, m_spinKz,
+                       m_comboRx, m_comboRy, m_comboRz, m_spinKrx, m_spinKry, m_spinKrz, m_comboOrientation, m_spinDirX,
+                       m_spinDirY, m_spinDirZ });
 }
 
 } // namespace TSA::UI

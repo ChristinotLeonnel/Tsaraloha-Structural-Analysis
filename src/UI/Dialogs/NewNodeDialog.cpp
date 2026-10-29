@@ -1,4 +1,5 @@
 #include "NewNodeDialog.h"
+#include "../../UndoRedo/EditTransaction.h"
 #include "../Widgets/PointSelector.h"
 #include "../../Model/Model.h"
 #include "../../Model/Node.h"
@@ -179,16 +180,18 @@ void NewNodeDialog::onCreateClicked()
     std::string levelId = m_comboLevel->currentData().toString().toStdString();
     auto support = static_cast<TSA::Model::SupportType>(m_comboSupport->currentData().toInt());
 
-    m_model->pushUndoState(tr("Création Nœud").toStdString());
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Création Nœud").toStdString());
     int newId = m_model->addNode(pt.X(), pt.Y(), pt.Z(), levelId, name);
 
     if (newId > 0)
     {
         auto* node = m_model->getNode(newId);
-        if (node)
+        if (node && node->supportType() != support)
         {
             node->setSupportType(support);
+            m_model->notifyNodeModified(newId);   // appui posé : vues informées (BUG-130)
         }
+        tx.commit();
 
         m_createdNodeId = newId;
 
