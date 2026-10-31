@@ -2,6 +2,19 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-31 — dépendances du poste réinstallées
+Qt 6.12.0 (C:/Qt/6.12.0/msvc2022_64) et OpenSees 3.8.0 (conda-forge, thirdparty/OpenSees, engines/OpenSees du build)
+réinstallés ; build-windows-validation Release recompilé en incrémental ; 57/57 suites. BUG-146 FIXED.
+
+## 2026-10-30 — courbes 2D superposées (branche feature/diagram-multi-curves, non commitée)
+Diagram2DWidget réécrit : plusieurs courbes à la fois (puces colorées N (Vx), Vy, Vz, Mx, My, Mz, ux, uy, uz, |u|, θx, θy,
+θz ; groupes « N, Vy, Vz », tranchants, moments, flexion xy / xz, tous les efforts, déplacements, rotations), présentation
+superposée (un axe par unité, deux au plus, zéros alignés ; sinon normalisée) ou empilée ; légende, extrêmes à leur
+position, curseur multi-valeurs, zoom X (Ctrl + molette) / Y, export image et valeurs ; treillis et câbles ; sélection 3D →
+dock (MainWindow_Actions). BUG-145 corrigé. Test 531 (suite display, placé en tête : sans OpenSees). Traductions EN / MG
+(40 textes) ; .ts resynchronisés par update_translations.py. docs/UI.md. Compilé avec Qt 6.11.2 téléchargée en scratchpad
+(BUG-146 : Qt et OpenSees absents du poste).
+
 ## 2026-10-29 (soir) — Fem3D 0.3.0 : charges sur barre (branches feature/fem3d-charges-sur-barre, Fem3D feature/charges-sur-barre)
 Fem3D (dépôt ../3DDesplacement) : forces ponctuelles, charges réparties sur [a, b], moments répartis ; forces nodales
 équivalentes exactes (Betti ; couples : rotation de section, Θ = v′ − γ en Timoshenko), efforts et déformée par

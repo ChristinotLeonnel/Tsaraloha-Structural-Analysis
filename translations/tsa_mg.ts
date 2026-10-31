@@ -8072,18 +8072,6 @@ Atomboka ve ny kajy?</translation>
         <translation>Enta amin'ny fihaonana « %1 » voalaza ho eo an-toerana: ampiharina amin'ny famaky ankapobeny (tsy manana rafitra famaky eo an-toerana ny fihaonana).</translation>
     </message>
     <message>
-        <source>%1 : charge ponctuelle sur barre</source>
-        <translation>%1: enta tokana amin'ny tsorakazo</translation>
-    </message>
-    <message>
-        <source>%1 : moment réparti</source>
-        <translation>%1: momenta miparitaka</translation>
-    </message>
-    <message>
-        <source>%1 : charge répartie sur une partie de la barre</source>
-        <translation>%1: enta miparitaka amin'ny ampahany amin'ny tsorakazo</translation>
-    </message>
-    <message>
         <source>Méthode des déplacements (Fem3D) : éléments poutre 3D d'Euler–Bernoulli à rigidité exacte, charges sur barre (réparties sur tout ou partie de la barre, ponctuelles, moments répartis) par forces nodales équivalentes exactes, rotules par condensation statique, appuis élastiques sur la diagonale de K, résolution LDLᵀ creuse (Eigen SimplicialLDLT).</source>
         <translation>Fomba fifindrana (Fem3D): singa andry mitsivalana 3D Euler–Bernoulli manana hahenjana marina, enta amin'ny andry (miparitaka amin'ny andry manontolo na amin'ny ampahany, enta iray toerana, momenta miparitaka) amin'ny alalan'ny hery mitovy marina eo amin'ny fihaonana, tonona amin'ny alalan'ny fanafohezana statika, fanohanana elastika eo amin'ny diagonalin'ny K, famahana LDLᵀ ho an'ny matrisy tsy feno (Eigen SimplicialLDLT).</translation>
     </message>
@@ -8281,12 +8269,20 @@ Atomboka ve ny kajy?</translation>
         <translation>Lany ny fotoana natokana ho an'ny fakana.</translation>
     </message>
     <message>
-        <source>Erreur lors du téléchargement de l'archive OpenSees.</source>
-        <translation>Nisy hadisoana nandritra ny fakana ny arsivan'ny OpenSees.</translation>
+        <source>Téléchargement de l'archive OpenSees impossible (%1, code curl %2). Installer OpenSees manuellement et indiquer son exécutable dans les préférences.</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>Erreur de téléchargement.</source>
         <translation>Hadisoana tamin'ny fakana.</translation>
+    </message>
+    <message>
+        <source>Archive OpenSees rejetée : empreinte SHA-256 %1, attendue %2.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Archive rejetée (empreinte inattendue).</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>Extraction de l'archive OpenSees...</source>
@@ -16980,6 +16976,10 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
         <translation>Lisitry ny bloka</translation>
     </message>
     <message>
+        <source>Mini-carte : cliquer ou glisser pour déplacer la vue</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Zoom du graphe (molette autour du curseur, bouton du milieu pour déplacer)</source>
         <translation>Fanakaikezana ny grafy (kodiarana manodidina ny tondro, bokotra afovoany hanetsehana)</translation>
     </message>
@@ -17737,32 +17737,96 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
 <context>
     <name>TSA::UI::Diagram2DWidget</name>
     <message>
-        <source>Moment Fléchissant Mz (kNm)</source>
-        <translation>Momenta fiforetana Mz (kNm)</translation>
+        <source>Efforts N (Vx), Vy, Vz</source>
+        <translation>Hery N (Vx), Vy, Vz</translation>
     </message>
     <message>
-        <source>Moment Fléchissant My (kNm)</source>
-        <translation>Momenta fiforetana My (kNm)</translation>
+        <source>Efforts tranchants Vy, Vz</source>
+        <translation>Hery manapaka Vy, Vz</translation>
     </message>
     <message>
-        <source>Effort Tranchant Vz (kN)</source>
-        <translation>Hery manapaka Vz (kN)</translation>
+        <source>Moments Mx, My, Mz</source>
+        <translation>Momenta Mx, My, Mz</translation>
     </message>
     <message>
-        <source>Effort Tranchant Vy (kN)</source>
-        <translation>Hery manapaka Vy (kN)</translation>
+        <source>Flexion dans le plan local xy : Vy, Mz</source>
+        <translation>Fiforetana amin'ny planina eo an-toerana xy: Vy, Mz</translation>
     </message>
     <message>
-        <source>Effort Normal N (kN)</source>
-        <translation>Hery mahitsy N (kN)</translation>
+        <source>Flexion dans le plan local xz : Vz, My</source>
+        <translation>Fiforetana amin'ny planina eo an-toerana xz: Vz, My</translation>
     </message>
     <message>
-        <source>Moment de Torsion Mx (kNm)</source>
-        <translation>Momenta fiolonana Mx (kNm)</translation>
+        <source>Tous les efforts</source>
+        <translation>Ny hery rehetra</translation>
+    </message>
+    <message>
+        <source>Déplacements ux, uy, uz</source>
+        <translation>Fifindrana ux, uy, uz</translation>
+    </message>
+    <message>
+        <source>Rotations θx, θy, θz</source>
+        <translation>Fihodinana θx, θy, θz</translation>
+    </message>
+    <message>
+        <source>Choix libre</source>
+        <translation>Safidy malalaka</translation>
+    </message>
+    <message>
+        <source>Groupes de courbes à superposer</source>
+        <translation>Vondron'ny fiolahana hampifanindriana</translation>
+    </message>
+    <message>
+        <source>Superposées</source>
+        <translation>Mifanindry</translation>
+    </message>
+    <message>
+        <source>Empilées</source>
+        <translation>Mifanongoa</translation>
+    </message>
+    <message>
+        <source>Superposées : un seul graphe. Empilées : une bande par courbe, abscisses alignées.</source>
+        <translation>Mifanindry: kisary tokana. Mifanongoa: tsipika iray isaky ny fiolahana, mirindra ny abscisse.</translation>
+    </message>
+    <message>
+        <source>Valeurs réelles</source>
+        <translation>Sanda tena izy</translation>
+    </message>
+    <message>
+        <source>Normalisée (%)</source>
+        <translation>Voalamina (%)</translation>
+    </message>
+    <message>
+        <source>Valeurs réelles : un axe par unité (gauche et droite).
+Normalisée : chaque courbe rapportée à sa plus grande valeur absolue.</source>
+        <translation>Sanda tena izy: famaky iray isaky ny venty (ankavia sy ankavanana).
+Voalamina: ny fiolahana tsirairay zaraina amin'ny sanda tanteraka ambony indrindra aminy.</translation>
     </message>
     <message>
         <source>Recentrer</source>
         <translation>Avereno eo afovoany</translation>
+    </message>
+    <message>
+        <source>Molette : zoom vertical. Ctrl + molette : zoom le long de la barre.
+Glisser : déplacer la vue zoomée. Double-clic : recentrer.</source>
+        <translation>Kodiaran'ny totozy: fanakaikezana mitsangana. Ctrl + kodiarana: fanakaikezana manaraka ny tsorakazo.
+Sintony: afindrao ny fijery nohakaikezina. Tsindry indroa: avereno eo afovoany.</translation>
+    </message>
+    <message>
+        <source>Exporter</source>
+        <translation>Avoahy</translation>
+    </message>
+    <message>
+        <source>Copier l'image</source>
+        <translation>Adikao ny sary</translation>
+    </message>
+    <message>
+        <source>Enregistrer l'image (PNG)…</source>
+        <translation>Tehirizo ny sary (PNG)…</translation>
+    </message>
+    <message>
+        <source>Copier les valeurs (tableur)</source>
+        <translation>Adikao ny sanda (tabilao)</translation>
     </message>
     <message>
         <source>Prêt</source>
@@ -17773,8 +17837,82 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
         <translation>Singa:</translation>
     </message>
     <message>
-        <source>Grandeur :</source>
-        <translation>Habe ara-batana:</translation>
+        <source>Courbes :</source>
+        <translation>Fiolahana:</translation>
+    </message>
+    <message>
+        <source>%1 (%2) — cliquer pour ajouter ou retirer la courbe</source>
+        <translation>%1 (%2) — tsindrio mba hanampiana na hanesorana ny fiolahana</translation>
+    </message>
+    <message>
+        <source>Barre de treillis #%1 (L = %2 m)</source>
+        <translation>Tsorakazon'ny rafitra makarakara #%1 (L = %2 m)</translation>
+    </message>
+    <message>
+        <source>Câble #%1 (L = %2 m)</source>
+        <translation>Tariby #%1 (L = %2 m)</translation>
+    </message>
+    <message>
+        <source>Aucun résultat d'analyse disponible.
+Lancez le calcul (F5) pour tracer les courbes.</source>
+        <translation>Tsy misy vokatry ny kajy.
+Atombohy ny kajy (F5) mba hanoritana ny fiolahana.</translation>
+    </message>
+    <message>
+        <source>Sélectionnez une barre pour afficher ses courbes de résultats.</source>
+        <translation>Fidio ny tsorakazo iray mba hampisehoana ny fiolahan'ny vokany.</translation>
+    </message>
+    <message>
+        <source>Aucun résultat pour cet élément.</source>
+        <translation>Tsy misy vokatra ho an'ity singa ity.</translation>
+    </message>
+    <message>
+        <source>x = %1 m (%2 %)</source>
+        <translation>x = %1 m (%2 %)</translation>
+    </message>
+    <message>
+        <source>max</source>
+        <translation>max</translation>
+    </message>
+    <message>
+        <source>min</source>
+        <translation>min</translation>
+    </message>
+    <message>
+        <source>  (axe de droite)</source>
+        <translation>  (famaky ankavanana)</translation>
+    </message>
+    <message>
+        <source>x = %1 m</source>
+        <translation>x = %1 m</translation>
+    </message>
+    <message>
+        <source>Image des courbes copiée dans le presse-papiers.</source>
+        <translation>Voadika ao amin'ny fitehirizana vonjimaika ny sarin'ny fiolahana.</translation>
+    </message>
+    <message>
+        <source>Enregistrer l'image des courbes</source>
+        <translation>Tehirizo ny sarin'ny fiolahana</translation>
+    </message>
+    <message>
+        <source>Image PNG (*.png)</source>
+        <translation>Sary PNG (*.png)</translation>
+    </message>
+    <message>
+        <source>Image enregistrée : %1</source>
+        <translation>Voatahiry ny sary: %1</translation>
+    </message>
+    <message>
+        <source>Échec de l'enregistrement : %1</source>
+        <translation>Tsy nahomby ny fitehirizana: %1</translation>
+    </message>
+    <message>
+        <source>Aucune valeur à copier.</source>
+        <translation>Tsy misy sanda hadika.</translation>
+    </message>
+    <message>
+        <source>Valeurs copiées (%1 lignes) : à coller dans un tableur.</source>
+        <translation>Voadika ny sanda (andalana %1): apetaho ao anaty tabilao.</translation>
     </message>
     <message>
         <source>Poutre #%1 (L = %2 m)</source>
@@ -17783,20 +17921,6 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
     <message>
         <source>Poteau #%1 (H = %2 m)</source>
         <translation>Andry #%1 (H = %2 m)</translation>
-    </message>
-    <message>
-        <source>x = %1 m (%2%) | %3 = %4 %5</source>
-        <translation>x = %1 m (%2%) | %3 = %4 %5</translation>
-    </message>
-    <message>
-        <source>Aucun résultat OpenSees disponible.
-Lancez le calcul EF (F5) pour générer les diagrammes.</source>
-        <translation>Tsy misy vokatra OpenSees.
-Atombohy ny kajy EF (F5) mba hamoronana ny kisary.</translation>
-    </message>
-    <message>
-        <source>Sélectionnez une barre pour afficher son diagramme d'efforts.</source>
-        <translation>Fidio ny tsorakazo iray mba hampisehoana ny kisarin'ny heriny.</translation>
     </message>
 </context>
 <context>

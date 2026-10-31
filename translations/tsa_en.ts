@@ -8072,18 +8072,6 @@ Run the analysis?</translation>
         <translation>Nodal load “%1” declared local: applied in the global axes (a node has no local axis system).</translation>
     </message>
     <message>
-        <source>%1 : charge ponctuelle sur barre</source>
-        <translation>%1: point load on member</translation>
-    </message>
-    <message>
-        <source>%1 : moment réparti</source>
-        <translation>%1: distributed moment</translation>
-    </message>
-    <message>
-        <source>%1 : charge répartie sur une partie de la barre</source>
-        <translation>%1: distributed load over part of the member</translation>
-    </message>
-    <message>
         <source>Méthode des déplacements (Fem3D) : éléments poutre 3D d'Euler–Bernoulli à rigidité exacte, charges sur barre (réparties sur tout ou partie de la barre, ponctuelles, moments répartis) par forces nodales équivalentes exactes, rotules par condensation statique, appuis élastiques sur la diagonale de K, résolution LDLᵀ creuse (Eigen SimplicialLDLT).</source>
         <translation>Displacement method (Fem3D): exact-stiffness 3D Euler–Bernoulli beam elements, member loads (distributed over all or part of the member, point loads, distributed moments) by exact equivalent nodal forces, hinges by static condensation, elastic supports on the diagonal of K, sparse LDLᵀ solution (Eigen SimplicialLDLT).</translation>
     </message>
@@ -8281,12 +8269,20 @@ Run the analysis?</translation>
         <translation>Download timeout exceeded.</translation>
     </message>
     <message>
-        <source>Erreur lors du téléchargement de l'archive OpenSees.</source>
-        <translation>Error while downloading the OpenSees archive.</translation>
+        <source>Téléchargement de l'archive OpenSees impossible (%1, code curl %2). Installer OpenSees manuellement et indiquer son exécutable dans les préférences.</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>Erreur de téléchargement.</source>
         <translation>Download error.</translation>
+    </message>
+    <message>
+        <source>Archive OpenSees rejetée : empreinte SHA-256 %1, attendue %2.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Archive rejetée (empreinte inattendue).</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>Extraction de l'archive OpenSees...</source>
@@ -16983,6 +16979,10 @@ Fix the subgraph body or discard its changes.</translation>
         <translation>Palette</translation>
     </message>
     <message>
+        <source>Mini-carte : cliquer ou glisser pour déplacer la vue</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Zoom du graphe (molette autour du curseur, bouton du milieu pour déplacer)</source>
         <translation>Graph zoom (wheel around the cursor, middle button to pan)</translation>
     </message>
@@ -17740,32 +17740,96 @@ Fix the subgraph body or discard its changes.</translation>
 <context>
     <name>TSA::UI::Diagram2DWidget</name>
     <message>
-        <source>Moment Fléchissant Mz (kNm)</source>
-        <translation>Bending moment Mz (kNm)</translation>
+        <source>Efforts N (Vx), Vy, Vz</source>
+        <translation>Forces N (Vx), Vy, Vz</translation>
     </message>
     <message>
-        <source>Moment Fléchissant My (kNm)</source>
-        <translation>Bending moment My (kNm)</translation>
+        <source>Efforts tranchants Vy, Vz</source>
+        <translation>Shear forces Vy, Vz</translation>
     </message>
     <message>
-        <source>Effort Tranchant Vz (kN)</source>
-        <translation>Shear force Vz (kN)</translation>
+        <source>Moments Mx, My, Mz</source>
+        <translation>Moments Mx, My, Mz</translation>
     </message>
     <message>
-        <source>Effort Tranchant Vy (kN)</source>
-        <translation>Shear force Vy (kN)</translation>
+        <source>Flexion dans le plan local xy : Vy, Mz</source>
+        <translation>Bending in the local xy plane: Vy, Mz</translation>
     </message>
     <message>
-        <source>Effort Normal N (kN)</source>
-        <translation>Axial force N (kN)</translation>
+        <source>Flexion dans le plan local xz : Vz, My</source>
+        <translation>Bending in the local xz plane: Vz, My</translation>
     </message>
     <message>
-        <source>Moment de Torsion Mx (kNm)</source>
-        <translation>Torsional moment Mx (kNm)</translation>
+        <source>Tous les efforts</source>
+        <translation>All internal forces</translation>
+    </message>
+    <message>
+        <source>Déplacements ux, uy, uz</source>
+        <translation>Displacements ux, uy, uz</translation>
+    </message>
+    <message>
+        <source>Rotations θx, θy, θz</source>
+        <translation>Rotations θx, θy, θz</translation>
+    </message>
+    <message>
+        <source>Choix libre</source>
+        <translation>Custom selection</translation>
+    </message>
+    <message>
+        <source>Groupes de courbes à superposer</source>
+        <translation>Groups of curves to overlay</translation>
+    </message>
+    <message>
+        <source>Superposées</source>
+        <translation>Overlaid</translation>
+    </message>
+    <message>
+        <source>Empilées</source>
+        <translation>Stacked</translation>
+    </message>
+    <message>
+        <source>Superposées : un seul graphe. Empilées : une bande par courbe, abscisses alignées.</source>
+        <translation>Overlaid: a single chart. Stacked: one strip per curve, with aligned x axes.</translation>
+    </message>
+    <message>
+        <source>Valeurs réelles</source>
+        <translation>Actual values</translation>
+    </message>
+    <message>
+        <source>Normalisée (%)</source>
+        <translation>Normalized (%)</translation>
+    </message>
+    <message>
+        <source>Valeurs réelles : un axe par unité (gauche et droite).
+Normalisée : chaque courbe rapportée à sa plus grande valeur absolue.</source>
+        <translation>Actual values: one axis per unit (left and right).
+Normalized: each curve divided by its largest absolute value.</translation>
     </message>
     <message>
         <source>Recentrer</source>
         <translation>Recentre</translation>
+    </message>
+    <message>
+        <source>Molette : zoom vertical. Ctrl + molette : zoom le long de la barre.
+Glisser : déplacer la vue zoomée. Double-clic : recentrer.</source>
+        <translation>Wheel: vertical zoom. Ctrl + wheel: zoom along the member.
+Drag: pan the zoomed view. Double-click: reset the view.</translation>
+    </message>
+    <message>
+        <source>Exporter</source>
+        <translation>Export</translation>
+    </message>
+    <message>
+        <source>Copier l'image</source>
+        <translation>Copy image</translation>
+    </message>
+    <message>
+        <source>Enregistrer l'image (PNG)…</source>
+        <translation>Save image (PNG)…</translation>
+    </message>
+    <message>
+        <source>Copier les valeurs (tableur)</source>
+        <translation>Copy values (spreadsheet)</translation>
     </message>
     <message>
         <source>Prêt</source>
@@ -17776,8 +17840,82 @@ Fix the subgraph body or discard its changes.</translation>
         <translation>Element:</translation>
     </message>
     <message>
-        <source>Grandeur :</source>
-        <translation>Quantity:</translation>
+        <source>Courbes :</source>
+        <translation>Curves:</translation>
+    </message>
+    <message>
+        <source>%1 (%2) — cliquer pour ajouter ou retirer la courbe</source>
+        <translation>%1 (%2) — click to add or remove the curve</translation>
+    </message>
+    <message>
+        <source>Barre de treillis #%1 (L = %2 m)</source>
+        <translation>Truss member #%1 (L = %2 m)</translation>
+    </message>
+    <message>
+        <source>Câble #%1 (L = %2 m)</source>
+        <translation>Cable #%1 (L = %2 m)</translation>
+    </message>
+    <message>
+        <source>Aucun résultat d'analyse disponible.
+Lancez le calcul (F5) pour tracer les courbes.</source>
+        <translation>No analysis results available.
+Run the analysis (F5) to plot the curves.</translation>
+    </message>
+    <message>
+        <source>Sélectionnez une barre pour afficher ses courbes de résultats.</source>
+        <translation>Select a member to show its result curves.</translation>
+    </message>
+    <message>
+        <source>Aucun résultat pour cet élément.</source>
+        <translation>No results for this element.</translation>
+    </message>
+    <message>
+        <source>x = %1 m (%2 %)</source>
+        <translation>x = %1 m (%2 %)</translation>
+    </message>
+    <message>
+        <source>max</source>
+        <translation>max</translation>
+    </message>
+    <message>
+        <source>min</source>
+        <translation>min</translation>
+    </message>
+    <message>
+        <source>  (axe de droite)</source>
+        <translation>  (right axis)</translation>
+    </message>
+    <message>
+        <source>x = %1 m</source>
+        <translation>x = %1 m</translation>
+    </message>
+    <message>
+        <source>Image des courbes copiée dans le presse-papiers.</source>
+        <translation>Curve image copied to the clipboard.</translation>
+    </message>
+    <message>
+        <source>Enregistrer l'image des courbes</source>
+        <translation>Save the curve image</translation>
+    </message>
+    <message>
+        <source>Image PNG (*.png)</source>
+        <translation>PNG image (*.png)</translation>
+    </message>
+    <message>
+        <source>Image enregistrée : %1</source>
+        <translation>Image saved: %1</translation>
+    </message>
+    <message>
+        <source>Échec de l'enregistrement : %1</source>
+        <translation>Could not save: %1</translation>
+    </message>
+    <message>
+        <source>Aucune valeur à copier.</source>
+        <translation>No values to copy.</translation>
+    </message>
+    <message>
+        <source>Valeurs copiées (%1 lignes) : à coller dans un tableur.</source>
+        <translation>Values copied (%1 rows): paste them into a spreadsheet.</translation>
     </message>
     <message>
         <source>Poutre #%1 (L = %2 m)</source>
@@ -17786,20 +17924,6 @@ Fix the subgraph body or discard its changes.</translation>
     <message>
         <source>Poteau #%1 (H = %2 m)</source>
         <translation>Column #%1 (H = %2 m)</translation>
-    </message>
-    <message>
-        <source>x = %1 m (%2%) | %3 = %4 %5</source>
-        <translation>x = %1 m (%2%) | %3 = %4 %5</translation>
-    </message>
-    <message>
-        <source>Aucun résultat OpenSees disponible.
-Lancez le calcul EF (F5) pour générer les diagrammes.</source>
-        <translation>No OpenSees results available.
-Run the FE analysis (F5) to generate the diagrams.</translation>
-    </message>
-    <message>
-        <source>Sélectionnez une barre pour afficher son diagramme d'efforts.</source>
-        <translation>Select a member to show its force diagram.</translation>
     </message>
 </context>
 <context>

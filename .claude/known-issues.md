@@ -4,6 +4,31 @@ Last Updated: 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, B
 
 ## Ouverts
 
+## BUG-147
+Status: OPEN (mineur, constat 2026-10-30) — DiagramGeometry::diagramTypeName renvoie des QStringLiteral français non
+traduits (« Effort Tranchant (Vy) »…) : infobulles des puces du dock Diagrammes 2D et libellés 3D restent en français en
+anglais / malgache. Piste : QCoreApplication::translate dans DiagramGeometry + traductions.
+
+## BUG-146
+Status: FIXED (2026-10-31, suite complète 57/57 dans build-windows-validation Release) — Qt 6.12.0 MSVC 2022 64 bits
+réinstallée dans C:/Qt/6.12.0/msvc2022_64 depuis download.qt.io (archives qtbase, qtsvg, qttools, qttranslations,
+qtdeclarative, d3dcompiler, opengl32sw ; SHA-1 vérifiés) ; OpenSees 3.8.0 réinstallé par la configuration CMake
+(conda-forge, TSA_AUTO_DOWNLOAD_DEPS=ON ; 1er essai : délai sur libopenblas, 2e essai réussi) puis copié dans
+build-windows-validation/engines/OpenSees : ce dossier VIDE masquait thirdparty/OpenSees (AppPaths::openSeesDir
+prend le premier dossier existant, même sans OpenSees.exe — piste d'amélioration). Premier lancement d'OpenSees :
+délai de vérification dépassé une fois (antivirus), réussi à la relance. Constat initial : poste sans Qt de développement (C:/Qt/6.12.0/msvc2022_64 réduit à Qt Insight
+Tracker après une maintenance Qt) ni OpenSees (thirdparty/OpenSees absent). build-windows-validation ne se reconfigure
+plus (« Qt 6 introuvable »). À faire par l'utilisateur : réinstaller Qt 6 MSVC 2022 64 bits (MaintenanceTool) et OpenSees.
+Les suites dépendant d'OpenSees (display 371–376, etc.) ne peuvent pas passer sur ce poste.
+
+## BUG-145
+Status: FIXED (2026-10-30, test 531 + images contrôlées) — dock « Diagrammes 2D » (Diagram2DWidget) : (1) une seule
+grandeur affichable ; (2) badges Max / Min dessinés à x = 0,5 L et x = 0 au lieu de la position réelle des extrêmes ;
+(3) « Flèche uz » du ruban absente de la liste : liste affichant une autre grandeur que la courbe ; (4) valeur au curseur
+calculée sur la longueur du solveur mais tracé sur la longueur géométrique ; valeur non mise à jour au-delà de la dernière
+station ; (5) widget jamais synchronisé avec la sélection 3D ; (6) treillis et câbles absents ; (7) message « Aucun résultat
+OpenSees » quel que soit le moteur ; (8) trois graduations seulement, sans grille.
+
 ## BUG-144
 Status: OPEN (constat, 2026-10-29) — secours OpenSees de Fem3D sans cas atteignable depuis l'interface : depuis
 Fem3D 0.3.0 les charges sur barre sont calculées ; les seuls « hors périmètre » restants (treillis, câbles, coques)

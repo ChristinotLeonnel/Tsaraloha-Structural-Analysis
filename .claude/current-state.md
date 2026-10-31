@@ -32,6 +32,9 @@ Non vérifié : Windows/MSVC, CI GitHub (aucun push), essai manuel de l'interfac
 à prendre, ne pas supprimer sans accord).
 
 ## Build
+Poste au 2026-10-31 : Qt 6.12.0 réinstallée dans C:/Qt/6.12.0/msvc2022_64 (Qt retirée par une maintenance Qt le 30/10),
+OpenSees 3.8.0 réinstallé (thirdparty/OpenSees + build-windows-validation/engines/OpenSees) — BUG-146. Release
+build-windows-validation : 57/57 suites (opensees relancée seule après un délai au premier lancement), test 531 compris.
 Status: IMPLEMENTED — PASS (preset ninja-debug, -j 4)
 Compiler: MSVC 19.51 (VS 18 2026 Community), C++20
 Qt: 6.11.2 · OpenCASCADE: 8.0.1 · CMake: 4.3.3 (min 3.20)
@@ -215,6 +218,11 @@ Status: IMPLEMENTED — déformée continue sur les stations du solveur (repli H
 stations exactes par équilibre du tronçon, déformée par double intégration de la courbure (tests 181–184) ; équilibre
 contrôlé en forces ET moments (BUG-017) ; déformée / diagrammes / réactions 3D, diagrammes 2D, NDC (liens avec famille,
 BUG-018), dock « Données d'analyse », export, invalidation automatique. Résultats non enregistrés dans le .tsa (BUG-013).
+Courbes 2D (dock « DIAGRAMMES 2D », 2026-10-30, branche feature/diagram-multi-curves, NON commitée) : plusieurs grandeurs
+superposées (N/Vx, Vy, Vz, Mx, My, Mz, ux, uy, uz, |u|, θx, θy, θz ; groupes prédéfinis) ou empilées ; un axe par unité
+(2 au plus, zéros alignés) sinon normalisée ; extrêmes à leur position ; curseur multi-valeurs ; zoom X/Y ; export image /
+valeurs ; barres de treillis et câbles ; suit la sélection 3D ; réglages QSettings « Diagram2D ». Vérifié : test 531 (rendu
+contrôlé visuellement sur images), BUG-145. Non vérifié : essai dans TSA.exe réel (sélection 3D → dock, puces, export).
 
 ## Meshing
 Status: MISSING — aucun mailleur EF pour dalles/voiles.

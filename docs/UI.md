@@ -17,7 +17,8 @@ src/UI/
 ├── Properties     — PropertyPanel.h/.cpp (panneau de propriétés contextuel)
 ├── ModelTree      — ModelTreeWidget.h/.cpp (arbre du modèle)
 ├── Port           — PortAreaWidget, PortWidget, PortTypes (espace de travail multi-ports)
-├── Diagrams       — Diagram2DWidget (diagrammes interactifs 2D des sollicitations N, V, M)
+├── Diagrams       — Diagram2DWidget (courbes 2D d'une barre : N/Vx, Vy, Vz, Mx, My, Mz, déplacements, rotations ;
+│                    plusieurs courbes superposées ou empilées, un axe par unité, export image / valeurs)
 ├── Dialogs        — boîtes de dialogue
 ├── Widgets        — widgets réutilisables
 ├── Theme          — feuilles de style / thèmes (QSS)
@@ -67,6 +68,22 @@ Panneau latéral de pilotage des résultats 3D issu du solveur OpenSees :
 - **Incréments non-linéaires** : Slider et spinbox pour naviguer entre les pas de calcul avec affichage dynamique du facteur de charge $\lambda$.
 - **Filtre des nœuds** : Visibilité conditionnelle (tous, nœuds libres non connectés, appuis).
 - **Raccourcis caméra** : Cadrer modèle, cadrer résultats, cadrer déformée, cadrer sélection.
+
+## `Diagram2DWidget` (`src/UI/Diagrams`, dock « DIAGRAMMES 2D »)
+
+Courbes de résultats le long d'une barre (poutre, poteau, barre de treillis, câble) :
+- **Plusieurs courbes à la fois** : une puce colorée par grandeur — N (Vx), Vy, Vz, Mx, My, Mz, ux, uy, uz, |u|, θx,
+  θy, θz — à cocher pour ajouter ou retirer la courbe (au moins une reste affichée). Groupes prêts à l'emploi : efforts
+  N (Vx), Vy, Vz ; tranchants Vy, Vz ; moments ; flexion dans le plan local xy (Vy, Mz) ou xz (Vz, My) ; tous les
+  efforts ; déplacements ; rotations. Une commande de diagramme du ruban affiche sa seule grandeur.
+- **Superposées** : un seul graphe ; un axe par unité, à gauche puis à droite (ex. kN et kNm), zéros alignés ; au-delà
+  de deux unités, ou sur demande, échelle **normalisée** (chaque courbe rapportée à sa plus grande valeur absolue).
+- **Empilées** : une bande par courbe, chacune avec son axe, abscisses alignées.
+- Légende (max / min), extrêmes marqués à leur position réelle, curseur donnant la valeur de chaque courbe.
+- Molette : zoom vertical ; Ctrl + molette : zoom le long de la barre ; glisser : déplacer ; double-clic : recentrer.
+- **Exporter** : image (presse-papiers ou PNG), valeurs aux stations (tableau à coller dans un tableur).
+- La barre sélectionnée dans la vue 3D est affichée. Choix des courbes et de la présentation mémorisés (QSettings
+  « Diagram2D »).
 
 ## `AnalysisConfigDialog` (`src/UI/Dialogs`)
 

@@ -2,6 +2,13 @@
 
 Last Updated: 2026-10-28. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
+## Courbes 2D superposées (2026-10-30, branche feature/diagram-multi-curves)
+- [x] Diagram2DWidget multi-courbes, échelles, export, sélection 3D ; test 531 ; traductions ; docs/UI.md.
+- [ ] Essai dans TSA.exe réel (sélection d'une barre → dock, puces, export) ; commit / fusion (accord requis).
+- [x] BUG-146 : Qt 6.12.0 et OpenSees réinstallés ; build-windows-validation Release, 57/57 suites (2026-10-31).
+- [ ] BUG-147 : noms des grandeurs de DiagramGeometry traduisibles.
+- [ ] Autres bugs signalés par l'utilisateur (« plusieurs bugs ») : liste à obtenir.
+
 ## Fem3D 0.3.0 — charges sur barre (2026-10-29)
 - [x] Moteur : ponctuelles, partielles, moments répartis ; tests 49/49 ; benchmarks 21-22 ; documentation Fem3D.
 - [x] TSA : adaptateur, test 530, test 478 adapté ; 57/57 suites ; TSALab 27/27.
