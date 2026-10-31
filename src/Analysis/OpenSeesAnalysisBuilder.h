@@ -143,13 +143,27 @@ struct BeamElementLoad
     double wxB = 0.0, wyB = 0.0, wzB = 0.0;  ///< intensité en b (Linear, Couple)
     double relativePosition = 0.0;           ///< Point : x / L ; Linear, Couple : a / L
     double relativeEnd = 1.0;                ///< Linear, Couple : b / L
+    /// Rotules de la barre qui porte la charge (relâchements de moment My, Mz en i et en j).
+    struct Releases
+    {
+        bool myI = false, mzI = false, myJ = false, mzJ = false;
+        bool any() const { return myI || mzI || myJ || mzJ; }
+    };
+    Releases releases;
     std::string comment;
 
     bool point() const { return kind == Kind::Point; }
-    /// Charge transmise aux nœuds (forces nodales équivalentes = −forces d'encastrement parfait).
-    bool nodalEquivalent() const { return kind == Kind::Linear || kind == Kind::Couple; }
-    /// Forces d'encastrement parfait (barre bi-encastrée) exercées SUR la barre en i et en j,
+    /// Charge définie sur un intervalle [a, b] de la barre (linéaire, couple réparti).
+    bool interval() const { return kind == Kind::Linear || kind == Kind::Couple; }
+    /// Charge transmise aux nœuds (forces nodales équivalentes = −forces d'encastrement parfait) : charges sur un
+    /// intervalle (aucun eleLoad OpenSees adapté), et toute charge d'une barre à rotule (forces d'encastrement
+    /// condensées : -beamPoint d'OpenSees 3.8.0 ignore les relâchements, BUG-148).
+    bool nodalEquivalent() const { return interval() || releases.any(); }
+    /// Forces d'encastrement parfait d'une barre bi-encastrée exercées SUR la barre en i et en j,
     /// repère local [Fx Fy Fz Mx My Mz].
+    void fixedFixedEndForces(double length, double atI[6], double atJ[6]) const;
+    /// Mêmes forces, condensées sur les rotules de la barre (moment nul à l'extrémité relâchée) : celles qui sont
+    /// transmises aux nœuds et ajoutées aux efforts lus. Égales aux précédentes sans rotule.
     void fixedEndForces(double length, double atI[6], double atJ[6]) const;
 };
 

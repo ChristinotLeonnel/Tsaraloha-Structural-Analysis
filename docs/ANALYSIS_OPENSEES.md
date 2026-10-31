@@ -56,7 +56,7 @@ TSA::Analysis::ResultsModel
 |---|---|
 | `OpenSeesManager` | Détection locale du binaire `OpenSees.exe`, validation de version, gestion des chemins utilisateur et téléchargement de secours. |
 | `CalculationSnapshot` | Capture figée et optimisée du modèle structural (`NodeSnapshot`, `ElementSnapshot`, `LoadSnapshot`), mapping des degrés de liberté (DOFs). |
-| `OpenSeesAnalysisBuilder` | Générateur de scripts Tcl : statique linéaire (un pas, `algorithm Linear`) et modale (`eigen`). Charges trapézoïdales par forces d'encastrement parfait (OpenSees 3.8 ne gère en 3D que la charge uniforme partielle). |
+| `OpenSeesAnalysisBuilder` | Générateur de scripts Tcl : statique linéaire (un pas, `algorithm Linear`) et modale (`eigen`). Charges trapézoïdales par forces d'encastrement parfait (OpenSees 3.8 ne gère en 3D que la charge uniforme partielle). Barres à rotule : toutes les charges par forces d'encastrement condensées (`BeamElementLoad::fixedEndForces`). |
 | `OpenSeesSolver` | Exécution asynchrone non-bloquante du processus OpenSees, streaming des logs et gestion du cycle de vie (démarrage, arrêt, timeout). |
 | `OpenSeesResultsReader` | Analyse et dé-sérialisation des fichiers de sortie OpenSees (recorders), intégration des efforts tranchants et moments fléchissants locaux. |
 | `ResultsModel` | Conteneur des résultats d'analyse : déplacements $\mathbf{U}$, réactions aux appuis $\mathbf{R}$, efforts internes aux stations (convention RDM documentée sur `StationForces`), bilan d'équilibre forces ET moments. |

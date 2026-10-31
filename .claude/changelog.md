@@ -2,6 +2,13 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-31 — BUG-148 corrigé (branche fix/bug-148-hinge-member-loads)
+OpenSees : toute charge d'une barre à rotule, poids propre compris, passe par des forces d'encastrement condensées
+(BeamElementLoad::fixedEndForces, fixedFixedEndForces, Releases, interval) ; moment nul à la rotule ; aucun eleLoad sur ces barres.
+Tests 538-540. Banc : OpenSees réintégré dans RDM-14a-d et FEA-10, RDM-14e-g ajoutés (39 cas, 2 097 vérifications). 57/57 suites,
+547 tests ; portiques aléatoires 12 678/12 678 (1 770 échecs avant) ; rotules 90/90 (21 avant) ; empreinte des exemples identique
+à l'octet ; valeurs des barres à rotule sous charge uniforme changées d'au plus 3e-13. TSALab : test L9 à 39 cas.
+
 ## 2026-10-31 — analyse non linéaire retirée (commit c3cf5f6, fusion dans main demandée le 2026-10-31, ADR-025)
 TSA prend actuellement en charge l'analyse structurale linéaire (statique linéaire, modale). Retirés : NonLinearStatic,
 supportsNonlinear, algorithmes / intégrateurs / pas / tolérances / nœud de contrôle, TrussFormulation, GeomTransfType, facteur de

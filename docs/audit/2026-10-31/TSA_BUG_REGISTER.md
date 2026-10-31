@@ -9,7 +9,7 @@ Statuts employés :
 - **HYPOTHÈSE** : risque plausible, jamais présenté comme un défaut. Les hypothèses sont en fin de document.
 - **CLOS PAR RETRAIT** : la fonctionnalité en cause a été retirée du logiciel ; le défaut reste ici comme défaut historique.
 
-**Mise à jour du 2026-10-31 (après l'audit)** : l'analyse non linéaire a été retirée (ADR-025, branche `refactor/linear-only`, [LINEAR_ONLY_REFACTORING_REPORT.md](LINEAR_ONLY_REFACTORING_REPORT.md)). BUG-149 et BUG-150 sont clos par retrait, preuves ci-dessous. Les autres défauts sont inchangés.
+**Mise à jour du 2026-10-31 (après l'audit)** : l'analyse non linéaire a été retirée (ADR-025, branche `refactor/linear-only`, [LINEAR_ONLY_REFACTORING_REPORT.md](LINEAR_ONLY_REFACTORING_REPORT.md)). BUG-149 et BUG-150 sont clos par retrait, preuves ci-dessous. BUG-148 a été corrigé ensuite. Les autres défauts sont inchangés.
 
 Les identifiants continuent la numérotation de `.claude/known-issues.md`. Tous les cas d'essai sont dans [preuves/](preuves/README.md).
 
@@ -17,7 +17,7 @@ Les identifiants continuent la numérotation de `.claude/known-issues.md`. Tous 
 
 | Identifiant | Gravité | Sujet | Statut |
 |---|---|---|---|
-| BUG-148 | CRITICAL | OpenSees : rotule + charge non uniforme, efforts faux sans alerte | CONFIRMÉ |
+| BUG-148 | CRITICAL | OpenSees : rotule + charge non uniforme, efforts faux sans alerte | CONFIRMÉ, puis CORRIGÉ (2026-10-31) |
 | BUG-149 | CRITICAL | Statique non linéaire : efforts le long des barres calculés avec un facteur de charge faux | CONFIRMÉ, puis CLOS PAR RETRAIT (2026-10-31) |
 | BUG-150 | HIGH | P-Delta ou corotationnel accepté en statique linéaire, résultat incohérent | CONFIRMÉ, puis CLOS PAR RETRAIT (2026-10-31) |
 | BUG-151 | HIGH | Câble comprimé accepté sans alerte | CONFIRMÉ |
@@ -69,7 +69,7 @@ Les identifiants continuent la numérotation de `.claude/known-issues.md`. Tous 
   1. Immédiat : refuser avant calcul, dans `OpenSeesEngine::validate`, toute charge `Point`, `Linear` ou `Couple` sur une barre à rotule, avec un message orientant vers Fem3D.
   2. Correctif : condenser les forces équivalentes comme `condensedLoads` de Fem3D, et les charges ponctuelles aussi. Adapter `buildElementResults` pour reconstruire les efforts à partir des forces condensées.
 - **Test de vérification** : ajouter `HINGE-*`, `GERBER-*`, `PIN2-*` à `tests/benchmarks/rdm` et les familles B et C à la suite `benchmarks`. Vérifier en plus M = 0 à chaque rotule.
-- **Statut au 2026-10-31 (après retrait du non linéaire)** : toujours OUVERT, non corrigé. Ajoutés au banc officiel : RDM-13a à 13c (rotules sous charge uniforme, trois moteurs), RDM-14a à 14d (rotule + charge ponctuelle, trapézoïdale ou triangulaire : Fem3D et Custom2D seulement, OpenSees exclu tant que le défaut est ouvert), FEA-08 et FEA-09 (familles A et B, OpenSees et Fem3D), FEA-10 (famille C, Fem3D seul). Les cas OpenSees de `cases-hinge` et de la famille C échouent toujours, avec les mêmes valeurs qu'avant.
+- **Statut (2026-10-31)** : CORRIGÉ. Toutes les charges d'une barre à rotule, poids propre compris, passent par des forces d'encastrement condensées (`BeamElementLoad::fixedEndForces`), sans aucun `eleLoad` sur cette barre. Preuve : 57/57 suites, 547 tests ; tests 538-540 ; portiques aléatoires 12 678/12 678 (1 770 échecs avant) ; rotules 90/90 (21 avant) ; cases-more 0 échec (7 avant, 3 PDELTA-LIN refusés) ; banc officiel 2 097/2 097, 39 cas. Empreinte des 9 exemples identique à l'octet ; barres à rotule sous charge uniforme : écart d'au plus 3e-13. Détails : [preuves/bug-148](preuves/bug-148/). Les résultats déjà produits dans cette configuration restent à recalculer.
 
 ## BUG-149 — Statique non linéaire : facteur de charge faux dans les efforts le long des barres
 

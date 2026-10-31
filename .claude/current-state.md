@@ -19,7 +19,7 @@ Debug (build-ninja-debug, première compilation) : 561 étapes, 0 erreur, 126 te
 refactor/linear-only de TSALab, commit 1119d54). Rapport : docs/audit/2026-10-31/LINEAR_ONLY_REFACTORING_REPORT.md.
 
 ## Audit technique du 2026-10-31
-Status: BROKEN pour OpenSees + rotule + charge non uniforme (BUG-148, toujours ouvert). BUG-149 (efforts le long des barres en
+BUG-148 (OpenSees, rotule + charge non uniforme) : FIXED le 2026-10-31, forces d'encastrement condensées, banc 2 097/2 097. BUG-149 (efforts le long des barres en
 statique non linéaire) et BUG-150 : clos par retrait de la fonctionnalité (ADR-025). Statique linéaire 3D sans rotule : VALIDÉ contre un solveur indépendant (écart ≈ 1e-10, OpenSees et Fem3D).
 Rapport : docs/audit/2026-10-31/TSA_AUDIT_EXECUTIVE_SUMMARY.md. Sections de ce fichier datées à relire : Meshing, Import/Export,
 .tsa, Structural Calculation (TSA_CODE_QUALITY_AUDIT.md, § Documentation).
@@ -91,8 +91,8 @@ OpenSees 3.8.0 Linux (2026-10-24, ~/opt/opensees-3.8.0, Conan 2) : cas analytiqu
 Non vérifié : compilation Windows (MSVC) des modifications (24 et 25/10), dont les #ifdef de Gmsh et OpenSees.
 
 ## Tests
-Status: IMPLEMENTED — 544 réussis, 0 échec, 1 ignoré (57/57 suites, Release, bureau masqué) le 2026-10-31 après
-retrait du non linéaire (+ 532-537) ; 538 avant (audit du 2026-10-31) ; 233/233 PASS le 2026-10-10 (208 sélection 3D, 209–212 charges sur barre) ; 228/228 PASS le 2026-10-09 (audit QA : 205 annulation, 206 résultats périmés, 207 JSON des grilles) ; 225/225 PASS le 2026-10-09 (202 repères de grille, 203–204 déformée continue) ; 222/222 PASS le 2026-10-09 (test 201 : chemins accentués, chunk > 64 Kio, nom du projet, ouverture atomique ; TSALab 5/5, science 6/6, banc 14/14) ; 219/219 PASS le 2026-10-08 (197 débogueur Blueprint, 198 script ↔ Blueprint + IA) ; 217/217 avant (196 contrôleur d'analyse) ; 216/216 avant (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
+Status: IMPLEMENTED — 547 réussis, 0 échec, 1 ignoré (57/57 suites, Release, bureau masqué) le 2026-10-31, BUG-148 corrigé
+(+ 538-540) ; 544 après retrait du non linéaire (+ 532-537) ; 538 avant (audit du 2026-10-31) ; 233/233 PASS le 2026-10-10 (208 sélection 3D, 209–212 charges sur barre) ; 228/228 PASS le 2026-10-09 (audit QA : 205 annulation, 206 résultats périmés, 207 JSON des grilles) ; 225/225 PASS le 2026-10-09 (202 repères de grille, 203–204 déformée continue) ; 222/222 PASS le 2026-10-09 (test 201 : chemins accentués, chunk > 64 Kio, nom du projet, ouverture atomique ; TSALab 5/5, science 6/6, banc 14/14) ; 219/219 PASS le 2026-10-08 (197 débogueur Blueprint, 198 script ↔ Blueprint + IA) ; 217/217 avant (196 contrôleur d'analyse) ; 216/216 avant (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
 188 niveaux/grilles annulables, 189 chunk SETT, 190 collage BIM, 191 édition groupée) ; test 20 sensible au temps (BUG-035) ;
 197/197 avant (suite `bim` 170–180 le 2026-10-06, dont IFC 177–180) ;
 186/186 avant (suite `cleanup` 160–165 le 2026-10-05) ;

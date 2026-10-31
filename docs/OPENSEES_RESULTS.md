@@ -55,6 +55,10 @@ plusieurs familles le portent, la charge est ignorée et `ModelValidator::valida
 OpenSees 3.8.0 : `Truss` « localForce » renvoie 12 valeurs et `CorotTruss` ne reconnaît pas « localForce »
 (seulement « localForces ») ; TSA utilise donc `basicForce` (1 valeur) pour l'effort normal des treillis/câbles.
 
+Charges transmises aux nœuds (charges sur un intervalle, et toutes les charges d'une barre à rotule) : OpenSees ne
+les voit pas comme des charges d'élément. `ElementResults` leur ajoute les forces d'encastrement, condensées sur les
+rotules ; `ElementForceSet` reste la sortie brute d'OpenSees, sans ces forces.
+
 Les **stations intermédiaires** (diagrammes) restent issues du post-traitement historique de TSA (interpolation
 + superposition approchée des charges) : voir known-issues BUG-016. Les valeurs d'extrémité et les forces brutes
 ne passent pas par ce post-traitement.

@@ -247,7 +247,7 @@ void fillBeamStations(ElementResults& res, const SnapshotElement& el, const doub
     {
         if (l.kind == BeamElementLoad::Kind::Uniform) continue;
         addBreakpoint(l.relativePosition);
-        if (l.nodalEquivalent()) addBreakpoint(l.relativeEnd);
+        if (l.interval()) addBreakpoint(l.relativeEnd);
     }
     std::sort(xs.begin(), xs.end());
 
@@ -364,8 +364,9 @@ std::map<ElementKey, ElementResults> buildElementResults(const CalculationSnapsh
             const std::size_t idx = beamIdx;
             beamIdx += 12;
             // ElasticBeam3d localForce : [N Vy Vz T My Mz]_i puis _j (forces exercées SUR l'élément).
-            // Les charges linéaires sont appliquées aux nœuds (forces d'encastrement parfait) : leurs
-            // forces d'encastrement s'ajoutent à celles calculées par OpenSees.
+            // Les charges sur intervalle et toutes celles d'une barre à rotule sont appliquées aux nœuds (forces
+            // d'encastrement parfait, condensées sur les rotules) : leurs forces d'encastrement s'ajoutent à celles
+            // calculées par OpenSees, et le moment reste nul à l'extrémité relâchée.
             // Convention RDM (voir fillBeamStations) : en i, efforts intérieurs = −(forces sur l'élément),
             // en j = +(forces sur l'élément), puis My, Vy, Vz exprimés de sorte que M > 0 tende la fibre
             // du côté négatif de l'axe local et V = dM/dx.

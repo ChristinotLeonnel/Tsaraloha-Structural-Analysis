@@ -41,11 +41,11 @@ Un bouton, une classe ou une énumération ne suffit pas à classer une fonction
 |---|---|---|---|---|---|
 | Rigidité de barre (N, V, M, T) | OpenSees `elasticBeamColumn` (3D) ; TSALab planar (2D) ; `ElementTransformation` (basique → local → global) | matrice d'Euler-Bernoulli 12×12 ; K_g = Tᵀ·K_l·T | Euler-Bernoulli (cisaillement transverse **négligé**), section constante | test 369 (K_l = analytique à 1e-16, R orthogonale, 6 modes rigides, K = Σ K_e) ; RDM-01 à 10 | **V** |
 | Treillis, câbles | treillis `truss` ; câbles `corotTruss` + `InitStrain` (précontrainte ε₀ = T₀/EA), résolus en un seul pas linéaire | effort normal seul ; rotations des nœuds de treillis bloquées | petits déplacements ; câble non relâché en compression (BUG-151) | RDM-07a/b (treillis 2D, 3D) ; suite `cables` | treillis **V**, câbles **T** |
-| Relâchements d'extrémité | `-releasey/-releasez` (moments seulement) | rotule de flexion | N, V, T non relâchables (refusé par ModelValidator) | tests 152, 158 | **T** |
+| Relâchements d'extrémité | `-releasey/-releasez` (moments seulement) ; charges de la barre par forces d'encastrement condensées | rotule de flexion, condensation statique | N, V, T non relâchables (refusé par ModelValidator) | tests 152, 158, 538-540 ; RDM-13, RDM-14 ; FEA-10 (solveur indépendant) | **V** |
 | Appuis rigides, élastiques | `fix` ; `zeroLength` sur nœud auxiliaire | raideurs kN/m, kN·m/rad | — | suite `supports`, test 362 (kN/N) | **V** |
 | Charges nodales | `load` | repère global | une charge « locale » sur un nœud est signalée | RDM-01 à 07 | **V** |
-| Charge uniforme sur barre | `eleLoad -beamUniform` (OpenSees) | — | — | RDM-03, 05b, 10a/b | **V** |
-| Charge ponctuelle sur barre | `eleLoad -beamPoint` | — | — | RDM-04b | **V** |
+| Charge uniforme sur barre | `eleLoad -beamUniform` (OpenSees), sauf barre à rotule | — | — | RDM-03, 05b, 10a/b | **V** |
+| Charge ponctuelle sur barre | `eleLoad -beamPoint`, sauf barre à rotule | — | — | RDM-04b | **V** |
 | Charge trapézoïdale, uniforme partielle, couple réparti | TSA : `BeamElementLoad::fixedEndForces` (forces d'encastrement parfait) | Gauss 4 points (exact, intégrande de degré ≤ 4) ; couples : fonctions d'Hermite | barre prismatique | RDM-10c (triangulaire), RDM-10d (partielle) | **V** |
 | Efforts et déformée le long des barres | `OpenSeesResultsReader::fillBeamStations` ; courbes du moteur plan | équilibre exact de la barre chargée (efforts) ; flèche reconstruite | — | RDM-03b, 04b : efforts exacts ; flèche **1e-4** (OpenSees), exacte (Custom2D) | **V** |
 | Poids propre des barres | `beamElementLoads` (ρ·g·A, décomposé en repère local) | g = 9,81 m/s² | — | RDM-12 | **V** |
@@ -89,6 +89,7 @@ Une analyse aux éléments finis correcte ne signifie pas qu'une structure satis
 
 | Prio. | Défaut | Conséquence | Correction | Test de non-régression |
 |---|---|---|---|---|
+| **P0** | Barre à rotule sous charge ponctuelle, trapézoïdale, partielle ou couple (BUG-148) : forces d'encastrement non condensées, `-beamPoint` sans correction de rotule | moment non nul à la rotule, moment d'encastrement faux sans alerte, équilibre vérifié | forces d'encastrement condensées, aucun `eleLoad` sur ces barres | tests 538-540, RDM-14a à g, FEA-10 |
 | **P0** | Statique non linéaire : Δλ = « taille de pas » (0,05) pour 10 pas | **50 % des charges appliquées**, résultats présentés comme ceux de la charge complète | Δλ = 1/n ; facteur atteint lu (`getTime`) et signalé s'il diffère de 1. Fonctionnalité retirée le 31/10/2026 (ADR-025) | RDM-11a (supprimé avec la fonctionnalité) |
 | **P0** | Cornière : Iy, Iz sans termes de transport | rigidité divisée par environ 2 (L 100×100×10 : 84 cm⁴ au lieu de 180) | inerties centrales, Iyz exposé | test 365 |
 | **P0** | UPN : Iz autour d'un axe non central | Iz divisé par environ 2 (UPN 200 : 82 cm⁴ au lieu de 171) | Huygens | test 365 |

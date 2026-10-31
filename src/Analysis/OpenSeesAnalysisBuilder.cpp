@@ -447,6 +447,29 @@ std::string OpenSeesAnalysisBuilder::buildRecorders(const OpenSeesModelMap& map,
 
 void BeamElementLoad::fixedEndForces(double length, double atI[6], double atJ[6]) const
 {
+    fixedFixedEndForces(length, atI, atJ);
+    const double L = length;
+    if (!releases.any() || L <= 1e-12) return;
+    // Condensation statique des rotules (barre prismatique d'Euler-Bernoulli, comme elasticBeamColumn -releasey/-releasez ;
+    // même résultat que condensedLoads de Fem3D). Moments d'extrémité de chaque plan : m = (EI/L)[4 2; 2 4]·θ + m0. Relâcher
+    // une extrémité annule son moment et en reporte la moitié à l'autre si elle reste encastrée ; deux rotules annulent les
+    // deux. Les efforts tranchants rétablissent l'équilibre de la barre : Fy = ±(ΔMz,i + ΔMz,j)/L, Fz = ∓(ΔMy,i + ΔMy,j)/L.
+    auto condense = [&](bool releasedI, bool releasedJ, int moment, int shear, double shearSign) {
+        if (!releasedI && !releasedJ) return;
+        const double mI = atI[moment], mJ = atJ[moment];
+        const double dI = releasedI ? -mI : -0.5 * mJ;
+        const double dJ = releasedJ ? -mJ : -0.5 * mI;
+        atI[moment] += dI;
+        atJ[moment] += dJ;
+        atI[shear] += shearSign * (dI + dJ) / L;
+        atJ[shear] -= shearSign * (dI + dJ) / L;
+    };
+    condense(releases.mzI, releases.mzJ, 5, 1, 1.0);    // flexion dans le plan x-y (Mz, Fy)
+    condense(releases.myI, releases.myJ, 4, 2, -1.0);   // flexion dans le plan x-z (My, Fz)
+}
+
+void BeamElementLoad::fixedFixedEndForces(double length, double atI[6], double atJ[6]) const
+{
     for (int k = 0; k < 6; ++k) atI[k] = atJ[k] = 0.0;
     const double L = length;
     if (L <= 1e-12) return;
@@ -618,6 +641,17 @@ std::map<int, std::vector<BeamElementLoad>> OpenSeesAnalysisBuilder::beamElement
 {
     std::map<int, std::vector<BeamElementLoad>> loads;
     const double forceScale = params.useKiloNewtons ? 1.0 : 1000.0;
+    // Barre à rotule : toutes ses charges passent par les forces d'encastrement condensées (BeamElementLoad::nodalEquivalent),
+    // une seule méthode, indépendante du traitement des relâchements par les eleLoad d'OpenSees (BUG-148).
+    auto withReleases = [](BeamElementLoad& load, const SnapshotElement& el) {
+        load.releases.myI = el.startRelease.my;
+        load.releases.mzI = el.startRelease.mz;
+        load.releases.myJ = el.endRelease.my;
+        load.releases.mzJ = el.endRelease.mz;
+        if (!load.releases.any()) return;
+        if (load.comment.empty()) load.comment = load.point() ? "Charge ponctuelle" : "Charge uniforme";
+        load.comment += " — barre à rotule : forces d'encastrement condensées";
+    };
 
     // Charges sur barres résolues dans leurs repères locaux
     for (const auto& ml : snapshot.memberLoads())
@@ -692,6 +726,7 @@ std::map<int, std::vector<BeamElementLoad>> OpenSeesAnalysisBuilder::beamElement
             load.wzB = load.wz;
             load.comment = "Charge uniforme partielle (forces d'encastrement parfait)";
         }
+        withReleases(load, *el);
         loads[el->tag].push_back(load);
     }
 
@@ -713,6 +748,7 @@ std::map<int, std::vector<BeamElementLoad>> OpenSeesAnalysisBuilder::beamElement
             load.wy = sw.wy;
             load.wz = sw.wz;
             load.comment = "Poids propre";
+            withReleases(load, el);
             loads[tag].push_back(load);
         }
     }
@@ -823,7 +859,8 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
             {
                 if (load.nodalEquivalent())
                 {
-                    // Forces nodales équivalentes = −(forces d'encastrement parfait), en repère global.
+                    // Forces nodales équivalentes = −(forces d'encastrement parfait, condensées sur les rotules), en repère
+                    // global : aucun moment n'est transmis au nœud par une extrémité relâchée.
                     const auto* n1 = el ? snapshot.getNode(el->startNodeId) : nullptr;
                     const auto* n2 = el ? snapshot.getNode(el->endNodeId) : nullptr;
                     if (!n1 || !n2) continue;

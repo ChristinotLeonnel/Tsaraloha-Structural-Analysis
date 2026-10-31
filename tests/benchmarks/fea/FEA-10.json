@@ -3,7 +3,7 @@
  "id": "FEA-10",
  "title": "Portique 3D aléatoire C74",
  "category": "fea",
- "description": "Référence : solveur indépendant frame3d.py (audit). Cas « RND-C074 » de l'audit technique du 2026-10-31 (docs/audit/2026-10-31/preuves). Portique régénéré à l'identique par preuves/scripts/gen_cases_random.py (graine fixe), valeurs de référence du solveur indépendant preuves/scripts/frame3d.py. OpenSees exclu tant que BUG-148 est ouvert (portique à rotules avec charges ponctuelles et trapézoïdales).",
+ "description": "Référence : solveur indépendant frame3d.py (audit). Cas « RND-C074 » de l'audit technique du 2026-10-31 (docs/audit/2026-10-31/preuves). Portique régénéré à l'identique par preuves/scripts/gen_cases_random.py (graine fixe), valeurs de référence du solveur indépendant preuves/scripts/frame3d.py. Non-régression de BUG-148 : charge non uniforme sur barre à rotule, OpenSees calcule ce cas par forces d'encastrement condensées.",
  "sources": [
   "Solveur indépendant écrit pour l'audit (Euler-Bernoulli, méthode directe des rigidités)"
  ],
@@ -17,6 +17,7 @@
   "stress": "kPa"
  },
  "engines": [
+  "opensees",
   "fem3d"
  ],
  "parameters": {},
