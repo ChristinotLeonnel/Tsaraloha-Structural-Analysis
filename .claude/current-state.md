@@ -1,12 +1,12 @@
 # Current State
 
-Last Updated: 2026-10-31 — branche refactor/linear-only (analyse non linéaire retirée, ADR-025, non commitée). Sections non
+Last Updated: 2026-10-31 — analyse non linéaire retirée (ADR-025 ; commits a7b163e et c3cf5f6, fusion dans main demandée). Sections non
 revues depuis le 2026-10-07 : voir l'audit du 2026-10-31 (TSA_CODE_QUALITY_AUDIT.md, § Documentation).
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
 ## Version linéaire seule (ADR-025, 2026-10-31)
-Status: IMPLEMENTED (branche refactor/linear-only, non commitée) — TSA prend actuellement en charge l'analyse structurale
+Status: IMPLEMENTED (TSA a7b163e, c3cf5f6 ; TSALab 1119d54 ; fusion dans main demandée le 2026-10-31) — TSA prend actuellement en charge l'analyse structurale
 linéaire (statique linéaire, modale) ; l'analyse non linéaire n'est pas disponible. AnalysisType { LinearStatic, Modal } ;
 script statique OpenSees unique (algorithm Linear, LoadControl 1.0, analyze 1, geomTransf Linear, treillis truss ;
 câbles corotTruss + InitStrain conservés). Anciens projets non linéaires : ouverts, signalés, calcul refusé
@@ -16,7 +16,7 @@ l'octet (Tcl et résultats) ; bancs : 15 312 valeurs communes identiques au bit 
 ajoutés, RDM-11a/b supprimés) ; performances inchangées ; fuzzing de la voie de calcul rejoué : identique à l'audit ;
 Debug (build-ninja-debug, première compilation) : 561 étapes, 0 erreur, 126 tests réussis sur 12 suites, test 457 en échec
 (seuil de temps, BUG-169) ; TSALab 27/27 (test L9 : 36 cas du banc partagé, branche
-refactor/linear-only de TSALab, non commitée). Rapport : docs/audit/2026-10-31/LINEAR_ONLY_REFACTORING_REPORT.md.
+refactor/linear-only de TSALab, commit 1119d54). Rapport : docs/audit/2026-10-31/LINEAR_ONLY_REFACTORING_REPORT.md.
 
 ## Audit technique du 2026-10-31
 Status: BROKEN pour OpenSees + rotule + charge non uniforme (BUG-148, toujours ouvert). BUG-149 (efforts le long des barres en
@@ -241,7 +241,7 @@ Status: IMPLEMENTED — déformée continue sur les stations du solveur (repli H
 stations exactes par équilibre du tronçon, déformée par double intégration de la courbure (tests 181–184) ; équilibre
 contrôlé en forces ET moments (BUG-017) ; déformée / diagrammes / réactions 3D, diagrammes 2D, NDC (liens avec famille,
 BUG-018), dock « Données d'analyse », export, invalidation automatique. Résultats non enregistrés dans le .tsa (BUG-013).
-Courbes 2D (dock « DIAGRAMMES 2D », 2026-10-30, branche feature/diagram-multi-curves, NON commitée) : plusieurs grandeurs
+Courbes 2D (dock « DIAGRAMMES 2D », 2026-10-30, commit 5403ed6, fusionné dans main avec refactor/linear-only le 2026-10-31) : plusieurs grandeurs
 superposées (N/Vx, Vy, Vz, Mx, My, Mz, ux, uy, uz, |u|, θx, θy, θz ; groupes prédéfinis) ou empilées ; un axe par unité
 (2 au plus, zéros alignés) sinon normalisée ; extrêmes à leur position ; curseur multi-valeurs ; zoom X/Y ; export image /
 valeurs ; barres de treillis et câbles ; suit la sélection 3D ; réglages QSettings « Diagram2D ». Vérifié : test 531 (rendu

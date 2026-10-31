@@ -1,7 +1,8 @@
 # Retrait de l'analyse non linéaire — rapport de refactorisation
 
 Date : 2026-10-31. Branche `refactor/linear-only`, créée depuis le commit `5403ed6` (base de l'audit du même jour).
-**Aucun commit, aucune fusion, aucun push.** Décision d'architecture : ADR-025 (`.claude/decisions.md`).
+Commits `a7b163e` (audit) et `c3cf5f6` (refactorisation), avec `1119d54` dans TSALab ; fusion dans `main` et publication
+demandées par l'utilisateur le 2026-10-31. Décision d'architecture : ADR-025 (`.claude/decisions.md`).
 
 > **TSA prend actuellement en charge l'analyse structurale linéaire. L'analyse non linéaire n'est pas disponible dans
 > cette version.**
@@ -105,7 +106,7 @@ Non touchés, modifiés avant la mission par l'utilisateur : `TSA.code-workspace
 `examples/TSA_Projet_Pont_Haubans_80-180-80m.tsa`.
 
 Dépôt TSALab : un seul fichier, `lab/Tests/LabTests.cpp`, dont le test L9 attend désormais 36 cas dans le banc partagé.
-Modification faite sur la branche `refactor/linear-only` de TSALab, sans commit.
+Commit `1119d54` sur la branche `refactor/linear-only` de TSALab.
 
 ## 4. Fonctionnalités conservées
 
@@ -180,7 +181,7 @@ Toutes les exécutions ont eu lieu sans fenêtre visible : bureau Windows sépar
 | `tools/check_layers.py` | 0 violation |
 | `tools/check_shortcuts.py --strict` | 283 commandes, 141 raccourcis cohérents |
 | `tools/i18n/check_translations.py --strict` | 0 erreur ; manques préexistants seulement (4 en anglais, 23 en malgache) |
-| TSALab (compilé après TSA, jamais en parallèle) | compilation 225 étapes, 0 erreur. `TSALab_TestSuite` sur bureau masqué : **27/27**, partie OpenSees comprise, après une correction du test L9. Première exécution : 21/27. L9 échouait sur le seul nombre de cas du banc partagé, figé à 28 alors que la mission en laisse 36, tous valides ; l'arrêt au premier échec a empêché L10 à L14 de tourner. Correction : attente 28 → 36, `lab/Tests/LabTests.cpp`, branche `refactor/linear-only` de TSALab, non commitée. `tsalab_science_tests` non relancé : le cœur scientifique n'est pas modifié |
+| TSALab (compilé après TSA, jamais en parallèle) | compilation 225 étapes, 0 erreur. `TSALab_TestSuite` sur bureau masqué : **27/27**, partie OpenSees comprise, après une correction du test L9. Première exécution : 21/27. L9 échouait sur le seul nombre de cas du banc partagé, figé à 28 alors que la mission en laisse 36, tous valides ; l'arrêt au premier échec a empêché L10 à L14 de tourner. Correction : attente 28 → 36, `lab/Tests/LabTests.cpp`, commit `1119d54` de TSALab. `tsalab_science_tests` non relancé : le cœur scientifique n'est pas modifié |
 | Debug | `build-ninja-debug`, configuré mais jamais compilé auparavant : compilation complète de 561 étapes, 0 erreur, les 35 mêmes avertissements préexistants qu'en Release. 12 suites liées au calcul, aux données et aux textes (engines, opensees, extraction, io, cables, loads, benchmarks, standards, ndc, audit, i18n, undo) sur bureau masqué : **126 réussis, 1 échec**. L'échec est le test 457, un seuil de temps de réponse : pire recherche dans un index synthétique de 6 000 entrées, 347 à 410 ms en Debug pour 50 ms exigés, 18 ms en Release. Il se reproduit sans aucune autre charge, et le code mesuré n'est pas modifié. L'arrêt au premier échec (BUG-104) a empêché les tests 458 à 463 de tourner en Debug. Les 45 autres suites n'ont pas été exécutées en Debug |
 | Linux | **non vérifié** : aucun outil Linux ni distribution WSL sur ce poste. Le code retiré ne contenait rien de propre à une plateforme |
 | Interface réelle | non lancée (aucune fenêtre sur ce poste, consigne de l'utilisateur). La fenêtre Analysis et le panneau OpenSees sont construits et lus hors écran par les tests 533, 535 et 536. Le message affiché par `MainWindow` à l'ouverture d'un ancien projet n'est couvert par aucun test automatique |

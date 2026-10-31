@@ -2,7 +2,7 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
-## 2026-10-31 — analyse non linéaire retirée (branche refactor/linear-only, non commitée, ADR-025)
+## 2026-10-31 — analyse non linéaire retirée (commit c3cf5f6, fusion dans main demandée le 2026-10-31, ADR-025)
 TSA prend actuellement en charge l'analyse structurale linéaire (statique linéaire, modale). Retirés : NonLinearStatic,
 supportsNonlinear, algorithmes / intégrateurs / pas / tolérances / nœud de contrôle, TrussFormulation, GeomTransfType, facteur de
 charge et historique des pas statiques (OpenSeesAnalysisBuilder, OpenSeesResultsReader, OpenSeesSolver, OpenSeesEngine, ResultsModel),
@@ -13,7 +13,7 @@ linéaire. Banc : refus de nonlinear_static et des moteurs inconnus, RDM-11a/b s
 suites, 544 tests ; empreinte des 9 exemples identique à l'octet ; 15 312 valeurs de banc identiques au bit près ; performances
 inchangées. BUG-149 et BUG-150 clos par retrait. Câbles : limite de corotTruss précontraint mesurée et documentée.
 
-## 2026-10-31 — audit technique complet (branche docs/audit-technique-2026-10-31, non commitée)
+## 2026-10-31 — audit technique complet (commit a7b163e, fusion dans main demandée le 2026-10-31)
 Audit sur 5403ed6, aucun code de production modifié : docs/audit/2026-10-31/ (9 rapports, preuves). Windows Release : 57/57 suites,
 538 tests, banc 146/146. Solveur indépendant frame3d.py, 12 678 comparaisons : écart ≈ 1e-10 sans rotule. BUG-148 à BUG-168 ouverts,
 dont 2 CRITICAL (rotules OpenSees, facteur de charge non linéaire) et 4 HIGH. Fuzzing .tsa : 4 200 fichiers, 23 plantages, tous au calcul.
@@ -24,7 +24,7 @@ restaurés par Git ; 26 journaux ignorés vidés).
 Qt 6.12.0 (C:/Qt/6.12.0/msvc2022_64) et OpenSees 3.8.0 (conda-forge, thirdparty/OpenSees, engines/OpenSees du build)
 réinstallés ; build-windows-validation Release recompilé en incrémental ; 57/57 suites. BUG-146 FIXED.
 
-## 2026-10-30 — courbes 2D superposées (branche feature/diagram-multi-curves, non commitée)
+## 2026-10-30 — courbes 2D superposées (commit 5403ed6, fusionné dans main avec refactor/linear-only le 2026-10-31)
 Diagram2DWidget réécrit : plusieurs courbes à la fois (puces colorées N (Vx), Vy, Vz, Mx, My, Mz, ux, uy, uz, |u|, θx, θy,
 θz ; groupes « N, Vy, Vz », tranchants, moments, flexion xy / xz, tous les efforts, déplacements, rotations), présentation
 superposée (un axe par unité, deux au plus, zéros alignés ; sinon normalisée) ou empilée ; légende, extrêmes à leur
