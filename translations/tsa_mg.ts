@@ -18156,6 +18156,82 @@ Atombohy ny kajy (F5) mba hanoritana ny fiolahana.</translation>
         <translation>Averina amin'ny voalohany ny habe</translation>
     </message>
     <message>
+        <source>Repères</source>
+        <translation>Fanondroana</translation>
+    </message>
+    <message>
+        <source>Repère global</source>
+        <translation>Fanondroana ankapobeny</translation>
+    </message>
+    <message>
+        <source>Trièdre X, Y, Z à l'origine du modèle.</source>
+        <translation>Tsipika telo X, Y, Z eo amin'ny fiandohan'ny modely.</translation>
+    </message>
+    <message>
+        <source>Indicateur d'angle</source>
+        <translation>Famantarana an-joro</translation>
+    </message>
+    <message>
+        <source>Trièdre fixe dans le coin de la vue.</source>
+        <translation>Tsipika telo raikitra eo an-joron'ny fijery.</translation>
+    </message>
+    <message>
+        <source>Repères locaux</source>
+        <translation>Fanondroana eo an-toerana</translation>
+    </message>
+    <message>
+        <source>Trièdre x, y, z des éléments sélectionnés, tel que le calcul le définit.</source>
+        <translation>Tsipika telo x, y, z an'ny singa voafidy, araka ny famaritan'ny kajy azy.</translation>
+    </message>
+    <message>
+        <source>Lettres des axes</source>
+        <translation>Litera amin'ny tsipika</translation>
+    </message>
+    <message>
+        <source>X, Y, Z pour le repère global ; x, y, z pour les repères locaux.</source>
+        <translation>X, Y, Z ho an'ny fanondroana ankapobeny; x, y, z ho an'ny fanondroana eo an-toerana.</translation>
+    </message>
+    <message>
+        <source>Repère local au centre de l'élément</source>
+        <translation>Fanondroana eo an-toerana eo afovoan'ny singa</translation>
+    </message>
+    <message>
+        <source>Repère local au point cliqué</source>
+        <translation>Fanondroana eo an-toerana eo amin'ny teboka notsindriana</translation>
+    </message>
+    <message>
+        <source>Sinon au centre : élément choisi dans l'arborescence, sélection multiple.</source>
+        <translation>Raha tsy izany dia eo afovoany: singa nofidina tao amin'ny hazo, fifantenana maro.</translation>
+    </message>
+    <message>
+        <source>Taille des axes…</source>
+        <translation>Haben'ny tsipika…</translation>
+    </message>
+    <message>
+        <source>Taille des axes</source>
+        <translation>Haben'ny tsipika</translation>
+    </message>
+    <message>
+        <source>Longueur des axes (pixels logiques, 30 à 200) :</source>
+        <translation>Halavan'ny tsipika (piksely lojika, 30 hatramin'ny 200):</translation>
+    </message>
+    <message>
+        <source>Taille des lettres…</source>
+        <translation>Haben'ny litera…</translation>
+    </message>
+    <message>
+        <source>Taille des lettres</source>
+        <translation>Haben'ny litera</translation>
+    </message>
+    <message>
+        <source>Hauteur des lettres (pixels logiques, 8 à 32) :</source>
+        <translation>Haavon'ny litera (piksely lojika, 8 hatramin'ny 32):</translation>
+    </message>
+    <message>
+        <source>Réinitialiser les repères</source>
+        <translation>Averina amin'ny voalohany ny fanondroana</translation>
+    </message>
+    <message>
         <source>Échelle des charges</source>
         <translation>Haben'ny enta</translation>
     </message>
@@ -24852,6 +24928,10 @@ Raha tsy izany, tsindrio ny 'Ampiharo'.</translation>
     <message>
         <source>Résultats d'analyse</source>
         <translation>Vokatry ny kajy</translation>
+    </message>
+    <message>
+        <source>Repères locaux masqués : plus de %1 éléments sélectionnés</source>
+        <translation>Nafenina ny fanondroana eo an-toerana: singa mihoatra ny %1 no voafidy</translation>
     </message>
     <message>
         <source>Selected Node %1</source>

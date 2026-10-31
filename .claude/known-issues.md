@@ -6,6 +6,12 @@ Last Updated: 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR
 
 Audit technique du 2026-10-31 : détail, reproduction et correction de BUG-148 à BUG-168 dans docs/audit/2026-10-31/TSA_BUG_REGISTER.md.
 
+## BUG-170
+Status: OPEN (LOW, vu une fois le 2026-10-31, non reproduit) — suite `surfaces` : 12 tests réussis, ligne RESULTS écrite, puis processus
+bloqué jusqu'au délai de 600 s (DÉLAI DÉPASSÉ, 622 s au lieu de 10 s), sur le bureau masqué, branche feature/coordinate-axis-gizmos. Blocage à
+la sortie du processus, après les tests. 10 autres exécutions dont 6 répétées : 10 s, code 0. Cause inconnue ; lien avec les repères ni
+établi ni exclu (tests/test_surfaces.cpp ne crée aucune OccView). À surveiller : capturer la pile si cela se reproduit.
+
 ## BUG-169
 Status: OPEN (LOW, reproduit le 2026-10-31) — test 457 (suite i18n) : seuil de 50 ms non tenu en Debug (pire recherche dans un
 index synthétique de 6 000 entrées : 347 à 410 ms, sans autre charge ; 18 ms en Release). L'arrêt au premier échec (BUG-104)

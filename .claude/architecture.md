@@ -81,6 +81,8 @@ Isolation 3D : `OccView::isolateElements / hideElements…` dans la passe `updat
 
 ## 3. Composants critiques
 
+- Repères de la vue : `ElementAxisFrames` (calcul) → `OccView_Axes.cpp` (scène, suit `selectionChanged`) → `AxisTriad` (seul dessin d'axes) ; `docs/AXIS_DISPLAY.md`.
+
 ```text
 Component: Structural model (source de vérité)
 Class: TSA::Model::Model

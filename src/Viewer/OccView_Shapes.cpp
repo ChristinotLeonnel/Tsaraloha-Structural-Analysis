@@ -534,6 +534,7 @@ void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
 
     // 3. Une SEULE passe d'actualisation de la vue graphique OCCT
     // AUCUN fitAll(), la caméra et le zoom sont rigoureusement préservés !
+    if (!m_localAxisFrames.empty()) updateSelectedElementLocalAxes();
     m_context->UpdateCurrentViewer();
     if (!m_view.IsNull())
     {
@@ -544,6 +545,7 @@ void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
 void OccView::onModelEdited()
 {
     if (m_selectionManager && m_model) m_selectionManager->schedulePrune(m_model);
+    if (!m_localAxisFrames.empty()) updateSelectedElementLocalAxes();   // l'élément a pu bouger ou tourner
     scheduleDisplayModeOverlays();
     scheduleBimGeometrySync();
 }
@@ -846,6 +848,8 @@ void OccView::rebuildAllShapes()
         if (!m_workPlaneShape.IsNull())
             m_selectionManager->registerWorkPlane(m_workPlane.id(), m_workPlaneShape);
     }
+
+    if (!m_localAxisFrames.empty()) updateSelectedElementLocalAxes();   // modèle remplacé, ou retiré de la vue
 
     if (!m_model)
         return;

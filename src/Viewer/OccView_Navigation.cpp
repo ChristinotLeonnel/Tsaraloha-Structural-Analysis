@@ -29,22 +29,14 @@
 #include <Graphic3d_Camera.hxx>
 #include <Graphic3d_ClipPlane.hxx>
 #include <Prs3d_Drawer.hxx>
-#include <AIS_Trihedron.hxx>
-#include <Geom_Axis2Placement.hxx>
-#include <Graphic3d_TransformPers.hxx>
 #include <QCursor>
 #include <QElapsedTimer>
 #include <QThread>
-#include <Prs3d_DatumParts.hxx>
-#include <Prs3d_DatumMode.hxx>
-#include <TCollection_ExtendedString.hxx>
 #include <Prs3d_LineAspect.hxx>
-#include <Prs3d_ShadingAspect.hxx>
 #include <Aspect_TypeOfLine.hxx>
 #include <Bnd_Box.hxx>
-#include <BRep_Builder.hxx>
 #include <TopoDS.hxx>
-#include <TopoDS_Compound.hxx>
+#include <TopoDS_Face.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakePolygon.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
@@ -63,7 +55,7 @@ void OccView::fitAll()
 {
     if (!m_view.IsNull())
     {
-        m_view->FitAll();
+        fitScene();
         m_view->ZFitAll();
         m_view->Redraw();
         emit viewCameraChanged();
@@ -402,7 +394,7 @@ void OccView::applyCameraFrame(const TSA::Viewer::CameraFrame& frame, bool ortho
     if (orthographic && !cam->IsOrthographic())
         m_viewManager.setOrthographic(true, m_view);
     TSA::Viewer::ViewManager::applyFrame(m_view, frame, cam->Center());
-    m_view->FitAll();
+    fitScene();
     m_view->ZFitAll();
 
     if (animate)
@@ -522,7 +514,7 @@ void OccView::orient2DView(bool animate)
     TSA::Viewer::ViewManager::applyFrame(m_view, plan2DFrame(), m_workPlane.origin());
     syncViewPlaneMode();
     updateElementIsolation();
-    m_view->FitAll();
+    fitScene();
     m_view->ZFitAll();
     if (animate)
         animateCameraFrom(start);
@@ -965,19 +957,7 @@ void OccView::applyWorkPlaneTrihedronTransform(const gp_Trsf& workPlaneTrsf)
     if (m_workPlaneTrihedron.IsNull())
         return;
 
-    // En persistance de zoom, le repère local est en pixels et son origine est le point
-    // d'ancrage (coordonnées monde) : la transformation locale ne doit donc contenir QUE
-    // la rotation ; la translation est portée par le point d'ancrage.
-    const gp_Pnt anchor(workPlaneTrsf.TranslationPart());
-    gp_Trsf rotOnly = workPlaneTrsf;
-    rotOnly.SetTranslationPart(gp_Vec(0.0, 0.0, 0.0));
-    m_workPlaneTrihedron->SetLocalTransformation(rotOnly);
-
-    const Handle(Graphic3d_TransformPers)& pers = m_workPlaneTrihedron->TransformPersistence();
-    if (pers.IsNull() || pers->Mode() != Graphic3d_TMF_ZoomPers || !pers->AnchorPoint().IsEqual(anchor, 0.0))
-    {
-        m_workPlaneTrihedron->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, anchor));
-    }
+    TSA::Viewer::placeAxisTriad(m_workPlaneTrihedron, workPlaneTrsf);
 }
 
 void OccView::attachManipulatorToWorkPlane()
@@ -1776,109 +1756,6 @@ void OccView::setResultsStructureDisplay(ResultsStructureDisplay mode)
         m_view->Redraw();
 }
 
-void OccView::setShowLocalAxes(bool show)
-{
-    m_showLocalAxes = show;
-    if (!show)
-    {
-        clearSelectedElementLocalAxes();
-    }
-    else
-    {
-        updateSelectedElementLocalAxes();
-    }
-}
-
-void OccView::clearSelectedElementLocalAxes()
-{
-    if (!m_elementLocalAxesShape.IsNull() && !m_context.IsNull())
-    {
-        m_context->Remove(m_elementLocalAxesShape, false);
-        m_elementLocalAxesShape.Nullify();
-        if (!m_view.IsNull())
-            m_view->Redraw();
-    }
-}
-
-void OccView::updateSelectedElementLocalAxes()
-{
-    if (m_context.IsNull() || !m_model || !m_selectionManager || !m_showLocalAxes)
-        return;
-
-    clearSelectedElementLocalAxes();
-
-    gp_Pnt origin;
-    gp_Dir dirX, dirY, dirZ;
-    bool found = false;
-
-    auto extractLinearElementAxes = [&](int n1Id, int n2Id, double rotationDeg) {
-        const auto* n1 = m_model->getNode(n1Id);
-        const auto* n2 = m_model->getNode(n2Id);
-        if (n1 && n2)
-        {
-            gp_Pnt p1(n1->x(), n1->y(), n1->z());
-            gp_Pnt p2(n2->x(), n2->y(), n2->z());
-            if (p1.Distance(p2) > 1e-4)
-            {
-                origin = gp_Pnt((p1.X() + p2.X()) * 0.5, (p1.Y() + p2.Y()) * 0.5, (p1.Z() + p2.Z()) * 0.5);
-                gp_Ax3 frame = TSA::Coordinate::CoordinateTransformationService::computeElementLocalFrame(p1, p2, rotationDeg);
-                dirX = frame.XDirection();
-                dirY = frame.YDirection();
-                dirZ = frame.Direction();
-                found = true;
-            }
-        }
-    };
-
-    if (!m_selectionManager->selectedBeams().empty())
-    {
-        int bId = *m_selectionManager->selectedBeams().begin();
-        if (const auto* b = m_model->getBeam(bId))
-            extractLinearElementAxes(b->startNodeId(), b->endNodeId(), b->rotation());
-    }
-    else if (!m_selectionManager->selectedColumns().empty())
-    {
-        int cId = *m_selectionManager->selectedColumns().begin();
-        if (const auto* col = m_model->getColumn(cId))
-            extractLinearElementAxes(col->startNodeId(), col->endNodeId(), col->rotation());
-    }
-    else if (!m_selectionManager->selectedCables().empty())
-    {
-        int cabId = *m_selectionManager->selectedCables().begin();
-        if (const auto* cab = m_model->getCable(cabId))
-            extractLinearElementAxes(cab->startNodeId(), cab->endNodeId(), 0.0);
-    }
-    else if (!m_selectionManager->selectedTrussMembers().empty())
-    {
-        int trId = *m_selectionManager->selectedTrussMembers().begin();
-        if (const auto* tr = m_model->getTrussMember(trId))
-            extractLinearElementAxes(tr->startNodeId(), tr->endNodeId(), 0.0);
-    }
-
-    if (!found) return;
-
-    double L = 0.8;
-    BRep_Builder b;
-    TopoDS_Compound comp;
-    b.MakeCompound(comp);
-
-    gp_Pnt pX = origin.Translated(gp_Vec(dirX) * L);
-    gp_Pnt pY = origin.Translated(gp_Vec(dirY) * L);
-    gp_Pnt pZ = origin.Translated(gp_Vec(dirZ) * L);
-
-    b.Add(comp, BRepBuilderAPI_MakeEdge(origin, pX).Edge());
-    b.Add(comp, BRepBuilderAPI_MakeEdge(origin, pY).Edge());
-    b.Add(comp, BRepBuilderAPI_MakeEdge(origin, pZ).Edge());
-
-    m_elementLocalAxesShape = new AIS_Shape(comp);
-    m_elementLocalAxesShape->SetColor(Quantity_NOC_YELLOW);
-    m_elementLocalAxesShape->SetWidth(2.5);
-    m_context->Display(m_elementLocalAxesShape, false);
-
-    if (!m_view.IsNull())
-        m_view->Redraw();
-}
-
 void OccView::refreshWorkPlaneGrid()
 {
     if (m_workPlaneGrid.IsNull() || m_view.IsNull() || m_view->Camera().IsNull() || m_view->Window().IsNull())
@@ -2028,31 +1905,10 @@ void OccView::updateWorkPlaneVisual()
     //    Trièdre court à taille constante à l'écran, comme le trièdre 3D de la vue :
     //    longueur en PIXELS (proportionnelle à la taille du gizmo), indépendante du zoom
     //    et des dimensions du modèle.
-    if (m_workPlaneAxesVisible)
+    //    Confondu avec le repère global affiché : un seul dessin.
+    if (m_workPlaneAxesVisible && !workPlaneTriadCoincidesWithGlobal())
     {
-        const auto& colorConfig = TSA::Coordinate::AxisColorConfig::instance();
-        const Quantity_Color cx = colorConfig.workPlaneAxisXColor();
-        const Quantity_Color cy = colorConfig.workPlaneAxisYColor();
-        const Quantity_Color cz = colorConfig.workPlaneAxisZColor();
-
-        Handle(Geom_Axis2Placement) place = new Geom_Axis2Placement(gp::XOY());
-        m_workPlaneTrihedron = new AIS_Trihedron(place);
-        m_workPlaneTrihedron->SetDatumDisplayMode(Prs3d_DM_Shaded);
-        m_workPlaneTrihedron->SetSize(std::max(20.0, 0.45 * m_gizmoSize));
-
-        m_workPlaneTrihedron->SetDatumPartColor(Prs3d_DP_XAxis, cx);
-        m_workPlaneTrihedron->SetDatumPartColor(Prs3d_DP_YAxis, cy);
-        m_workPlaneTrihedron->SetDatumPartColor(Prs3d_DP_ZAxis, cz);
-        m_workPlaneTrihedron->SetArrowColor(Prs3d_DP_XAxis, cx);
-        m_workPlaneTrihedron->SetArrowColor(Prs3d_DP_YAxis, cy);
-        m_workPlaneTrihedron->SetArrowColor(Prs3d_DP_ZAxis, cz);
-        m_workPlaneTrihedron->SetTextColor(Prs3d_DP_XAxis, cx);
-        m_workPlaneTrihedron->SetTextColor(Prs3d_DP_YAxis, cy);
-        m_workPlaneTrihedron->SetTextColor(Prs3d_DP_ZAxis, cz);
-        m_workPlaneTrihedron->SetLabel(Prs3d_DP_XAxis, TCollection_ExtendedString("X"));
-        m_workPlaneTrihedron->SetLabel(Prs3d_DP_YAxis, TCollection_ExtendedString("Y"));
-        m_workPlaneTrihedron->SetLabel(Prs3d_DP_ZAxis, TCollection_ExtendedString("Z"));
-
+        m_workPlaneTrihedron = TSA::Viewer::createAxisTriad(workPlaneAxisAppearance());
         applyWorkPlaneTrihedronTransform(trsf);
         // Mode de sélection -1 : purement visuel (ne gêne ni la sélection ni le snapping)
         m_context->Display(m_workPlaneTrihedron, 0, -1, false);
@@ -2341,12 +2197,7 @@ void OccView::setDarkMode(bool dark)
 
     if (!m_view.IsNull())
     {
-        m_view->TriedronDisplay(
-            Aspect_TOTP_LEFT_LOWER,
-            dark ? Quantity_NOC_WHITE : Quantity_NOC_BLACK,
-            0.1,
-            V3d_ZBUFFER
-        );
+        applyAxisDisplay();   // indicateur d'angle et contour des lettres selon le fond
 
         if (dark)
         {
@@ -2507,7 +2358,7 @@ void OccView::setActiveLevelElevation(double z)
         updateElementIsolation();
         if (!m_view.IsNull())
         {
-            m_view->FitAll();
+            fitScene();
         }
     }
     if (!m_view.IsNull())

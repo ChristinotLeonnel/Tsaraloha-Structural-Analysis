@@ -5,6 +5,14 @@ revues depuis le 2026-10-07 : voir l'audit du 2026-10-31 (TSA_CODE_QUALITY_AUDIT
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
+## Repères de la vue 3D (2026-10-31, branche feature/coordinate-axis-gizmos, fusionnée dans main)
+Status: IMPLEMENTED — trièdre global X, Y, Z à l'origine, indicateur d'angle et ViewCube aux mêmes couleurs, repères locaux x, y, z
+à la sélection (poutres, poteaux ; treillis et câbles : x seul ; dalles, voiles : repère de surface ; fondations, nœuds : rien),
+jusqu'à 32 éléments. Directions lues dans les fonctions du calcul (ElementAxisFrames), égales à OpenSees à 1e-9 sur 45 barres (test 541).
+Menu Affichage > Repères, réglages QSettings Display/Axes. Remplace l'ancien repère jaune sans lettres (updateSelectedElementLocalAxes).
+Aucun fichier du solveur touché. Vérifié (Release) : 58/58 suites, 555 tests, TSALab 27/27, 104 fichiers d'empreinte identiques, banc 2 097/2 097.
+Non vérifié : vrai TSA.exe, Debug, Linux (docs/AXIS_DISPLAY.md § 6). BUG-170 : blocage isolé de la suite surfaces à la sortie.
+
 ## Version linéaire seule (ADR-025, 2026-10-31)
 Status: IMPLEMENTED (TSA a7b163e, c3cf5f6 ; TSALab 1119d54 ; fusion dans main demandée le 2026-10-31) — TSA prend actuellement en charge l'analyse structurale
 linéaire (statique linéaire, modale) ; l'analyse non linéaire n'est pas disponible. AnalysisType { LinearStatic, Modal } ;

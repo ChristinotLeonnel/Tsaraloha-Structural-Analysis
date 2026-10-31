@@ -23,6 +23,7 @@
 #include <gp_Ax2.hxx>
 #include <gp_Ax1.hxx>
 
+#include <QScopeGuard>
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QKeyEvent>
@@ -49,6 +50,8 @@ void OccView::mousePressEvent(QMouseEvent* event)
 
     if (event->button() == Qt::LeftButton)
     {
+        rememberPickRay(px, py);
+
         // 0. Clic interactif prioritaire sur le Gizmo AIS_Manipulator du Plan de Travail
         if (!m_manipulator.IsNull() && m_manipulator->IsAttached() && m_manipulator->HasActiveMode() && !m_workPlaneShape.IsNull() && !m_view.IsNull())
         {
@@ -402,6 +405,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
 
 void OccView::mouseReleaseEvent(QMouseEvent* event)
 {
+    const auto forgetPickRay = qScopeGuard([this] { m_pendingPickRay.reset(); });   // valable pour ce seul clic
     const QPoint p = convertMousePos(event->position());
     const int px = p.x();
     const int py = p.y();
