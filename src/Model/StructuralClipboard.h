@@ -6,6 +6,9 @@
 #include <string>
 #include <unordered_map>
 #include <cstddef>
+#include <functional>
+#include <gp_Pnt.hxx>
+#include <gp_Trsf.hxx>
 #include "Beam.h"
 #include "Slab.h"
 #include "Wall.h"
@@ -34,6 +37,8 @@ struct ClipboardNode
     double relZ = 0.0;
     bool hasSupport = false;          ///< appui copié (option « appuis »)
     SupportDefinition support;
+    std::string name;
+    std::string color;
 };
 
 struct ClipboardBeam
@@ -139,6 +144,9 @@ struct PasteOptions
     double tolerance = 1.0e-3;   ///< m (unité de longueur du modèle) : distance réelle maximale pour fusionner
     SupportConflictPolicy supportConflicts = SupportConflictPolicy::Ask;
     DuplicateElementPolicy duplicates = DuplicateElementPolicy::Skip;
+    /// Nœuds sources à réutiliser tels quels (nœud source → nœud existant) : nœuds sur le plan d'une copie miroir, partagés
+    /// entre l'original et sa copie. Leurs charges nodales ne sont pas copiées : elles agissent déjà sur ces nœuds.
+    std::map<int, int> fixedNodes;
 };
 
 struct PasteConflict
@@ -173,7 +181,7 @@ struct PastePlan
 struct ClipboardOptions
 {
     bool supports = true;   ///< appuis des nœuds copiés
-    bool loads = false;     ///< charges nodales, sur barres et surfaciques des éléments copiés (cas de charge associés)
+    bool loads = true;      ///< charges nodales, sur barres et surfaciques des éléments copiés (cas de charge associés)
 };
 
 struct PasteResult
@@ -271,6 +279,9 @@ public:
     PastePlan analyzePaste(const Model& model, double targetX, double targetY, double targetZ, const PasteOptions& options = {}) const;
     /// Collage avec le coin minimal (x, y, z) de la sélection copiée placé au point cible. Ne gère pas l'historique.
     PasteResult pasteTo(Model& model, double targetX, double targetY, double targetZ, const PasteOptions& options = {}) const;
+    /// Collage de l'image de la sélection par une transformation rigide, appliquée aux coordonnées du projet source (Copier,
+    /// réseaux, copie par rotation, copie miroir). Les charges suivent la structure (CopyTransform.h). Ne gère pas l'historique.
+    PasteResult pasteImage(Model& model, const gp_Trsf& trsf, const PasteOptions& options = {}) const;
     /// Collage à la position d'origine (mêmes coordonnées que dans le projet source).
     PasteResult pasteAtOrigin(Model& model, const PasteOptions& options = {}) const { return pasteTo(model, m_refOriginX, m_refOriginY, m_refOriginZ, options); }
     /// Collage « tout ou rien » : une étape d'annulation (Ctrl+Z annule le collage entier) ; si un élément ne peut pas
@@ -295,6 +306,17 @@ public:
     const std::vector<ClipboardCable>& cables() const noexcept { return m_cables; }
 
 private:
+    /// Point de destination d'un point exprimé par rapport à l'origine de la copie.
+    using Placement = std::function<gp_Pnt(double relX, double relY, double relZ)>;
+    PastePlan analyze(const Model& model, const Placement& place, const PasteOptions& options) const;
+    gp_Pnt sourcePoint(int nodeId) const;   ///< position du nœud dans le projet source
+    std::vector<gp_Pnt> sourcePoints(const std::vector<int>& nodeIds) const;
+    /// image : transformation à appliquer aux charges et aux surfaces, nulle pour une translation.
+    PasteResult paste(Model& model, const Placement& place, const gp_Trsf* image, const PasteOptions& options) const;
+    /// Image (si besoin) des charges copiées, ajoutées au modèle, avec les nœuds et éléments déjà collés de result.
+    void pasteLoads(Model& model, const gp_Trsf* image, const PastePlan& plan, const PasteOptions& options,
+                    const std::set<std::pair<ElementKind, int>>& skipped, PasteResult& result) const;
+
     bool m_hasData = false;
     double m_refOriginX = 0.0;
     double m_refOriginY = 0.0;

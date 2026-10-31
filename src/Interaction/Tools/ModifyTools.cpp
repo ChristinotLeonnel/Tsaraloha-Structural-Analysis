@@ -7,12 +7,15 @@
 
 #include "../../Model/Model.h"
 #include "../../Model/ModelCleanup.h"
+#include "../../Model/SelectionQuery.h"
+#include "../../Model/StructuralClipboard.h"
 
 #include <gp_Ax1.hxx>
 #include <gp_Ax2.hxx>
 #include <gp_Vec.hxx>
 
 #include <QCoreApplication>
+#include <QSettings>
 #include <QString>
 
 #include <algorithm>
@@ -67,6 +70,22 @@ double signedAngle(const gp_Pnt& c, const gp_Pnt& a, const gp_Pnt& b, const gp_D
     vb -= nv * vb.Dot(nv);
     if (va.Magnitude() < 1e-12 || vb.Magnitude() < 1e-12) return 0.0;
     return va.AngleWithRef(vb, nv);
+}
+
+/// Ce que les outils de copie emportent : mêmes options que Copier / Coller (menu Édition > Options du presse-papier).
+TSA::Model::ClipboardOptions copyOptions()
+{
+    const QSettings settings;
+    TSA::Model::ClipboardOptions options;
+    options.supports = settings.value("Clipboard/copySupports", true).toBool();
+    options.loads = settings.value("Clipboard/copyLoads", true).toBool();
+    return options;
+}
+
+std::string withWarnings(std::string message, const std::vector<std::string>& warnings)
+{
+    for (const auto& w : warnings) message += " " + w + ".";
+    return message;
 }
 
 bool isBar(ElementKind k)
@@ -256,9 +275,10 @@ public:
         const int n = static_cast<int>(param("count"));
         if (s.empty() || v.Magnitude() < kTol)
             return { false, QCoreApplication::translate("TSA::Interaction::ModifyTools", "Copier : sélection vide ou vecteur nul.").toStdString() };
-        const auto ids = m.copyElements(s.nodes, s.beams, s.columns, s.slabs, v.X(), v.Y(), v.Z(), n, s.cables, s.trussMembers);
-        return { !ids.empty(), QCoreApplication::translate("TSA::Interaction::ModifyTools", "%1 copie(s) : %2 objet(s) créé(s).")
-                                   .arg(n).arg(static_cast<qulonglong>(ids.size())).toStdString() };
+        std::vector<std::string> warnings;
+        const auto ids = m.copyElements(s, v.X(), v.Y(), v.Z(), n, copyOptions(), &warnings);
+        return { !ids.empty(), withWarnings(QCoreApplication::translate("TSA::Interaction::ModifyTools", "%1 copie(s) : %2 objet(s) créé(s).")
+                                                .arg(n).arg(static_cast<qulonglong>(ids.size())).toStdString(), warnings) };
     }
 };
 
@@ -311,9 +331,10 @@ public:
         const int n = static_cast<int>(param("count"));
         if (s.empty() || v.Magnitude() < kTol)
             return { false, QCoreApplication::translate("TSA::Interaction::ModifyTools", "Réseau : sélection vide ou pas nul.").toStdString() };
-        const auto ids = m.copyElements(s.nodes, s.beams, s.columns, s.slabs, v.X(), v.Y(), v.Z(), n, s.cables, s.trussMembers);
-        return { !ids.empty(), QCoreApplication::translate("TSA::Interaction::ModifyTools", "Réseau linéaire : %1 copie(s), %2 objet(s).")
-                                   .arg(n).arg(static_cast<qulonglong>(ids.size())).toStdString() };
+        std::vector<std::string> warnings;
+        const auto ids = m.copyElements(s, v.X(), v.Y(), v.Z(), n, copyOptions(), &warnings);
+        return { !ids.empty(), withWarnings(QCoreApplication::translate("TSA::Interaction::ModifyTools", "Réseau linéaire : %1 copie(s), %2 objet(s).")
+                                                .arg(n).arg(static_cast<qulonglong>(ids.size())).toStdString(), warnings) };
     }
 };
 
@@ -410,10 +431,10 @@ public:
         const QString angle = QString::fromStdString(fmt(param("angle"), 1));
         if (param("copy") > 0.5)
         {
-            const auto ids = m.copyAndRotateElements(s.nodes, s.beams, s.columns, s.slabs, c, axisDir, rad,
-                                                     static_cast<int>(param("count")), s.cables, s.trussMembers);
-            return { !ids.empty(), QCoreApplication::translate("TSA::Interaction::ModifyTools", "Copie par rotation de %1° : %2 objet(s).")
-                                       .arg(angle).arg(static_cast<qulonglong>(ids.size())).toStdString() };
+            std::vector<std::string> warnings;
+            const auto ids = m.copyAndRotateElements(s, c, axisDir, rad, static_cast<int>(param("count")), copyOptions(), &warnings);
+            return { !ids.empty(), withWarnings(QCoreApplication::translate("TSA::Interaction::ModifyTools", "Copie par rotation de %1° : %2 objet(s).")
+                                                    .arg(angle).arg(static_cast<qulonglong>(ids.size())).toStdString(), warnings) };
         }
         gp_Trsf t;
         t.SetRotation(gp_Ax1(c, axisDir), rad);
@@ -476,10 +497,10 @@ public:
             return { false, QCoreApplication::translate("TSA::Interaction::ModifyTools", "Réseau polaire : sélection vide.").toStdString() };
         const bool fullCircle = std::abs(std::abs(total) - 360.0) < 1e-9;
         const double step = (fullCircle ? total / n : total / (n - 1)) * kPi / 180.0;
-        const auto ids = m.copyAndRotateElements(s.nodes, s.beams, s.columns, s.slabs, pointParam("center"),
-                                                 gp_Dir(a.X(), a.Y(), a.Z()), step, n - 1, s.cables, s.trussMembers);
-        return { !ids.empty(), QCoreApplication::translate("TSA::Interaction::ModifyTools", "Réseau polaire : %1 exemplaires, %2 objet(s) créé(s).")
-                                   .arg(n).arg(static_cast<qulonglong>(ids.size())).toStdString() };
+        std::vector<std::string> warnings;
+        const auto ids = m.copyAndRotateElements(s, pointParam("center"), gp_Dir(a.X(), a.Y(), a.Z()), step, n - 1, copyOptions(), &warnings);
+        return { !ids.empty(), withWarnings(QCoreApplication::translate("TSA::Interaction::ModifyTools", "Réseau polaire : %1 exemplaires, %2 objet(s) créé(s).")
+                                                .arg(n).arg(static_cast<qulonglong>(ids.size())).toStdString(), warnings) };
     }
 };
 
@@ -549,16 +570,18 @@ public:
                                                         "Symétrie : sélection vide ou axe parallèle à la normale du plan de travail.")
                                 .toStdString() };
         const bool keep = param("keep") > 0.5;
-        const auto ids = m.mirrorElements(s.nodes, s.beams, s.columns, s.slabs, pointParam("p1"), n, keep, s.cables);
+        std::vector<std::string> warnings;
+        const auto ids = keep ? m.mirrorCopyElements(s, pointParam("p1"), n, copyOptions(), &warnings)
+                              : m.mirrorElements(s.nodes, s.beams, s.columns, s.slabs, pointParam("p1"), n, false, s.cables);
         std::string msg = keep
             ? QCoreApplication::translate("TSA::Interaction::ModifyTools", "Copie miroir : %1 objet(s) créé(s).")
                   .arg(static_cast<qulonglong>(ids.size())).toStdString()
             : QCoreApplication::translate("TSA::Interaction::ModifyTools", "Symétrie : %1 nœud(s) déplacé(s).")
                   .arg(static_cast<qulonglong>(ids.size())).toStdString();
-        if (!s.trussMembers.empty())
+        if (!keep && !s.trussMembers.empty())
             msg += " " + QCoreApplication::translate("TSA::Interaction::ModifyTools", "(Les treillis ne sont pas pris en charge par la symétrie.)")
                              .toStdString();
-        return { !ids.empty(), msg };
+        return { !ids.empty(), withWarnings(msg, warnings) };
     }
 
 private:
@@ -1056,8 +1079,7 @@ public:
             const gp_Vec v = dir * param("distance");
             ElementSet one;
             addTarget(one, bar);
-            created += m.copyElements(one.nodes, one.beams, one.columns, one.slabs, v.X(), v.Y(), v.Z(), 1,
-                                      one.cables, one.trussMembers).empty() ? 0 : 1;
+            created += m.copyElements(one, v.X(), v.Y(), v.Z(), 1, copyOptions()).empty() ? 0 : 1;
         }
         return { created > 0, created > 0
                                   ? QCoreApplication::translate("TSA::Interaction::ModifyTools", "%1 barre(s) décalée(s) de %2 m.")

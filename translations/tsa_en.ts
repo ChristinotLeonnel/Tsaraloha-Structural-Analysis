@@ -6138,6 +6138,10 @@ Points to check:
         <translation>Clipboard: no element selected.</translation>
     </message>
     <message>
+        <source>Presse-papier : une charge se copie avec son élément. Sélectionnez l'élément.</source>
+        <translation>Clipboard: a load is copied with its element. Select the element.</translation>
+    </message>
+    <message>
         <source>Copie : %1</source>
         <translation>Copy: %1</translation>
     </message>
@@ -13134,8 +13138,20 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
         <translation>node</translation>
     </message>
     <message>
+        <source>%1 non copié : son image ne serait plus verticale</source>
+        <translation>%1 not copied: its image would no longer be vertical</translation>
+    </message>
+    <message>
+        <source>%1 : semelle non carrée, son orientation reste celle des axes globaux</source>
+        <translation>%1: non-square footing, its orientation stays aligned with the global axes</translation>
+    </message>
+    <message>
         <source>élément sans ses nœuds</source>
         <translation>element without its nodes</translation>
+    </message>
+    <message>
+        <source>les charges de gravité restent verticales sur la copie, contrairement à la structure copiée</source>
+        <translation>gravity loads stay vertical on the copy, unlike the copied structure</translation>
     </message>
     <message>
         <source>cas de charge « %1 » : un cas de même nom et d'autre catégorie existe ; créé sous le nom « %2 »</source>
@@ -13154,8 +13170,8 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
         <translation>member load</translation>
     </message>
     <message>
-        <source>charge surfacique %1 non collée : sa surface, en double, n'a pas été collée</source>
-        <translation>surface load %1 not pasted: its surface, a duplicate, was not pasted</translation>
+        <source>charge surfacique %1 non collée : sa surface n'a pas été collée</source>
+        <translation>surface load %1 not pasted: its surface was not pasted</translation>
     </message>
     <message>
         <source>charge surfacique</source>

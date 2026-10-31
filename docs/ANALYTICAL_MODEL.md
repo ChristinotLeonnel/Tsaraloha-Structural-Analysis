@@ -23,7 +23,7 @@ Chaque `PhysicalElement` porte la liste **ordonnée** (sens de l'axe) de ses él
 | :--- | :--- |
 | Création d'un élément | Un produit 1:1 (catégorie / PredefinedType par défaut : `defaultCategory`) |
 | Division (`splitBeam`, `splitColumn`, `splitBarAt`, nettoyage, Intersecter) | Les tronçons rejoignent le produit de l'original, juste après lui (`attachSplit`) |
-| Copie / répétition (`copyElements`, `copyAndRotateElements`) | Un nouveau produit par produit source, mêmes métadonnées, nouveaux identifiants (`registerCopies`) |
+| Copie / répétition (`copyElements`, `copyAndRotateElements`, `mirrorCopyElements`) | Un nouveau produit par produit source, mêmes métadonnées, nouveaux identifiants (`registerCopies`) |
 | Suppression | Référence retirée ; produit supprimé s'il ne contient plus rien |
 | Modification (section, nœuds, matériau…) | Aucune : l'identité ne change jamais |
 | Regrouper / Séparer | `BimModel::group`, `BimModel::ungroup` |

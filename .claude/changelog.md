@@ -2,6 +2,14 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-31 — Copier / Coller complet (branche fix/copy-paste-complete, non commitée)
+
+- `StructuralClipboard` devient le seul moteur de copie (`pasteImage`) ; `copyTransformed` et la branche de copie de `mirrorElements` retirés.
+- Charges copiées par défaut ; outils de copie : charges, voiles, fondations, dalles complètes, treillis et appuis en miroir.
+- `src/Model/CopyTransform` : image des forces, moments, charges locales et globales, données de surface par rotation et symétrie.
+- Cas homonymes dans un même projet, couleur du poteau, nom et couleur du nœud, notification des charges surfaciques.
+- Tests 549-557 (suite `copypaste`). BUG-171 ouvert (symétrie sans copie).
+
 ## 2026-10-31 — repères de la vue 3D (branche feature/coordinate-axis-gizmos, fusionnée dans main)
 
 - Nouveaux : `src/Viewer/ElementAxisFrames`, `AxisTriad`, `AxisDisplayStyle`, `OccView_Axes.cpp`, menu Affichage > Repères, `docs/AXIS_DISPLAY.md`.

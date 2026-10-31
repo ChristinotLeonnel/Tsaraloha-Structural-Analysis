@@ -2,6 +2,13 @@
 
 Last Updated: 2026-10-31. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
+## Copier / Coller (2026-10-31, branche fix/copy-paste-complete)
+- [x] Audit, moteur unique, image des charges, tests 549-557, traductions, documentation, rapport.
+- [ ] Décision : rotation de section β en symétrie et en copie par rotation de poteau (conservée, test 101) ; gravité sur structure inclinée.
+- [ ] BUG-171 : symétrie sans copie d'une dalle avec ouvertures ou charges en (u, v).
+- [ ] Contrôle à l'œil dans TSA.exe (Ctrl+C / V, message sur une charge seule), Debug, Linux, fuites mémoire.
+- [ ] Commit, fusion et push : à la demande de l'utilisateur.
+
 ## Repères de la vue 3D (2026-10-31, branche feature/coordinate-axis-gizmos)
 - [x] Calcul des repères, trièdre partagé, vue, menu, tests 541-548, traductions en / mg, documentation.
 - [ ] Contrôle à l'œil dans TSA.exe (barre d'état au-delà de 32 éléments, menu Repères), Linux, Debug.

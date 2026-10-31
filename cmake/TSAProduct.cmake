@@ -626,6 +626,8 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/Model/ModelDiff.cpp
     ${TSA_ROOT}/src/Model/StructuralClipboard.h
     ${TSA_ROOT}/src/Model/StructuralClipboard.cpp
+    ${TSA_ROOT}/src/Model/CopyTransform.h
+    ${TSA_ROOT}/src/Model/CopyTransform.cpp
     ${TSA_ROOT}/src/Model/SelectionQuery.h
     ${TSA_ROOT}/src/Model/SelectionQuery.cpp
 )
@@ -1275,6 +1277,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_benchmarks.cpp
     ${TSA_ROOT}/tests/test_display.cpp
     ${TSA_ROOT}/tests/test_axes.cpp
+    ${TSA_ROOT}/tests/test_copy_paste.cpp
     ${TSA_ROOT}/tests/test_multidoc.cpp
     ${TSA_ROOT}/tests/test_torsion.cpp
     ${TSA_ROOT}/tests/test_meshview.cpp

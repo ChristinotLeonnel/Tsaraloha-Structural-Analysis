@@ -1,4 +1,5 @@
 #include "StructuralClipboard.h"
+#include "CopyTransform.h"
 #include "Model.h"
 #include "Node.h"
 #include "Beam.h"
@@ -10,10 +11,15 @@
 #include <cmath>
 #include <unordered_map>
 #include "Load/LoadManager.h"
+#include "../Coordinate/CoordinateTransformationService.h"
+#include "../Mesh/MeshGeometry.h"
 #include "../UndoRedo/EditTransaction.h"
 #include <QCoreApplication>
 #include <QtGlobal>
 #include <algorithm>
+#include <array>
+#include <gp_Ax3.hxx>
+#include <gp_Vec.hxx>
 #include <map>
 #include <set>
 #include <unordered_set>
@@ -161,6 +167,8 @@ void StructuralClipboard::copyFrom(const Model& model, const ClipboardSelection&
             cn.relX = node->x() - minX;
             cn.relY = node->y() - minY;
             cn.relZ = node->z() - minZ;
+            cn.name = node->name();
+            cn.color = node->color();
             if (options.supports && node->support().isSupported())
             {
                 cn.hasSupport = true;
@@ -355,12 +363,53 @@ QString qFmtId(const char* what, int id) { return QString::fromStdString(fmtId(w
 
 /// Paire non ordonnée de nœuds
 std::pair<int, int> edge(int a, int b) { return a < b ? std::make_pair(a, b) : std::make_pair(b, a); }
+
+std::vector<gp_Pnt> nodePoints(const Model& model, const std::vector<int>& ids)
+{
+    std::vector<gp_Pnt> points;
+    for (int id : ids)
+        if (const Node* n = model.getNode(id)) points.emplace_back(n->x(), n->y(), n->z());
+    return points;
+}
+
+TSA::Mesh::PlaneFrame frameThrough(const std::vector<gp_Pnt>& points)
+{
+    std::vector<TSA::Mesh::P3> corners;
+    for (const gp_Pnt& p : points) corners.push_back({ p.X(), p.Y(), p.Z() });
+    return TSA::Mesh::slabFrame(corners);
+}
+
+gp_Dir normalOf(const TSA::Mesh::PlaneFrame& frame)
+{
+    return frame.N.norm() > 0.5 ? gp_Dir(frame.N.x, frame.N.y, frame.N.z) : gp_Dir(0.0, 0.0, 1.0);
+}
 } // namespace
+
+gp_Pnt StructuralClipboard::sourcePoint(int nodeId) const
+{
+    // m_nodes est trié par identifiant source (copyFrom parcourt un ensemble ordonné)
+    auto it = std::lower_bound(m_nodes.begin(), m_nodes.end(), nodeId, [](const ClipboardNode& n, int id) { return n.originalId < id; });
+    return it != m_nodes.end() && it->originalId == nodeId ? gp_Pnt(m_refOriginX + it->relX, m_refOriginY + it->relY, m_refOriginZ + it->relZ)
+                                                           : gp_Pnt(m_refOriginX, m_refOriginY, m_refOriginZ);
+}
+
+std::vector<gp_Pnt> StructuralClipboard::sourcePoints(const std::vector<int>& nodeIds) const
+{
+    std::vector<gp_Pnt> points;
+    for (int id : nodeIds) points.push_back(sourcePoint(id));
+    return points;
+}
 
 PastePlan StructuralClipboard::analyzePaste(const Model& model, double targetX, double targetY, double targetZ, const PasteOptions& options) const
 {
+    return analyze(model, [=](double x, double y, double z) { return gp_Pnt(targetX + x, targetY + y, targetZ + z); }, options);
+}
+
+PastePlan StructuralClipboard::analyze(const Model& model, const Placement& place, const PasteOptions& options) const
+{
     PastePlan plan;
     if (!hasData()) return plan;
+    plan.merges = options.fixedNodes;
     if (options.merge == NodeMergeMode::MergeCoincident)
     {
         if (!(options.tolerance > 0.0) || !std::isfinite(options.tolerance))
@@ -373,7 +422,8 @@ PastePlan StructuralClipboard::analyzePaste(const Model& model, double targetX, 
         for (const auto& cn : m_nodes)
         {
             double d = 0.0;
-            const int target = grid.nearest(targetX + cn.relX, targetY + cn.relY, targetZ + cn.relZ, &d);
+            const gp_Pnt p = place(cn.relX, cn.relY, cn.relZ);
+            const int target = grid.nearest(p.X(), p.Y(), p.Z(), &d);
             if (!target) continue;
             const Node* existing = model.getNode(target);
             const SupportDefinition copied = cn.hasSupport ? cn.support : SupportDefinition::free();
@@ -490,11 +540,22 @@ PastePlan StructuralClipboard::analyzePaste(const Model& model, double targetX, 
 
 PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double targetY, double targetZ, const PasteOptions& options) const
 {
+    return paste(model, [=](double x, double y, double z) { return gp_Pnt(targetX + x, targetY + y, targetZ + z); }, nullptr, options);
+}
+
+PasteResult StructuralClipboard::pasteImage(Model& model, const gp_Trsf& trsf, const PasteOptions& options) const
+{
+    const double ox = m_refOriginX, oy = m_refOriginY, oz = m_refOriginZ;
+    return paste(model, [=](double x, double y, double z) { return gp_Pnt(ox + x, oy + y, oz + z).Transformed(trsf); }, isTranslation(trsf) ? nullptr : &trsf, options);
+}
+
+PasteResult StructuralClipboard::paste(Model& model, const Placement& place, const gp_Trsf* image, const PasteOptions& options) const
+{
     PasteResult result;
     if (!hasData())
         return result;
 
-    const PastePlan plan = analyzePaste(model, targetX, targetY, targetZ, options);
+    const PastePlan plan = analyze(model, place, options);
     result.warnings = plan.warnings;
     if (plan.blocked() || plan.needsDecision())
     {
@@ -528,6 +589,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
 
     auto& nodeMap = result.nodeMap;
     auto& pasted = result.elementMap;   // original → collé
+    std::set<std::pair<ElementKind, int>> notPasted = skip;   // doublons, images impossibles : leurs charges ne sont pas copiées
     auto fail = [&result](const std::string& what) {
         result.complete = false;
         if (result.error.empty()) result.error = what;
@@ -552,19 +614,18 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             result.mergedNodeIds.push_back(m->second);
             continue;
         }
-        double nx = targetX + cn.relX;
-        double ny = targetY + cn.relY;
-        double nz = targetZ + cn.relZ;
-        int newNId = model.addNode(nx, ny, nz);
+        const gp_Pnt position = place(cn.relX, cn.relY, cn.relZ);
+        int newNId = model.addNode(position.X(), position.Y(), position.Z(), "", cn.name);
         if (newNId <= 0)
         {
             fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "nœud"), cn.originalId));
             continue;
         }
-        if (cn.hasSupport)
+        if (cn.hasSupport || !cn.color.empty())
             if (auto* n = model.getNode(newNId))
             {
-                n->setSupport(cn.support);
+                if (cn.hasSupport) n->setSupport(cn.support);
+                n->setColor(cn.color);
                 model.notifyNodeModified(newNId);
             }
         nodeMap[cn.originalId] = newNId;
@@ -604,6 +665,11 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
                 fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "poteau"), cc.originalId));
                 continue;
             }
+            if (auto* c = model.getColumn(cId); c && !p.color.empty())
+            {
+                c->setColor(p.color);
+                model.notifyColumnModified(cId);
+            }
             result.columnIds.push_back(cId);
             pasted[{ ElementKind::Column, cc.originalId }] = { ElementKind::Column, cId };
         }
@@ -612,9 +678,11 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
     for (const auto& cs : m_slabs)
     {
         if (skipped(ElementKind::Slab, cs.originalId)) continue;
+        const bool mirrored = image && reflects(*image);
+        const std::vector<int> contour = mirrored ? mirroredContour(cs.originalNodeIds) : cs.originalNodeIds;
         std::vector<int> sNodes;
-        sNodes.reserve(cs.originalNodeIds.size());
-        for (int onid : cs.originalNodeIds)
+        sNodes.reserve(contour.size());
+        for (int onid : contour)
         {
             auto it = nodeMap.find(onid);
             if (it != nodeMap.end())
@@ -638,6 +706,18 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
                 s->setMaterial(cs.material);
             s->setId(sId);
             s->setNodeIds(sNodes);
+            if (mirrored)
+            {
+                // Contour inversé : ouvertures et bords suivis dans le repère local de la copie
+                const SurfacePointMap map = surfacePointMap(frameThrough(sourcePoints(cs.originalNodeIds)), frameThrough(nodePoints(model, sNodes)), *image);
+                std::vector<SlabOpening> openings = s->openings();
+                for (auto& o : openings)
+                    for (auto& p : o.polygon) p = map(p.first, p.second);
+                s->setOpenings(openings);
+                std::vector<SurfaceEdgeSupport> edges = s->edgeSupports();
+                for (auto& e : edges) e.edge = mirroredEdge(e.edge, static_cast<int>(sNodes.size()));
+                s->setEdgeSupports(edges);
+            }
             model.notifySlabModified(sId);   // vue créée à l'ajout avec le matériau par défaut
         }
         result.slabIds.push_back(sId);
@@ -646,6 +726,16 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
     for (const auto& cw : m_walls)
     {
         if (skipped(ElementKind::Wall, cw.originalId)) continue;
+        if (image && !keepsVertical(*image))
+        {
+            // Un voile monte selon +Z depuis ses nœuds de base : il ne peut pas être incliné ni retourné
+            result.warnings.push_back(
+                QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 non copié : son image ne serait plus verticale")
+                    .arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "voile"), cw.originalId))
+                    .toStdString());
+            notPasted.insert({ ElementKind::Wall, cw.originalId });
+            continue;
+        }
         auto itS = nodeMap.find(cw.originalStartNodeId);
         auto itE = nodeMap.find(cw.originalEndNodeId);
         const int wId = itS != nodeMap.end() && itE != nodeMap.end() ? model.addWall(itS->second, itE->second, cw.wall.height(), cw.wall.thickness(), cw.wall.name()) : -1;
@@ -660,6 +750,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             w->setId(wId);
             w->setStartNodeId(itS->second);
             w->setEndNodeId(itE->second);
+            if (image && reflects(*image)) w->setOffset(-w->offset());   // la normale de la copie est opposée à l'image de la normale
             model.notifyWallModified(wId);
         }
         result.wallIds.push_back(wId);
@@ -725,6 +816,11 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         if (skipped(ElementKind::Foundation, cf.originalId)) continue;
         auto itN = nodeMap.find(cf.originalNodeId);
         const Foundation& f0 = cf.foundation;
+        if (image && !reflects(*image) && std::abs(f0.widthA() - f0.lengthB()) > 1e-9)
+            result.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
+                                                                  "%1 : semelle non carrée, son orientation reste celle des axes globaux")
+                                          .arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "fondation"), cf.originalId))
+                                          .toStdString());
         const int fId = itN != nodeMap.end() ? model.addFoundation(itN->second, f0.widthA(), f0.lengthB(), f0.heightH(), f0.name(), f0.foundationType()) : -1;
         if (fId <= 0)
         {
@@ -751,13 +847,16 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
     // Cotations : ancrages associés remappés sur les nœuds collés, points figés et position translatés
     if (!m_dimensions.empty())
     {
-        const double dx = targetX - m_refOriginX, dy = targetY - m_refOriginY, dz = targetZ - m_refOriginZ;
+        auto moved = [&](const std::array<double, 3>& p) {
+            const gp_Pnt q = place(p[0] - m_refOriginX, p[1] - m_refOriginY, p[2] - m_refOriginZ);
+            return std::array<double, 3> { q.X(), q.Y(), q.Z() };
+        };
         auto& set = model.dimensionsForEdit();
         for (TSA::Annotation::Dimension d : m_dimensions)
         {
             for (auto& a : d.anchors)
             {
-                a.point = { a.point[0] + dx, a.point[1] + dy, a.point[2] + dz };
+                a.point = moved(a.point);
                 if (a.nodeId > 0)
                 {
                     auto it = nodeMap.find(a.nodeId);
@@ -766,12 +865,51 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
                 }
                 a.orphaned = false;
             }
-            d.position = { d.position[0] + dx, d.position[1] + dy, d.position[2] + dz };
+            d.position = moved(d.position);
             d.id = set.nextId++;
             set.items[d.id] = d;
             result.dimensionIds.push_back(d.id);
         }
         model.notifyDimensionsChanged(result.dimensionIds);
+    }
+
+    pasteLoads(model, image, plan, options, notPasted, result);
+
+    // Métadonnées BIM : un produit par produit source, éléments dans l'ordre de l'axe (BUG-029)
+    if (!pasted.empty() && !m_bimProducts.empty())
+    {
+        std::vector<std::pair<TSA::BIM::PhysicalElement, std::vector<TSA::BIM::AnalyticalRef>>> groups;
+        for (const auto& product : m_bimProducts)
+        {
+            std::vector<TSA::BIM::AnalyticalRef> refs;
+            for (const auto& r : product.analytical)
+                if (auto it = pasted.find(r); it != pasted.end()) refs.push_back(it->second);
+            if (!refs.empty()) groups.emplace_back(product, std::move(refs));
+        }
+        model.bimForEdit().registerPasted(groups);
+    }
+
+    return result;
+}
+
+void StructuralClipboard::pasteLoads(Model& model, const gp_Trsf* image, const PastePlan& plan, const PasteOptions& options,
+                                     const std::set<std::pair<ElementKind, int>>& skip, PasteResult& result) const
+{
+    const auto& nodeMap = result.nodeMap;
+    const auto& pasted = result.elementMap;
+    auto skipped = [&](ElementKind fam, int id) { return skip.count({ fam, id }) > 0; };
+    auto fail = [&result](const std::string& what) {
+        result.complete = false;
+        if (result.error.empty()) result.error = what;
+    };
+    if (image && !keepsVertical(*image) && (!m_memberLoads.empty() || !m_surfaceLoads.empty()))
+    {
+        const bool gravity = std::any_of(m_memberLoads.begin(), m_memberLoads.end(), [](const MemberLoad& l) { return l.direction() == LoadDirection::Gravity; }) ||
+                             std::any_of(m_surfaceLoads.begin(), m_surfaceLoads.end(), [](const SurfaceLoad& l) { return l.direction == SurfaceLoadDirection::Gravity; });
+        if (gravity)
+            result.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
+                                                                  "les charges de gravité restent verticales sur la copie, contrairement à la structure copiée")
+                                          .toStdString());
     }
 
     // Charges : cas de charge rapprochés par nom et catégorie dans le projet cible, créés s'ils n'existent pas
@@ -791,6 +929,8 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
                     break;
                 }
             }
+            // Même projet : le cas d'origine lui-même, même si d'autres cas portent le même nom
+            if (const auto* same = lm.getLoadCase(srcId); same && same->name() == lc.name() && same->category() == lc.category()) target = srcId;
             if (target == 0 && nameTaken)
             {
                 // Copie renommée lors d'un collage précédent (« Q (copie) », « Q (copie 2) ») de même catégorie : réutilisée
@@ -834,12 +974,14 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         };
         for (NodalLoad nl : m_nodalLoads)
         {
+            if (options.fixedNodes.count(nl.nodeId())) continue;
             auto it = nodeMap.find(nl.nodeId());
             if (it == nodeMap.end() || caseOf(nl.loadCaseId()) == 0)
             {
                 fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "charge nodale"), nl.id()));
                 continue;
             }
+            if (image) nl = nodalLoadImage(nl, *image);
             nl.setId(0);
             nl.setNodeId(it->second);
             nl.setLoadCaseId(caseOf(nl.loadCaseId()));
@@ -855,6 +997,35 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             case MemberTargetType::Cable: return ElementKind::Cable;
             default: return ElementKind::Beam;
             }
+        };
+        // Barre source d'une charge : ses extrémités, sa rotation (les barres sans orientation de section : 0)
+        struct SourceBar
+        {
+            int start = 0, end = 0;
+            double rotation = 0.0;
+        };
+        auto findBar = [](const auto& bars, int id, auto rotationOf) {
+            for (const auto& b : bars)
+                if (b.originalId == id) return SourceBar { b.originalStartNodeId, b.originalEndNodeId, rotationOf(b) };
+            return SourceBar {};
+        };
+        auto sourceBar = [&](const MemberLoad& ml) {
+            auto barRotation = [](const auto& b) { return b.props.rotation; };
+            auto noRotation = [](const auto&) { return 0.0; };
+            switch (ml.targetType())
+            {
+            case MemberTargetType::Column: return findBar(m_columns, ml.elementId(), barRotation);
+            case MemberTargetType::Truss: return findBar(m_trusses, ml.elementId(), noRotation);
+            case MemberTargetType::Cable: return findBar(m_cables, ml.elementId(), noRotation);
+            default: return findBar(m_beams, ml.elementId(), barRotation);
+            }
+        };
+        auto memberImages = [&](const MemberLoad& ml, const SourceBar& bar) {
+            using TSA::Coordinate::CoordinateTransformationService;
+            const std::vector<gp_Pnt> ends = nodePoints(model, { nodeMap.at(bar.start), nodeMap.at(bar.end) });
+            const gp_Ax3 from = CoordinateTransformationService::computeElementLocalFrame(sourcePoint(bar.start), sourcePoint(bar.end), bar.rotation);
+            const gp_Ax3 to = CoordinateTransformationService::computeElementLocalFrame(ends[0], ends[1], bar.rotation);
+            return memberLoadImage(ml, *image, from, to);
         };
         for (MemberLoad ml : m_memberLoads)
         {
@@ -872,13 +1043,41 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
                 fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "charge sur barre"), ml.id()));
                 continue;
             }
+            const SourceBar bar = sourceBar(ml);
             ml.setId(0);
             ml.setElementId(it->second.id);
             ml.setLoadCaseId(caseOf(ml.loadCaseId()));
-            const int id = lm.addMemberLoad(ml);
-            result.memberLoadIds.push_back(id);
-            model.notifyMemberLoadAdded(id);
+            for (const MemberLoad& part : image ? memberImages(ml, bar) : std::vector<MemberLoad> { ml })
+            {
+                const int id = lm.addMemberLoad(part);
+                result.memberLoadIds.push_back(id);
+                model.notifyMemberLoadAdded(id);
+            }
         }
+        auto surfaceImages = [&](const SurfaceLoad& sl, ElementKind kind, int sourceSurface) {
+            const bool mirrored = reflects(*image);
+            if (kind == ElementKind::Wall)
+            {
+                // Repère d'un voile : U le long de la base, V = +Z. Son image garde (u, v) ; une symétrie oppose sa normale.
+                gp_Dir normal(0.0, 0.0, 1.0);
+                for (const auto& w : m_walls)
+                    if (w.originalId == sourceSurface)
+                    {
+                        const gp_Vec along(sourcePoint(w.originalStartNodeId), sourcePoint(w.originalEndNodeId));
+                        normal = gp_Dir(along.Y(), -along.X(), 0.0);
+                    }
+                return surfaceLoadImage(sl, *image, SurfacePointMap {}, normal, mirrored);
+            }
+            for (const auto& cs : m_slabs)
+                if (cs.originalId == sourceSurface)
+                {
+                    const TSA::Mesh::PlaneFrame from = frameThrough(sourcePoints(cs.originalNodeIds));
+                    const Slab* copy = model.getSlab(sl.surfaceId);
+                    const SurfacePointMap map = mirrored && copy ? surfacePointMap(from, frameThrough(nodePoints(model, copy->nodeIds())), *image) : SurfacePointMap {};
+                    return surfaceLoadImage(sl, *image, map, normalOf(from), false);
+                }
+            return std::vector<SurfaceLoad> { sl };
+        };
         for (SurfaceLoad sl : m_surfaceLoads)
         {
             const ElementKind kind = sl.targetKind == SurfaceTargetKind::Slab ? ElementKind::Slab : ElementKind::Wall;
@@ -886,7 +1085,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             if (it == pasted.end() && skipped(kind, sl.surfaceId))
             {
                 result.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
-                                                                      "charge surfacique %1 non collée : sa surface, en double, n'a pas été collée")
+                                                                      "charge surfacique %1 non collée : sa surface n'a pas été collée")
                                               .arg(sl.id)
                                               .toStdString());
                 continue;
@@ -896,14 +1095,17 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
                 fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "charge surfacique"), sl.id));
                 continue;
             }
+            const int sourceSurface = sl.surfaceId;
             sl.id = 0;
             sl.surfaceId = it->second.id;
             sl.loadCaseId = caseOf(sl.loadCaseId);
-            result.surfaceLoadIds.push_back(lm.addSurfaceLoad(sl));
+            for (const SurfaceLoad& part : image ? surfaceImages(sl, kind, sourceSurface) : std::vector<SurfaceLoad> { sl })
+                result.surfaceLoadIds.push_back(lm.addSurfaceLoad(part));
         }
+        if (!m_surfaceLoads.empty()) model.notifySurfaceLoadsChanged();
         // Combinaisons : facteurs reportés sur les cas cibles. Une combinaison identique (même nom, même type, mêmes
         // facteurs) est réutilisée ; même nom mais contenu différent : renommée ; cas non résolu : non copiée.
-        const std::size_t mergedLoads = std::count_if(m_nodalLoads.begin(), m_nodalLoads.end(), [&](const NodalLoad& l) { return plan.merges.count(l.nodeId()) > 0; });
+        const std::size_t mergedLoads = std::count_if(m_nodalLoads.begin(), m_nodalLoads.end(), [&](const NodalLoad& l) { return plan.merges.count(l.nodeId()) > 0 && !options.fixedNodes.count(l.nodeId()); });
         if (mergedLoads > 0)
             result.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
                                                                   "%1 charge(s) nodale(s) ajoutée(s) à des nœuds existants (fusion) : elles s'ajoutent à leurs charges")
@@ -956,22 +1158,6 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             else fail(QCoreApplication::translate("TSA::Model::StructuralClipboard", "combinaison « %1 »").arg(QString::fromStdString(combo.name())).toStdString());
         }
     }
-
-    // Métadonnées BIM : un produit par produit source, éléments dans l'ordre de l'axe (BUG-029)
-    if (!pasted.empty() && !m_bimProducts.empty())
-    {
-        std::vector<std::pair<TSA::BIM::PhysicalElement, std::vector<TSA::BIM::AnalyticalRef>>> groups;
-        for (const auto& product : m_bimProducts)
-        {
-            std::vector<TSA::BIM::AnalyticalRef> refs;
-            for (const auto& r : product.analytical)
-                if (auto it = pasted.find(r); it != pasted.end()) refs.push_back(it->second);
-            if (!refs.empty()) groups.emplace_back(product, std::move(refs));
-        }
-        model.bimForEdit().registerPasted(groups);
-    }
-
-    return result;
 }
 
 std::string StructuralClipboard::validate() const

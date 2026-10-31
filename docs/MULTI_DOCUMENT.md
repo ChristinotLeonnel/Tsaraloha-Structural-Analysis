@@ -70,7 +70,7 @@ le contenu est une copie par valeur, sans référence vers ce projet.
 
 | Toujours | En option (Édition > Options du presse-papier, mémorisé) | Jamais |
 | :--- | :--- | :--- |
-| nœuds (positions relatives), poutres, poteaux, voiles, barres de treillis, câbles, dalles complètes (ouvertures, formulation, appuis linéaires), fondations sélectionnées (dimensions, matériau, portance), cotations sélectionnées, sections, matériaux, orientations, relâchements, métadonnées BIM (un produit par produit source) | appuis des nœuds (activé par défaut) ; charges nodales, sur barres et surfaciques des éléments copiés, avec leurs cas et les combinaisons pertinentes (désactivé par défaut) | résultats et réglages de calcul : le projet cible doit être recalculé |
+| nœuds (positions relatives), poutres, poteaux, voiles, barres de treillis, câbles, dalles complètes (ouvertures, formulation, appuis linéaires), fondations sélectionnées (dimensions, matériau, portance), cotations sélectionnées, sections, matériaux, orientations, relâchements, métadonnées BIM (un produit par produit source) | appuis des nœuds et charges nodales, sur barres et surfaciques des éléments copiés, avec leurs cas et les combinaisons pertinentes (activés par défaut) | résultats et réglages de calcul : le projet cible doit être recalculé |
 
 **Politique par type d'objet :**
 
@@ -78,8 +78,12 @@ le contenu est une copie par valeur, sans référence vers ce projet.
 | :--- | :--- |
 | Fondation | copiée si elle est sélectionnée ; son nœud porteur est copié avec elle |
 | Cotation (annotation) | copiée si elle est sélectionnée. Un ancrage sur un nœud copié est relié au nœud collé. Un ancrage sur un nœud non copié est figé à la position du nœud, puis translaté avec le collage. La cotation reste cohérente et n'a jamais de référence invalide. |
-| Cas de charge | rapproché par nom et catégorie. Une copie renommée lors d'un collage précédent (« Q (copie) ») est réutilisée. Sinon le cas est créé ; si un cas de même nom mais d'autre catégorie existe, il est créé sous « Q (copie) », avec un avertissement. |
+| Cas de charge | dans le même projet, le cas d'origine ; ailleurs, rapproché par nom et catégorie. Jamais dupliqué. Une copie renommée lors d'un collage précédent (« Q (copie) ») est réutilisée. Sinon le cas est créé ; si un cas de même nom mais d'autre catégorie existe, il est créé sous « Q (copie) », avec un avertissement. |
 | Combinaison | copiée si elle utilise au moins un cas des charges copiées ; ses autres cas sont emportés (sans charge) pour qu'elle reste complète. Une combinaison identique (même nom, type et facteurs) déjà présente est réutilisée. Une combinaison homonyme au contenu différent est copiée sous « ELU 1 (copie) », avec un avertissement. Une combinaison qui référence un cas absent du projet source n'est pas copiée : avertissement précis à la copie. |
+
+**Un seul moteur de copie.** Les outils Copier, Copie numérique, réseaux, rotation avec copie, Décaler et symétrie avec copie passent
+par `StructuralClipboard::pasteImage` et suivent les mêmes options. Une rotation ou une symétrie transforme aussi les charges
+(`src/Model/CopyTransform.*`) ; détail et limites : `docs/audit/2026-10-31/COPY_PASTE_AUDIT_AND_FIX_REPORT.md`.
 
 **Fusion des nœuds coïncidents** (Édition > Options du presse-papier) :
 - **Nœuds séparés** (défaut) : comportement historique, pour des modèles indépendants.

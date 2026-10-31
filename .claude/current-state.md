@@ -5,6 +5,11 @@ revues depuis le 2026-10-07 : voir l'audit du 2026-10-31 (TSA_CODE_QUALITY_AUDIT
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
+## Copier / Coller (2026-10-31, branche fix/copy-paste-complete, non commitée)
+Status: IMPLEMENTED — un seul moteur, StructuralClipboard : Ctrl+C / V et outils Copier, réseaux, rotation, Décaler, symétrie avec copie (pasteImage).
+Charges copiées par défaut (ClipboardOptions::loads, réglage Clipboard/copyLoads) ; rotation et symétrie : image des charges et des données de surface
+(CopyTransform). Rapport : docs/audit/2026-10-31/COPY_PASTE_AUDIT_AND_FIX_REPORT.md. Tests 549-557. Vérifié (Release) : 59/59 suites, 564 tests, TSALab 27/27, 104 fichiers d'empreinte identiques, banc 2 097/2 097. Non vérifié : vrai TSA.exe, Debug, Linux, fuites mémoire.
+
 ## Repères de la vue 3D (2026-10-31, branche feature/coordinate-axis-gizmos, fusionnée dans main)
 Status: IMPLEMENTED — trièdre global X, Y, Z à l'origine, indicateur d'angle et ViewCube aux mêmes couleurs, repères locaux x, y, z
 à la sélection (poutres, poteaux ; treillis et câbles : x seul ; dalles, voiles : repère de surface ; fondations, nœuds : rien),

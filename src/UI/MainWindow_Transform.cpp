@@ -88,6 +88,13 @@ void MainWindow::onActionCopyClipboard()
     sel.cables = m_selectionManager->selectedCables();
     sel.foundations = m_selectionManager->selectedFoundations();
     sel.dimensions = m_selectionManager->selectedDimensions();
+    if (sel.nodes.empty() && sel.beams.empty() && sel.columns.empty() && sel.slabs.empty() && sel.walls.empty() && sel.trusses.empty() && sel.cables.empty() &&
+        sel.foundations.empty() && sel.dimensions.empty())
+    {
+        // Charge seule : elle n'a de sens que sur son élément. Le contenu du presse-papier est conservé.
+        if (statusBar()) statusBar()->showMessage(tr("Presse-papier : une charge se copie avec son élément. Sélectionnez l'élément."), 4000);
+        return;
+    }
     TSA::Model::ClipboardOptions options;
     options.supports = !m_actionClipCopySupports || m_actionClipCopySupports->isChecked();
     options.loads = m_actionClipCopyLoads && m_actionClipCopyLoads->isChecked();

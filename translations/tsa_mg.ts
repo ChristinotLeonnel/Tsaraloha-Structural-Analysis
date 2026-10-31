@@ -6138,6 +6138,10 @@ Teboka hamarinina:
         <translation>Fitehirizana vonjimaika: tsy misy singa voafidy.</translation>
     </message>
     <message>
+        <source>Presse-papier : une charge se copie avec son élément. Sélectionnez l'élément.</source>
+        <translation>Fitehirizana vonjimaika: miaraka amin'ny singany no adika ny enta. Fidio ny singa.</translation>
+    </message>
+    <message>
         <source>Copie : %1</source>
         <translation>Fandikana: %1</translation>
     </message>
@@ -13134,8 +13138,20 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
         <translation>fihaonana</translation>
     </message>
     <message>
+        <source>%1 non copié : son image ne serait plus verticale</source>
+        <translation>%1 tsy nadika: tsy ho mitsangana intsony ny sariny</translation>
+    </message>
+    <message>
+        <source>%1 : semelle non carrée, son orientation reste celle des axes globaux</source>
+        <translation>%1: fototra tsy efamira, mifanaraka amin'ny tsipika ankapobeny foana ny fitodiany</translation>
+    </message>
+    <message>
         <source>élément sans ses nœuds</source>
         <translation>singa tsy misy ireo fihaonany</translation>
+    </message>
+    <message>
+        <source>les charges de gravité restent verticales sur la copie, contrairement à la structure copiée</source>
+        <translation>mitsangana foana ny entan'ny hery misintona eo amin'ny dika, tsy toy ny rafitra nadika</translation>
     </message>
     <message>
         <source>cas de charge « %1 » : un cas de même nom et d'autre catégorie existe ; créé sous le nom « %2 »</source>
@@ -13154,8 +13170,8 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
         <translation>entan'ny tsorakazo</translation>
     </message>
     <message>
-        <source>charge surfacique %1 non collée : sa surface, en double, n'a pas été collée</source>
-        <translation>enta mivelatra %1 tsy napetaka: tsy napetaka ny velarany, izay miverina indroa</translation>
+        <source>charge surfacique %1 non collée : sa surface n'a pas été collée</source>
+        <translation>enta mivelatra %1 tsy napetaka: tsy napetaka ny velarany</translation>
     </message>
     <message>
         <source>charge surfacique</source>

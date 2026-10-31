@@ -6,6 +6,12 @@ Last Updated: 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR
 
 Audit technique du 2026-10-31 : détail, reproduction et correction de BUG-148 à BUG-168 dans docs/audit/2026-10-31/TSA_BUG_REGISTER.md.
 
+## BUG-171
+Status: OPEN (MEDIUM, relu dans le code le 2026-10-31, non reproduit par un test) — symétrie sans copie (Model::mirrorElements, keepOriginal = false) :
+le contour de la dalle est inversé, mais ses ouvertures, appuis de bord et charges surfaciques en (u, v) ne sont pas convertis ; ils se retrouvent
+ailleurs sur la dalle. La copie miroir, elle, les convertit (CopyTransform.h). Correction : appliquer mirroredContour, surfacePointMap et surfaceLoadImage
+à ce chemin. Voir docs/audit/2026-10-31/COPY_PASTE_AUDIT_AND_FIX_REPORT.md § 6.
+
 ## BUG-170
 Status: OPEN (LOW, vu une fois le 2026-10-31, non reproduit) — suite `surfaces` : 12 tests réussis, ligne RESULTS écrite, puis processus
 bloqué jusqu'au délai de 600 s (DÉLAI DÉPASSÉ, 622 s au lieu de 10 s), sur le bureau masqué, branche feature/coordinate-axis-gizmos. Blocage à
