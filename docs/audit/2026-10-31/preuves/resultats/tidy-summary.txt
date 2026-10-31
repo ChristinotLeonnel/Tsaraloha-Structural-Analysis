@@ -1,0 +1,49 @@
+fichiers 166 erreurs de compilation clang 12 délais 0 avertissements uniques dans src/ 110
+    57 bugprone-exception-escape
+    26 bugprone-throwing-static-initialization,cert-err58-cpp
+    12 bugprone-empty-catch
+     4 clang-analyzer-core.NonNullParamChecker
+     3 clang-analyzer-security.FloatLoopCounter
+     3 bugprone-float-loop-counter
+     2 bugprone-assignment-in-if-condition
+     1 performance-unnecessary-copy-initialization
+     1 bugprone-unchecked-string-to-number-conversion
+     1 bugprone-misplaced-widening-cast
+
+--- détail (hors exception-escape et incorrect-roundings)
+bugprone-misplaced-widening-cast             src/Viewer/WorkPlaneGrid.cpp:73 either cast from 'int' to 'size_t' (aka 'unsigned long long') is ineffective, or there is loss o
+bugprone-throwing-static-initialization,cert src/Analysis/ResultsExport.cpp:18 initialization of 'kElementDofLabels' with static storage duration may throw an exception that c
+bugprone-throwing-static-initialization,cert src/ExtensionSystem/LibraryRegistry.cpp:331 initialization of 'kInstalledCatalogsProvided' with static storage duration may throw an excepti
+bugprone-throwing-static-initialization,cert src/IO/TSAFile.cpp:263 initialization of 'kUndoContentEncoderProvided' with static storage duration may throw an except
+bugprone-throwing-static-initialization,cert src/Mesh/MeshDisplayModel.cpp:30 initialization of 'kLine' with static storage duration may throw an exception that cannot be cau
+bugprone-throwing-static-initialization,cert src/Mesh/MeshDisplayModel.cpp:31 initialization of 'kTri' with static storage duration may throw an exception that cannot be caug
+bugprone-throwing-static-initialization,cert src/Mesh/MeshDisplayModel.cpp:32 initialization of 'kQuad' with static storage duration may throw an exception that cannot be cau
+bugprone-throwing-static-initialization,cert src/Mesh/MeshDisplayModel.cpp:33 initialization of 'kTet' with static storage duration may throw an exception that cannot be caug
+bugprone-throwing-static-initialization,cert src/Mesh/MeshDisplayModel.cpp:34 initialization of 'kHex' with static storage duration may throw an exception that cannot be caug
+bugprone-throwing-static-initialization,cert src/Mesh/MeshDisplayModel.cpp:36 initialization of 'kTetFaces' with static storage duration may throw an exception that cannot be
+bugprone-throwing-static-initialization,cert src/Mesh/MeshDisplayModel.cpp:37 initialization of 'kHexFaces' with static storage duration may throw an exception that cannot be
+bugprone-throwing-static-initialization,cert src/Mesh/MeshProject.cpp:31 initialization of 'kFineness' with static storage duration may throw an exception that cannot be
+bugprone-throwing-static-initialization,cert src/Mesh/MeshProject.cpp:32 initialization of 'kDistribution' with static storage duration may throw an exception that canno
+bugprone-throwing-static-initialization,cert src/Mesh/MeshProject.cpp:48 initialization of 'kAlgo2D' with static storage duration may throw an exception that cannot be c
+bugprone-throwing-static-initialization,cert src/Mesh/MeshProject.cpp:55 initialization of 'kAlgo3D' with static storage duration may throw an exception that cannot be c
+bugprone-throwing-static-initialization,cert src/Mesh/MeshProject.cpp:56 initialization of 'kRecomb' with static storage duration may throw an exception that cannot be c
+bugprone-throwing-static-initialization,cert src/Mesh/MeshProject.cpp:60 initialization of 'kVolume' with static storage duration may throw an exception that cannot be c
+bugprone-throwing-static-initialization,cert src/Mesh/MeshProject.cpp:61 initialization of 'kShape' with static storage duration may throw an exception that cannot be ca
+bugprone-throwing-static-initialization,cert src/Mesh/MeshProject.cpp:62 initialization of 'kZoneKind' with static storage duration may throw an exception that cannot be
+bugprone-throwing-static-initialization,cert src/Mesh/MeshProject.cpp:63 initialization of 'kFeType' with static storage duration may throw an exception that cannot be c
+bugprone-throwing-static-initialization,cert src/Viewer/MeshVisual.cpp:104 initialization of 'kGenerated' with static storage duration may throw an exception that cannot b
+bugprone-throwing-static-initialization,cert src/Viewer/MeshVisual.cpp:105 initialization of 'kPreview' with static storage duration may throw an exception that cannot be 
+bugprone-throwing-static-initialization,cert src/Viewer/MeshVisual.cpp:106 initialization of 'kFace' with static storage duration may throw an exception that cannot be cau
+bugprone-throwing-static-initialization,cert src/Viewer/MeshVisual.cpp:107 initialization of 'kPoor' with static storage duration may throw an exception that cannot be cau
+bugprone-throwing-static-initialization,cert src/Viewer/MeshVisual.cpp:108 initialization of 'kHighlight' with static storage duration may throw an exception that cannot b
+bugprone-throwing-static-initialization,cert src/Viewer/MeshVisual.cpp:109 initialization of 'kNoValue' with static storage duration may throw an exception that cannot be 
+bugprone-throwing-static-initialization,cert src/Viewer/MeshVisual.cpp:110 initialization of 'kGhost' with static storage duration may throw an exception that cannot be ca
+bugprone-unchecked-string-to-number-conversi src/Mesh/Solvers/OpenSeesMeshAdapter.cpp:24 'atoi' used to convert a string to an integer value, but function will not report conversion err
+clang-analyzer-core.NonNullParamChecker      src/AI/Tools/AIToolRegistry.cpp:280 Forming reference to null pointer
+clang-analyzer-core.NonNullParamChecker      src/AI/Tools/AIToolRegistry.cpp:282 Forming reference to null pointer
+clang-analyzer-core.NonNullParamChecker      src/AI/Tools/AIToolRegistry.cpp:291 Forming reference to null pointer
+clang-analyzer-core.NonNullParamChecker      src/BIM/Core/BimModel.cpp:605 Forming reference to null pointer
+clang-analyzer-security.FloatLoopCounter     src/Viewer/OccView_Shapes.cpp:2824 Variable 'u' with floating point type 'double' should not be used as a loop counter
+clang-analyzer-security.FloatLoopCounter     src/Viewer/OccView_Shapes.cpp:2825 Variable 'v' with floating point type 'double' should not be used as a loop counter
+clang-analyzer-security.FloatLoopCounter     src/Viewer/WorkPlaneGrid.cpp:24 Variable 'decade' with floating point type 'double' should not be used as a loop counter
+lignes 35

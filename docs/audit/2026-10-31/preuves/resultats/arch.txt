@@ -1,0 +1,54 @@
+--- preuves des arêtes montantes (sens interdit par AGENTS.md / architecture.md)
+Model -> ExtensionSystem     n=  2  Model/MaterialLibrary.cpp -> ExtensionSystem/LibraryRegistry.h
+Model -> UndoRedo            n=  4  Model/Model.cpp -> UndoRedo/UndoManager.h
+UndoRedo -> Commands         n=  1  UndoRedo/CommandManager.h -> Commands/ICommand.h
+Model -> BIM                 n=  2  Model/Model.h -> BIM/Core/BimModel.h
+Model -> Grid                n=  1  Model/Model_Snapshots.cpp -> Grid/GridManager.h
+Model -> Annotation          n=  2  Model/Model.h -> Annotation/Dimension.h
+Grid -> Viewer               n=  2  Grid/GridLabelRenderer.cpp -> Viewer/AnnotationStyle.h
+Viewer -> UI                 n=  2  Viewer/OccView.cpp -> UI/Theme/ThemeManager.h
+Viewer -> Commands           n=  2  Viewer/OccView.cpp -> Commands/ModifyCommands.h
+Viewer -> NDC                n=  1  Viewer/ResultsVisualManager.cpp -> NDC/ResultAnalyzer.h
+Viewer -> App                n=  2  Viewer/OccView_Events.cpp -> App/ProductInfo.h
+Analysis -> AI               n=  1  Analysis/OpenSeesManager.cpp -> AI/Models/ModelManager.h
+Analysis -> Standards        n=  2  Analysis/OpenSeesSolver.cpp -> Standards/ModelValidator.h
+Standards -> Analysis        n=  4  Standards/ModelValidator.cpp -> Analysis/CalculationSnapshot.h
+Analysis -> App              n=  1  Analysis/OpenSeesManager.cpp -> App/ProductInfo.h
+IO -> App                    n=  2  IO/TSAPreviewGenerator.cpp -> App/ProductInfo.h
+IO -> Analysis               n=  1  IO/Tsa3d/Tsa3dExport.cpp -> Analysis/ResultsModel.h
+IO -> Standards              n=  1  IO/TSAFile.cpp -> Standards/ModelValidator.h
+App -> UI                    n=  2  App/Application.cpp -> UI/Shell/AppShell.h
+Automation -> AI             n=  3  Automation/AutomationServer.cpp -> AI/Operator/AIOperator.h
+AI -> Automation             n=  2  AI/Operator/AIOperator.cpp -> Automation/CommandRegistry.h
+Automation -> Blueprint      n=  1  Automation/AutomationServer.cpp -> Blueprint/BlueprintScript.h
+Blueprint -> Automation      n=  2  Blueprint/BlueprintScript.cpp -> Automation/CommandRegistry.h
+Topology -> Analysis         n=  1  Topology/TopologyNumberingService.cpp -> Analysis/CalculationSnapshot.h
+BIM -> Mesh                  n=  1  BIM/IFC/IfcExporter.cpp -> Mesh/MeshGeometry.h
+Mesh -> Analysis             n=  4  Mesh/MeshResultField.cpp -> Analysis/LoadResolver.h
+Coordinate -> Model          n=  1  Coordinate/CoordinateSystem.cpp -> Model/Model.h
+Diagnostics -> Model         n=  1  Diagnostics/DiagnosticReport.cpp -> Model/Model.h
+NDC -> App                   n=  7  NDC/NDCDocumentModel.cpp -> App/ProductInfo.h
+Reports -> App               n=  1  Reports/ReportDataBuilder.cpp -> App/ProductInfo.h
+Platform -> App              n=  1  Platform/WindowsAssociation.cpp -> App/ProductInfo.h
+
+--- cycles d'inclusion entre EN-TÊTES : 0
+
+--- court-circuits interface → solveur / fichier / OCCT
+UI→solveur : UI/MainWindow.cpp #include "../Analysis/OpenSeesSolver.h"
+UI→solveur : UI/MainWindow.cpp #include "../Analysis/OpenSeesManager.h"
+UI→solveur : UI/MainWindow_Tools.cpp #include "../Analysis/OpenSeesSolver.h"
+UI→solveur : UI/MainWindow_Tools.cpp #include "../Analysis/OpenSeesManager.h"
+UI→fichier : UI/MainWindow.cpp #include "../IO/TSAFile.h"
+UI→OCCT direct : 9 inclusions dans 8 fichiers ; principaux : [('UI/MainWindow.h', 2), ('UI/Dialogs/BarCreationDialog.h', 1), ('UI/Dialogs/CableCreationDialog.h', 1), ('UI/Dialogs/GridAdvancedSettingsDialog.h', 1), ('UI/Dialogs/NewNodeDialog.h', 1), ('UI/Dialogs/NodeSelectionDialog.h', 1), ('UI/Dialogs/SurfaceCreationDialog.h', 1), ('UI/Widgets/PointSelector.h', 1)]
+pushUndoState dans UI : 0
+mentions OpenSeesSolver/Manager dans UI : [('UI/MainWindow.cpp', 2), ('UI/MainWindow.h', 2), ('UI/MainWindow_Tools.cpp', 1)]
+widgets dans Analysis : []
+
+--- fuites de QtWidgets hors UI (couche modèle), en-tête direct ou Qt GUI
+Model/         {}
+Analysis/      {}
+IO/            {'#include <QImage>': 2, '#include <QPainter>': 1, '#include <QGuiApplication>': 1}
+Coordinate/    {'#include <QColor>': 1}
+Commands/      {}
+UndoRedo/      {}
+BIM/Core/      {}

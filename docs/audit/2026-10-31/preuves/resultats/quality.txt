@@ -1,0 +1,112 @@
+fonctions analysées : 6324
+CC > 50 : 45  CC > 25 : 181  corps > 200 lignes : 49  corps > 400 lignes : 11
+--- 25 fonctions les plus complexes (CC approchée, lignes, nom, fichier:ligne)
+  217   493 MainWindow::createDockWindows                    UI/MainWindow_Actions.cpp:1726
+  196   679 OpenSeesMeshAdapter::check                       Mesh/Solvers/OpenSeesMeshAdapter.cpp:100
+  191   177 connect                                          UI/MainWindow_Actions.cpp:1973
+  144   852 NDCGenerator::generate                           NDC/NDCGenerator.cpp:104
+  135   484 StructuralClipboard::pasteTo                     Model/StructuralClipboard.cpp:490
+  134   382 analyzeMesh                                      Mesh/MeshQuality.cpp:54
+  123   411 securityRules                                    Templates/TemplatePackage.cpp:51
+  114   318 validate                                         IO/Tsa3d/Tsa3dValidate.cpp:134
+  111   366 TSAFileReader::parsePayload                      IO/TSAFile.cpp:914
+   99   171 OccView::updateElementIsolation                  Viewer/OccView_Navigation.cpp:1568
+   98   229 StructuralChecker::check                         AI/Checker/StructuralChecker.cpp:96
+   91   376 importDocument                                   IO/Tsa3d/Tsa3dImport.cpp:98
+   85   361 OccView::mousePressEvent                         Viewer/OccView_Events.cpp:39
+   83   449 registerBuiltInCommands                          Automation/CommandRegistry.cpp:318
+   83   276 ModelValidator::validateForAnalysis              Standards/ModelValidator.cpp:371
+   82   351 TSAFileWriter::saveToFile                        IO/TSAFile.cpp:270
+   82   253 GridDefinition::fromLegacyJson                   Grid/GridDefinition.cpp:760
+   79    97 ReportConfiguration::fromJson                    NDC/ReportConfiguration.cpp:99
+   78   213 StructuralClipboard::copyFrom                    Model/StructuralClipboard.cpp:85
+   77   151 transfinite                                      Mesh/Gmsh/GmshMeshEngine.cpp:580
+   75   241 exportModel                                      IO/Tsa3d/Tsa3dExport.cpp:166
+   74   174 ResultsModelMeshAdapter::extract                 Mesh/MeshResultField.cpp:47
+   70   135 extract                                          Validation/BenchmarkSuite.cpp:635
+   67   310 OccView::mouseMoveEvent                          Viewer/OccView_Events.cpp:619
+   66   246 OpenSeesResultsReader::readResults               Analysis/OpenSeesResultsReader.cpp:448
+--- 12 fonctions les plus longues
+  946    11 MainWindow::createActions                        UI/MainWindow_Actions.cpp:79
+  852   144 NDCGenerator::generate                           NDC/NDCGenerator.cpp:104
+  767     3 ThemeManager::applyApplicationTheme              UI/Theme/ThemeManager.cpp:34
+  679   196 OpenSeesMeshAdapter::check                       Mesh/Solvers/OpenSeesMeshAdapter.cpp:100
+  573     1 CommandCatalog::initializeStandardCatalog        Commands/CommandCatalog.cpp:63
+  493   217 MainWindow::createDockWindows                    UI/MainWindow_Actions.cpp:1726
+  484   135 StructuralClipboard::pasteTo                     Model/StructuralClipboard.cpp:490
+  449    83 registerBuiltInCommands                          Automation/CommandRegistry.cpp:318
+  445    58 MainWindow::createMenus                          UI/MainWindow_Actions.cpp:1027
+  417     1 CableStandardsRegistry::initializeOfficialStanda Model/Cable/CableStandards.cpp:18
+  411   123 securityRules                                    Templates/TemplatePackage.cpp:51
+  382   134 analyzeMesh                                      Mesh/MeshQuality.cpp:54
+--- classes : nombre de méthodes déclarées (en-têtes)
+  473 méthodes  211 membres  OccView                        Viewer/OccView.h
+  296 méthodes  334 membres  MainWindow                     UI/MainWindow.h
+  165 méthodes   75 membres  Model                          Model/Model.h
+  139 méthodes   55 membres  SelectionManager               Viewer/SelectionManager.h
+   88 méthodes   54 membres  WorkPlane                      Coordinate/WorkPlane.h
+   87 méthodes   62 membres  BlueprintEditor                UI/Blueprint/BlueprintEditor.h
+   85 méthodes   82 membres  GridDefinition                 Grid/GridDefinition.h
+   85 méthodes   28 membres  ModelTreeWidget                UI/ModelTree/ModelTreeWidget.h
+   74 méthodes   57 membres  ResultsVisualManager           Viewer/ResultsVisualManager.h
+   70 méthodes   47 membres  AIOrchestrator                 AI/Core/AIOrchestrator.h
+   69 méthodes   68 membres  ResultsModel                   Analysis/ResultsModel.h
+   63 méthodes   49 membres  Cable                          Model/Cable/Cable.h
+--- duplication : 171 fenêtres de 12 lignes répétées, 982 positions concernées
+   29 UI/Properties/BeamPropertiesView.cpp  <->  UI/Properties/ColumnPropertiesView.cpp
+   11 UI/Dialogs/SurfaceLoadsDialog.cpp  <->  UI/Dialogs/SurfaceSupportsDialog.cpp
+    6 UI/Properties/SlabPropertiesView.cpp  <->  UI/Properties/WallPropertiesView.cpp
+    5 Viewer/OccView.cpp  <->  Viewer/OccView_Events.cpp
+    4 UI/Dialogs/MemberLoadDialog.cpp  <->  UI/Dialogs/NodalLoadDialog.cpp
+    4 UI/Properties/BeamPropertiesView.cpp  <->  UI/Properties/TrussMemberPropertiesView.cpp
+    4 UI/Properties/FoundationPropertiesView.cpp  <->  UI/Properties/TrussMemberPropertiesView.cpp
+    4 Viewer/OccView_Shapes.cpp  <->  Viewer/ResultsVisualManager.cpp
+    3 Geometry/DiagramGeometry.cpp  <->  UI/Diagrams/Diagram2DWidget.cpp
+    3 UI/Properties/BeamPropertiesView.cpp  <->  UI/Properties/FoundationPropertiesView.cpp
+    2 Automation/CommandRegistry.cpp  <->  BIM/IFC/IfcExporter.cpp
+    2 Automation/CommandRegistry.cpp  <->  IO/TSAFileReader_Chunks.cpp
+    2 BIM/IFC/IfcExporter.cpp  <->  IO/TSAFileReader_Chunks.cpp
+    2 NDC/NDCGenerator.cpp  <->  NDC/NDCProjectNote.cpp
+--- inclusions à casse incorrecte : 0 []
+--- antislash dans une inclusion : 0
+--- méthodes sans appelant dans src/ (≤ 2 occurrences : déclaration + définition) : 763 ; dont non utilisées par les tests : 494
+   isCalibrating                              AI/Core/AIOrchestrator.h
+   hasCalibration                             AI/Core/AIOrchestrator.h
+   modelChanged                               AI/Core/AIOrchestrator.h
+   hasDiscreteGpu                             AI/Hardware/HardwareProfiler.h
+   downloadingModelId                         AI/Models/ModelManager.h
+   clearJournal                               AI/Operator/AIOperator.h
+   setPrimaryProvider                         AI/Providers/AIProviderRouter.h
+   setFallbackProvider                        AI/Providers/AIProviderRouter.h
+   primaryProvider                            AI/Providers/AIProviderRouter.h
+   fallbackProvider                           AI/Providers/AIProviderRouter.h
+   lastActiveProviderId                       AI/Providers/AIProviderRouter.h
+   recentLog                                  AI/Providers/LocalLlamaServer.h
+   logLine                                    AI/Providers/LocalLlamaServer.h
+   setProviderId                              AI/Providers/MockAIProvider.h
+   setDisplayName                             AI/Providers/MockAIProvider.h
+   setSyncExecution                           AI/Providers/MockAIProvider.h
+   clearScenarios                             AI/Providers/MockAIProvider.h
+   lastRequest                                AI/Providers/MockAIProvider.h
+   setConfig                                  AI/Providers/OpenAICompatibleProvider.h
+   chunkCount                                 AI/RAG/EngineeringKnowledgeBase.h
+   fromDense                                  Analysis/AnalysisTypes.h
+   restraintNotes                             Analysis/CalculationSnapshot.h
+   supportRestraintMode                       Analysis/CalculationSnapshot.h
+   algorithmToTcl                             Analysis/OpenSeesAnalysisBuilder.h
+   integratorToTcl                            Analysis/OpenSeesAnalysisBuilder.h
+   systemSolverToTcl                          Analysis/OpenSeesAnalysisBuilder.h
+   resetToDefaultPath                         Analysis/OpenSeesManager.h
+   downloadAndInstallAsync                    Analysis/OpenSeesManager.h
+   hasBasicStiffness                          Analysis/OpenSeesModelMap.h
+   byKey                                      Analysis/OpenSeesModelMap.h
+   setCaseOrComboName                         Analysis/ResultsModel.h
+   getStepResults                             Analysis/ResultsModel.h
+   setPlanarCurves                            Analysis/ResultsModel.h
+   setSurfaceMeshSummary                      Analysis/ResultsModel.h
+   setShellResult                             Analysis/ResultsModel.h
+   setSurfaceMeshStamp                        Analysis/ResultsModel.h
+   nodesByIndex                               Analysis/Engine/AnalysisModel.h
+   elementsByIndex                            Analysis/Engine/AnalysisModel.h
+   connectSolver                              Analysis/Engines/Custom2D/Custom2DEngine.h
+   isSolverConnected                          Analysis/Engines/Custom2D/Custom2DEngine.h

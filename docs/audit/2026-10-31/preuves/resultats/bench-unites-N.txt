@@ -1,0 +1,4 @@
+[ÉCHEC]  RND-A072-N (OpenSees 3.8.0)
+[ÉCHEC]  RND-A079-N (OpenSees 3.8.0)
+[ÉCHEC]  RND-B073-N (OpenSees 3.8.0)
+629 réussie(s), 583 en échec, 0 non disponible(s) — rapport : C:/Users/TSARAL~1/AppData/Local/Temp/claude/d--Tsaralo

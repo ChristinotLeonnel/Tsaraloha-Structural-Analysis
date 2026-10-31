@@ -1,0 +1,148 @@
+{
+ "format": "tsa.benchmark/1",
+ "id": "PDELTA-LIN",
+ "title": "P-Delta demandé en analyse statique LINÉAIRE",
+ "category": "rdm",
+ "description": "Poteau console de 4 m (section 0,3 × 0,3 m), compression P = 8000 kN (P/Pcr = 0,37) et effort horizontal H = 10 kN en tête. Solution exacte du second ordre : δ = H·(tan kL − kL)/(P·k), k = √(P/EI), à comparer au premier ordre H·L³/3EI (amplification ≈ 1,52). TSA : transformation géométrique P-Delta d'OpenSees, barre subdivisée en 20 éléments, Newton à 10 pas de chargement.",
+ "sources": [
+  "S. Timoshenko, J. Gere — Theory of Elastic Stability, §1.11 (barre comprimée soumise à une force transversale)",
+  "W.C. Young, R.G. Budynas — Roark's Formulas for Stress and Strain, 7e éd., tableau 8.8 (poutres-colonnes)"
+ ],
+ "hypotheses": [
+  "élasticité linéaire, grandes rotations négligées (P-Delta)",
+  "subdivision en 20 éléments : effet P-δ le long de la barre représenté",
+  "raccourcissement axial négligé par la solution de référence (P·L/EA = 0,04 % de L)",
+  "tête : Ty, Rx, Rz bloqués (flexion dans le plan XZ seulement)"
+ ],
+ "units": {
+  "force": "kN",
+  "length": "m",
+  "stress": "kPa"
+ },
+ "engines": [
+  "opensees"
+ ],
+ "parameters": {
+  "E": 210000000.0,
+  "a": 0.3,
+  "I": "a^4/12",
+  "L": 4.0,
+  "P": 8000.0,
+  "H": 10.0,
+  "k": "sqrt(P/(E*I))",
+  "Pcr": "pi^2*E*I/(4*L^2)"
+ },
+ "model": {
+  "materials": {
+   "S": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "rho": 7850
+   }
+  },
+  "sections": {
+   "C": {
+    "shape": "rectangular",
+    "b": 0.3,
+    "h": 0.3
+   }
+  },
+  "nodes": [
+   {
+    "id": 1,
+    "x": 0,
+    "y": 0,
+    "z": 0,
+    "support": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   {
+    "id": 2,
+    "x": 0,
+    "y": 0,
+    "z": 4.0,
+    "support": [
+     0,
+     1,
+     0,
+     1,
+     0,
+     1
+    ]
+   }
+  ],
+  "members": [
+   {
+    "id": 1,
+    "type": "column",
+    "i": 1,
+    "j": 2,
+    "section": "C",
+    "material": "S"
+   }
+  ],
+  "cases": [
+   {
+    "id": 1,
+    "name": "P+H"
+   }
+  ],
+  "nodalLoads": [
+   {
+    "node": 2,
+    "case": 1,
+    "fx": 10.0,
+    "fz": -8000.0
+   }
+  ]
+ },
+ "analysis": {
+  "selfWeight": false,
+  "case": 1,
+  "subdivide": 20,
+  "engineSettings": {
+   "opensees": {
+    "geomTransf": 1,
+    "numSteps": 10
+   }
+  }
+ },
+ "checks": [
+  {
+   "quantity": "node:2:ux",
+   "label": "déplacement en tête (second ordre)",
+   "expected": "H*(tan(k*L) - k*L)/(P*k)",
+   "unit": "m",
+   "tolerance": {
+    "rel": 0.005,
+    "abs": 1e-09
+   }
+  },
+  {
+   "quantity": "reaction:1:fx",
+   "label": "réaction horizontale",
+   "expected": "-H",
+   "unit": "kN",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-06
+   }
+  },
+  {
+   "quantity": "reaction:1:my",
+   "label": "moment d'encastrement (second ordre : H·L + P·δ)",
+   "expected": "-(H*L + P*H*(tan(k*L) - k*L)/(P*k))",
+   "unit": "kN·m",
+   "tolerance": {
+    "rel": 0.005,
+    "abs": 1e-06
+   }
+  }
+ ]
+}

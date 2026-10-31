@@ -1,0 +1,9 @@
+3 cas valides sur 3 fichier(s)
+[RÉUSSI] NLIN-control-lineaire (OpenSees (version non lue))
+[ÉCHEC]  NLIN-trapeze (OpenSees 3.8.0)
+    member:1:M:absmax : TSA 45.000000, référence 54 (analytique)
+    member:1:M:at=0.5 : TSA 45.000000, référence 54 (analytique)
+[ÉCHEC]  NLIN-uniforme (OpenSees 3.8.0)
+    member:1:M:absmax : TSA 107.730000, référence 54 (analytique)
+    member:1:M:at=0.5 : TSA 81.000000, référence 54 (analytique)
+5 réussie(s), 4 en échec, 0 non disponible(s) — rapport : C:/Users/TSARAL~1/AppData/Local/Temp/claude/d--Tsaraloha-Platforme-TSA/84fdaea9-ba6e-422a-80ce-1f048ba5db29/scratchpad/bench-nl/latest.md
