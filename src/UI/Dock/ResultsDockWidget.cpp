@@ -311,13 +311,13 @@ void ResultsDockWidget::setupUi()
         emitAnimationPhase(0.0);
     });
 
-    // 5. Multi-pas / Incréments (Non-linéaire & Dynamique)
-    m_grpSteps = new QGroupBox(tr("Pas de Calcul / Incréments"), container);
+    // 5. Modes propres (analyse modale : un pas de résultats par mode)
+    m_grpSteps = new QGroupBox(tr("Modes propres"), container);
     auto* vSteps = new QVBoxLayout(m_grpSteps);
     vSteps->setContentsMargins(8, 8, 8, 8);
     vSteps->setSpacing(6);
 
-    m_labelStepInfo = new QLabel(tr("Pas 1 / 1 (Charge 100%)"), m_grpSteps);
+    m_labelStepInfo = new QLabel(tr("Résultat unique (statique linéaire)"), m_grpSteps);
     m_labelStepInfo->setStyleSheet("font-weight: bold; font-size: 11px;");
     vSteps->addWidget(m_labelStepInfo);
 
@@ -443,7 +443,7 @@ void ResultsDockWidget::updateSummaryText()
     const auto& s = m_resultsModel->summary();
     const auto& eq = m_resultsModel->equilibrium();
 
-    m_labelStatus->setText(m_resultsModel->stepCount() > 1 ? tr("✓ Calcul disponible (%1 pas)").arg(m_resultsModel->stepCount()) : tr("✓ Calcul disponible"));
+    m_labelStatus->setText(tr("✓ Calcul disponible"));
     m_labelStatus->setStyleSheet("font-weight: bold; color: #10b981;");
 
     QString txt = tr(
@@ -568,7 +568,7 @@ void ResultsDockWidget::updateStepControls()
     if (!m_resultsModel || !m_resultsModel->hasResults() || m_resultsModel->stepCount() <= 1)
     {
         m_grpSteps->setEnabled(false);
-        m_labelStepInfo->setText(tr("Pas unique (Statique linéaire)"));
+        m_labelStepInfo->setText(tr("Résultat unique (statique linéaire)"));
         m_sliderStep->setRange(1, 1);
         m_sliderStep->setValue(1);
         m_spinStep->setRange(1, 1);
@@ -601,8 +601,8 @@ void ResultsDockWidget::updateStepControls()
         m_labelStepInfo->setText(tr("Mode %1 / %2 : f = %3 Hz, T = %4 s").arg(current).arg(count).arg(md.frequency, 0, 'f', 3).arg(md.period, 0, 'f', 4));
         return;
     }
-    double lambda = (count > 1) ? (static_cast<double>(current) / static_cast<double>(count) * 100.0) : 100.0;
-    m_labelStepInfo->setText(tr("Pas %1 / %2 (Facteur de charge λ = %3%)").arg(current).arg(count).arg(lambda, 0, 'f', 1));
+    // Seule l'analyse modale produit plusieurs jeux de résultats : aucun facteur de charge n'est déduit du rang.
+    m_labelStepInfo->setText(tr("Résultat %1 / %2").arg(current).arg(count));
 }
 
 void ResultsDockWidget::updateNodeStats()

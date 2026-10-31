@@ -98,8 +98,11 @@ sections/matériaux, coques (`planarElementPolicy` : `Reject` → erreur explici
 Réutilise sans modification le chemin existant via `OpenSeesSolver::solveSnapshot` (même workflow que
 `solveSynchronous`, sur le snapshot de la portée). `parametersFromContext` traduit contexte + bloc JSON
 d'options en `AnalysisParameters`. Version lue sur l'exécutable (jamais inventée). Capacités : 3D,
-barres/treillis/câbles/ressorts, statique linéaire et non linéaire, matrices en mode ADVANCED. Le
-modal, le pushover et le temporel ont été retirés (ADR-022, branche `archive/dynamique`).
+barres/treillis/câbles/ressorts/coques maillées, statique linéaire et modale, matrices en mode ADVANCED.
+L'analyse non linéaire a été retirée (ADR-025) : le script statique est toujours `algorithm Linear`,
+`integrator LoadControl 1.0`, `analyze 1`. `unsupportedSettings` signale les anciens réglages P-Delta, corotationnel
+et treillis corotationnels, que `AnalysisManager` refuse. Le pushover et le temporel ont été retirés (ADR-022, branche
+`archive/dynamique`).
 
 ### Custom2D (`custom2d`)
 
@@ -158,7 +161,7 @@ la qualification de Fem3D dans TSA n'est pas complète (niveau 5, `3DDesplacemen
   `OpenSeesResultsReader::beamResultsFromEndForces`, la même reconstruction que pour OpenSees ; équilibre global et
   contrôle des blocages automatiques par les fonctions communes.
 - **Hors périmètre** (refus avec la raison) : charges ponctuelles ou partielles sur barre, moments répartis, coques ;
-  relâchements de N, V ou T (erreur). Treillis, câbles, non-linéaire, modal : refusés par la validation générique.
+  relâchements de N, V ou T (erreur). Treillis, câbles, modal : refusés par la validation générique.
 - **Options** (`mode`, `fallback`) : `fem3d` (défaut) ou `compare` (Fem3D puis OpenSees ; résultats affichés = Fem3D,
   table « Comparaison Fem3D / OpenSees », avertissement au-delà de max(1e-6·|réf|, 1e-9·échelle), aucune fusion) ;
   secours `none` (défaut : refus) ou `opensees` (annoncé à la validation, calcul par OpenSees,
@@ -173,6 +176,8 @@ qualification, bibliographie, limites).
 
 1. Écrire `class XEngine : public AnalysisEngine` (info, capacités, disponibilité, validate, run, cancel) ;
    `run` reçoit l'`AnalysisModel` et rend un `ResultsModel` indexé par ids TSA (via `AnalysisMapping`).
+   Types d'analyse : statique linéaire et modale seulement (TSA prend en charge l'analyse structurale linéaire).
+   Si le bloc JSON du moteur a porté des réglages retirés, les signaler par `unsupportedSettings`.
 2. Une ligne dans `registerBuiltInEngines`.
 3. Facultatif : un `AnalysisEngineOptionsWidget` + une ligne dans `registerBuiltInEngineOptions`.
 4. Recommandé : joindre le maillage réellement transmis au solveur (`results.setSolverMesh`, structure

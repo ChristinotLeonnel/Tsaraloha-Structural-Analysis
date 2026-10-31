@@ -34,7 +34,7 @@ void ExtensionManager::scanExtensions()
         }
         else
         {
-            // Code Extension (réservé pour les futures DLL de solveurs non-linéaires / plugins)
+            // Code Extension (réservé aux futures DLL de solveurs / plugins)
             emit extensionLoaded(QString::fromStdString(ext.id), ExtensionKind::CodeExtension);
         }
     }

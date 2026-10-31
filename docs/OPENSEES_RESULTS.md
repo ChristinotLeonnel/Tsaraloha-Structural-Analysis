@@ -144,7 +144,7 @@ locales `wy`, `wz` ont le même sens dans TSA et OpenSees.
 | Matrice | Source | Type | Repère | Exact |
 | :--- | :--- | :--- | :--- | :--- |
 | `k_basic` | OpenSees `basicStiffness` (ElasticBeam3d 6×6, Truss 1×1) | Initial tangent | basique | oui |
-| `k_local` | reconstruite : `T_blᵀ k_basic T_bl` | Initial tangent | local | oui en `geomTransf Linear` ; **non** en PDelta/Corotational (rigidité géométrique absente) |
+| `k_local` | reconstruite : `T_blᵀ k_basic T_bl` | Initial tangent | local | oui (`geomTransf Linear`, seule transformation générée) |
 | `K_global` élémentaire | reconstruite : `Tᵀ k_local T` | Initial tangent | global | idem |
 | `K_global` système | OpenSees `printA -ret`, `system FullGeneral`, passage séparé | Initial tangent (formTangent à l'état de référence) | global réduit (équations) | oui, 11 chiffres significatifs |
 
@@ -162,7 +162,8 @@ locales `wy`, `wz` ont le même sens dans TSA et OpenSees.
   de table paresseux.
 - `CorotTruss` (câbles, formulation corotationnelle) : pas de `basicStiffness` dans OpenSees 3.8.0 → matrice
   élémentaire indisponible (contribution présente dans `K_global`).
-- Analyses non linéaires : les matrices sont **initiales**, pas la tangente du dernier pas.
+- Analyse statique linéaire (seule proposée) : la matrice initiale est celle de la résolution. Pour un câble précontraint,
+  elle contient la raideur géométrique de la précontrainte ([cable-system/analysis.md](cable-system/analysis.md)).
 
 ## 7. Unités
 

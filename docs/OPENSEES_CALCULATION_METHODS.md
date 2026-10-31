@@ -3,6 +3,8 @@
 > **Guide technique pour les utilisateurs et ingénieurs**
 > 
 > Ce document explique les **algorithmes, solveurs et types d'analyse** qu'utilise TSA avec OpenSees pour la simulation structurelle 3D.
+>
+> **TSA prend actuellement en charge l'analyse structurale linéaire. L'analyse non linéaire n'est pas disponible dans cette version.**
 
 ---
 
@@ -13,10 +15,12 @@
 **Description** : Calcul des déplacements, réactions et efforts sous l'hypothèse de petits déplacements et matériau linéaire élastique.
 
 **Paramètres de calcul** :
-- **Algorithme** : `Linear` (direct, non itératif)
-- **Intégrateur** : `LoadControl 1.0` (charge appliquée en une seule étape complète)
-- **Résolution** : Une seule itération (`analyze 1`)
+- **Algorithme** : `Linear` (direct, non itératif : une seule factorisation)
+- **Intégrateur** : `LoadControl 1.0` (charge appliquée en une seule étape complète, λ = 1)
+- **Résolution** : un seul pas (`analyze 1`)
+- **Test** : `NormDispIncr 1e-06 50`, exigé par la commande `analysis` d'OpenSees ; non évalué par `algorithm Linear`
 - **Système solver** : `BandGeneral` (par défaut)
+- **Transformation géométrique** : `geomTransf Linear` pour toutes les poutres et tous les poteaux
 
 **Cas d'usage** :
 - Structures de bâtiment sous charges permanentes et d'exploitation
@@ -32,52 +36,19 @@ Poutre simple, L = 5 m, P = 10 kN au centre
 
 ---
 
-### 1.2 Analyse Non-Linéaire Statique
+### 1.2 Analyse Non Linéaire : non disponible
 
-**Description** : Calcul itératif pour structures où la rigidité change avec la déformation (plasticité, flambement, grands déplacements).
+L'analyse non linéaire n'est pas disponible dans cette version (ADR-025). TSA ne génère ni algorithme itératif (Newton
+et variantes), ni pilotage incrémental (`DisplacementControl`, `ArcLength`, `MinUnbalDispNorm`, plusieurs pas de
+`LoadControl`), ni transformation `PDelta` ou `Corotational`.
 
-#### Algorithmes Itératifs
+Un projet enregistré par une version antérieure qui demandait une analyse statique non linéaire, une transformation
+P-Delta ou corotationnelle, ou des treillis corotationnels, s'ouvre normalement : ses autres données sont conservées.
+Le calcul est refusé avec un message clair. Il n'est jamais recalculé en linéaire à l'insu de l'utilisateur. Choisir une
+analyse linéaire dans les paramètres d'analyse lève le refus.
 
-| Algorithme | Description | Usage |
-|---|---|---|
-| **Newton** | Newton-Raphson standard (matrice tangente complète) | Par défaut, convergence rapide |
-| **NewtonLineSearch** | Newton + recherche linéaire (0.8) | Mauvais conditionnement, convergence lente |
-| **ModifiedNewton** | Matrice tangente recalculée à chaque itération | Moins cher que Newton complet |
-| **KrylovNewton** | Accélération sous-espace de Krylov | Grands systèmes |
-| **BFGS** | Quasi-Newton, approx. Hessienne | Alternative économe |
-| **Broyden** | Quasi-Newton (mise à jour de rang 1) | Économe, moins stable |
-| **SecantNewton** | Secante itérative | Cas très spécifiques |
-
-#### Intégrateurs (Pilotage du Chargement)
-
-| Intégrateur | Équation | Cas d'usage |
-|---|---|---|
-| **LoadControl** | Δλ = 1/numSteps | Chargement monotone stable |
-| **DisplacementControl** | u_node,dof = imposé | Déplacement imposé à un point |
-| **ArcLength** | \|\|[Δλ, Δu]\|\| = constante | Instabilités, points limites, flambement |
-| **MinUnbalDispNorm** | Norme déplacement déséquilibré min | Non-linéarité géométrique légère |
-
-#### Transformations Géométriques
-
-| Transformation | Formulation | Usage |
-|---|---|---|
-| **Linear** | Matrice de rigidité non mise à jour | Petits déplacements |
-| **PDelta** | Matrice géométrique P-Δ (2e ordre) | Flambement, tours, poutres élancées |
-| **Corotational** | Repère local suit la rotation | Grands déplacements, câbles, treillis |
-
-**Paramètres de contrôle** :
-- **Tolérance** : 1e-6 (norme du déplacement incrémental)
-- **Max itérations** : 50 par pas
-- **Nombre de pas** : 10 (configurable)
-- **Test** : `NormDispIncr` (norme L∞ du déplacement)
-
-**Exemple** :
-```
-Poutre encastrée, charge latérale progressive
-→ LoadControl : λ passe de 0 à 1 en 10 pas (λ_i = i/10)
-→ À chaque pas, Newton itère jusqu'à convergence
-→ Si non-convergence → affichage « CONVERGENCE_FAIL »
-```
+Les défauts BUG-149 (facteur de charge des efforts le long des barres en non linéaire) et BUG-150 (P-Delta accepté sans
+effet en statique linéaire) ont disparu avec la fonctionnalité : voir `docs/audit/2026-10-31/TSA_BUG_REGISTER.md`.
 
 ---
 
@@ -110,7 +81,7 @@ Poutre encastrée, charge latérale progressive
 | **Type élément OpenSees** | `elasticBeamColumn` (3D) |
 | **Théorie de poutre** | Euler-Bernoulli (6 DDL par nœud : Ux, Uy, Uz, Rx, Ry, Rz) |
 | **Loi matériau** | Élastique linéaire (E, G constants) |
-| **Formulation** | Transformation géométrique : Linear / PDelta / Corotational |
+| **Formulation** | Transformation géométrique `Linear` (petits déplacements) |
 | **Torsion** | Saint-Venant (GI_p) |
 | **Flexion** | Biaxiale (EI_y, EI_z) |
 
@@ -120,10 +91,10 @@ Poutre encastrée, charge latérale progressive
 
 | Propriété | Treillis | Câble |
 |---|---|---|
-| **Type** | `Truss` ou `CorotTruss` | `Truss` ou `CorotTruss` |
-| **Chargement** | Effort axial N uniquement | Effort axial N uniquement (traction) |
+| **Type** | `truss` | `corotTruss` (élément historique, conservé pour ne pas changer des résultats validés) |
+| **Chargement** | Effort axial N uniquement | Effort axial N uniquement ; précontrainte par `InitStrain` (ε₀ = T₀ / EA) |
 | **DDL bloqués** | Rx, Ry, Rz (articulations) | Rx, Ry, Rz (articulations) |
-| **Grands déplacements** | CorotTruss (géométrie mise à jour) | CorotTruss, élongation prise en compte |
+| **Résolution** | Un seul pas linéaire | Un seul pas linéaire à la géométrie initiale, sans itération ; une compression n'est pas relâchée (BUG-151) |
 
 ---
 
@@ -259,12 +230,13 @@ Voir `tests/test_opensees.cpp` et `tests/test_opensees_extraction.cpp` (tests 18
 ### 7.1 Hypothèses Structurales
 
 ✓ **Inclus** :
-- Petits déplacements (analyse linéaire) ou formulation géométrique cohérente (non-linéaire)
+- Petits déplacements, premier ordre (analyse linéaire)
 - Matériaux isotropes homogènes élastiques
 - Sections constantes par élément
 - Absence d'amortissement (analyse statique)
 
 ✗ **Non inclus** (hors de portée) :
+- Analyse non linéaire : second ordre P-Δ, grands déplacements, pilotage incrémental
 - Plasticité, fissuration béton
 - Fatigue, cumul d'endommagement
 - Phénomènes dynamiques (sisme, vent temporel)
@@ -325,5 +297,5 @@ Modèle TSA
 
 ---
 
-**Mis à jour** : 2026-10-18 | **Version TSA** : 3.0+ avec OpenSees 3.8.0
+**Mis à jour** : 2026-10-31 (analyse non linéaire retirée, ADR-025) | **Version TSA** : 3.0+ avec OpenSees 3.8.0
 

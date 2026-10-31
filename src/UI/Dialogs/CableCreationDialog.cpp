@@ -223,10 +223,6 @@ void CableCreationDialog::setupUi()
     m_comboEndAnchor->addItem(tr("Nœud structurel (Structural)"), static_cast<int>(TSA::Model::AnchorType::StructuralAnchor));
     cableLayout->addWidget(m_comboEndAnchor, 4, 1);
 
-    m_chkTensionOnly = new QCheckBox(tr("Élément tendu uniquement (Tension-only)"), grpCable);
-    m_chkTensionOnly->setChecked(true);
-    cableLayout->addWidget(m_chkTensionOnly, 5, 0, 1, 2);
-
     mainLayout->addWidget(grpCable);
 
     // 6. Groupe "Coordonnées des Nœuds"
@@ -441,11 +437,6 @@ TSA::Model::AnchorType CableCreationDialog::endAnchorType() const
     return static_cast<TSA::Model::AnchorType>(m_comboEndAnchor->currentData().toInt());
 }
 
-bool CableCreationDialog::isTensionOnly() const
-{
-    return m_chkTensionOnly->isChecked();
-}
-
 bool CableCreationDialog::isChainMode() const
 {
     return m_chkChain->isChecked();
@@ -576,7 +567,6 @@ void CableCreationDialog::onAddClicked()
 
         cable->startAnchor().setType(startAnchorType());
         cable->endAnchor().setType(endAnchorType());
-        cable->analysisProperties().tensionOnly = isTensionOnly();
 
         // Matériau
         int matId = m_comboMaterial->currentData().toInt();
@@ -635,8 +625,6 @@ void CableCreationDialog::loadFromCable(const TSA::Model::Cable& cable)
     int eaIdx = m_comboEndAnchor->findData(static_cast<int>(cable.endAnchor().type()));
     if (eaIdx >= 0) m_comboEndAnchor->setCurrentIndex(eaIdx);
 
-    m_chkTensionOnly->setChecked(cable.tensionOnly());
-
     m_editOrigin->setText(QString("N%1").arg(cable.startNodeId()));
     m_editEnd->setText(QString("N%1").arg(cable.endNodeId()));
 }
@@ -650,7 +638,8 @@ void CableCreationDialog::onHelpClicked()
            "• <b>Section :</b> Section circulaire définie par son diamètre nominal Ø et son aire métallique A.<br>"
            "• <b>Tension initiale T₀ :</b> Précontrainte axiale appliquée à l'élément.<br>"
            "• <b>Géométrie :</b> Droit (cylindre direct) ou Parabolique/Caténaire selon la flèche f.<br>"
-           "• <b>Tension-only :</b> L'élément ne reprend que des efforts de traction.<br>"
+           "• <b>Calcul :</b> Analyse linéaire : le câble est une barre articulée précontrainte. Une compression n'est pas "
+           "relâchée : vérifier le signe de l'effort normal.<br>"
            "• <b>Tracé 3D :</b> Cliquez sur deux nœuds successifs dans le viewport pour créer le câble.<br>"
            "• <b>Étirer :</b> Permet de tracer en chaîne plusieurs câbles d'affilée."));
 }

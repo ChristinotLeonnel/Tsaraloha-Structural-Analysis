@@ -278,13 +278,13 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
     std::ostringstream tcl;
     tcl << std::setprecision(17); // 17 chiffres significatifs : aller-retour double exact (std::fixed tronquait les inerties)
     tcl << "# ------------------------------------------------------------------------------\n";
-    tcl << "# Repères locaux & Transformations géométriques (geomTransf " << toTclString(params.geomTransf) << ")\n";
+    tcl << "# Repères locaux & Transformations géométriques (geomTransf Linear)\n";
     tcl << "# ------------------------------------------------------------------------------\n";
 
     for (const auto& e : map.elements())
     {
         if (!e.isBeamColumn()) continue;
-        tcl << "geomTransf " << toTclString(params.geomTransf) << " " << e.transfTag << " "
+        tcl << "geomTransf Linear " << e.transfTag << " "
             << e.vecxz[0] << " " << e.vecxz[1] << " " << e.vecxz[2]
             << " ;# " << e.key.label() << "\n";
     }
@@ -871,74 +871,21 @@ std::string OpenSeesAnalysisBuilder::buildAnalysisCommands(const CalculationSnap
     tcl << "# Résolution du calcul structural\n";
     tcl << "# ------------------------------------------------------------------------------\n";
 
-    if (params.type == AnalysisType::NonLinearStatic)
-    {
-        tcl << "constraints " << toTclString(params.constraintHandler) << "\n";
-        tcl << "numberer RCM\n";
-        tcl << "system " << toTclString(params.systemSolver) << "\n";
-        tcl << "test NormDispIncr " << params.tolerance << " " << params.maxIterations << " 0\n";
-        tcl << "algorithm " << toTclString(params.algorithmType) << "\n";
-
-        switch (params.integratorType)
-        {
-        case IntegratorType::DisplacementControl:
-            tcl << "integrator DisplacementControl " << params.controlNodeId << " "
-                << params.controlDof << " " << params.dispIncrement << "\n";
-            break;
-        case IntegratorType::ArcLength:
-        {
-            double s = (params.stepSize > 0.0) ? params.stepSize : 0.05;
-            tcl << "integrator ArcLength " << s << " 1.0\n";
-            break;
-        }
-        case IntegratorType::MinUnbalDispNorm:
-        {
-            double s = (params.stepSize > 0.0) ? params.stepSize : 0.05;
-            tcl << "integrator MinUnbalDispNorm " << s << "\n";
-            break;
-        }
-        case IntegratorType::LoadControl:
-        default:
-        {
-            // Δλ = 1/n : la charge complète (λ = 1) est atteinte au dernier pas. Auparavant Δλ = stepSize (0,05 par
-            // défaut) avec 10 pas : λ final = 0,5, résultats présentés comme ceux de la charge complète (audit).
-            tcl << "integrator LoadControl " << 1.0 / std::max(1, params.numSteps) << "\n";
-            break;
-        }
-        }
-
-        tcl << "analysis Static\n";
-        tcl << "set ok 0\n";
-        tcl << "for {set i 1} {$i <= " << params.numSteps << "} {incr i} {\n";
-        tcl << "  set ok [analyze 1]\n";
-        tcl << "  if {$ok != 0} {\n";
-        tcl << "    puts \"TSA_OPS_CONVERGENCE_FAIL Step $i\"\n";
-        tcl << "    break\n";
-        tcl << "  }\n";
-        tcl << "}\n";
-        tcl << "if {$ok == 0} {\n";
-        tcl << "  puts \"TSA_OPS_SUCCESS Non-Linear Static Converged\"\n";
-        tcl << "}\n";
-        // Facteur de charge réellement atteint (série linéaire : temps = λ), contrôlé par le lecteur
-        tcl << "puts \"TSA_OPS_LOAD_FACTOR [getTime]\"\n";
-    }
-    else
-    {
-        // Linear Static
-        tcl << "constraints " << toTclString(params.constraintHandler) << "\n";
-        tcl << "numberer RCM\n";
-        tcl << "system " << toTclString(params.systemSolver) << "\n";
-        tcl << "test NormDispIncr " << params.tolerance << " " << params.maxIterations << "\n";
-        tcl << "algorithm Linear\n";
-        tcl << "integrator LoadControl 1.0\n";
-        tcl << "analysis Static\n";
-        tcl << "set ok [analyze 1]\n";
-        tcl << "if {$ok == 0} {\n";
-        tcl << "  puts \"TSA_OPS_SUCCESS Linear Static Converged\"\n";
-        tcl << "} else {\n";
-        tcl << "  puts \"TSA_OPS_FAIL Linear Static Analysis Failed\"\n";
-        tcl << "}\n";
-    }
+    // Statique linéaire : un seul pas à λ = 1, résolu par une seule factorisation (algorithm Linear). « test » et
+    // « integrator LoadControl » sont exigés par la commande analysis d'OpenSees ; le test de convergence n'est pas évalué.
+    tcl << "constraints " << toTclString(params.constraintHandler) << "\n";
+    tcl << "numberer RCM\n";
+    tcl << "system " << toTclString(params.systemSolver) << "\n";
+    tcl << "test NormDispIncr 1e-06 50\n";
+    tcl << "algorithm Linear\n";
+    tcl << "integrator LoadControl 1.0\n";
+    tcl << "analysis Static\n";
+    tcl << "set ok [analyze 1]\n";
+    tcl << "if {$ok == 0} {\n";
+    tcl << "  puts \"TSA_OPS_SUCCESS Linear Static Converged\"\n";
+    tcl << "} else {\n";
+    tcl << "  puts \"TSA_OPS_FAIL Linear Static Analysis Failed\"\n";
+    tcl << "}\n";
 
     tcl << "wipe\n";
     tcl << "exit\n";

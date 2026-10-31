@@ -22,7 +22,7 @@ class Model;
 /**
  * @brief Élément structural câble haute performance pour le génie civil et les ponts.
  * Intègre la géométrie 3D, le système de tension / précontrainte, les ancrages,
- * la section transversale, le matériau normé et les paramètres d'analyse non linéaire.
+ * la section transversale, le matériau normé et les propriétés d'analyse.
  * Hérite conceptuellement de LinearElement (ElementLineaire).
  */
 class Cable : public LinearElement, public ICableElement
@@ -88,7 +88,7 @@ public:
     double initialTension() const override { return m_prestress.initialTension; }
     void setInitialTension(double forceN) { m_prestress.initialTension = forceN; }
 
-    // Propriétés d'analyse non linéaire
+    // Propriétés d'analyse
     const CableAnalysisProperties& analysisProperties() const { return m_analysis; }
     CableAnalysisProperties& analysisProperties() { return m_analysis; }
     void setAnalysisProperties(const CableAnalysisProperties& a) { m_analysis = a; }

@@ -27,7 +27,6 @@ const char* keyFromEnum(E value, const std::pair<E, const char*> (&table)[N])
 
 const std::pair<AnalysisType, const char*> kTypes[] = {
     { AnalysisType::LinearStatic, "linear_static" },
-    { AnalysisType::NonLinearStatic, "nonlinear_static" },
     { AnalysisType::Modal, "modal" },
 };
 const std::pair<ScopeType, const char*> kScopes[] = {
@@ -113,7 +112,7 @@ QJsonObject AnalysisContext::toJson() const
         { "schemaVersion", kSchemaVersion },
         { "engineId", QString::fromStdString(engineId) },
         { "dimension", dimensionKey(dimension) },
-        { "analysisType", analysisTypeKey(type) },
+        { "analysisType", unsupportedAnalysisType.empty() ? QString::fromLatin1(analysisTypeKey(type)) : QString::fromStdString(unsupportedAnalysisType) },
         { "scope", scopeJson },
         { "loadCases", cases },
         { "combinationId", combinationId },
@@ -133,7 +132,10 @@ AnalysisContext AnalysisContext::fromJson(const QJsonObject& json, bool* ok)
 
     c.engineId = json.value("engineId").toString().toStdString();
     c.dimension = enumFromKey(json.value("dimension").toString(), kDims, AnalysisDimension::Space3D);
-    c.type = enumFromKey(json.value("analysisType").toString(), kTypes, AnalysisType::LinearStatic);
+    const QString typeKey = json.value("analysisType").toString();
+    c.type = enumFromKey(typeKey, kTypes, AnalysisType::LinearStatic);
+    const bool knownType = typeKey.isEmpty() || std::any_of(std::begin(kTypes), std::end(kTypes), [&](const auto& t) { return typeKey == QLatin1String(t.second); });
+    if (!knownType) c.unsupportedAnalysisType = typeKey.toStdString();
 
     const QJsonObject s = json.value("scope").toObject();
     c.scope.type = enumFromKey(s.value("type").toString(), kScopes, ScopeType::EntireModel);

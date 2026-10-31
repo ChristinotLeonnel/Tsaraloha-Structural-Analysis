@@ -1,0 +1,150 @@
+{
+ "format": "tsa.benchmark/1",
+ "id": "RDM-13a",
+ "title": "Rotule + charge uniforme (beamUniform)",
+ "category": "rdm",
+ "description": "Rotule + charge uniforme (beamUniform). Cas « HINGE-01-uniform » de l'audit technique du 2026-10-31 (docs/audit/2026-10-31/preuves).",
+ "sources": [
+  "W. Young, R. Budynas — Roark's Formulas for Stress and Strain, poutres hyperstatiques"
+ ],
+ "hypotheses": [
+  "Euler-Bernoulli, petits déplacements"
+ ],
+ "units": {
+  "force": "kN",
+  "length": "m",
+  "stress": "kPa"
+ },
+ "engines": [
+  "opensees",
+  "fem3d",
+  "custom2d"
+ ],
+ "parameters": {
+  "E": 210000000.0,
+  "nu": 0.3,
+  "L": 6.0,
+  "q": 12.0,
+  "P": 30.0,
+  "a": 2.0,
+  "b": "L-a",
+  "Rtot": "q*L"
+ },
+ "model": {
+  "materials": {
+   "S": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "rho": 7850
+   }
+  },
+  "sections": {
+   "R": {
+    "shape": "rectangular",
+    "b": 0.2,
+    "h": 0.4
+   }
+  },
+  "nodes": [
+   {
+    "id": 1,
+    "x": 0,
+    "y": 0,
+    "z": 0,
+    "support": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   {
+    "id": 2,
+    "x": 6.0,
+    "y": 0,
+    "z": 0,
+    "support": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ]
+   }
+  ],
+  "members": [
+   {
+    "id": 1,
+    "i": 1,
+    "j": 2,
+    "section": "R",
+    "material": "S",
+    "release_i": "my"
+   }
+  ],
+  "cases": [
+   {
+    "id": 1,
+    "name": "Q"
+   }
+  ],
+  "memberLoads": [
+   {
+    "member": 1,
+    "type": "uniform",
+    "case": 1,
+    "q": -12.0,
+    "direction": "globalZ"
+   }
+  ]
+ },
+ "analysis": {
+  "case": 1,
+  "selfWeight": false
+ },
+ "checks": [
+  {
+   "quantity": "reaction:1:fz",
+   "label": "R_i",
+   "expected": "3*q*L/8",
+   "unit": "kN",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-09
+   }
+  },
+  {
+   "quantity": "reaction:2:fz",
+   "label": "R_j",
+   "expected": "Rtot-(3*q*L/8)",
+   "unit": "kN",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-09
+   }
+  },
+  {
+   "quantity": "member:1:M:start",
+   "label": "moment nul à la rotule",
+   "expected": 0,
+   "unit": "kN·m",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-06
+   }
+  },
+  {
+   "quantity": "member:1:M:end",
+   "label": "|M_j|",
+   "expected": "q*L^2/8",
+   "unit": "kN·m",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-09
+   }
+  }
+ ]
+}

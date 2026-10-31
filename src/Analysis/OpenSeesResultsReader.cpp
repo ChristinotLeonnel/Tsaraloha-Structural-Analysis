@@ -157,7 +157,7 @@ void fillLocalDisplacements(ElementResults& res, const SnapshotElement& el, cons
 /// script). La déformée est obtenue par double intégration de la courbure exacte (κ = M / EI), calée
 /// sur les déplacements des deux nœuds : exacte en élasticité linéaire, y compris avec rotules.
 void fillBeamStations(ElementResults& res, const SnapshotElement& el, const double rawI[6],
-                      const std::vector<BeamElementLoad>& loads, double loadFactor, double stiffnessScale)
+                      const std::vector<BeamElementLoad>& loads, double stiffnessScale)
 {
     const double L = el.length;
     if (L <= 1e-9) return;
@@ -169,7 +169,7 @@ void fillBeamStations(ElementResults& res, const SnapshotElement& el, const doub
         double mz = rawI[5] - x * rawI[1];
         for (const auto& l : loads)
         {
-            const double wx = l.wx * loadFactor, wy = l.wy * loadFactor, wz = l.wz * loadFactor;
+            const double wx = l.wx, wy = l.wy, wz = l.wz;
             if (l.kind == BeamElementLoad::Kind::Couple)
             {
                 // Couple réparti sur [a, min(x, b)] : s'ajoute directement aux moments du tronçon (torsion
@@ -182,9 +182,9 @@ void fillBeamStations(ElementResults& res, const SnapshotElement& el, const doub
                 for (const double g : { -0.5773502691896258, 0.5773502691896258 })
                 {
                     const double t = (mid + half * g - a) / (b - a);
-                    tx += (wx + (l.wxB * loadFactor - wx) * t) * half;
-                    my += (wy + (l.wyB * loadFactor - wy) * t) * half;
-                    mz += (wz + (l.wzB * loadFactor - wz) * t) * half;
+                    tx += (wx + (l.wxB - wx) * t) * half;
+                    my += (wy + (l.wyB - wy) * t) * half;
+                    mz += (wz + (l.wzB - wz) * t) * half;
                 }
             }
             else if (l.kind == BeamElementLoad::Kind::Point)
@@ -213,9 +213,9 @@ void fillBeamStations(ElementResults& res, const SnapshotElement& el, const doub
                 {
                     const double xi = mid + half * g;
                     const double t = (xi - a) / (b - a);
-                    const double qx = (wx + (l.wxB * loadFactor - wx) * t) * half;
-                    const double qy = (wy + (l.wyB * loadFactor - wy) * t) * half;
-                    const double qz = (wz + (l.wzB * loadFactor - wz) * t) * half;
+                    const double qx = (wx + (l.wxB - wx) * t) * half;
+                    const double qy = (wy + (l.wyB - wy) * t) * half;
+                    const double qz = (wz + (l.wzB - wz) * t) * half;
                     fx += qx; fy += qy; fz += qz;
                     my += (x - xi) * qz;
                     mz -= (x - xi) * qy;
@@ -300,9 +300,8 @@ void fillBeamStations(ElementResults& res, const SnapshotElement& el, const doub
     }
 }
 
-/// Efforts d'éléments d'un pas : poutres/poteaux depuis localForce (12), treillis/câbles depuis
-/// basicForce (1). loads = charges eleLoad appliquées (nullptr : extrémités seules, aucune station
-/// inventée, ex. pilotage en déplacement dont le facteur de charge n'est pas connu).
+/// Efforts d'éléments : poutres/poteaux depuis localForce (12), treillis/câbles depuis basicForce (1).
+/// loads = charges eleLoad appliquées, à λ = 1.
 /// addNodalEquivalentFixedEndForces : les charges transmises aux nœuds (BeamElementLoad::nodalEquivalent) ne
 /// figurent pas dans localForce d'OpenSees, d'où l'ajout de leurs forces d'encastrement ; un moteur dont les
 /// efforts d'extrémité incluent déjà toutes les charges (Fem3D) passe false.
@@ -313,7 +312,6 @@ std::map<ElementKey, ElementResults> buildElementResults(const CalculationSnapsh
                                                          const std::vector<double>* axialRow,
                                                          const std::map<int, NodeDisplacement>& disps,
                                                          const std::map<int, std::vector<BeamElementLoad>>* loads,
-                                                         double loadFactor,
                                                          bool addNodalEquivalentFixedEndForces = true)
 {
     std::map<ElementKey, ElementResults> out;
@@ -384,8 +382,8 @@ std::map<ElementKey, ElementResults> buildElementResults(const CalculationSnapsh
                     l.fixedEndForces(el->length, fI, fJ);
                     for (int k = 0; k < 6; ++k)
                     {
-                        rawI[k] += fI[k] * loadFactor;
-                        rawJ[k] += fJ[k] * loadFactor;
+                        rawI[k] += fI[k];
+                        rawJ[k] += fJ[k];
                     }
                 }
             }
@@ -405,7 +403,7 @@ std::map<ElementKey, ElementResults> buildElementResults(const CalculationSnapsh
             res.endForces.My = -rawJ[4];
             res.endForces.Mz = rawJ[5];
 
-            if (loads) fillBeamStations(res, *el, rawI, *elementLoads, loadFactor, stiffnessScale);
+            if (loads) fillBeamStations(res, *el, rawI, *elementLoads, stiffnessScale);
         }
         out[res.key()] = res;
     }
@@ -545,51 +543,17 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
 
     const bool hasBeams = map.beamColumnTags().empty() || !beamRows.empty();
     const bool hasAxial = map.axialTags().empty() || !axialRows.empty();
-    // Charges réellement appliquées (même liste que le script) et facteur de charge de chaque pas :
-    // statique linéaire λ = 1 ; non linéaire en pilotage par la charge λ = pas × incrément. Les autres
-    // pilotages (déplacement, longueur d'arc) ne connaissent pas λ : extrémités seules.
+    // Charges réellement appliquées : même liste que le script.
     const auto appliedLoads = OpenSeesAnalysisBuilder::beamElementLoads(snapshot, params);
-    const bool loadFactorKnown = params.type == AnalysisType::LinearStatic || params.integratorType == IntegratorType::LoadControl;
-    const double loadStep = params.stepSize > 0.0 ? params.stepSize : 1.0 / std::max(1, params.numSteps);
-    auto loadFactorOfStep = [&](std::size_t stepIdx) {
-        return params.type == AnalysisType::LinearStatic ? 1.0 : static_cast<double>(stepIdx + 1) * loadStep;
-    };
-    const auto* stationLoads = loadFactorKnown ? &appliedLoads : nullptr;
 
     if (!map.elements().empty() && hasBeams && hasAxial)
     {
-        const std::size_t lastStep = dispRows.empty() ? 0 : dispRows.size() - 1;
         const auto finalElements = buildElementResults(snapshot, map, params,
                                                        beamRows.empty() ? nullptr : &beamRows.back(),
                                                        axialRows.empty() ? nullptr : &axialRows.back(),
-                                                       outResults.allDisplacements(), stationLoads, loadFactorOfStep(lastStep));
+                                                       outResults.allDisplacements(), &appliedLoads);
         for (const auto& [key, res] : finalElements)
             outResults.setElementResults(res);
-    }
-
-    // Historique des pas (non linéaire) : toutes les tables ont une ligne par pas enregistré.
-    if (dispRows.size() > 1)
-    {
-        for (std::size_t stepIdx = 0; stepIdx < dispRows.size(); ++stepIdx)
-        {
-            StepResults stepRes;
-            stepRes.stepNumber = static_cast<int>(stepIdx + 1);
-            stepRes.factorOrTime = loadFactorKnown ? loadFactorOfStep(stepIdx)
-                                                   : static_cast<double>(stepIdx + 1) / static_cast<double>(dispRows.size());
-            stepRes.displacements = parseDisplacements(dispRows[stepIdx], map);
-            if (stepIdx < reactRows.size())
-                stepRes.reactions = parseReactions(reactRows[stepIdx], map);
-            const bool beamOk = map.beamColumnTags().empty() || stepIdx < beamRows.size();
-            const bool axialOk = map.axialTags().empty() || stepIdx < axialRows.size();
-            if (beamOk && axialOk)
-            {
-                stepRes.elementResults = buildElementResults(snapshot, map, params,
-                    stepIdx < beamRows.size() ? &beamRows[stepIdx] : nullptr,
-                    stepIdx < axialRows.size() ? &axialRows[stepIdx] : nullptr,
-                    stepRes.displacements, stationLoads, loadFactorOfStep(stepIdx));
-            }
-            outResults.addStepResults(stepRes);
-        }
     }
 
     // Efforts bruts (Advanced) : globalForce (tous éléments) et basicForce (poutres/poteaux).
@@ -757,7 +721,6 @@ bool OpenSeesResultsReader::readMatrixResults(const std::string& workingDirector
     ReadContext ctx;
     const auto kbBeam = ctx.table(dir + params.beamBasicStiffnessOutputFile, map.basicStiffnessBeamTags().size() * 36, "basicStiffness poutres");
     const auto kbTruss = ctx.table(dir + params.trussBasicStiffnessOutputFile, map.basicStiffnessTrussTags().size(), "basicStiffness treillis");
-    const bool linearTransf = params.geomTransf == GeomTransfType::Linear;
     std::size_t bIdx = 0, tIdx = 0;
     for (const auto& e : map.elements())
     {
@@ -815,15 +778,11 @@ bool OpenSeesResultsReader::readMatrixResults(const std::string& workingDirector
             m.kLocal = beam ? ElementTransformation::beamBasicToLocalStiffness(m.kBasic, e.axes.length)
                             : ElementTransformation::trussBasicToLocalStiffness(m.kBasic.data[0]);
             m.kGlobal = ElementTransformation::localToGlobalStiffness(e.axes, m.kLocal);
-            const std::string transfNote = linearTransf
-                ? "Transformation algébrique exacte de k_basic (LinearCrdTransf3d, sans excentricité)."
-                : "geomTransf non linéaire : rigidité géométrique non incluse (valide à l'état de référence non chargé seulement).";
+            const std::string transfNote = "Transformation algébrique exacte de k_basic (LinearCrdTransf3d, sans excentricité).";
             m.kLocalMeta = elementMeta("k_local " + label, "Reconstructed: T_blᵀ · k_basic · T_bl (k_basic OpenSees)",
-                "Initial tangent (état de référence)", "Local", kElementDofOrdering, units,
-                beam ? linearTransf : true, transfNote);
+                "Initial tangent (état de référence)", "Local", kElementDofOrdering, units, true, transfNote);
             m.kGlobalMeta = elementMeta("K_global " + label, "Reconstructed: Tᵀ · k_local · T (k_basic OpenSees)",
-                "Initial tangent (état de référence)", "Global", kElementDofOrdering, units,
-                beam ? linearTransf : true, transfNote);
+                "Initial tangent (état de référence)", "Global", kElementDofOrdering, units, true, transfNote);
         }
         adv.elementMatrices[e.key] = std::move(m);
     }
@@ -911,7 +870,7 @@ std::map<ElementKey, ElementResults> OpenSeesResultsReader::beamResultsFromEndFo
     const std::vector<double>& localForces, const std::map<int, NodeDisplacement>& displacements,
     const std::map<int, std::vector<BeamElementLoad>>& loads)
 {
-    return buildElementResults(snapshot, map, params, &localForces, nullptr, displacements, &loads, 1.0,
+    return buildElementResults(snapshot, map, params, &localForces, nullptr, displacements, &loads,
                                /*addNodalEquivalentFixedEndForces=*/false);
 }
 
@@ -1075,7 +1034,7 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
     meta.totalElements = static_cast<int>(snapshot.elementCount());
     meta.systemSolver = toTclString(params.systemSolver);
     meta.constraintHandler = toTclString(params.constraintHandler);
-    meta.geomTransf = toTclString(params.geomTransf);
+    meta.geomTransf = "Linear";
     meta.extractionLevel = params.extractionLevel;
     if (meta.executionTimestamp.empty())
     {

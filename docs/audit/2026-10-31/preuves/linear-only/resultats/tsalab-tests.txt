@@ -1,0 +1,71 @@
+=================================================
+TSALab Unit Tests
+=================================================
+[PASS] Test L4: 8 exemples construits, enregistrés et relus
+[PASS] Test L5: import des modèles TSA (.tsa) et refus des signatures inconnues
+    Nœud N1 créé.
+    Nœud N2 créé.
+    Nœud N3 créé.
+    Poutre 1 créé(e) entre N1 et N2.
+    Poutre 2 créé(e) entre N2 et N3.
+    Barre 1 : section « IPE 300 », matériau S235.
+    Barre 2 : section « IPE 300 », matériau S235.
+    Appui « pinned » sur N1.
+    Appui « roller » sur N3.
+    Cas de charge 6 « P » créé.
+    Charge nodale 1 sur N2.
+    Custom2D : δmax = 12.8221 mm (N2), Mmax = 75 kN·m
+    Barre 1 : N1 → N2, L = 3 m, A = 0.0053812 m², Iy = 8.35611e-05 m⁴, E = 2.1e+08 kN/m²
+    N2 : u = 0, 0, -0.0128221 m, |u| = 12.8221 mm
+    N1 : R = 0, 0, 25 kN, M = 0, -1.67819e-15, 0 kN·m
+    Barre 1 : N ∈ [0, 0] kN, |V|max = 25 kN, |M|max = 75 kN·m (43 stations)
+    |Δ| = 1.73472e-18, écart relatif 1.35292e-14 % — dans la tolérance
+    |Δ| = 0, écart relatif 0 % — dans la tolérance
+    |Δ| = 0, écart relatif 0 % — dans la tolérance
+    Expérience conforme à la référence (flèche, réaction, moment) : vrai
+[PASS] Test L6: 4 Blueprints d'exemple exécutés
+[PASS] Test L7: analyse et SOLVER LAB sur les exemples
+[PASS] Test L8: plugin d'exemple (commande composée, nœud pur)
+  16 réussies, 0 en échec, 0 non disponibles ; moteurs : Custom2D 2.0.0 ; OpenSees 3.8.0
+[PASS] Test L9: laboratoire de validation (cas, exécution réelle, écarts, références externes)
+[PASS] Test L10: journal d'expériences (enregistrement, relecture, rejeu, intégrité)
+  custom2d — réaction verticale en A : 25 / 25 kN (écart 0)
+  custom2d — réaction verticale en B : 25 / 25 kN (écart 0)
+  custom2d — flèche à mi-portée : -0.0128221 / -0.0128221 m (écart 3.46945e-18)
+  custom2d — moment fléchissant maximal : 75 / 75 kN·m (écart 0)
+  custom2d — effort tranchant maximal : 25 / 25 kN (écart 0)
+  opensees — réaction verticale en A : 25 / 25 kN (écart 1.06581e-14)
+  opensees — réaction verticale en B : 25 / 25 kN (écart 1.06581e-14)
+  opensees — flèche à mi-portée : -0.0128221 / -0.0128221 m (écart 3.46945e-18)
+  opensees — moment fléchissant maximal : 75 / 75 kN·m (écart 1.42109e-14)
+  opensees — effort tranchant maximal : 25 / 25 kN (écart 1.06581e-14)
+[PASS] Test L11: première expérience complète (modèle, calcul sur 2 moteurs, référence analytique, enregistrement, réouverture)
+  OpenSees léger — K : Données avancées absentes : relancer le calcul en mode ADVANCED (matrices et mapping DDL). | F, U : Données avancées absentes : relancer le calcul en mode ADVANCED (matrices et mapping DDL). | T : Données avancées absentes : relancer le calcul en mode ADVANCED (matrices et mapping DDL).
+[PASS] Test L12: laboratoire matriciel (K, F, U, DDL, transformations ; données absentes refusées)
+  FEA-01 h=1 (36 quadrangles, 0 triangles) uz=-0.00245074 écart réf. 0.268856 %
+  FEA-01 h=0.5 (144 quadrangles, 0 triangles) uz=-0.0024839 écart réf. 1.62533 %
+  FEA-01 h=0.25 (576 quadrangles, 0 triangles) uz=-0.00250902 écart réf. 2.65302 %
+  ordre observé : 0.400473 (trois maillages les plus fins, rapport 2) ; extrapolé : -0.00258753 (écart 5.86512 %)
+  FEA-07 : ordre observé 2.01438, écart du maillage le plus fin 0.0146182 %, extrapolé 0.000154247 %
+[PASS] Test L13: convergence en maillage (série du banc, ordre observé, Richardson, chaîne Gmsh → OpenSees)
+  plaque — flèche au centre : -0.00245647 / -0.00245791 m (écart relatif 0.0585894 %)
+  plaque — somme des réactions : 360 / 360 kN (écart relatif 5.9433e-11 %)
+[PASS] Test L14: plaque maillée dans TSALab (Gmsh → coques OpenSees), référence de Mindlin
+[PASS] Test L15: bibliothèque structurelle — 131 blocs en 8 catégories, documentés, sources présentes, typés
+[PASS] Test L16: Methode_Des_Deplacements_2D — K assemblée dans une boucle, résultat ≡ calcul direct (cas 1, ELU, tassement)
+[PASS] Test L17: graphe enregistré (.tsbp v2) et rouvert à l'identique, réexécuté ; résultats réutilisés quand rien ne change
+[PASS] Test L18: mécanisme détecté dans le graphe (DDL, mode de corps rigide, causes)
+[PASS] Test L19: mode 2 — gradient conjugué en blocs (3 itérations) et Gauss-Seidel (954 itérations) ≡ Cholesky
+[PASS] Test L20: mode 1 — classe FrameElement2D en bloc, modèle et 10 types de charges par blocs ≡ C++, calcul direct
+[PASS] Test L21: tassement d'appui — K_ff·d_f = F_f − K_fc·d_c, réaction conforme à la référence analytique
+[PASS] Test L22: blocs mathématiques (A·A⁻¹ = I, P·A = L·U, résidu, sous-matrice, dimensions, singularité), exports CSV, courbe
+[PASS] Test L23: exemples — rotule et appui élastique, analyse modale, Newmark, spectral, charges roulantes conformes
+[PASS] Test L24: méthode pas à pas avec appui élastique — K = Σ A_eᵀk_eA_e + K_ressorts, équilibre avec −k·u
+[PASS] Test L25: accélérogramme fourni (fichier non modifié), Newmark et spectre ≡ cœur scientifique, comparaison de solveurs
+[PASS] Test L26: graphes rotule/ressort, charges roulantes et spectral enregistrés et rouverts à l'identique
+[PASS] Test L27: import TSA — 14 portée(s) importée(s), 4 refusée(s) avec la raison, 13 comparée(s) au solveur 2D de TSA (1e-9), 3 barre(s) de treillis converties ; sources intactes ; non TSA, tronqué, version future, câble, portée inconnue, annulation refusés
+[PASS] Test L28: méthode des déplacements en six sous-graphes ≡ graphe pas à pas (K, F, d, R à l'identique, 6 lignes de résultats), conforme au calcul direct, version 3 relue
+[PASS] Test L29: graphe d'analyse d'un projet TSA (portée « Axe A — Hangar métallique 60 × 40 m », cas 1) — lu une fois, ≡ calcul direct, projet intact
+[PASS] Test L30: persistance JSON — 4 modèles et 5 résultats relus à l'identique, NaN et ±∞, blocs d'un graphe, refus motivés (illisible, autre format, version future, champ manquant, mauvais type, énumération inconnue)
+
+RESULTS: 27 / 27 tests passed successfully! — parties ignorées : 0

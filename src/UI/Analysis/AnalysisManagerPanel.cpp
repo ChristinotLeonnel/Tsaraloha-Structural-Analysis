@@ -31,10 +31,12 @@ namespace
 {
 QString yesNo(bool v) { return v ? QStringLiteral("✔") : QStringLiteral("—"); }
 
-QString typeLabel(AnalysisType t)
+QString typeLabel(const AnalysisContext& c)
 {
-    if (t == AnalysisType::Modal) return QObject::tr("modale");
-    return t == AnalysisType::NonLinearStatic ? QObject::tr("statique non linéaire") : QObject::tr("statique linéaire");
+    // Ancien projet : la demande d'origine reste affichée, elle n'est pas présentée comme un calcul linéaire.
+    if (!c.unsupportedAnalysisType.empty())
+        return QObject::tr("type « %1 » non pris en charge").arg(QString::fromStdString(c.unsupportedAnalysisType));
+    return c.type == AnalysisType::Modal ? QObject::tr("modale") : QObject::tr("statique linéaire");
 }
 } // namespace
 
@@ -224,7 +226,7 @@ void AnalysisManagerPanel::updateContextSummary()
     m_context->setText(tr("<b>Moteur</b> : %1 &nbsp;·&nbsp; <b>Calcul</b> : %2 %3 &nbsp;·&nbsp; <b>Portée</b> : %4<br>"
                           "<b>Chargement</b> : %5%6%7")
                            .arg(engine ? QString::fromStdString(engine->info().name).toHtmlEscaped() : tr("aucun"))
-                           .arg(typeLabel(c.type), c.dimension == AnalysisDimension::Plane2D ? tr("plan (2D)") : tr("spatial (3D)"))
+                           .arg(typeLabel(c), c.dimension == AnalysisDimension::Plane2D ? tr("plan (2D)") : tr("spatial (3D)"))
                            .arg(scope.toHtmlEscaped(), loads.toHtmlEscaped())
                            .arg(c.common.includeSelfWeight ? tr(" + poids propre") : QString())
                            .arg(exportSystem ? tr(" &nbsp;·&nbsp; système K·U = F exporté") : QString()));

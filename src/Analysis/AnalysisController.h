@@ -57,6 +57,8 @@ public:
     /// Relit les réglages enregistrés avec le projet (moteur absent → premier moteur disponible).
     /// Faux si des réglages existaient mais étaient illisibles (réglages par défaut appliqués).
     bool restoreContextFromModel();
+    /// Message à afficher si le contexte courant demande une fonctionnalité retirée (ancien projet), vide sinon.
+    std::string unsupportedFeaturesMessage() const;
     /// Enregistre le contexte courant dans le modèle ; vrai si le modèle a changé.
     bool storeContextInModel();
 

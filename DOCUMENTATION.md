@@ -283,14 +283,15 @@ La console inférieure dispose d'un interpréteur de commandes en langage nature
 - Charges surfaciques uniformes ($kN/m^2$) sur les dalles et planchers.
 - Combinaisons de charges ELU (État Limite Ultime : $1.35 G + 1.5 Q$) et ELS (État Limite de Service : $G + Q$).
 
-### 3. Moteur de Résolution OpenSees & Types d'Analyses :
-- **Statique Linéaire** : Résolution élastique standard $[K]\{u\} = \{F\}$.
-- **Statique Non-Linéaire** : Grands déplacements ($P\text{-}\Delta$), formulations corotatives (*corotTruss*) et non-linéarités géométriques.
-- **Analyse Modale Dynamique** : Extraction des modes propres de vibration (valeurs propres $\lambda$, pulsations $\omega$, fréquences $f$, périodes fondamentales $T$).
-- **Analyse Pushover** : Courbes de capacité non-linéaires incrémentales.
-- **Algorithmes de Résolution** : Newton-Raphson, Newton avec recherche linéaire (*NewtonLineSearch*), Newton modifié (*ModifiedNewton*), *Krylov-Newton*, *BFGS*, *Broyden*, *SecantNewton*.
-- **Intégrateurs Numériques** : Contrôle d'effort (*LoadControl*), Contrôle de déplacement (*DisplacementControl*), Longueur d'arc (*Arc-Length* / Crisfield), Norme de déplacement non équilibré minimale (*MinUnbalDispNorm*).
-- **Dialogue de Configuration (`AnalysisConfigDialog`)** : Filtrage interactif et validation dynamique des paramètres selon l'analyse choisie.
+### 3. Moteurs de Résolution & Types d'Analyses :
+**TSA prend actuellement en charge l'analyse structurale linéaire. L'analyse non linéaire n'est pas disponible dans cette version.**
+- **Statique Linéaire** : Résolution élastique au premier ordre $[K]\{u\} = \{F\}$, petits déplacements, en un seul pas
+  (OpenSees : `algorithm Linear`, `integrator LoadControl 1.0`, `analyze 1`).
+- **Analyse Modale** : Extraction des modes propres de vibration (valeurs propres $\lambda$, pulsations $\omega$, fréquences $f$, périodes $T$, masses participantes).
+- **Non disponibles** : analyse non linéaire (second ordre $P\text{-}\Delta$, grands déplacements, plasticité, pilotage
+  incrémental), pushover, analyses temporelles. Un ancien projet qui les demandait est signalé et son calcul refusé (ADR-025).
+- **Fenêtre Analysis (`AnalysisDialog`)** : moteur, dimension, type d'analyse (statique linéaire ou modale), portée,
+  chargement et options propres au moteur (OpenSees : solveur du système, gestionnaire de contraintes, unités, extraction).
 
 ### 4. Exploitation et Visualisation 3D des Résultats :
 - **Déformée 3D Structurale** :

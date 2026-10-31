@@ -67,7 +67,7 @@ QStringList commandSynonyms(const QString& commandId)
         { "cmd.mesh.settings", "taille des mailles;finesse;mesh size;harato" },
         { "cmd.mesh.quality", "qualité;distorsion;aspect;quality;harato" },
         { "cmd.analysis.solve", "calculer;lancer le calcul;résoudre;OpenSees;analyse;run;solve;compute;kajy;atombohy ny kajy" },
-        { "cmd.analysis.config", "solveur;paramètres de calcul;non linéaire;modal;solver;settings;fikirana kajy" },
+        { "cmd.analysis.config", "solveur;paramètres de calcul;linéaire;modal;solver;settings;fikirana kajy" },
         { "cmd.results.deformed", "déformée;déformation;flèche;deformed shape;deflection;endrika miova" },
         { "cmd.results.reactions", "réactions d'appui;support reactions;hery mamaly" },
         { "cmd.results.diagram_mz", "moment fléchissant;bending moment;momenta fiforetana" },

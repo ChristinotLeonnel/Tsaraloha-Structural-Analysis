@@ -17,11 +17,11 @@
 namespace TSA::Analysis
 {
 
-/// TSA se limite au calcul statique (linéaire, ou non linéaire par incréments de charge).
+/// TSA réalise uniquement des analyses linéaires. La valeur n'est jamais enregistrée telle quelle (clés de texte,
+/// analysisTypeKey) : un projet ancien ne peut pas être réinterprété par un changement de numérotation.
 enum class AnalysisType
 {
     LinearStatic,
-    NonLinearStatic,
     Modal           ///< valeurs et vecteurs propres (eigen), masses des éléments et masses additionnelles explicites
 };
 
@@ -109,7 +109,7 @@ struct ElementResults
 };
 
 /**
- * @brief Résultats d'un incrément de charge (analyse statique non linéaire).
+ * @brief Résultats d'un état parmi plusieurs : forme propre d'un mode (analyse modale).
  */
 struct StepResults
 {
@@ -216,8 +216,6 @@ struct AnalysisExecutionMetadata
     double executionDurationMs = 0.0;
     /// Durées mesurées des étapes du moteur (ms) : préparation du script, résolution, lecture des résultats.
     double scriptDurationMs = 0.0, solveDurationMs = 0.0, readDurationMs = 0.0;
-    /// Statique non linéaire : facteur de charge atteint en fin de calcul (1 = charge complète) ; NaN si non lu.
-    double finalLoadFactor = std::numeric_limits<double>::quiet_NaN();
 
     // Configuration réelle du système OpenSees (traçabilité des matrices)
     std::string modelBuilder;
@@ -442,7 +440,7 @@ public:
     const AdvancedResults& advanced() const { return m_advanced; }
     AdvancedResults& advanced() { return m_advanced; }
 
-    // Pas et Incréments non-linéaires
+    // États multiples : formes propres de l'analyse modale
     void addStepResults(const StepResults& step);
     const std::vector<StepResults>& allStepResults() const { return m_stepResults; }
     std::vector<StepResults>& allStepResults() { return m_stepResults; }

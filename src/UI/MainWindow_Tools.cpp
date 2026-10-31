@@ -572,6 +572,15 @@ void MainWindow::restoreAnalysisContextFromModel()
     if (m_meshController) m_meshController->setModel(m_model);   // maillage du projet (chunk MESH)
     if (m_analysis && !m_analysis->restoreContextFromModel() && m_consoleDock)
         m_consoleDock->appendLog(tr("Paramètres d'analyse du projet illisibles : réglages par défaut."), "WARN");
+    // Ancien projet non linéaire : signalé à l'ouverture, sans bloquer (le calcul reste refusé tant qu'il n'est pas reparamétré).
+    if (const std::string message = m_analysis ? m_analysis->unsupportedFeaturesMessage() : std::string(); !message.empty())
+    {
+        const QString text = QString::fromStdString(message);
+        if (m_consoleDock) m_consoleDock->appendLog(text, "WARN");
+        auto* box = new QMessageBox(QMessageBox::Warning, tr("Fonctionnalité non prise en charge"), text, QMessageBox::Ok, this);
+        box->setAttribute(Qt::WA_DeleteOnClose);
+        box->open();
+    }
 }
 
 void MainWindow::onActionRunSolve()
@@ -592,6 +601,15 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
         return false;
     }
     const QString engineName = QString::fromStdString(engine->info().name);
+
+    // 0. Fonctionnalité retirée demandée par un ancien projet : refus avant toute autre question (prepare et run refusent aussi).
+    if (const auto features = m_analysis->manager().unsupportedFeatures(context); !features.empty())
+    {
+        const QString text = QString::fromStdString(AnalysisManager::unsupportedFeaturesMessage(features));
+        if (m_consoleDock) m_consoleDock->appendLog(text, "ERROR");
+        QMessageBox::warning(this, tr("Analyse non prise en charge"), text);
+        return false;
+    }
 
     // 1. Disponibilité (installation proposée si le moteur sait se provisionner).
     const EngineAvailability avail = engine->availability();

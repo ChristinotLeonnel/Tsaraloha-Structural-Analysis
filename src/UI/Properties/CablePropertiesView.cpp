@@ -11,7 +11,6 @@
 #include <QLineEdit>
 #include <QDoubleSpinBox>
 #include <QComboBox>
-#include <QCheckBox>
 #include <QPushButton>
 #include <QLabel>
 #include <QColorDialog>
@@ -117,10 +116,6 @@ void CablePropertiesView::setupUi()
     connect(m_spinSag, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &CablePropertiesView::onWidgetChanged);
     formMech->addRow(tr("Flèche maximale (f) :"), m_spinSag);
 
-    m_chkTensionOnly = new QCheckBox(tr("Traction seule (Non-linéarité géométrique)"), grpMech);
-    connect(m_chkTensionOnly, &QCheckBox::toggled, this, &CablePropertiesView::onWidgetChanged);
-    formMech->addRow(m_chkTensionOnly);
-
     mainLayout->addWidget(grpMech);
 
     // 3. Extrémités & Ancrages
@@ -202,8 +197,6 @@ void CablePropertiesView::refreshView()
 
     int eaIdx = m_comboEndAnchor->findData(static_cast<int>(cable->endAnchor().type()));
     if (eaIdx >= 0) m_comboEndAnchor->setCurrentIndex(eaIdx);
-
-    m_chkTensionOnly->setChecked(cable->analysisProperties().tensionOnly);
 
     m_colorHex = QString::fromStdString(cable->color()); // vide : apparence du matériau
     TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, cable->material());
@@ -291,7 +284,6 @@ void CablePropertiesView::applyChanges()
         cable->startAnchor().setType(static_cast<TSA::Model::AnchorType>(m_comboStartAnchor->currentData().toInt()));
     if (m_edited.changed(m_comboEndAnchor))
         cable->endAnchor().setType(static_cast<TSA::Model::AnchorType>(m_comboEndAnchor->currentData().toInt()));
-    if (m_edited.changed(m_chkTensionOnly)) cable->analysisProperties().tensionOnly = m_chkTensionOnly->isChecked();
     cable->setColor(m_colorHex.toStdString());
     captureEditedFields();
 
@@ -309,7 +301,7 @@ void CablePropertiesView::applyChanges()
 void CablePropertiesView::captureEditedFields()
 {
     m_edited.capture({ m_comboType, m_comboGeomMode, m_spinDiameter, m_spinArea, m_spinModulus, m_spinPrestress, m_spinSag,
-                       m_comboStartAnchor, m_comboEndAnchor, m_chkTensionOnly });
+                       m_comboStartAnchor, m_comboEndAnchor });
 }
 
 } // namespace TSA::UI

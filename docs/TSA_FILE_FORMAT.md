@@ -238,6 +238,22 @@ fenêtre principale revient aux réglages par défaut (avertissement dans la con
 absent de l'installation est remplacé par le premier moteur disponible. Les **résultats** (`RSLT`)
 ne sont toujours pas enregistrés : un projet rouvert doit être recalculé.
 
+**Version linéaire seule (ADR-025, 2026-10-31).** TSA prend actuellement en charge l'analyse structurale linéaire ;
+l'analyse non linéaire n'est pas disponible. Aucun changement de format :
+- `analysisType` vaut `linear_static` ou `modal`. Une autre valeur (`nonlinear_static`, écrite par les versions
+  antérieures, ou inconnue) est conservée à la lecture et réécrite telle quelle à l'enregistrement. Le projet s'ouvre,
+  un message signale la fonctionnalité retirée, et le calcul est refusé tant que l'utilisateur n'a pas choisi une
+  analyse linéaire (jamais de calcul linéaire à sa place). Clé absente : statique linéaire, comme avant.
+- Bloc `engineSettings.opensees` : `geomTransf` 1 (P-Delta) ou 2 (corotationnel) et `trussFormulation` 1 ou 3
+  (treillis corotationnels) sont refusés de la même façon. Les autres clés de ces versions (`algorithm`, `integrator`,
+  `maxIterations`, `tolerance`, `numSteps`, `stepSize`, `controlNodeId`, `controlDof`, `dispIncrement`,
+  `saveAllSteps`, `trussFormulation` 2) étaient sans effet sur un calcul linéaire : elles sont ignorées, et la fenêtre
+  Analysis ne les réécrit plus.
+- Chunk `CABL`, propriétés d'analyse d'un câble : disposition inchangée (`tensionOnly` u8, puis deux u8 et un f64).
+  Les trois derniers champs (anciens « grands déplacements », « non-linéarité géométrique » et seuil de tension
+  minimale) n'ont jamais été lus par un calcul : ils sont lus puis ignorés, et écrits avec leurs anciennes valeurs par
+  défaut (1, 1, 10,0).
+
 ---
 
 ## 6. Système d'Intégrité et Sécurité du Lecteur

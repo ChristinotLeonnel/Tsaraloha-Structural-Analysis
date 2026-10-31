@@ -9,7 +9,6 @@
 class QLineEdit;
 class QDoubleSpinBox;
 class QComboBox;
-class QCheckBox;
 class QPushButton;
 class QLabel;
 
@@ -58,7 +57,6 @@ private:
     QDoubleSpinBox* m_spinSag = nullptr;
     QComboBox* m_comboStartAnchor = nullptr;
     QComboBox* m_comboEndAnchor = nullptr;
-    QCheckBox* m_chkTensionOnly = nullptr;
     QLabel* m_lblStandardInfo = nullptr;
     QPushButton* m_btnColor = nullptr;
     QString m_colorHex; ///< couleur propre à l'élément ; vide : apparence du matériau

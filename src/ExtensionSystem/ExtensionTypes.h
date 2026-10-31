@@ -19,7 +19,7 @@ namespace TSA::ExtensionSystem
 enum class ExtensionKind
 {
     DataExtension, // TSALib, SteelProfiles, CableLibrary (JSON, textures, metadata - AUCUNE recompilation)
-    CodeExtension  // Solvers avancés, modules non-linéaires, plugins DLL compilés
+    CodeExtension  // Solveurs, plugins DLL compilés
 };
 
 /**

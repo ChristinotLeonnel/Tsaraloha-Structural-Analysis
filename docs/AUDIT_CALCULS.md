@@ -40,7 +40,7 @@ Un bouton, une classe ou une énumération ne suffit pas à classer une fonction
 | Calcul | Implémentation | Méthode, équations | Hypothèses | Tests | Niveau |
 |---|---|---|---|---|---|
 | Rigidité de barre (N, V, M, T) | OpenSees `elasticBeamColumn` (3D) ; TSALab planar (2D) ; `ElementTransformation` (basique → local → global) | matrice d'Euler-Bernoulli 12×12 ; K_g = Tᵀ·K_l·T | Euler-Bernoulli (cisaillement transverse **négligé**), section constante | test 369 (K_l = analytique à 1e-16, R orthogonale, 6 modes rigides, K = Σ K_e) ; RDM-01 à 10 | **V** |
-| Treillis, câbles | `truss` / `corotTruss`, `InitStrain` (précontrainte ε₀ = T₀/EA) | effort normal seul ; rotations des nœuds de treillis bloquées | petits déplacements (truss), corotationnel (câbles) | RDM-07a/b (treillis 2D, 3D) ; suite `cables` | treillis **V**, câbles **T** |
+| Treillis, câbles | treillis `truss` ; câbles `corotTruss` + `InitStrain` (précontrainte ε₀ = T₀/EA), résolus en un seul pas linéaire | effort normal seul ; rotations des nœuds de treillis bloquées | petits déplacements ; câble non relâché en compression (BUG-151) | RDM-07a/b (treillis 2D, 3D) ; suite `cables` | treillis **V**, câbles **T** |
 | Relâchements d'extrémité | `-releasey/-releasez` (moments seulement) | rotule de flexion | N, V, T non relâchables (refusé par ModelValidator) | tests 152, 158 | **T** |
 | Appuis rigides, élastiques | `fix` ; `zeroLength` sur nœud auxiliaire | raideurs kN/m, kN·m/rad | — | suite `supports`, test 362 (kN/N) | **V** |
 | Charges nodales | `load` | repère global | une charge « locale » sur un nœud est signalée | RDM-01 à 07 | **V** |
@@ -67,7 +67,7 @@ Un bouton, une classe ou une énumération ne suffit pas à classer une fonction
 | Coques (dalles, voiles) | ShellMITC4, ShellDKGT ; forces nodales cohérentes ∫ Nᵢ p dA | maillage Gmsh ; résultantes aux points de Gauss | FEA-01 à 05, suite `surfaces` (354-364) | **V** |
 | Qualité du maillage | `OpenSeesMeshAdapter` (angle minimal, rapport d'arêtes) | avertissement au-delà de 15° / 10 | test 356 | **T** |
 | Analyse modale | `eigen` (LAPACK / Arpack), `modalProperties` | masses concentrées | FEA-05, FEA-06, test 359 | **V** |
-| Statique non linéaire géométrique | OpenSees : `geomTransf PDelta` / `Corotational`, Newton, LoadControl | incrémental | RDM-11a (charge complète), RDM-11b (P-Δ, 0,03 %) ; corotationnel non validé | P-Δ **V** ; corotationnel **I** |
+| Statique non linéaire géométrique (P-Δ, corotationnel, Newton, pilotage incrémental) | **retirée le 31/10/2026** (ADR-025) : TSA prend en charge l'analyse structurale linéaire seulement ; un ancien projet qui la demandait est refusé avec un message, jamais calculé en linéaire à la place | — | tests 532-537 (refus, script sans commande non linéaire) ; RDM-11a/b supprimés | **A** |
 | Non-linéarité matérielle | — : tous les éléments sont élastiques | — | — | **A** |
 | Temporel, spectre de réponse, pushover, flambement linéaire (valeurs propres de K_G), charges mobiles, thermique | — | — | — | **A** (non proposés) |
 
@@ -89,7 +89,7 @@ Une analyse aux éléments finis correcte ne signifie pas qu'une structure satis
 
 | Prio. | Défaut | Conséquence | Correction | Test de non-régression |
 |---|---|---|---|---|
-| **P0** | Statique non linéaire : Δλ = « taille de pas » (0,05) pour 10 pas | **50 % des charges appliquées**, résultats présentés comme ceux de la charge complète | Δλ = 1/n ; facteur atteint lu (`getTime`) et signalé s'il diffère de 1 | RDM-11a |
+| **P0** | Statique non linéaire : Δλ = « taille de pas » (0,05) pour 10 pas | **50 % des charges appliquées**, résultats présentés comme ceux de la charge complète | Δλ = 1/n ; facteur atteint lu (`getTime`) et signalé s'il diffère de 1. Fonctionnalité retirée le 31/10/2026 (ADR-025) | RDM-11a (supprimé avec la fonctionnalité) |
 | **P0** | Cornière : Iy, Iz sans termes de transport | rigidité divisée par environ 2 (L 100×100×10 : 84 cm⁴ au lieu de 180) | inerties centrales, Iyz exposé | test 365 |
 | **P0** | UPN : Iz autour d'un axe non central | Iz divisé par environ 2 (UPN 200 : 82 cm⁴ au lieu de 171) | Huygens | test 365 |
 | **P0** | Wel des sections dissymétriques calculé avec h/2, b/2 | contraintes **sous-estimées** (T, cornière, UPN) | fibre la plus éloignée du centre de gravité | test 365 |
@@ -215,14 +215,13 @@ Le CPU reste le mode fiable par défaut. Aucun téléchargement de dépendance n
 | P1 | Cisaillement transverse des poutres (Timoshenko) | flèches sous-estimées des poutres courtes ou hautes | poutres-cloisons, voiles en barres | moyenne : `ElasticTimoshenkoBeam` OpenSees, aires de cisaillement | Timoshenko analytique |
 | P1 | Excentricités et offsets rigides | modélisation des liaisons poutre-poteau excentrées | modèles plus fidèles | moyenne : `-jntOffset` | portique analytique |
 | P1 | EC2 effort tranchant, ELS ; EC3 interaction N-M, déversement | vérifications incomplètes | note réglementaire complète | élevée ; textes normatifs | calculs manuels de référence |
-| P1 | Flambement linéaire (charges critiques) | stabilité globale non évaluée | αcr (EN 1993-1-1 §5.2.1) | moyenne : OpenSees (géométrie P-Delta + eigen) | Euler (π²EI/(βL)²) |
+| P1 | Flambement linéaire (charges critiques) | stabilité globale non évaluée | αcr (EN 1993-1-1 §5.2.1) | moyenne : problème aux valeurs propres avec rigidité géométrique, méthode supplémentaire à valider séparément (elle n'est pas validée du seul fait que l'analyse est linéaire) | Euler (π²EI/(βL)²) |
 | P1 | Comparaison avec Robot sur les cas du banc | non exécutée (aucun résultat disponible) | confiance des utilisateurs | faible : export CSV, outil prêt | rapport `--reference` |
 | P2 | Flèche reconstruite entre nœuds (OpenSees) : écart 1e-4 | précision d'affichage | cohérence avec Custom2D | faible | RDM-03b, 04b |
 | P2 | BandSPD pour la statique linéaire (−29 % à 17 000 DDL) | message de mécanisme à adapter (matrice non définie positive) | performance des grands modèles | faible ; tests de mécanismes | suites `standards`, `torsion` |
 | P2 | Export DOCX de la note | diffusion | — | moyenne ; dépendance | — |
 | P2 | Exécution parallèle de cas indépendants (plusieurs processus OpenSees) | — | combinaisons multiples plus rapides | moyenne | concordance série/parallèle |
-| P2 | Corotationnel : à valider | — | grands déplacements | faible : cas de console en grande rotation (Elastica) | banc |
-| P1 | Haubans précontraints (`corotTruss`) calculés par `algorithm Linear` (§ 4.2) | résidu d'équilibre ≈ 2 × 10⁻⁵ ; réactions parasites | équilibre exact des ponts à haubans | moyenne : algorithme de Newton (quelques itérations) quand le modèle contient des câbles, sans changer les autres calculs | test 353 avec tolérance 10⁻⁶ ; équilibre par structure |
+| P1 | Haubans précontraints (`corotTruss`) calculés par `algorithm Linear` (§ 4.2) | résidu d'équilibre ≈ 2 × 10⁻⁵ ; réactions parasites | équilibre exact des ponts à haubans | à décider : itérer l'équilibre relèverait de l'analyse non linéaire, retirée (ADR-025) ; passer à `truss` changerait des résultats validés | test 353 avec tolérance 10⁻⁶ ; équilibre par structure |
 | P2 | Dalle sans maillage transmis : ses nœuds restent dans le modèle de calcul sans élément | matrice singulière, au lieu d'un message qui nomme la dalle | message explicite | faible : écarter ou signaler les nœuds sans élément | cas d'une dalle non maillée |
 
 ## 9. Reproduire

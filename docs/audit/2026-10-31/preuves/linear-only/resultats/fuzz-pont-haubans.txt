@@ -1,0 +1,13 @@
+semence D:/Tsaraloha Platforme/TSA/examples/TSA_Projet_Pont_Haubans_80-180-80m.tsa chunks [('PROJ', 87, 1), ('THMB', 11852, 1), ('COOR', 459, 1), ('GRID', 738, 1), ('NODE', 9796, 229), ('SUPP', 1044, 12), ('BARS', 79910, 452), ('COLS', 9472, 52), ('SLAB', 0, 0), ('WALL', 0, 0), ('FNDN', 500, 4), ('TRUS', 0, 0), ('CABL', 28672, 64), ('LOAD', 12062, 140), ('BIMM', 149014, 572), ('MVIS', 87031, 1), ('SECP', 4577, 1), ('SNAP', 420, 3)]
+témoin ifc code 0 2.55s TSARAL~1\\AppData\\Local\\Temp\\claude\\d--Tsaraloha-Platforme-TSA\\84fdaea9-ba6e-422a-80ce-1f048ba5db29\\scratchpad\\fuzz5\\candidat.tsa", |     "ms": 94 | } |  | 
+témoin mesh code 0 0.93s n 1.000, ≈ 26358 DDL | C:\Users\TSARAL~1\AppData\Local\Temp\claude\d--Tsaraloha-Platforme-TSA\84fdaea9-ba6e-422a-80ce-1f048ba5db29\scratchpad\fuzz5\o.msh écrit | 
+… 100 {'géré(0)': 54, 'géré(1)': 47} 13s
+… 200 {'géré(0)': 108, 'géré(1)': 93} 26s
+… 300 {'géré(0)': 169, 'géré(1)': 132} 39s
+… 400 {'géré(0)': 226, 'géré(1)': 175} 53s
+… 500 {'géré(0)': 279, 'géré(1)': 222} 66s
+BILAN 600 itérations, 79s
+  ('ifc', 'géré(0)') 246
+  ('ifc', 'géré(1)') 204
+  ('mesh', 'géré(0)') 88
+  ('mesh', 'géré(1)') 62

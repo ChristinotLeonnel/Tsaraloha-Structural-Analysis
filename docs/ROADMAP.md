@@ -23,6 +23,10 @@
 
 Tous les points d'investigation initiale ont été rigoureusement analysés et vérifiés dans le code source :
 
+- **Périmètre de calcul (2026-10-31)** : TSA prend actuellement en charge l'analyse structurale linéaire (statique
+  linéaire, modale). L'analyse non linéaire n'est pas disponible dans cette version (ADR-025) ; aucune feuille de route
+  ne l'annonce.
+
 - **Position exacte de `Foundation`** : `Foundation` (`src/Model/Foundation.h`) est une entité autonome (elle ne dérive ni de `LinearElement` ni de `SurfaceElement`). Elle est associée à un nœud d'appui (`nodeId`), possède ses propres dimensions géométriques de semelle (`widthA`, `lengthB`, `heightH`), une contrainte admissible de sol `soilBearingCapacity` (en kPa), et est gérée directement par `Model` (`addFoundation`, `getFoundation`, `removeFoundation`).
 - **Usage exact de `ModelDiff`** : `ModelDiff` (`src/Model/ModelDiff.h`) calcule le différentiel structurel (éléments créés, modifiés, supprimés pour nœuds, poutres, poteaux, dalles, voiles, fondations, treillis, câbles) entre deux instantanés de modèle (`ModelStateSnapshot`). Il permet des rafraîchissements incrémentaux O(delta) du viewport OCCT (`OccView`), de l'arbre (`ModelTreeWidget`) et de l'Undo/Redo sans reconstruction globale de la scène.
 - **Rôle de `InteractionManager`** : `src/Interaction/InteractionManager` centralise les états d'interaction 3D du viewport (`InteractionMode` pour la sélection, le dessin interactif de chaque type d'élément et les transformations 3D). Il gère également les requêtes de capture asynchrones (`SelectionRequest`) utilisées par les dialogues modaux pour sélectionner des coordonnées ou nœuds dans la vue 3D.

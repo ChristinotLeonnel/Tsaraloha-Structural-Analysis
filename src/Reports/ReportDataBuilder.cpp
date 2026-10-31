@@ -255,8 +255,8 @@ QJsonObject ReportDataBuilder::build(const TSA::Model::Model& model, const TSA::
                             { "engine", s(meta.solverEngine) + (meta.solverVersion.empty() ? QString() : ' ' + s(meta.solverVersion)) },
                             { "case", s(results->caseOrComboName()) },
                             { "timestamp", s(results->timestamp()) },
-                            { "analysisType", results->analysisType() == TSA::Analysis::AnalysisType::LinearStatic ? QStringLiteral("statique linéaire")
-                                                                                                                   : QStringLiteral("statique non linéaire") },
+                            { "analysisType", results->analysisType() == TSA::Analysis::AnalysisType::Modal ? QStringLiteral("modale")
+                                                                                                            : QStringLiteral("statique linéaire") },
                             { "dimension", s(meta.analysisDimension) },
                             { "units", QJsonObject { { "force", s(u.force) }, { "moment", s(u.moment) }, { "length", s(u.length) } } } };
         // Déplacements en mm si le moteur travaille en mètres, sinon dans l'unité du moteur (aucune conversion supposée).

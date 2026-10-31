@@ -85,13 +85,16 @@ Courbes de résultats le long d'une barre (poutre, poteau, barre de treillis, c�
 - La barre sélectionnée dans la vue 3D est affichée. Choix des courbes et de la présentation mémorisés (QSettings
   « Diagram2D »).
 
-## `AnalysisConfigDialog` (`src/UI/Dialogs`)
+## `AnalysisDialog` (`src/UI/Analysis`)
 
-Dialogue de configuration avancée de la résolution mécanique :
-- Sélection du type d'analyse : Statique linéaire, Statique non-linéaire.
-- Algorithmes non-linéaires : Newton-Raphson standard, LineSearch, ModifiedNewton, Krylov-Newton, BFGS, Broyden, SecantNewton.
-- Intégrateurs numériques : LoadControl, DisplacementControl, ArcLength (Crisfield), MinUnbalDispNorm.
-- Filtrage contextuel dynamique des paramètres incompatibles en direct.
+Fenêtre Analysis commune à tous les moteurs (« Paramètres d'analyse », Ctrl+F5) :
+- Moteur, dimension et type d'analyse proposés selon les capacités du moteur : statique linéaire, modale.
+  L'analyse non linéaire n'est pas disponible dans cette version.
+- Portée, chargement, poids propre, appuis articulés ; nombre de modes et masses pour l'analyse modale.
+- Options propres au moteur (OpenSees : solveur du système, gestionnaire de contraintes, unités, extraction ADVANCED).
+- Ancien projet qui demandait une fonctionnalité retirée (statique non linéaire, P-Delta, corotationnel) : bandeau
+  d'avertissement. Valider la fenêtre remplace la demande par l'analyse linéaire choisie ; « Annuler » la conserve et le
+  calcul reste refusé.
 
 ## `PropertyPanel` (`src/UI/Properties`)
 

@@ -1,6 +1,26 @@
 # Tasks
 
-Last Updated: 2026-10-28. Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-10-31. Uniquement des tâches réellement identifiées (voir known-issues.md).
+
+## Version linéaire seule (ADR-025, 2026-10-31, branche refactor/linear-only)
+- [x] Inventaire, retrait du non linéaire (moteur, OpenSees, contexte, interface, données, textes), refus des anciens projets.
+- [x] Tests 532-537 ; RDM-11a/b supprimés ; RDM-13a-c, RDM-14a-d, FEA-08 à 10 ajoutés au banc ; traductions en / mg.
+- [x] Release : 57/57 suites, 544 tests ; empreinte des exemples identique à l'octet ; bancs identiques au bit près ; performances.
+- [x] Documentation (README, DOCUMENTATION, docs/*), mémoire, rapport LINEAR_ONLY_REFACTORING_REPORT.md.
+- [ ] Commit / fusion (accord requis), TSA et TSALab (branche refactor/linear-only des deux dépôts). Debug et Linux :
+      voir le rapport (§ 8).
+- [ ] Décision : câbles corotTruss précontraints résolus en un pas (raideur de précontrainte incluse, effort recalculé sur la
+      géométrie déformée) : garder, ou changer de formulation (change des résultats validés) — docs/cable-system/analysis.md.
+- [ ] TSALab : énumérateur tsalab::planar::AnalysisType::NonLinearStatic inutilisé ; README / SOLVER_API / AUDIT_TSA_TSALAB périmés.
+
+## Audit technique du 2026-10-31 (docs/audit/2026-10-31/TSA_REMEDIATION_ROADMAP.md)
+- [x] Audit, 9 rapports, preuves ; branche docs/audit-technique-2026-10-31 ; [ ] commit (accord requis).
+- [ ] Phase 0, mise en sécurité : BUG-148, BUG-151 à BUG-153 (refus ou correction). BUG-149 et BUG-150 clos par retrait
+      (ADR-025) ; cas de rotules et portiques aléatoires ajoutés au banc pour les moteurs qui les passent.
+- [ ] Revoir les résultats déjà produits avec rotules + charge non uniforme, ou en non linéaire.
+- [ ] Non exécuté : TSALab_TestSuite, tsalab_science_tests S6 (non concluant), fem3dpost_tests (délai), ASan, Linux, Debug, interface réelle.
+- [ ] Régénérer les 26 journaux vidés de 3DDesplacement/benchmarks/OpenSees/results (après correction de BUG-161).
+- [ ] Décisions : ADR-022 et modal, moteur par défaut, note Legacy, câbles, licences.
 
 ## Courbes 2D superposées (2026-10-30, branche feature/diagram-multi-curves)
 - [x] Diagram2DWidget multi-courbes, échelles, export, sélection 3D ; test 531 ; traductions ; docs/UI.md.

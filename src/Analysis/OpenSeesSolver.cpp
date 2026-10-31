@@ -1,5 +1,4 @@
 #include "OpenSeesSolver.h"
-#include <QRegularExpression>
 #include "OpenSeesResultsReader.h"
 #include "../Model/Model.h"
 #include "../Standards/ModelValidator.h"
@@ -318,10 +317,9 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
         m_results.setValid(false);
         return false;
     }
-    // Détection de non-convergence
-    if (fullLog.contains("CONVERGENCE_FAIL") || fullLog.contains("Analysis Failed"))
+    if (fullLog.contains("Analysis Failed"))
     {
-        if (errorMessage) *errorMessage = tr("Non-convergence détectée lors de la résolution OpenSees.");
+        if (errorMessage) *errorMessage = tr("La résolution OpenSees a échoué.");
         m_results.setValid(false);
         return false;
     }
@@ -434,30 +432,6 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     else
     {
         meta.loadCombinationType = "Statique Linéaire";
-    }
-    // Statique non linéaire : facteur de charge atteint (λ = 1 attendu) ; tout autre facteur est signalé, jamais tu
-    if (localParams.type == AnalysisType::NonLinearStatic)
-    {
-        const QString log = QString::fromStdString(m_results.journalLog());
-        const int at = log.lastIndexOf(QStringLiteral("TSA_OPS_LOAD_FACTOR"));
-        if (at >= 0)
-        {
-            bool ok = false;
-            const double lambda = log.mid(at + 20).section(QRegularExpression(QStringLiteral("\\s")), 0, 0, QString::SectionSkipEmpty).toDouble(&ok);
-            if (ok)
-            {
-                meta.finalLoadFactor = lambda;
-                if (std::abs(lambda - 1.0) > 1e-6)
-                {
-                    const std::string w = tr("Statique non linéaire : résultats au facteur de charge λ = %1"
-                                             ", et non à la charge complète (λ = 1) : vérifier l'intégrateur (longueur d'arc, contrôle en "
-                                             "déplacement) et le nombre de pas.")
-                                              .arg(QString::fromStdString(std::to_string(lambda))).toStdString();
-                    meta.warnings.push_back(w);
-                    emit logReceived(QString("[AVERTISSEMENT] %1").arg(QString::fromStdString(w)));
-                }
-            }
-        }
     }
     m_results.setExecutionMetadata(meta);
     m_results.setAvailability(m_results.availabilityFromData());

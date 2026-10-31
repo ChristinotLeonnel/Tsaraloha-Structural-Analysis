@@ -2,7 +2,8 @@
 //   367  tous les cas RDM et FEA par la chaîne de calcul réelle (OpenSees, Custom2D) : aucune vérification en échec ni
 //        indisponible ; rapport écrit dans <build>/validation-reports (historique conservé) ;
 //   368  outillage : évaluateur de formules, tolérance mixte, fichiers invalides refusés, références externes (CSV,
-//        JSON) importées et comparées (une valeur fausse est détectée), rapports Markdown / CSV / JSON.
+//        JSON) importées et comparées (une valeur fausse est détectée), rapports Markdown / CSV / JSON ;
+//   537  version linéaire seule : cas non linéaire refusé à la lecture, ancien réglage P-Delta refusé au calcul.
 
 #include "test_common.h"
 
@@ -158,6 +159,43 @@ bool runSuite_Benchmarks(int& passed)
             TEST_CHECK(none.contains("AUCUN RAPPORT DE VALIDATION") || none.contains("RDM-0"), "Test 368: note de calcul — rapport absent signalé");
         }
         std::cout << "[PASS] Test 368: Outillage du banc (formules, tolérances, références externes, rapports)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 537 : banc d'une version linéaire seule. Un cas non linéaire est refusé à la lecture ; l'ancien réglage P-Delta
+    // demandé en statique linéaire (BUG-150) est refusé au calcul au lieu d'être calculé au premier ordre.
+    // -------------------------------------------------------------------------
+    {
+        QFile f(benchmarkDir() + "/rdm/RDM-04.json");
+        TEST_CHECK(f.open(QIODevice::ReadOnly), "Test 537: lecture de RDM-04");
+        const QJsonObject base = QJsonDocument::fromJson(f.readAll()).object();
+        std::vector<std::string> errors;
+        TEST_CHECK(parseBenchmark(base, nullptr, &errors) && errors.empty(), "Test 537: cas de départ valide");
+
+        QJsonObject nonlinear = base;
+        QJsonObject analysis = nonlinear.value("analysis").toObject();
+        analysis["type"] = "nonlinear_static";
+        nonlinear["analysis"] = analysis;
+        errors.clear();
+        TEST_CHECK(!parseBenchmark(nonlinear, nullptr, &errors) && errors.size() == 1 && errors.front().find("non pris en charge") != std::string::npos,
+                   "Test 537: cas non linéaire refusé à la lecture (" << (errors.empty() ? std::string() : errors.front()) << ")");
+
+        QJsonObject engines = base;
+        engines["engines"] = QJsonArray { "fem3d", "abaqus" };
+        errors.clear();
+        TEST_CHECK(!parseBenchmark(engines, nullptr, &errors) && errors.size() == 1 && errors.front().find("abaqus") != std::string::npos,
+                   "Test 537: moteur inconnu refusé, Fem3D accepté");
+
+        BenchmarkCase c;
+        TEST_CHECK(parseBenchmark(base, &c, nullptr), "Test 537: RDM-04 lu");
+        c.analysis["engineSettings"] = QJsonObject { { "opensees", QJsonObject { { "geomTransf", 1 } } } };
+        RunOptions opt;
+        opt.engines = { "opensees" };
+        const auto out = runBenchmark(c, opt);
+        TEST_CHECK(out.size() == 1 && !out[0].ran && !out[0].skipped && out[0].message.find("n'est plus prise en charge") != std::string::npos,
+                   "Test 537: P-Delta en statique linéaire refusé (" << (out.empty() ? std::string() : out[0].message) << ")");
+        std::cout << "[PASS] Test 537: Banc linéaire seul (cas non linéaires et P-Delta refusés)" << std::endl;
         ++passed;
     }
     return true;

@@ -32,9 +32,6 @@ OpenSeesModelMap OpenSeesModelMap::build(const CalculationSnapshot& snapshot, co
             if (!f) ++map.m_estimatedFreeDofs;
     }
 
-    const bool corotTruss = params.trussFormulation == TrussFormulation::CorotTruss
-                         || params.trussFormulation == TrussFormulation::CorotTrussSection;
-
     int transfTag = 1;
     int maxElementTag = 0;
     for (const auto& [tag, el] : snapshot.elements())
@@ -48,7 +45,9 @@ OpenSeesModelMap OpenSeesModelMap::build(const CalculationSnapshot& snapshot, co
 
         switch (el.type)
         {
-        case StructuralElementKind::Truss: e.opsClass = corotTruss ? "corotTruss" : "truss"; break;
+        case StructuralElementKind::Truss: e.opsClass = "truss"; break;
+        // Élément historique du câble, conservé tel quel : résultats validés, un seul pas linéaire à la géométrie
+        // initiale, aucune itération (docs/cable-system/analysis.md).
         case StructuralElementKind::Cable: e.opsClass = "corotTruss"; break;
         default: e.opsClass = "elasticBeamColumn"; break;
         }

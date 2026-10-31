@@ -65,6 +65,12 @@ bool AnalysisController::restoreContextFromModel()
     return ok;
 }
 
+std::string AnalysisController::unsupportedFeaturesMessage() const
+{
+    const auto features = m_manager->unsupportedFeatures(m_context);
+    return features.empty() ? std::string() : AnalysisManager::unsupportedFeaturesMessage(features);
+}
+
 bool AnalysisController::storeContextInModel()
 {
     if (!m_model) return false;

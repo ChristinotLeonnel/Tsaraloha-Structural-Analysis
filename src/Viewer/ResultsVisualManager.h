@@ -122,7 +122,7 @@ public:
     bool areReactionsVisible() const { return m_reactionsVisible; }
     void setReactionsVisible(bool visible);
 
-    // Étape active (Incrément non-linéaire)
+    // Mode propre actif (analyse modale)
     int activeStep() const;
     void setActiveStep(int step);
 

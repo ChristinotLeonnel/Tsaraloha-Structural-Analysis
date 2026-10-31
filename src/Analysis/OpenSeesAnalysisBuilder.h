@@ -9,25 +9,6 @@
 namespace TSA::Analysis
 {
 
-enum class NonlinearAlgorithm
-{
-    Newton,                 ///< Newton-Raphson standard
-    NewtonLineSearch,       ///< Newton avec recherche linéaire (Line Search)
-    ModifiedNewton,         ///< Newton modifié (matrice tangente recalculée)
-    KrylovNewton,           ///< Accélération sous-espace de Krylov
-    BFGS,                   ///< Quasi-Newton BFGS
-    Broyden,                ///< Quasi-Newton Broyden
-    SecantNewton            ///< Secant Newton
-};
-
-enum class IntegratorType
-{
-    LoadControl,            ///< Contrôle de chargement incrémental
-    DisplacementControl,    ///< Contrôle du déplacement à un nœud cible
-    ArcLength,              ///< Longueur d'arc (Arc-Length)
-    MinUnbalDispNorm        ///< Norme de déplacement déséquilibré minimum
-};
-
 enum class SystemSolver
 {
     BandGeneral,            ///< Solveur bande générale LAPACK
@@ -46,21 +27,6 @@ enum class ConstraintHandler
     Lagrange                ///< Multiplicateurs de Lagrange
 };
 
-enum class TrussFormulation
-{
-    Truss,                  ///< Formulation linéaire standard
-    CorotTruss,             ///< Formulation corotationnelle (grands déplacements)
-    TrussSection,           ///< Formulation avec intégration de section
-    CorotTrussSection       ///< Formulation corotationnelle avec section
-};
-
-enum class GeomTransfType
-{
-    Linear,                 ///< Transformation géométrique linéaire
-    PDelta,                 ///< Effets du second ordre P-Delta
-    Corotational            ///< Formulation corotationnelle complète
-};
-
 struct AnalysisParameters
 {
     AnalysisType type = AnalysisType::LinearStatic;
@@ -73,29 +39,9 @@ struct AnalysisParameters
     /// Blocages automatiques des appuis articulés / simples (CalculationSnapshot::capture).
     SupportRestraintMode supportRestraints = SupportRestraintMode::Fork;
 
-    // Méthodes et algorithmes de résolution
-    NonlinearAlgorithm algorithmType = NonlinearAlgorithm::Newton;
-    NonlinearAlgorithm algorithm = NonlinearAlgorithm::Newton;
-    IntegratorType integratorType = IntegratorType::LoadControl;
-    IntegratorType integrator = IntegratorType::LoadControl;
+    // Résolution du système linéaire
     SystemSolver systemSolver = SystemSolver::BandGeneral;
     ConstraintHandler constraintHandler = ConstraintHandler::Transformation;
-    TrussFormulation trussFormulation = TrussFormulation::Truss;
-    GeomTransfType geomTransf = GeomTransfType::Linear;
-
-    // Contrôle et convergence
-    int maxIterations = 50;
-    double tolerance = 1e-6;
-    int numSteps = 10;
-    double stepSize = 0.05;         ///< Facteur de pas (LoadControl ou ArcLength)
-
-    // Contrôle de déplacement
-    int controlNodeId = 1;
-    int controlDof = 3;             ///< 1=UX, 2=UY, 3=UZ
-    double dispIncrement = -0.001;  ///< Incrément de déplacement par pas (m)
-
-    // Gestion des résultats
-    bool saveAllSteps = true;       ///< Enregistrer tous les incréments
 
     // Niveau d'extraction : Light (défaut) ou Advanced (matrices, mapping DDL, forces brutes)
     ExtractionLevel extractionLevel = ExtractionLevel::Light;
@@ -131,53 +77,6 @@ struct AnalysisParameters
 /// Chiffres significatifs demandés aux recorders OpenSees (-precision).
 constexpr int kRecorderPrecision = 16;
 
-inline const char* algorithmToTcl(NonlinearAlgorithm algo)
-{
-    switch (algo)
-    {
-    case NonlinearAlgorithm::Newton: return "Newton";
-    case NonlinearAlgorithm::NewtonLineSearch: return "NewtonLineSearch";
-    case NonlinearAlgorithm::ModifiedNewton: return "ModifiedNewton";
-    case NonlinearAlgorithm::KrylovNewton: return "KrylovNewton";
-    case NonlinearAlgorithm::BFGS: return "BFGS";
-    case NonlinearAlgorithm::Broyden: return "Broyden";
-    case NonlinearAlgorithm::SecantNewton: return "SecantNewton";
-    }
-    return "Newton";
-}
-
-inline const char* integratorToTcl(IntegratorType integ)
-{
-    switch (integ)
-    {
-    case IntegratorType::LoadControl: return "LoadControl";
-    case IntegratorType::DisplacementControl: return "DisplacementControl";
-    case IntegratorType::ArcLength: return "ArcLength";
-    case IntegratorType::MinUnbalDispNorm: return "MinUnbalDispNorm";
-    }
-    return "LoadControl";
-}
-
-inline const char* toTclString(IntegratorType integ)
-{
-    return integratorToTcl(integ);
-}
-
-inline const char* toTclString(NonlinearAlgorithm algo)
-{
-    switch (algo)
-    {
-    case NonlinearAlgorithm::Newton: return "Newton";
-    case NonlinearAlgorithm::NewtonLineSearch: return "NewtonLineSearch 0.8";
-    case NonlinearAlgorithm::ModifiedNewton: return "ModifiedNewton";
-    case NonlinearAlgorithm::KrylovNewton: return "KrylovNewton";
-    case NonlinearAlgorithm::BFGS: return "BFGS";
-    case NonlinearAlgorithm::Broyden: return "Broyden";
-    case NonlinearAlgorithm::SecantNewton: return "SecantNewton";
-    }
-    return "Newton";
-}
-
 inline const char* toTclString(SystemSolver sys)
 {
     switch (sys)
@@ -207,17 +106,6 @@ inline const char* toTclString(ConstraintHandler ch)
     case ConstraintHandler::Lagrange: return "Lagrange";
     }
     return "Transformation";
-}
-
-inline const char* toTclString(GeomTransfType gt)
-{
-    switch (gt)
-    {
-    case GeomTransfType::Linear: return "Linear";
-    case GeomTransfType::PDelta: return "PDelta";
-    case GeomTransfType::Corotational: return "Corotational";
-    }
-    return "Linear";
 }
 
 /**

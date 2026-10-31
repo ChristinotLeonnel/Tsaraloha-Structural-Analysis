@@ -1,0 +1,19 @@
+=================================================
+TSA Unit Tests: Modular Verification Suite
+Filtering by suite: i18n
+=================================================
+
+--- [Suite 33/33] Langues de l'interface, recherche globale, icônes et ruban ---
+[PASS] Test 490: Locale numérique C (LANG=)
+[PASS] Test 450: Langues, préférence enregistrée et relue, ligne de commande
+[PASS] Test 451: Traductions anglaise et malgache intégrées, repli sur le français détectable
+[PASS] Test 452: Langue installée appliquée aux textes de l'application et de Qt
+[PASS] Test 453: Accents français et textes malgaches conservés et affichables
+[PASS] Test 454: Catalogue des commandes traduit en anglais et en malgache (566 textes)
+[PASS] Test 455: Comparaison sans casse ni accents, distance de frappe
+[PASS] Test 456: Recherche par nom, traduction, synonyme, accent, fragment et faute de frappe
+
+=================================================
+RESULTS: 8 test(s) passed in suite 'i18n'!
+=================================================
+[FAIL] Test 457: requête la plus lente 410 ms sur 6 000 entrées (< 50 ms) (worst < 50) at line 349

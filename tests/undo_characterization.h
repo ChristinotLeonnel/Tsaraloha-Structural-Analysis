@@ -463,8 +463,7 @@ inline std::string fingerprint(const TSA::Model::Model& m, const TSA::Grid::Grid
          .f("pT0", ps.initialTension).f("pEps0", ps.initialStrain).f("pSig", ps.stressAtTransfer).f("pSlip", ps.anchorageSlip)
          .f("pMu", ps.frictionCoeff).f("pK", ps.wobbleCoeff).f("pRelax", ps.relaxationLossRatio)
          .f("pEl", ps.elasticShorteningLoss).f("pTime", ps.timeDependentLosses)
-         .b("aTens", ap.tensionOnly).b("aLarge", ap.largeDisplacement).b("aGeom", ap.geometricNonlinearity)
-         .b("aSag", ap.sagEffectEnabled).f("aMinT", ap.minTensionThreshold)
+         .b("aTens", ap.tensionOnly)
          .i("anc1", e(k.startAnchor().type())).i("anc2", e(k.endAnchor().type()))
          .i("nPts", static_cast<long long>(k.intermediatePoints().size()));
         section(l, "s.", k.section());

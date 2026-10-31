@@ -5858,12 +5858,20 @@ Shift + click on a tool: use the other mode once.</translation>
         <translation>Project analysis settings unreadable: default settings used.</translation>
     </message>
     <message>
+        <source>Fonctionnalité non prise en charge</source>
+        <translation>Unsupported feature</translation>
+    </message>
+    <message>
         <source>Analyse</source>
         <translation>Analysis</translation>
     </message>
     <message>
         <source>Aucun moteur d'analyse sélectionné.</source>
         <translation>No analysis solver selected.</translation>
+    </message>
+    <message>
+        <source>Analyse non prise en charge</source>
+        <translation>Unsupported analysis</translation>
     </message>
     <message>
         <source>Moteur %1 indisponible</source>
@@ -6936,10 +6944,6 @@ Graphic scales (display only: computed values and loads unchanged)
         <translation>Linear static</translation>
     </message>
     <message>
-        <source>Statique non linéaire</source>
-        <translation>Nonlinear static</translation>
-    </message>
-    <message>
         <source>Modale (fréquences et modes propres)</source>
         <translation>Modal (natural frequencies and mode shapes)</translation>
     </message>
@@ -6980,12 +6984,8 @@ Graphic scales (display only: computed values and loads unchanged)
         <translation>Springs</translation>
     </message>
     <message>
-        <source>Statique</source>
-        <translation>Static</translation>
-    </message>
-    <message>
-        <source>Non linéaire</source>
-        <translation>Nonlinear</translation>
+        <source>Modale</source>
+        <translation>Modal</translation>
     </message>
     <message>
         <source>Déplacements</source>
@@ -7004,12 +7004,12 @@ Graphic scales (display only: computed values and loads unchanged)
         <translation>Global K</translation>
     </message>
     <message>
-        <source>modale</source>
-        <translation>modal</translation>
+        <source>type « %1 » non pris en charge</source>
+        <translation>type “%1” not supported</translation>
     </message>
     <message>
-        <source>statique non linéaire</source>
-        <translation>nonlinear static</translation>
+        <source>modale</source>
+        <translation>modal</translation>
     </message>
     <message>
         <source>statique linéaire</source>
@@ -7626,6 +7626,18 @@ Run the analysis?</translation>
         <translation>%1 load(s) applied outside the analysis scope are not transferred.</translation>
     </message>
     <message>
+        <source>analyse statique non linéaire</source>
+        <translation>nonlinear static analysis</translation>
+    </message>
+    <message>
+        <source>analyse de type « %1 »</source>
+        <translation>analysis of type “%1”</translation>
+    </message>
+    <message>
+        <source>Ce projet demande une fonctionnalité qui n'est plus prise en charge : %1. TSA prend actuellement en charge l'analyse structurale linéaire : ce calcul n'est pas lancé à la place d'un autre. Choisissez une analyse linéaire dans les paramètres d'analyse. Les autres données du projet sont conservées.</source>
+        <translation>This project requests a feature that is no longer supported: %1. TSA currently supports linear structural analysis: no other analysis is run in its place. Choose a linear analysis in the analysis settings. The other project data are kept.</translation>
+    </message>
+    <message>
         <source>Moteur d'analyse inconnu : « %1 ».</source>
         <translation>Unknown analysis engine: “%1”.</translation>
     </message>
@@ -8186,12 +8198,20 @@ Run the analysis?</translation>
         <translation>OpenSees.exe not found or not verified.</translation>
     </message>
     <message>
-        <source>Le générateur OpenSees calcule un cas, tous les cas superposés ou une combinaison : créez une combinaison pour calculer plusieurs cas ensemble.</source>
-        <translation>The OpenSees generator analyses one case, all superimposed cases or one combination: create a combination to analyse several cases together.</translation>
+        <source>transformation P-Delta (second ordre)</source>
+        <translation>P-Delta transformation (second order)</translation>
     </message>
     <message>
-        <source>Le nœud de contrôle N%1 (Displacement Control) n'appartient pas à la portée calculée.</source>
-        <translation>The control node N%1 (Displacement Control) does not belong to the analysed scope.</translation>
+        <source>transformation corotationnelle (grands déplacements)</source>
+        <translation>corotational transformation (large displacements)</translation>
+    </message>
+    <message>
+        <source>treillis corotationnels (grands déplacements)</source>
+        <translation>corotational trusses (large displacements)</translation>
+    </message>
+    <message>
+        <source>Le générateur OpenSees calcule un cas, tous les cas superposés ou une combinaison : créez une combinaison pour calculer plusieurs cas ensemble.</source>
+        <translation>The OpenSees generator analyses one case, all superimposed cases or one combination: create a combination to analyse several cases together.</translation>
     </message>
     <message>
         <source>Calcul 3D d'une portée plane : la stabilité hors plan n'est assurée que par les appuis définis dans la portée.</source>
@@ -8520,8 +8540,8 @@ Run the analysis?</translation>
         <translation>Singular stiffness matrix: the structure is a mechanism (insufficient supports, hinge or rotation left free — for example the rotation of a member about its axis, in torsion, restrained by no support). Check the supports and releases.</translation>
     </message>
     <message>
-        <source>Non-convergence détectée lors de la résolution OpenSees.</source>
-        <translation>Non-convergence detected during the OpenSees solution.</translation>
+        <source>La résolution OpenSees a échoué.</source>
+        <translation>The OpenSees solution failed.</translation>
     </message>
     <message>
         <source>OpenSees s'est terminé avec le code d'erreur %1</source>
@@ -8546,10 +8566,6 @@ Run the analysis?</translation>
     <message>
         <source>non extraite</source>
         <translation>not extracted</translation>
-    </message>
-    <message>
-        <source>Statique non linéaire : résultats au facteur de charge λ = %1, et non à la charge complète (λ = 1) : vérifier l'intégrateur (longueur d'arc, contrôle en déplacement) et le nombre de pas.</source>
-        <translation>Nonlinear static: results at load factor λ = %1, not at the full load (λ = 1): check the integrator (arc-length, displacement control) and the number of steps.</translation>
     </message>
     <message>
         <source>Calcul et post-traitement terminés avec succès.</source>
@@ -15410,6 +15426,10 @@ Each restraint is listed before the analysis and reported if it carries a force.
         <translation>Combination: %1</translation>
     </message>
     <message>
+        <source>Valider cette fenêtre remplace cette demande par l'analyse choisie ci-dessous ; « Annuler » la conserve et aucun calcul n'est lancé.</source>
+        <translation>Confirming this window replaces this request with the analysis chosen below; “Cancel” keeps it and no analysis is run.</translation>
+    </message>
+    <message>
         <source>Portée enregistrée</source>
         <translation>Saved scope</translation>
     </message>
@@ -17324,8 +17344,8 @@ Fix the subgraph body or discard its changes.</translation>
         <translation>End anchorage:</translation>
     </message>
     <message>
-        <source>Élément tendu uniquement (Tension-only)</source>
-        <translation>Tension-only element</translation>
+        <source>&lt;b&gt;Élément Câble (1D) :&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;Section :&lt;/b&gt; Section circulaire définie par son diamètre nominal Ø et son aire métallique A.&lt;br&gt;• &lt;b&gt;Tension initiale T₀ :&lt;/b&gt; Précontrainte axiale appliquée à l'élément.&lt;br&gt;• &lt;b&gt;Géométrie :&lt;/b&gt; Droit (cylindre direct) ou Parabolique/Caténaire selon la flèche f.&lt;br&gt;• &lt;b&gt;Calcul :&lt;/b&gt; Analyse linéaire : le câble est une barre articulée précontrainte. Une compression n'est pas relâchée : vérifier le signe de l'effort normal.&lt;br&gt;• &lt;b&gt;Tracé 3D :&lt;/b&gt; Cliquez sur deux nœuds successifs dans le viewport pour créer le câble.&lt;br&gt;• &lt;b&gt;Étirer :&lt;/b&gt; Permet de tracer en chaîne plusieurs câbles d'affilée.</source>
+        <translation>&lt;b&gt;Cable element (1D):&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;Section:&lt;/b&gt; circular section defined by its nominal diameter Ø and its metallic area A.&lt;br&gt;• &lt;b&gt;Initial tension T₀:&lt;/b&gt; axial prestress applied to the element.&lt;br&gt;• &lt;b&gt;Geometry:&lt;/b&gt; Straight (direct cylinder) or Parabolic/Catenary according to the sag f.&lt;br&gt;• &lt;b&gt;Analysis:&lt;/b&gt; linear analysis: the cable is a prestressed pin-jointed bar. Compression is not released: check the sign of the axial force.&lt;br&gt;• &lt;b&gt;3D drawing:&lt;/b&gt; click two successive nodes in the viewport to create the cable.&lt;br&gt;• &lt;b&gt;Chain:&lt;/b&gt; lets you draw several cables in a row.</translation>
     </message>
     <message>
         <source>Coordonnées des Nœuds</source>
@@ -17427,10 +17447,6 @@ Fix the subgraph body or discard its changes.</translation>
         <source>Aide - Câbles et Systèmes de Tension</source>
         <translation>Help - Cables and tensioning systems</translation>
     </message>
-    <message>
-        <source>&lt;b&gt;Élément Câble (1D) :&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;Section :&lt;/b&gt; Section circulaire définie par son diamètre nominal Ø et son aire métallique A.&lt;br&gt;• &lt;b&gt;Tension initiale T₀ :&lt;/b&gt; Précontrainte axiale appliquée à l'élément.&lt;br&gt;• &lt;b&gt;Géométrie :&lt;/b&gt; Droit (cylindre direct) ou Parabolique/Caténaire selon la flèche f.&lt;br&gt;• &lt;b&gt;Tension-only :&lt;/b&gt; L'élément ne reprend que des efforts de traction.&lt;br&gt;• &lt;b&gt;Tracé 3D :&lt;/b&gt; Cliquez sur deux nœuds successifs dans le viewport pour créer le câble.&lt;br&gt;• &lt;b&gt;Étirer :&lt;/b&gt; Permet de tracer en chaîne plusieurs câbles d'affilée.</source>
-        <translation>&lt;b&gt;Cable element (1D):&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;Section:&lt;/b&gt; circular section defined by its nominal diameter Ø and its metallic area A.&lt;br&gt;• &lt;b&gt;Initial tension T₀:&lt;/b&gt; axial prestress applied to the element.&lt;br&gt;• &lt;b&gt;Geometry:&lt;/b&gt; Straight (direct cylinder) or Parabolic/Catenary according to the sag f.&lt;br&gt;• &lt;b&gt;Tension-only:&lt;/b&gt; the element only carries tensile forces.&lt;br&gt;• &lt;b&gt;3D drawing:&lt;/b&gt; click two successive nodes in the viewport to create the cable.&lt;br&gt;• &lt;b&gt;Chain:&lt;/b&gt; lets you draw several cables in a row.</translation>
-    </message>
 </context>
 <context>
     <name>TSA::UI::CablePropertiesView</name>
@@ -17509,10 +17525,6 @@ Fix the subgraph body or discard its changes.</translation>
     <message>
         <source>Flèche maximale (f) :</source>
         <translation>Maximum sag (f):</translation>
-    </message>
-    <message>
-        <source>Traction seule (Non-linéarité géométrique)</source>
-        <translation>Tension only (geometric nonlinearity)</translation>
     </message>
     <message>
         <source>Ancrages et Rendu Visuel</source>
@@ -23123,150 +23135,6 @@ Do you want to select it rather than create a duplicate?</translation>
 <context>
     <name>TSA::UI::OpenSeesOptionsWidget</name>
     <message>
-        <source>Formulation</source>
-        <translation>Formulation</translation>
-    </message>
-    <message>
-        <source>Truss (linéaire standard)</source>
-        <translation>Truss (standard linear)</translation>
-    </message>
-    <message>
-        <source>CorotTruss (grands déplacements)</source>
-        <translation>CorotTruss (large displacements)</translation>
-    </message>
-    <message>
-        <source>TrussSection (section discrète)</source>
-        <translation>TrussSection (discrete section)</translation>
-    </message>
-    <message>
-        <source>CorotTrussSection</source>
-        <translation>CorotTrussSection</translation>
-    </message>
-    <message>
-        <source>Formulation treillis :</source>
-        <translation>Truss formulation:</translation>
-    </message>
-    <message>
-        <source>Linéaire (petits déplacements)</source>
-        <translation>Linear (small displacements)</translation>
-    </message>
-    <message>
-        <source>P-Delta (2nd ordre)</source>
-        <translation>P-Delta (2nd order)</translation>
-    </message>
-    <message>
-        <source>Corotational (grands déplacements 3D)</source>
-        <translation>Corotational (large 3D displacements)</translation>
-    </message>
-    <message>
-        <source>Transformation 3D :</source>
-        <translation>3D transformation:</translation>
-    </message>
-    <message>
-        <source>Résolution non linéaire</source>
-        <translation>Nonlinear solution</translation>
-    </message>
-    <message>
-        <source>Newton-Raphson</source>
-        <translation>Newton-Raphson</translation>
-    </message>
-    <message>
-        <source>Newton avec Line Search</source>
-        <translation>Newton with line search</translation>
-    </message>
-    <message>
-        <source>Modified Newton</source>
-        <translation>Modified Newton</translation>
-    </message>
-    <message>
-        <source>Krylov-Newton</source>
-        <translation>Krylov-Newton</translation>
-    </message>
-    <message>
-        <source>BFGS</source>
-        <translation>BFGS</translation>
-    </message>
-    <message>
-        <source>Broyden</source>
-        <translation>Broyden</translation>
-    </message>
-    <message>
-        <source>Secant Newton</source>
-        <translation>Secant Newton</translation>
-    </message>
-    <message>
-        <source>Algorithme :</source>
-        <translation>Algorithm:</translation>
-    </message>
-    <message>
-        <source>Load Control</source>
-        <translation>Load Control</translation>
-    </message>
-    <message>
-        <source>Displacement Control</source>
-        <translation>Displacement Control</translation>
-    </message>
-    <message>
-        <source>Arc-Length</source>
-        <translation>Arc-Length</translation>
-    </message>
-    <message>
-        <source>Min Unbalanced Displacement Norm</source>
-        <translation>Min Unbalanced Displacement Norm</translation>
-    </message>
-    <message>
-        <source>Intégrateur :</source>
-        <translation>Integrator:</translation>
-    </message>
-    <message>
-        <source>Nombre de pas :</source>
-        <translation>Number of steps:</translation>
-    </message>
-    <message>
-        <source>Longueur d'arc ou incrément de norme (ArcLength, MinUnbalDispNorm). Contrôle du chargement : Δλ = 1 / nombre de pas, la charge complète est toujours atteinte.</source>
-        <translation>Arc length or norm increment (ArcLength, MinUnbalDispNorm). Load control: Δλ = 1 / number of steps, the full load is always reached.</translation>
-    </message>
-    <message>
-        <source>Taille de pas (arc, norme) :</source>
-        <translation>Step size (arc, norm):</translation>
-    </message>
-    <message>
-        <source>Tolérance de convergence :</source>
-        <translation>Convergence tolerance:</translation>
-    </message>
-    <message>
-        <source>Itérations maximales :</source>
-        <translation>Maximum iterations:</translation>
-    </message>
-    <message>
-        <source>Contrôle du déplacement</source>
-        <translation>Displacement control</translation>
-    </message>
-    <message>
-        <source>Nœud contrôlé :</source>
-        <translation>Controlled node:</translation>
-    </message>
-    <message>
-        <source>UX</source>
-        <translation>UX</translation>
-    </message>
-    <message>
-        <source>UY</source>
-        <translation>UY</translation>
-    </message>
-    <message>
-        <source>UZ</source>
-        <translation>UZ</translation>
-    </message>
-    <message>
-        <source>DDL contrôlé :</source>
-        <translation>Controlled DOF:</translation>
-    </message>
-    <message>
-        <source>Incrément (m) :</source>
-        <translation>Increment (m):</translation>
-    </message>
-    <message>
         <source>Système et contraintes</source>
         <translation>System and constraints</translation>
     </message>
@@ -23345,10 +23213,6 @@ Do you want to select it rather than create a duplicate?</translation>
     <message>
         <source>Unités kN, m, kPa</source>
         <translation>Units kN, m, kPa</translation>
-    </message>
-    <message>
-        <source>Enregistrer tous les incréments</source>
-        <translation>Record all increments</translation>
     </message>
 </context>
 <context>
@@ -24262,12 +24126,16 @@ Double-click to open</translation>
         <translation>Visual interpolation between the initial geometry and the computed deformed shape (not a dynamic analysis).</translation>
     </message>
     <message>
-        <source>Pas de Calcul / Incréments</source>
-        <translation>Analysis steps / increments</translation>
+        <source>Modes propres</source>
+        <translation>Eigenmodes</translation>
     </message>
     <message>
-        <source>Pas 1 / 1 (Charge 100%)</source>
-        <translation>Step 1 / 1 (load 100%)</translation>
+        <source>Résultat unique (statique linéaire)</source>
+        <translation>Single result (linear static)</translation>
+    </message>
+    <message>
+        <source>Résultat %1 / %2</source>
+        <translation>Result %1 / %2</translation>
     </message>
     <message>
         <source>◀</source>
@@ -24364,10 +24232,6 @@ Double-click to open</translation>
         <translation>Normalised mode shapes (max translation = 1); masses: %1.</translation>
     </message>
     <message>
-        <source>✓ Calcul disponible (%1 pas)</source>
-        <translation>✓ Analysis available (%1 steps)</translation>
-    </message>
-    <message>
         <source>✓ Calcul disponible</source>
         <translation>✓ Analysis available</translation>
     </message>
@@ -24422,16 +24286,8 @@ Double-click to open</translation>
 • Max EC3 ratio (steel): %1% (#%2)</translation>
     </message>
     <message>
-        <source>Pas unique (Statique linéaire)</source>
-        <translation>Single step (linear static)</translation>
-    </message>
-    <message>
         <source>Mode %1 / %2 : f = %3 Hz, T = %4 s</source>
         <translation>Mode %1 / %2: f = %3 Hz, T = %4 s</translation>
-    </message>
-    <message>
-        <source>Pas %1 / %2 (Facteur de charge λ = %3%)</source>
-        <translation>Step %1 / %2 (load factor λ = %3%)</translation>
     </message>
     <message>
         <source>Modèle non initialisé</source>

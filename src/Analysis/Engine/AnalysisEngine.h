@@ -57,7 +57,6 @@ struct AnalysisCapabilities
 
     // Types d'analyse
     bool supportsStatic = false;
-    bool supportsNonlinear = false;
     bool supportsBuckling = false;
     bool supportsModal = false;        ///< analyse modale (valeurs et vecteurs propres, participation)
 
@@ -77,7 +76,6 @@ struct AnalysisCapabilities
         switch (t)
         {
         case AnalysisType::LinearStatic: return supportsStatic;
-        case AnalysisType::NonLinearStatic: return supportsNonlinear;
         case AnalysisType::Modal: return supportsModal;
         }
         return false;
@@ -138,6 +136,10 @@ public:
 
     /// Réglages propres au moteur par défaut (bloc JSON de AnalysisContext::engineSettings).
     virtual QJsonObject defaultSettings() const { return {}; }
+
+    /// Réglages d'un ancien projet qui demandaient une fonctionnalité retirée (une ligne par fonctionnalité). Seul le
+    /// moteur sait lire son bloc JSON ; AnalysisManager refuse le calcul si cette liste n'est pas vide.
+    virtual std::vector<std::string> unsupportedSettings(const QJsonObject& /*settings*/) const { return {}; }
 
     /// Contrôles PROPRES au moteur. Les contrôles communs (portée, familles d'éléments, sections,
     /// appuis, charges) sont faits par AnalysisManager à partir des capacités.
