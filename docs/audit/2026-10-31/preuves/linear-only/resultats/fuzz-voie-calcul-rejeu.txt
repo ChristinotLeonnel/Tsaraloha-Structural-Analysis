@@ -1,0 +1,18 @@
+semence D:/Tsaraloha Platforme/TSA/examples/TSA_Demo_Batiment_R+5.tsa chunks [('PROJ', 94, 1), ('THMB', 39605, 1), ('COOR', 401, 1), ('GRID', 660, 1), ('NODE', 14950, 380), ('SUPP', 2262, 26), ('BARS', 105432, 640), ('COLS', 22938, 158), ('SLAB', 0, 0), ('WALL', 0, 0), ('FNDN', 0, 0), ('TRUS', 0, 0), ('CABL', 0, 0), ('LOAD', 59, 0), ('BIMM', 209100, 798), ('SNAP', 131, 1)]
+témoin ifc code 0 2.32s SARAL~1\\AppData\\Local\\Temp\\claude\\d--Tsaraloha-Platforme-TSA\\84fdaea9-ba6e-422a-80ce-1f048ba5db29\\scratchpad\\fuzz6\\candidat.tsa", |     "ms": 305 | } |  | 
+témoin mesh code 0 2.72s in 1.000, ≈ 8130 DDL | C:\Users\TSARAL~1\AppData\Local\Temp\claude\d--Tsaraloha-Platforme-TSA\84fdaea9-ba6e-422a-80ce-1f048ba5db29\scratchpad\fuzz6\o.msh écrit | 
+… 100 {'géré(1)': 45, 'géré(2)': 56} 34s
+129 analyse STACK_BUFFER_OVERRUN/FAILFAST ['flip NODE x8']
+132 analyse STACK_BUFFER_OVERRUN/FAILFAST ['int NODE@733']
+156 analyse STACK_BUFFER_OVERRUN/FAILFAST ['octet BARS@56508', 'int NODE@3342']
+158 analyse STACK_BUFFER_OVERRUN/FAILFAST ['int NODE@3996']
+… 200 {'géré(1)': 91, 'géré(2)': 106, 'STACK_BUFFER_OVERRUN/FAILFAST': 4} 57s
+269 analyse ACCESS_VIOLATION ['octet NODE@11781', 'suppression NODE', 'flip SNAP x8']
+293 analyse STACK_BUFFER_OVERRUN/FAILFAST ['double NODE@4782']
+… 300 {'géré(1)': 133, 'géré(2)': 162, 'STACK_BUFFER_OVERRUN/FAILFAST': 5, 'ACCESS_VIOLATION': 1} 79s
+371 analyse ACCESS_VIOLATION ['suppression NODE', 'json BIMM']
+BILAN 400 itérations, 99s
+  ('analyse', 'ACCESS_VIOLATION') 2
+  ('analyse', 'STACK_BUFFER_OVERRUN/FAILFAST') 5
+  ('analyse', 'géré(1)') 169
+  ('analyse', 'géré(2)') 224

@@ -89,7 +89,7 @@ void ExternalLibraryCatalog::initializeCatalog()
         "OpenSees",
         "3.4.0 à 3.8.0+",
         "UC Berkeley Open-Source License",
-        "Solveur par éléments finis (FEM) non-linéaires statiques, dynamiques, modaux et transitoires pour l'ingénierie des structures.",
+        "Solveur par éléments finis (FEM) pour l'ingénierie des structures. TSA l'utilise pour l'analyse statique linéaire et l'analyse modale.",
         "src/Analysis/OpenSeesAdapter, src/Analysis/OpenSeesAnalysisBuilder, src/Analysis/OpenSeesSolver",
         "Calcul numérique des déplacements nodaux, réactions aux appuis et efforts internes le long des éléments structuraux.",
         "OpenSees est isolé dans un processus externe non bloquant (QProcess). Il communique via des scripts Tcl générés et des fichiers de sortie recorder. Aucun composant applicatif autre que src/Analysis/ ne doit dépendre d'OpenSees.",

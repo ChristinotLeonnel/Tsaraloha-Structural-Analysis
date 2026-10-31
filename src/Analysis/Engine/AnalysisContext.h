@@ -98,6 +98,10 @@ struct AnalysisContext
     EngineId engineId;
     AnalysisDimension dimension = AnalysisDimension::Space3D;
     AnalysisType type = AnalysisType::LinearStatic;
+    /// Type d'analyse lu dans un ancien projet et absent de cette version (« nonlinear_static »…), vide sinon. Le calcul
+    /// est refusé tant que l'utilisateur n'a pas choisi une analyse dans la fenêtre Analysis : un tel projet n'est jamais
+    /// calculé en linéaire à son insu. toJson() le réécrit tel quel : enregistrer ne transforme pas la demande d'origine.
+    std::string unsupportedAnalysisType;
     AnalysisScope scope;
 
     /// Cas de charge à calculer. Vide = tous les cas. Ignoré si combinationId > 0.

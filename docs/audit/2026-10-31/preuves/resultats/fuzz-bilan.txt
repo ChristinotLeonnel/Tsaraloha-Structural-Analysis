@@ -1,0 +1,51 @@
+== fuzz1
+semence D:/Tsaraloha Platforme/TSA/examples/TSA_Exemple_Dalle_Coques.tsa chunks [('PROJ', 67, 1), ('THMB', 34553, 1), ('COOR', 401, 1), ('GRID', 594, 1), ('NODE', 352, 8), ('SUPP', 348, 4), ('BARS', 660, 4), ('COLS', 604, 4), ('SLAB', 102, 1), ('WALL', 0, 0), ('FNDN', 0, 0), ('TRUS', 0, 0), ('CABL',
+BILAN 1500 itérations, 164s
+  ('ifc', 'géré(0)') 690
+  ('ifc', 'géré(1)') 435
+  ('mesh', 'géré(0)') 216
+  ('mesh', 'géré(1)') 159
+== fuzz2
+semence D:/Tsaraloha Platforme/TSA/examples/TSA_Projet_Pont_Haubans_80-180-80m.tsa chunks [('PROJ', 87, 1), ('THMB', 11852, 1), ('COOR', 459, 1), ('GRID', 738, 1), ('NODE', 9796, 229), ('SUPP', 1044, 12), ('BARS', 79910, 452), ('COLS', 9472, 52), ('SLAB', 0, 0), ('WALL', 0, 0), ('FNDN', 500, 4), ('T
+BILAN 1500 itérations, 196s
+  ('ifc', 'géré(0)') 684
+  ('ifc', 'géré(1)') 441
+  ('mesh', 'géré(0)') 216
+  ('mesh', 'géré(1)') 159
+== fuzz3
+semence D:/Tsaraloha Platforme/TSA/examples/TSA_Exemple_Dalle_Coques.tsa chunks [('PROJ', 67, 1), ('THMB', 34553, 1), ('COOR', 401, 1), ('GRID', 594, 1), ('NODE', 352, 8), ('SUPP', 348, 4), ('BARS', 660, 4), ('COLS', 604, 4), ('SLAB', 102, 1), ('WALL', 0, 0), ('FNDN', 0, 0), ('TRUS', 0, 0), ('CABL',
+BILAN 800 itérations, 146s
+  ('analyse', 'ACCESS_VIOLATION') 13
+  ('analyse', 'STACK_BUFFER_OVERRUN/FAILFAST') 3
+  ('analyse', 'géré(1)') 298
+  ('analyse', 'géré(2)') 486
+40 analyse ACCESS_VIOLATION ['int NODE@220']
+206 analyse ACCESS_VIOLATION ['octet BARS@180', 'suppression GRID']
+216 analyse ACCESS_VIOLATION ['count NODE=0']
+219 analyse ACCESS_VIOLATION ['suppression NODE']
+231 analyse ACCESS_VIOLATION ['count NODE=0']
+245 analyse STACK_BUFFER_OVERRUN/FAILFAST ['int NODE@154', 'count LOAD=1', 'suppression GRID']
+287 analyse ACCESS_VIOLATION ['suppression NODE', 'flip SLAB x2']
+295 analyse ACCESS_VIOLATION ['json GRID', 'suppression SUPP', 'double BARS@342']
+355 analyse STACK_BUFFER_OVERRUN/FAILFAST ['double NODE@334']
+475 analyse ACCESS_VIOLATION ['flip BARS x32', 'double COLS@424']
+513 analyse ACCESS_VIOLATION ['flip COLS x8']
+598 analyse ACCESS_VIOLATION ['suppression NODE']
+607 analyse STACK_BUFFER_OVERRUN/FAILFAST ['json COOR', 'json GRID', 'octet NODE@149']
+648 analyse ACCESS_VIOLATION ['flip NODE x4']
+707 analyse ACCESS_VIOLATION ['count NODE=0']
+775 analyse ACCESS_VIOLATION ['suppression NODE']
+== fuzz4
+semence D:/Tsaraloha Platforme/TSA/examples/TSA_Demo_Batiment_R+5.tsa chunks [('PROJ', 94, 1), ('THMB', 39605, 1), ('COOR', 401, 1), ('GRID', 660, 1), ('NODE', 14950, 380), ('SUPP', 2262, 26), ('BARS', 105432, 640), ('COLS', 22938, 158), ('SLAB', 0, 0), ('WALL', 0, 0), ('FNDN', 0, 0), ('TRUS', 0, 0)
+BILAN 400 itérations, 107s
+  ('analyse', 'ACCESS_VIOLATION') 2
+  ('analyse', 'STACK_BUFFER_OVERRUN/FAILFAST') 5
+  ('analyse', 'géré(1)') 169
+  ('analyse', 'géré(2)') 224
+129 analyse STACK_BUFFER_OVERRUN/FAILFAST ['flip NODE x8']
+132 analyse STACK_BUFFER_OVERRUN/FAILFAST ['int NODE@733']
+156 analyse STACK_BUFFER_OVERRUN/FAILFAST ['octet BARS@56508', 'int NODE@3342']
+158 analyse STACK_BUFFER_OVERRUN/FAILFAST ['int NODE@3996']
+269 analyse ACCESS_VIOLATION ['octet NODE@11781', 'suppression NODE', 'flip SNAP x8']
+293 analyse STACK_BUFFER_OVERRUN/FAILFAST ['double NODE@4782']
+371 analyse ACCESS_VIOLATION ['suppression NODE', 'json BIMM']

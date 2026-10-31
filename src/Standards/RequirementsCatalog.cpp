@@ -399,8 +399,9 @@ void RequirementsCatalog::initializeDefaultCatalog()
         "Formulation de câbles tendus intégrant la précontrainte initiale, le module sécant d'Ernst, les pertes par rentrée de mors et la sécurité gamma_M.",
         "src/Model/Cable/CableStandards.cpp, src/Model/Cable/Cable.cpp",
         "TSA_CablesTests",
-        RequirementStatus::Implemented,
-        "Comportement non-linéaire et catalogues certifiés validés."
+        RequirementStatus::Partial,
+        "Formules et catalogues testés. Calcul en analyse linéaire seulement : barre articulée précontrainte, sans relâchement en "
+        "compression (BUG-151) ; le module d'Ernst n'est pas utilisé par le calcul."
     });
 
     // =========================================================================

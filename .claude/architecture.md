@@ -117,15 +117,17 @@ Responsibility: format binaire .tsa 1.1 (en-tête 256 o, chunks FourCC, zlib, CR
 Status: stable
 
 Component: Analysis engines (multi-moteurs)
-Class: AnalysisManager + AnalysisEngineRegistry + AnalysisEngine (OpenSeesEngine, Custom2DEngine)
+Class: AnalysisManager + AnalysisEngineRegistry + AnalysisEngine (OpenSeesEngine, Custom2DEngine, Fem3DEngine)
 File: src/Analysis/Engine/*, src/Analysis/Engines/*, src/UI/Analysis/*
 Responsibility: contexte → portée (grille/niveau/WorkPlane/sélection) → AnalysisModel dérivé (CalculationSnapshot
   restreint + AnalysisMapping + plan 2D) → validation générique (capacités) + moteur → run → ResultsModel (ids TSA)
 Dependencies: Model, GridManager (lecture), SelectionQuery, CalculationSnapshot, ResultsModel, ModelValidator
 Used by: MainWindow (onActionAnalysisConfig / onActionRunSolve → runAnalysis → publishResults), tests suite engines
-Status: stable (Custom2D : adaptateur prêt, solveur non connecté — aucun calcul)
+Status: stable (Custom2D branché sur TSALab MetDeDeplacement ; Fem3D moteur secondaire)
 Notes: ajouter un moteur = adaptateur + ligne dans registerBuiltInEngines (+ panneau d'options facultatif).
-  Les raccourcis Modal / Pushover du ruban appellent encore OpenSeesSolver directement.
+  Types d'analyse : statique linéaire et modale seulement (ADR-025). Anciens contextes : AnalysisContext::unsupportedAnalysisType
+  (clé lue et réécrite telle quelle) et AnalysisEngine::unsupportedSettings → AnalysisManager::unsupportedFeatures :
+  prepare() rend une erreur, run() refuse ; jamais de calcul linéaire à la place.
 
 Component: Calculation
 Class: OpenSeesSolver (+ CalculationSnapshot, OpenSeesModelMap, OpenSeesAnalysisBuilder, OpenSeesResultsReader,
@@ -133,7 +135,8 @@ Class: OpenSeesSolver (+ CalculationSnapshot, OpenSeesModelMap, OpenSeesAnalysis
 Responsibility: snapshot immuable → mapping TSA↔OpenSees → script Tcl → OpenSees 3.8.0 externe → ResultsModel
   (+ passage « matrices » séparé en mode ADVANCED). Référence : docs/OPENSEES_RESULTS.md
 Notes: OpenSeesAdapter (export Tcl du dialogue des cas de charge) délègue au même générateur.
-Status: partiel (barres/treillis/câbles/appuis ; pas de dalles ni voiles ; exécution synchrone sur le thread UI)
+Status: partiel (barres/treillis/câbles/appuis, coques maillées ; statique linéaire en un pas `algorithm Linear` et modale ;
+  calcul dans le thread de travail d'AnalysisController)
 ```
 
 ## 4. Flux principaux
@@ -147,7 +150,7 @@ Ouverture .tsa : MainWindow::loadFile → ProjectManager::openProject → TSAFil
   → onModelCleared → OccView::rebuildAllShapes (une passe) ; log ProjectLoadTiming
 Calcul (F5 / fenêtre Analysis) : MainWindow::runAnalysis(AnalysisContext) → AnalysisManager::prepare (portée → AnalysisModel → validation)
   → AnalysisManager::run → AnalysisEngine::run (OpenSeesEngine → OpenSeesSolver::solveSnapshot) → ResultsModel → publishResults
-Calcul modal / pushover (ruban) : MainWindow_Tools → OpenSeesSolver::solveSynchronous → ResultsModel → ResultsValidityGuard::trackResults
+Calcul modal : même chemin, AnalysisContext::type = Modal (eigen + modalProperties). Aucun pushover ni non linéaire (ADR-022, ADR-025).
 Sélection : clic/fenêtre (OccView_Events) → SelectionManager → signaux → MainWindow (arbre, propriétés, highlight)
 ```
 

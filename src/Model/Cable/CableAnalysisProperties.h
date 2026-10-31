@@ -21,16 +21,13 @@ public:
 };
 
 /**
- * @brief Propriétés non-linéaires et comportement en traction pour les calculs EF.
+ * @brief Propriétés d'analyse d'un câble.
  */
 struct CableAnalysisProperties
 {
-    bool tensionOnly = true;            ///< Comportement unilatéral strict en traction (raideur nulle en compression)
-    bool largeDisplacement = true;      ///< Prise en compte des grands déplacements / non-linéarité géométrique
-    bool geometricNonlinearity = true;  ///< Matrice de rigidité géométrique Kg(T) fonction de la tension interne
-    bool sagEffectEnabled = true;       ///< Prise en compte du mou / affaissement caténaire (formule d'Ernst)
-
-    double minTensionThreshold = 10.0;  ///< Seuil de tension minimale en Newtons pour éviter les instabilités numériques
+    /// Câble destiné à ne travailler qu'en traction. Donnée descriptive (bibliothèques, fichiers, TSA3D) : l'analyse
+    /// linéaire ne la lit pas, un câble comprimé n'y est pas relâché.
+    bool tensionOnly = true;
 
     /**
      * @brief Calcule le module d'élasticité sécant équivalent d'Ernst pour un câble fléchi sous son propre poids.

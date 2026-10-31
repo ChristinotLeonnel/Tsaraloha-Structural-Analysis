@@ -264,6 +264,11 @@ bool parseBenchmark(const QJsonObject& json, BenchmarkCase* out, std::vector<std
     c.model = json.value("model").toObject();
     c.analysis = json.value("analysis").toObject();
     if (c.model.isEmpty()) err.push_back(c.id + " : « model » obligatoire");
+    for (const auto& engine : c.engines)
+        if (engine != "opensees" && engine != "custom2d" && engine != "fem3d") err.push_back(c.id + " : moteur « " + engine + " » inconnu");
+    // Un cas non linéaire n'est jamais calculé en linéaire à la place : il est refusé à la lecture.
+    if (const std::string type = str(c.analysis.value("type")); !type.empty() && type != "linear_static" && type != "modal")
+        err.push_back(c.id + " : type d'analyse « " + type + " » non pris en charge (analyses linéaires uniquement)");
     const Tolerance def = readTolerance(json.value("tolerance"), Tolerance {});
     for (const auto& v : json.value("checks").toArray())
     {
@@ -804,12 +809,8 @@ RunResult runOnce(const BenchmarkCase& c, const std::string& engine, double mesh
     TSA::Analysis::AnalysisEngineRegistry reg;
     TSA::Analysis::registerBuiltInEngines(reg);
     auto* eng = reg.engine(engine);
-    if (!eng)
-    {
-        rr.message = "moteur « " + engine + " » inconnu";
-        return rr;
-    }
-    if (!eng->availability().available)
+    // Moteur absent (nom contrôlé à la lecture du cas : moteur facultatif non compilé, Fem3D) ou non installé : cas ignoré
+    if (!eng || !eng->availability().available)
     {
         rr.message = "moteur « " + engine + " » indisponible sur ce poste";
         return rr;
@@ -822,8 +823,7 @@ RunResult runOnce(const BenchmarkCase& c, const std::string& engine, double mesh
         ctx.dimension = TSA::Analysis::AnalysisDimension::Plane2D;
         ctx.scope.type = TSA::Analysis::ScopeType::ModelPlane;
     }
-    if (c.analysis.value("type").toString() == "nonlinear_static") ctx.type = TSA::Analysis::AnalysisType::NonLinearStatic;
-    // Réglages propres au moteur (ex. transformation géométrique P-Delta, nombre de pas) transmis tels quels
+    // Réglages propres au moteur transmis tels quels
     if (const QJsonObject es = c.analysis.value("engineSettings").toObject().value(QString::fromStdString(engine)).toObject(); !es.isEmpty())
         ctx.engineSettings[engine] = es;
     if (c.analysis.value("type").toString() == "modal")

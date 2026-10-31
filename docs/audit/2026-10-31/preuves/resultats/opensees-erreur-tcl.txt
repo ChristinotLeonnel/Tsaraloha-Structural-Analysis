@@ -1,0 +1,5 @@
+Essai OpenSees sur erreur Tcl : code de retour 0, fichier de résultats vide.
+invalid command name "commandeInexistante"
+    while executing
+"commandeInexistante 1 2 3"
+    (file "bad.tcl" line 20)

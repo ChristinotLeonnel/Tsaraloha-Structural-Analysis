@@ -1,0 +1,2 @@
+entrée fermée (DEVNULL) : terminé en 0.05 s, code 0, marqueur oui
+entrée ouverte (tube jamais écrit) : terminé en 0.04 s, code 0, marqueur oui

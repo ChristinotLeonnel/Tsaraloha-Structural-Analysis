@@ -1,0 +1,151 @@
+{
+ "format": "tsa.benchmark/1",
+ "id": "PIN2-trap",
+ "title": "Deux rotules, trapézoïdale constante",
+ "category": "rdm",
+ "description": "Deux rotules, trapézoïdale constante",
+ "sources": [
+  "RDM : poutre isostatique sur deux appuis"
+ ],
+ "hypotheses": [
+  "rotules d'extrémité sur barre entre appuis encastrés"
+ ],
+ "units": {
+  "force": "kN",
+  "length": "m",
+  "stress": "kPa"
+ },
+ "engines": [
+  "opensees",
+  "fem3d",
+  "custom2d"
+ ],
+ "parameters": {
+  "L": 6.0,
+  "q": 12.0,
+  "P": 30.0,
+  "a": 2.0,
+  "b": "L-a"
+ },
+ "model": {
+  "materials": {
+   "S": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "rho": 7850
+   }
+  },
+  "sections": {
+   "R": {
+    "shape": "rectangular",
+    "b": 0.2,
+    "h": 0.4
+   }
+  },
+  "nodes": [
+   {
+    "id": 1,
+    "x": 0,
+    "y": 0,
+    "z": 0,
+    "support": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   {
+    "id": 2,
+    "x": 6.0,
+    "y": 0,
+    "z": 0,
+    "support": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ]
+   }
+  ],
+  "members": [
+   {
+    "id": 1,
+    "i": 1,
+    "j": 2,
+    "section": "R",
+    "material": "S",
+    "release_i": "my",
+    "release_j": "my"
+   }
+  ],
+  "cases": [
+   {
+    "id": 1,
+    "name": "Q"
+   }
+  ],
+  "memberLoads": [
+   {
+    "member": 1,
+    "type": "trapezoidal",
+    "case": 1,
+    "q1": -12.0,
+    "q2": -12.0,
+    "x1": 0.0,
+    "x2": 1.0,
+    "direction": "globalZ"
+   }
+  ]
+ },
+ "analysis": {
+  "case": 1,
+  "selfWeight": false
+ },
+ "checks": [
+  {
+   "quantity": "member:1:M:start",
+   "label": "M rotule i",
+   "expected": 0,
+   "unit": "kN·m",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-06
+   }
+  },
+  {
+   "quantity": "member:1:M:end",
+   "label": "M rotule j",
+   "expected": 0,
+   "unit": "kN·m",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-06
+   }
+  },
+  {
+   "quantity": "member:1:M:absmax",
+   "label": "M max travée",
+   "expected": "q*L^2/8",
+   "unit": "kN·m",
+   "tolerance": {
+    "rel": 0.002,
+    "abs": 0.001
+   }
+  },
+  {
+   "quantity": "reaction:1:fz",
+   "label": "R_i",
+   "expected": "q*L/2",
+   "unit": "kN",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-06
+   }
+  }
+ ]
+}

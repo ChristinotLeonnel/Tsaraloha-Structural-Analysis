@@ -1,6 +1,6 @@
 # CABLE & TENSION SYSTEM — VUE D'ENSEMBLE DU MODULE
 
-Le module **Cable & Tension System** de **TSA (Tsaraloha Structural Analysis)** dote le logiciel d'une suite complète, modulaire et rigoureuse pour la modélisation, le dimensionnement, le dessin 3D interactif et l'analyse non linéaire des éléments tendus et câbles en génie civil.
+Le module **Cable & Tension System** de **TSA (Tsaraloha Structural Analysis)** dote le logiciel d'une suite complète, modulaire et rigoureuse pour la modélisation, le dimensionnement, le dessin 3D interactif et l'analyse linéaire des éléments tendus et câbles en génie civil. L'analyse non linéaire n'est pas disponible dans cette version : voir [analysis.md](analysis.md) pour ce que le calcul fait réellement d'un câble.
 
 ---
 
@@ -37,12 +37,12 @@ Le module **Cable & Tension System** de **TSA (Tsaraloha Structural Analysis)** 
    - Snapping automatique aux nœuds structuraux ou coordonnées de grille 3D.
    - Rubberband dynamique 3D en temps réel pendant le déplacement du curseur.
 
-5. **Formulations Analytiques & Préparation à l'Analyse Non Linéaire** :
+5. **Formulations Analytiques** (modèle et dimensionnement ; le calcul n'en utilise qu'une partie, voir [analysis.md](analysis.md)) :
    - Calcul exact de la flèche, de la longueur curviligne et de la tension horizontale.
    - Équation de caténaire rigoureuse : $y(x) = c \cdot (\cosh((x - x_0)/c) - 1)$.
    - Module élastique équivalent sécant d'Ernst :
      $$E_{eq} = \frac{E}{1 + \frac{(w \cdot L)^2 \cdot E \cdot A}{12 \cdot T^3}}$$
-   - Comportement en traction seule (*tension-only*) avec détection de mou (*slack cable*).
+   - Indicateur « traction seule » (*tension-only*) : donnée descriptive, non lue par le calcul ; un câble comprimé n'est pas relâché.
    - Pertes de tension par frottement ($\mu, k$) et par rentrée d'ancrage ($\Delta L_{slip}$).
 
 6. **Intégration Totale dans TSA** :

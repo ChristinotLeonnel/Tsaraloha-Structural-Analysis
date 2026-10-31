@@ -405,12 +405,12 @@ void TSAFileWriter::writeCableChunk(std::vector<uint8_t>& buffer, const std::map
         writeDouble(chunkData, aEnd.socketDiameter());
         writeDouble(chunkData, aEnd.socketLength());
 
-        // Analysis
-        const auto& an = c.analysisProperties();
-        writeU8(chunkData, an.tensionOnly ? 1 : 0);
-        writeU8(chunkData, an.largeDisplacement ? 1 : 0);
-        writeU8(chunkData, an.geometricNonlinearity ? 1 : 0);
-        writeDouble(chunkData, an.minTensionThreshold);
+        // Analysis. Disposition inchangée : les trois champs retirés (« grands déplacements », « non-linéarité géométrique »,
+        // seuil de tension minimale, jamais lus par un calcul) sont écrits avec leurs anciennes valeurs par défaut.
+        writeU8(chunkData, c.analysisProperties().tensionOnly ? 1 : 0);
+        writeU8(chunkData, 1);
+        writeU8(chunkData, 1);
+        writeDouble(chunkData, 10.0);
     }
 
     TSAChunkHeader ch;

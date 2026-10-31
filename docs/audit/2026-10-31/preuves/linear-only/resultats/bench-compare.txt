@@ -1,0 +1,24 @@
+== official
+vérifications communes : 141 ; valeurs identiques : 141 ; statut identique : 141 ; écart relatif max 0 
+seulement avant : 5 ; seulement après : 1541
+cas seulement avant : RDM-11a, RDM-11b
+cas seulement après : FEA-08, FEA-09, FEA-10, RDM-13a, RDM-13b, RDM-13c, RDM-14a, RDM-14b, RDM-14c, RDM-14d
+== random
+vérifications communes : 12678 ; valeurs identiques : 12678 ; statut identique : 12678 ; écart relatif max 0 
+seulement avant : 0 ; seulement après : 0
+== hinge
+vérifications communes : 90 ; valeurs identiques : 90 ; statut identique : 90 ; écart relatif max 0 
+seulement avant : 0 ; seulement après : 0
+== more
+vérifications communes : 1191 ; valeurs identiques : 1188 ; statut identique : 1188 ; écart relatif max 0 
+seulement avant : 0 ; seulement après : 0
+statut changé ('PDELTA-LIN', 'OpenSees', 'node:2:ux', 0) ÉCHEC -> NON DISPONIBLE
+statut changé ('PDELTA-LIN', 'OpenSees', 'reaction:1:fx', 1) ÉCHEC -> NON DISPONIBLE
+statut changé ('PDELTA-LIN', 'OpenSees', 'reaction:1:my', 2) ÉCHEC -> NON DISPONIBLE
+== nl
+vérifications communes : 3 ; valeurs identiques : 3 ; statut identique : 3 ; écart relatif max 0 
+seulement avant : 6 ; seulement après : 0
+cas seulement avant : NLIN-trapeze, NLIN-uniforme
+== units
+vérifications communes : 1212 ; valeurs identiques : 1212 ; statut identique : 1212 ; écart relatif max 0 
+seulement avant : 0 ; seulement après : 0

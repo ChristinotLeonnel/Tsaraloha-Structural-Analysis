@@ -21,7 +21,7 @@ namespace TSA::Analysis
 
 /**
  * @brief Exécuteur asynchrone et non-bloquant du solveur structural OpenSees.
- * Gère le cycle de vie du processus, le journal de convergence en temps réel,
+ * Gère le cycle de vie du processus, le journal en temps réel,
  * l'extraction des résultats et l'invalidation automatique.
  */
 class OpenSeesSolver : public QObject

@@ -22,7 +22,7 @@ enum class CommandCategory
     Loads,          // Définition des charges (ponctuelles, réparties, surfaciques)
     LoadCases,      // Cas de charges, combinaisons ELU/ELS
     Model,          // Opérations globales sur le modèle
-    Analysis,       // Génération maillage EF, calcul statique linéaire et non linéaire
+    Analysis,       // Génération maillage EF, calcul statique linéaire et analyse modale
     Results,        // Visualisation des résultats (déplacements, efforts internes, contraintes)
     Design,         // Dimensionnement et vérifications normatives Eurocodes
     View,           // Vues standard, zoom, pan, orbite 3D, section cut

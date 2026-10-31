@@ -513,17 +513,15 @@ bool TSAFileReader::readCableChunk(const uint8_t* data, size_t size, uint32_t co
         cable.endAnchor().setSocketDiameter(aEndDia);
         cable.endAnchor().setSocketLength(aEndLen);
 
-        // Analysis
-        uint8_t anTO = 1, anLD = 1, anGN = 1;
-        double minThresh = 0.0;
+        // Analysis. Suivent trois champs retirés (« grands déplacements », « non-linéarité géométrique », seuil de tension
+        // minimale) : jamais lus par un calcul, ils sont lus pour garder la disposition puis ignorés.
+        uint8_t anTO = 1, legacyFlag = 0;
+        double legacyThreshold = 0.0;
         if (!readU8(data, size, off, anTO)) return false;
-        if (!readU8(data, size, off, anLD)) return false;
-        if (!readU8(data, size, off, anGN)) return false;
-        if (!readDouble(data, size, off, minThresh)) return false;
+        if (!readU8(data, size, off, legacyFlag)) return false;
+        if (!readU8(data, size, off, legacyFlag)) return false;
+        if (!readDouble(data, size, off, legacyThreshold)) return false;
         cable.analysisProperties().tensionOnly = (anTO != 0);
-        cable.analysisProperties().largeDisplacement = (anLD != 0);
-        cable.analysisProperties().geometricNonlinearity = (anGN != 0);
-        cable.analysisProperties().minTensionThreshold = minThresh;
 
         cables[id] = cable;
     }

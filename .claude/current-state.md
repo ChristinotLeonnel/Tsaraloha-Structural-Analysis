@@ -1,8 +1,28 @@
 # Current State
 
-Last Updated: 2026-10-07 — branche feature/static-only (statique seul, ADR-022 ; corrections BUG-001 à 029)
+Last Updated: 2026-10-31 — analyse non linéaire retirée (ADR-025 ; commits a7b163e et c3cf5f6, fusion dans main demandée). Sections non
+revues depuis le 2026-10-07 : voir l'audit du 2026-10-31 (TSA_CODE_QUALITY_AUDIT.md, § Documentation).
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
+
+## Version linéaire seule (ADR-025, 2026-10-31)
+Status: IMPLEMENTED (TSA a7b163e, c3cf5f6 ; TSALab 1119d54 ; fusion dans main demandée le 2026-10-31) — TSA prend actuellement en charge l'analyse structurale
+linéaire (statique linéaire, modale) ; l'analyse non linéaire n'est pas disponible. AnalysisType { LinearStatic, Modal } ;
+script statique OpenSees unique (algorithm Linear, LoadControl 1.0, analyze 1, geomTransf Linear, treillis truss ;
+câbles corotTruss + InitStrain conservés). Anciens projets non linéaires : ouverts, signalés, calcul refusé
+(AnalysisContext::unsupportedAnalysisType, AnalysisEngine::unsupportedSettings, AnalysisManager::unsupportedFeatures).
+Vérifié : 57/57 suites, 544 tests (532-537 nouveaux), 0 échec ; 104/104 fichiers de l'empreinte des exemples identiques à
+l'octet (Tcl et résultats) ; bancs : 15 312 valeurs communes identiques au bit près ; banc officiel 1 682/1 682 (10 cas
+ajoutés, RDM-11a/b supprimés) ; performances inchangées ; fuzzing de la voie de calcul rejoué : identique à l'audit ;
+Debug (build-ninja-debug, première compilation) : 561 étapes, 0 erreur, 126 tests réussis sur 12 suites, test 457 en échec
+(seuil de temps, BUG-169) ; TSALab 27/27 (test L9 : 36 cas du banc partagé, branche
+refactor/linear-only de TSALab, commit 1119d54). Rapport : docs/audit/2026-10-31/LINEAR_ONLY_REFACTORING_REPORT.md.
+
+## Audit technique du 2026-10-31
+Status: BROKEN pour OpenSees + rotule + charge non uniforme (BUG-148, toujours ouvert). BUG-149 (efforts le long des barres en
+statique non linéaire) et BUG-150 : clos par retrait de la fonctionnalité (ADR-025). Statique linéaire 3D sans rotule : VALIDÉ contre un solveur indépendant (écart ≈ 1e-10, OpenSees et Fem3D).
+Rapport : docs/audit/2026-10-31/TSA_AUDIT_EXECUTIVE_SUMMARY.md. Sections de ce fichier datées à relire : Meshing, Import/Export,
+.tsa, Structural Calculation (TSA_CODE_QUALITY_AUDIT.md, § Documentation).
 
 ## Écosystème Tsaraloha (ADR-024, docs/TSARALOHA_ARCHITECTURE.md)
 Status: IMPLEMENTED (phases 1 à 6, 2026-10-08, branche feature/tsaraloha-shared-libs) — bibliothèques partagées
@@ -32,6 +52,9 @@ Non vérifié : Windows/MSVC, CI GitHub (aucun push), essai manuel de l'interfac
 à prendre, ne pas supprimer sans accord).
 
 ## Build
+Poste au 2026-10-31 : Qt 6.12.0 réinstallée dans C:/Qt/6.12.0/msvc2022_64 (Qt retirée par une maintenance Qt le 30/10),
+OpenSees 3.8.0 réinstallé (thirdparty/OpenSees + build-windows-validation/engines/OpenSees) — BUG-146. Release
+build-windows-validation : 57/57 suites (opensees relancée seule après un délai au premier lancement), test 531 compris.
 Status: IMPLEMENTED — PASS (preset ninja-debug, -j 4)
 Compiler: MSVC 19.51 (VS 18 2026 Community), C++20
 Qt: 6.11.2 · OpenCASCADE: 8.0.1 · CMake: 4.3.3 (min 3.20)
@@ -68,7 +91,8 @@ OpenSees 3.8.0 Linux (2026-10-24, ~/opt/opensees-3.8.0, Conan 2) : cas analytiqu
 Non vérifié : compilation Windows (MSVC) des modifications (24 et 25/10), dont les #ifdef de Gmsh et OpenSees.
 
 ## Tests
-Status: IMPLEMENTED — 233/233 PASS le 2026-10-10 (208 sélection 3D, 209–212 charges sur barre) ; 228/228 PASS le 2026-10-09 (audit QA : 205 annulation, 206 résultats périmés, 207 JSON des grilles) ; 225/225 PASS le 2026-10-09 (202 repères de grille, 203–204 déformée continue) ; 222/222 PASS le 2026-10-09 (test 201 : chemins accentués, chunk > 64 Kio, nom du projet, ouverture atomique ; TSALab 5/5, science 6/6, banc 14/14) ; 219/219 PASS le 2026-10-08 (197 débogueur Blueprint, 198 script ↔ Blueprint + IA) ; 217/217 avant (196 contrôleur d'analyse) ; 216/216 avant (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
+Status: IMPLEMENTED — 544 réussis, 0 échec, 1 ignoré (57/57 suites, Release, bureau masqué) le 2026-10-31 après
+retrait du non linéaire (+ 532-537) ; 538 avant (audit du 2026-10-31) ; 233/233 PASS le 2026-10-10 (208 sélection 3D, 209–212 charges sur barre) ; 228/228 PASS le 2026-10-09 (audit QA : 205 annulation, 206 résultats périmés, 207 JSON des grilles) ; 225/225 PASS le 2026-10-09 (202 repères de grille, 203–204 déformée continue) ; 222/222 PASS le 2026-10-09 (test 201 : chemins accentués, chunk > 64 Kio, nom du projet, ouverture atomique ; TSALab 5/5, science 6/6, banc 14/14) ; 219/219 PASS le 2026-10-08 (197 débogueur Blueprint, 198 script ↔ Blueprint + IA) ; 217/217 avant (196 contrôleur d'analyse) ; 216/216 avant (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
 188 niveaux/grilles annulables, 189 chunk SETT, 190 collage BIM, 191 édition groupée) ; test 20 sensible au temps (BUG-035) ;
 197/197 avant (suite `bim` 170–180 le 2026-10-06, dont IFC 177–180) ;
 186/186 avant (suite `cleanup` 160–165 le 2026-10-05) ;
@@ -199,7 +223,8 @@ Status: IMPLEMENTED — cas, combinaisons, charges nodales et sur barres (poutre
 persistés dans le chunk LOAD (.tsa 1.1). Charges surfaciques / thermiques : MISSING.
 
 ## Structural Calculation
-Status: PARTIAL — **statique seul** (ADR-022 : modal / pushover / temporel retirés, archive `archive/dynamique`).
+Status: PARTIAL — **analyse linéaire seule** : statique linéaire et modale (ADR-025 ; pushover / temporel retirés par
+ADR-022, archive `archive/dynamique` ; l'analyse modale est présente dans le code).
 OpenSees 3.8.0 externe (Tcl, QProcess) pour barres, treillis, câbles, appuis/ressorts ; rotules `-releasey/-releasez`
 (BUG-027) ; charges trapézoïdales par forces d'encastrement parfait ; nœuds de treillis purs stabilisés (BUG-019).
 Calcul dans un thread de travail avec progression annulable (BUG-001, à vérifier en GUI). Dalles et voiles non
@@ -207,14 +232,20 @@ transmis (BUG-002, avertissement avant calcul).
 
 ## Analysis engines (multi-moteurs)
 Status: IMPLEMENTED (2026-10-05) — `AnalysisEngine` / registre / `AnalysisManager` ; portées : modèle complet,
-sélection, axe de grille, niveau, plan de travail ; OpenSees et Custom2D (MetDeDeplacement 2). Types : statique linéaire
-et non linéaire. Contexte persisté dans le .tsa (chunk SETT, 2026-10-07, test 189).
+sélection, axe de grille, niveau, plan de travail ; OpenSees, Custom2D (MetDeDeplacement 2), Fem3D. Types : statique
+linéaire et modale (non linéaire retiré le 2026-10-31, ADR-025). Contexte persisté dans le .tsa (chunk SETT, 2026-10-07,
+test 189) ; type ou réglage retiré : conservé, signalé, calcul refusé (tests 532-536).
 
 ## Results
 Status: IMPLEMENTED — déformée continue sur les stations du solveur (repli Hermite), structure initiale atténuée / masquée, échelle manuelle conservée (2026-10-09, BUG-045 à 048) ; ResultsModel en convention RDM (N > 0 traction, M > 0 fibre négative tendue, V = dM/dx),
 stations exactes par équilibre du tronçon, déformée par double intégration de la courbure (tests 181–184) ; équilibre
 contrôlé en forces ET moments (BUG-017) ; déformée / diagrammes / réactions 3D, diagrammes 2D, NDC (liens avec famille,
 BUG-018), dock « Données d'analyse », export, invalidation automatique. Résultats non enregistrés dans le .tsa (BUG-013).
+Courbes 2D (dock « DIAGRAMMES 2D », 2026-10-30, commit 5403ed6, fusionné dans main avec refactor/linear-only le 2026-10-31) : plusieurs grandeurs
+superposées (N/Vx, Vy, Vz, Mx, My, Mz, ux, uy, uz, |u|, θx, θy, θz ; groupes prédéfinis) ou empilées ; un axe par unité
+(2 au plus, zéros alignés) sinon normalisée ; extrêmes à leur position ; curseur multi-valeurs ; zoom X/Y ; export image /
+valeurs ; barres de treillis et câbles ; suit la sélection 3D ; réglages QSettings « Diagram2D ». Vérifié : test 531 (rendu
+contrôlé visuellement sur images), BUG-145. Non vérifié : essai dans TSA.exe réel (sélection 3D → dock, puces, export).
 
 ## Meshing
 Status: MISSING — aucun mailleur EF pour dalles/voiles.

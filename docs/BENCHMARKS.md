@@ -1,6 +1,6 @@
 # Banc de validation de TSA
 
-Le banc de validation exécute des **cas de référence** par la chaîne de calcul réelle de TSA, puis compare chaque grandeur à une référence indépendante. La chaîne est la suivante : modèle TSA → `AnalysisManager` → moteur OpenSees (3D) ou Custom2D (plan) → `ResultsModel`.
+Le banc de validation exécute des **cas de référence** par la chaîne de calcul réelle de TSA, puis compare chaque grandeur à une référence indépendante. La chaîne est la suivante : modèle TSA → `AnalysisManager` → moteur OpenSees (3D), Fem3D (3D) ou Custom2D (plan) → `ResultsModel`. Seules les analyses linéaires (statique linéaire, modale) sont proposées.
 
 Le code se trouve dans :
 - `src/Validation/BenchmarkSuite.{h,cpp}` ;
@@ -32,10 +32,10 @@ Schéma : `docs/schemas/tsa-benchmark-1.schema.json`. Unités : kN, m, kPa. Le m
 |---|---|
 | `id`, `title`, `category` (`rdm` / `fea`), `description` | identification |
 | `sources`, `hypotheses` | références documentaires, hypothèses du modèle |
-| `engines` | `opensees`, `custom2d` (moteur plan, portée « plan du modèle ») |
+| `engines` | `opensees`, `custom2d` (moteur plan, portée « plan du modèle »), `fem3d` (cas ignoré si Fem3D n'est pas compilé) ; un autre nom est refusé à la lecture |
 | `parameters` | valeurs numériques ou formules (paramètres dérivés : `"I": "b*h^3/12"`) |
 | `model` | `materials`, `sections`, `nodes` (appuis `fixed`, `pinned` ou 6 DDL), `members` (`beam`, `column`, `truss`, relâchements `my`/`mz`), `slabs` (contour, épaisseur, appuis linéiques, ouvertures), `cases`, `nodalLoads`, `memberLoads` (`uniform`, `trapezoidal`, `point`, directions globales ou locales), `surfaceLoads` |
-| `analysis` | `selfWeight`, `case`, `type` (`linear_static`, `nonlinear_static`, `modal`), `modes`, `subdivide` (sous-éléments par barre), `meshSize` / `meshSizes` / `quads` (surfaces), `engineSettings` (réglages propres au moteur, transmis tels quels) |
+| `analysis` | `selfWeight`, `case`, `type` (`linear_static`, `modal` ; toute autre valeur, dont l'ancien `nonlinear_static`, est refusée à la lecture), `modes`, `subdivide` (sous-éléments par barre), `meshSize` / `meshSizes` / `quads` (surfaces), `engineSettings` (réglages propres au moteur, transmis tels quels) |
 | `checks` | `quantity`, `label`, `expected` (nombre ou formule), `unit`, `tolerance` (`rel`, `abs`), `engines` (facultatif) |
 
 ### Grandeurs
@@ -58,7 +58,7 @@ Les identifiants de nœuds et de barres sont ceux du fichier JSON.
 
 ## 3. Cas disponibles
 
-Résultats du 12/10/2026, OpenSees 3.8.0 et Custom2D (TSALab MetDeDeplacement) : 28 cas, 146 vérifications, toutes réussies (FEA-07 ajouté le 12/10/2026).
+Résultats du 31/10/2026, OpenSees 3.8.0, Fem3D 0.3.0 et Custom2D (TSALab MetDeDeplacement) : 36 cas, 1 682 vérifications, toutes réussies. Le 31/10/2026, l'analyse non linéaire a été retirée (ADR-025) : RDM-11a et RDM-11b, seuls cas non linéaires, ont été supprimés ; RDM-13, RDM-14 et FEA-08 à 10 ont été ajoutés (cas de l'audit du 31/10/2026). Les 141 vérifications des cas conservés donnent les mêmes valeurs, au bit près, qu'avant le retrait.
 
 | Cas | Objet | Moteurs | Écart max. |
 |---|---|---|---|
@@ -72,9 +72,11 @@ Résultats du 12/10/2026, OpenSees 3.8.0 et Custom2D (TSALab MetDeDeplacement) :
 | RDM-08a, 08b | torsion circulaire (TL/GJ) et rectangulaire (série de Saint-Venant) | OpenSees | 0,085 % (approximation de Roark pour J) |
 | RDM-09 | flexion composée (N/A + M/W) | OpenSees, Custom2D | 3e-14 % |
 | RDM-10a à 10d | hyperstatiques : encastrée-appuyée, deux travées, charge triangulaire bi-encastrée (forces d'encastrement de TSA), charge uniforme partielle | OpenSees, Custom2D | 1e-13 % |
-| RDM-11a | solveur non linéaire en géométrie linéaire : charge complète atteinte | OpenSees | 5e-14 % |
-| RDM-11b | second ordre P-Δ, console comprimée (P/Pcr = 0,37) | OpenSees | 0,03 % |
 | RDM-12 | poids propre automatique (IPE 300, A du catalogue) | OpenSees, Custom2D | 4e-3 % |
+| RDM-13a, 13b, 13c | rotules sous charge uniforme : encastrée-rotulée, poutre Gerber, barre à deux rotules (réactions, M = 0 à la rotule) | OpenSees, Fem3D, Custom2D | 8e-14 % |
+| RDM-14a à 14d | rotule + charge ponctuelle, trapézoïdale, triangulaire ; deux rotules + charge ponctuelle | Fem3D, Custom2D (OpenSees exclu : BUG-148 ouvert) | 1,5e-7 % |
+| FEA-08, FEA-09 | portiques 3D aléatoires, familles A et B (24 et 18 nœuds), référence : solveur indépendant de l'audit | OpenSees, Fem3D | 5e-8 % |
+| FEA-10 | portique 3D aléatoire à rotules, famille C, charges ponctuelles et trapézoïdales | Fem3D (OpenSees exclu : BUG-148 ouvert) | 2e-9 % |
 | FEA-01 | plaque carrée appuyée, ShellMITC4 (Navier), convergence | OpenSees | +2,65 % (appui « mou » : couche limite de Mindlin, l'écart croît au raffinement ; voir FEA-07) |
 | FEA-02 | même plaque, ShellDKGT, convergence | OpenSees | 0,08 % |
 | FEA-03 | bande de coque en console (théorie des poutres) | OpenSees | 0,2 % |

@@ -29,6 +29,7 @@ public:
     EngineAvailability availability() const override;
     bool provision(std::string* error) override;
     QJsonObject defaultSettings() const override;
+    std::vector<std::string> unsupportedSettings(const QJsonObject& settings) const override;
     ValidationResult validate(const AnalysisContext& context, const AnalysisModel& model) const override;
     AnalysisRunResult run(const AnalysisContext& context, const AnalysisModel& model,
                           const AnalysisRunCallbacks& callbacks) override;

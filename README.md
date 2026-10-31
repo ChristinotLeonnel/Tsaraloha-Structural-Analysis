@@ -39,7 +39,7 @@
 
 ## 📖 Présentation
 
-**TSA (Tsaraloha Structural Analysis)** est une suite logicielle desktop d'ingénierie des structures de nouvelle génération. Elle fusionne la fidélité géométrique volumique B-Rep d'un modeleur CAO industriel (**OpenCASCADE Technology**) avec la puissance non-linéaire d'un moteur de calcul aux éléments finis de référence (**OpenSees**), le tout orchestré par une interface utilisateur réactive et moderne (**Qt 6**) organisée autour d'un Ruban ergonomique à 8 onglets et de fenêtres ancrables intelligentes.
+**TSA (Tsaraloha Structural Analysis)** est une suite logicielle desktop d'ingénierie des structures de nouvelle génération. Elle fusionne la fidélité géométrique volumique B-Rep d'un modeleur CAO industriel (**OpenCASCADE Technology**) avec un moteur de calcul aux éléments finis de référence (**OpenSees**), le tout orchestré par une interface utilisateur réactive et moderne (**Qt 6**) organisée autour d'un Ruban ergonomique à 8 onglets et de fenêtres ancrables intelligentes.
 
 TSA permet de concevoir, modéliser, charger, analyser et inspecter en 3D interactive des bâtiments à étages, des halles industrielles, des fermes et treillis spatiaux, des structures haubanées et des systèmes de fondations selon les normes européennes (**Eurocodes**).
 
@@ -143,23 +143,29 @@ Le temps de compilation de TSA est optimisé pour les développeurs C++ exigeant
 
 ### 1. 🏗️ Modélisation Structurale & Noyau CAO 3D B-Rep
 * **Solides B-Rep Exacts (OpenCASCADE 8.0.1)** : Pas de facettisation polygonale approximative ; géométrie volumique exacte pour tous les profilés, nœuds et assemblages.
-* **Éléments Filaires 1D** : Poutres, poteaux, barres spatiales génériques, câbles et haubans tendus avec prise en compte du comportement élastique non-linéaire.
+* **Éléments Filaires 1D** : Poutres, poteaux, barres spatiales génériques, câbles et haubans précontraints (barres articulées, calcul linéaire).
 * **Générateur Automatique de Treillis** : Création instantanée et paramétrique de fermes métalliques de types **Warren** (diagonales alternées), **Pratt** (diagonales tendues) et **Howe** (diagonales comprimées).
 * **Éléments Surfaciques 2D** : Dalles et planchers (report de charge unidirectionnel ou bidirectionnel), voiles et murs porteurs banchés, semelles superficielles de fondation.
 * **Plans de Travail 3D Interactifs (WorkPlanes)** : Définition par 3 points arbitraires ou alignement sur les niveaux d'étages ; projection bidirectionnelle non-destructive 2D $\leftrightarrow$ 3D et magnétisme intelligent (extrémités, milieux, centres, grilles).
 * **Conditions d'Appuis Spatiales (6 DDL)** : Encastrements complets, rotules/articulations, appuis simples (rouleaux), degrés de liberté découplés ($T_x, T_y, T_z, R_x, R_y, R_z$) représentés par de véritables solides B-Rep (plaques d'assise, cônes, cylindres).
 * **Système d'Actions & Combinaisons Eurocodes** : Forces et moments nodaux, charges linéiques réparties uniformes et trapézoïdales, calcul automatique du poids propre volumique, cas de charges et combinaisons ELU / ELS.
 
-### 2. 🧮 Moteur de Calcul OpenSees Intégré
-* **Analyses Disponibles** :
-  * Statique linéaire : $[K]\{u\} = \{F\}$.
-  * Statique non-linéaire au second ordre (effets $P\text{-}\Delta$, non-linéarités géométriques).
-  * Périmètre : calcul **statique** uniquement. Le modal, le pushover et le temporel ont été retirés
-    (ADR-022) ; la version qui les contenait est archivée sur la branche `archive/dynamique`
-    (tag `v0.2.0-dynamique`).
-* **Algorithmes de Résolution Numérique** : Newton-Raphson standard, Newton avec recherche linéaire (*NewtonLineSearch*), Newton modifié, *Krylov-Newton*, *BFGS*, *Broyden*, *SecantNewton*.
-* **Intégrateurs de Charge & Déplacement** : *LoadControl*, *DisplacementControl*, Longueur d'arc (*Arc-Length* / algorithme de Crisfield), Norme de déplacement non équilibré minimale (*MinUnbalDispNorm*).
-* **Formulations Avancées** : Éléments standards et corotatifs (*corotTruss*) pour la stabilité en grands déplacements.
+### 2. 🧮 Moteurs de Calcul
+
+> **TSA prend actuellement en charge l'analyse structurale linéaire. L'analyse non linéaire n'est pas disponible dans cette version.**
+
+* **Analyses disponibles** :
+  * Statique linéaire : $[K]\{u\} = \{F\}$, petits déplacements, matériaux élastiques linéaires, premier ordre.
+  * Modale : fréquences, formes propres et masses participantes (OpenSees).
+* **Non disponible** : analyse non linéaire (second ordre $P\text{-}\Delta$, grands déplacements, plasticité, pilotage
+  incrémental), pushover et analyses temporelles. Un ancien projet qui demandait une analyse non linéaire s'ouvre
+  normalement, mais son calcul est refusé avec un message tant qu'une analyse linéaire n'a pas été choisie (ADR-025).
+* **Moteurs** : OpenSees (par défaut, 3D, résolution en un seul pas par `algorithm Linear`), Fem3D (3D : poutres, rotules,
+  appuis élastiques), Custom2D (ossatures planes).
+* **Câbles** : barres articulées précontraintes (déformation initiale $\varepsilon_0 = T_0 / EA$), calculées en un seul pas
+  linéaire ; une compression n'est pas relâchée.
+* **Vérifications réglementaires** : distinctes de l'analyse. Elles sont partielles et ne sont pas validées du seul fait que
+  l'analyse est linéaire (voir la note de calcul, chapitre « Limites connues du logiciel »).
 
 ### 3. 📊 Visualisation 3D des Résultats & Inspection
 * **Déformée 3D Amplifiée** : 3 modes d'affichage (Initial non déformé, Déformé seul, Superposition des deux) avec calibrage automatique sur l'envergure caractéristique du modèle ($L_{span}$).
@@ -171,7 +177,7 @@ Le temps de compilation de TSA est optimisé pour les développeurs C++ exigeant
 * **Légende 3D Interactive en Surimpression** : Titre de l'effort, valeurs extrêmes (min/max), échelle effective et unités physiques du Système International ($kN, kNm, mm, rad$).
 * **Réactions d'Appuis Vectorielles** : Flèches 3D proportionnelles avec affichage dynamique des valeurs aux nœuds d'appuis.
 * **Détection Automatique des Nœuds Libres** : Signalement visuel proéminent des nœuds orphelins (sphères magenta) et filtrage contextuel (*Tous*, *Libres*, *Appuis*, *Sélectionnés*).
-* **Navigation Multi-Incréments** : Slider interactif pour inspecter le modèle étape par étape lors des calculs non-linéaires pas à pas ($\lambda$).
+* **Modes propres** : curseur pour parcourir les formes propres d'une analyse modale.
 
 ### 4. 🖥️ Espace Multi-Vues (Multiport)
 * Découpage dynamique de la fenêtre 3D : Vue unique, Double vue horizontale (2H), Double vue verticale (2V), Grille $2 \times 2$ (4 vues simultanées indépendantes), Vue ongletisée.
@@ -322,7 +328,7 @@ TSA/
 │   ├── TSA_FILE_FORMAT.md      # Spécification du format binaire .tsa (chunks)
 │   ├── TSA_DIAGNOSTICS.md      # Journalisation, télémétrie et rapports de crash
 │   ├── ANALYSIS_OPENSEES.md         # Intégration du solveur OpenSees et formulations EF
-│   ├── OPENSEES_CALCULATION_METHODS.md # Méthodes de calcul, algorithmes et types d'analyse (guide utilisateur)
+│   ├── OPENSEES_CALCULATION_METHODS.md # Méthodes de calcul et types d'analyse linéaires (guide utilisateur)
 │   ├── OPENSEES_RESULTS.md         # Structure des résultats et diagrammes 3D
 │   ├── UI.md                       # Architecture de l'interface graphique Qt 6
 │   └── MODEL.md                # Spécification du modèle structural de données
@@ -362,7 +368,7 @@ La suite complète des **guides architecturaux et spécifications techniques** e
 | Document | Contenu & Usage |
 |:---|:---|
 | **[ANALYSIS_OPENSEES.md](docs/ANALYSIS_OPENSEES.md)** | Intégration du solveur OpenSees, pipeline de calcul, composants du module Analysis, validation analytique. |
-| **[OPENSEES_CALCULATION_METHODS.md](docs/OPENSEES_CALCULATION_METHODS.md)** | 🆕 **Guide complet pour les utilisateurs** : types d'analyses (linéaire, non-linéaire, modale), algorithmes (Newton, LoadControl, ArcLength), éléments structuraux, gestion des charges, solveurs et numérotation des DDL. |
+| **[OPENSEES_CALCULATION_METHODS.md](docs/OPENSEES_CALCULATION_METHODS.md)** | 🆕 **Guide complet pour les utilisateurs** : types d'analyses (statique linéaire, modale), commandes d'analyse générées, éléments structuraux, gestion des charges, solveurs et numérotation des DDL. |
 | **[OPENSEES_RESULTS.md](docs/OPENSEES_RESULTS.md)** | Structure et extraction des résultats, diagrammes 3D, déformée amplifiée, réactions d'appuis. |
 | **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Principes architecturaux, flux de données, pattern Observer et Source de Vérité Unique (SSOT). |
 | **[NORMATIVE_SYSTEM.md](docs/NORMATIVE_SYSTEM.md)** | Eurocodes EN 1990–1999, combinaisons ELU/ELS, vérifications de conformité. |

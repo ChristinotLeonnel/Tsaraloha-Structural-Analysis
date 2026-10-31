@@ -1,0 +1,148 @@
+{
+ "format": "tsa.benchmark/1",
+ "id": "RDM-14d",
+ "title": "Deux rotules, ponctuelle excentrée",
+ "category": "rdm",
+ "description": "Deux rotules, ponctuelle excentrée. Cas « PIN2-point » de l'audit technique du 2026-10-31 (docs/audit/2026-10-31/preuves). OpenSees exclu tant que BUG-148 est ouvert (rotule + charge ponctuelle, trapézoïdale ou triangulaire : efforts faux sans alerte).",
+ "sources": [
+  "RDM : poutre isostatique sur deux appuis"
+ ],
+ "hypotheses": [
+  "rotules d'extrémité sur barre entre appuis encastrés"
+ ],
+ "units": {
+  "force": "kN",
+  "length": "m",
+  "stress": "kPa"
+ },
+ "engines": [
+  "fem3d",
+  "custom2d"
+ ],
+ "parameters": {
+  "L": 6.0,
+  "q": 12.0,
+  "P": 30.0,
+  "a": 2.0,
+  "b": "L-a"
+ },
+ "model": {
+  "materials": {
+   "S": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "rho": 7850
+   }
+  },
+  "sections": {
+   "R": {
+    "shape": "rectangular",
+    "b": 0.2,
+    "h": 0.4
+   }
+  },
+  "nodes": [
+   {
+    "id": 1,
+    "x": 0,
+    "y": 0,
+    "z": 0,
+    "support": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   {
+    "id": 2,
+    "x": 6.0,
+    "y": 0,
+    "z": 0,
+    "support": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ]
+   }
+  ],
+  "members": [
+   {
+    "id": 1,
+    "i": 1,
+    "j": 2,
+    "section": "R",
+    "material": "S",
+    "release_i": "my",
+    "release_j": "my"
+   }
+  ],
+  "cases": [
+   {
+    "id": 1,
+    "name": "Q"
+   }
+  ],
+  "memberLoads": [
+   {
+    "member": 1,
+    "type": "point",
+    "case": 1,
+    "p": -30.0,
+    "x": 0.3333333333333333,
+    "direction": "globalZ"
+   }
+  ]
+ },
+ "analysis": {
+  "case": 1,
+  "selfWeight": false
+ },
+ "checks": [
+  {
+   "quantity": "member:1:M:start",
+   "label": "M rotule i",
+   "expected": 0,
+   "unit": "kN·m",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-06
+   }
+  },
+  {
+   "quantity": "member:1:M:end",
+   "label": "M rotule j",
+   "expected": 0,
+   "unit": "kN·m",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-06
+   }
+  },
+  {
+   "quantity": "member:1:M:absmax",
+   "label": "M max travée",
+   "expected": "P*a*b/L",
+   "unit": "kN·m",
+   "tolerance": {
+    "rel": 0.002,
+    "abs": 0.001
+   }
+  },
+  {
+   "quantity": "reaction:1:fz",
+   "label": "R_i",
+   "expected": "P*b/L",
+   "unit": "kN",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-06
+   }
+  }
+ ]
+}

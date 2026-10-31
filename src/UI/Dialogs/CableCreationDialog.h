@@ -52,7 +52,6 @@ public:
     double sag() const; // En mètres
     TSA::Model::AnchorType startAnchorType() const;
     TSA::Model::AnchorType endAnchorType() const;
-    bool isTensionOnly() const;
     bool isChainMode() const;
 
     void loadFromCable(const TSA::Model::Cable& cable);
@@ -124,7 +123,6 @@ private:
     QDoubleSpinBox* m_spinSag = nullptr; // m
     QComboBox* m_comboStartAnchor = nullptr;
     QComboBox* m_comboEndAnchor = nullptr;
-    QCheckBox* m_chkTensionOnly = nullptr;
 
     // Coordonnées & Tracé
     QLineEdit* m_editOrigin = nullptr;

@@ -1,0 +1,25 @@
+nœuds | barres | construction | instantané | enreg. | Kio | ouverture | édition 1 nœud | annuler | rétablir | diff | prép Fem3D | calcul Fem3D | prép OS | calcul OS | Mio modèle | Mio instantané | ok | diffvide
+[construction]
+[instantané]
+[enregistrement]
+[ouverture] err=
+[édition] err=
+[annuler]
+[calcul]
+486 | 1125 | 2.0 | 2.8 | 403.4 | 313.0 | 17.3 | 3.6 | 3.2 | 2.9 | 0.3 | 11.3 | 68.4 | 5.9 | 144.2 | 0.7 | 2.6 | 11 | 0
+[construction]
+[instantané]
+[enregistrement]
+[ouverture] err=
+[édition] err=
+[annuler]
+[calcul]
+3179 | 8330 | 12.6 | 22.0 | 407.8 | 770.8 | 128.4 | 32.5 | 36.6 | 34.0 | 3.7 | 110.4 | 4646.9 | 56.0 | 1443.6 | 5.2 | 16.3 | 11 | 0
+[construction]
+[instantané]
+[enregistrement]
+[ouverture] err=
+[édition] err=
+[annuler]
+[calcul]
+10625 | 29200 | 44.9 | 82.7 | 1878.5 | 2024.2 | 462.7 | 126.7 | 127.8 | 120.8 | 15.6 | 1067.6 | 104895.5 | 236.7 | 17671.7 | 20.6 | 57.2 | 11 | 0

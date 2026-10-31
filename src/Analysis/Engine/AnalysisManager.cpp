@@ -268,6 +268,29 @@ ValidationResult AnalysisManager::validateGeneric(const AnalysisContext& context
     return v;
 }
 
+std::vector<std::string> AnalysisManager::unsupportedFeatures(const AnalysisContext& context) const
+{
+    std::vector<std::string> features;
+    if (context.unsupportedAnalysisType == "nonlinear_static")
+        features.push_back(trText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager", "analyse statique non linéaire")));
+    else if (!context.unsupportedAnalysisType.empty())
+        features.push_back(trArgs(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager", "analyse de type « %1 »"), { context.unsupportedAnalysisType }));
+    if (const AnalysisEngine* engine = m_registry.engine(context.engineId))
+        for (const auto& setting : engine->unsupportedSettings(context.settingsFor(context.engineId))) features.push_back(setting);
+    return features;
+}
+
+std::string AnalysisManager::unsupportedFeaturesMessage(const std::vector<std::string>& features)
+{
+    std::string list;
+    for (std::size_t i = 0; i < features.size(); ++i) list += (i ? ", " : "") + features[i];
+    return trArgs(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager",
+                                    "Ce projet demande une fonctionnalité qui n'est plus prise en charge : %1. TSA prend actuellement en "
+                                    "charge l'analyse structurale linéaire : ce calcul n'est pas lancé à la place d'un autre. Choisissez "
+                                    "une analyse linéaire dans les paramètres d'analyse. Les autres données du projet sont conservées."),
+                  { list });
+}
+
 PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
                                           const TSA::Grid::GridManager* grids,
                                           const AnalysisContext& context) const
@@ -293,6 +316,8 @@ PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
     p.extracted = true;
 
     p.validation = validateGeneric(context, p.model, engine->info(), engine->capabilities());
+    if (const auto features = unsupportedFeatures(context); !features.empty())
+        p.validation.addError(trText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager", "Moteur")), unsupportedFeaturesMessage(features));
 
     // Calcul 3D : blocages ajoutés aux appuis articulés / simples (appui à fourche, structure plane),
     // listés pour que l'utilisateur sache quelles rotations le calcul a bloquées (CalculationSnapshot).
@@ -430,6 +455,12 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
     {
         r.message = trArgs(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager", "Moteur d'analyse inconnu : « %1 »."),
                            { context.engineId });
+        return r;
+    }
+    // Contrôlé ici aussi : le contexte reçu peut différer de celui qui a servi à préparer le modèle.
+    if (const auto features = unsupportedFeatures(context); !features.empty())
+    {
+        r.message = unsupportedFeaturesMessage(features);
         return r;
     }
     if (!prepared.canRun())

@@ -241,8 +241,7 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
     in.options.curvePoints = std::clamp(opts.value("curvePoints").toInt(41), 3, 2001);
     in.options.exportSystem = opts.value("exportSystem").toBool(false);
 
-    in.request.type = context.type == AnalysisType::NonLinearStatic ? Custom2D::AnalysisType::NonLinearStatic
-                                                                    : Custom2D::AnalysisType::LinearStatic;
+    in.request.type = Custom2D::AnalysisType::LinearStatic;
     in.request.loadCaseIds = context.loadCaseIds;
     in.request.combinationId = context.combinationId;
     in.request.includeSelfWeight = context.common.includeSelfWeight;

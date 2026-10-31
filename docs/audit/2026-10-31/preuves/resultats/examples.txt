@@ -1,0 +1,24 @@
+=== examples/*.tsa : barres, rotules
+TSA_Demo_Batiment_R+5.tsa                    v1.10  barres   640 rotules 0  poteaux   158 câbles    0 treillis    0
+TSA_Demo_Hangar_60x40m.tsa                   v1.10  barres  1071 rotules 0  poteaux   138 câbles    0 treillis    0
+TSA_Demo_Pont_Treillis_3x48m.tsa             v1.10  barres   593 rotules 0  poteaux    72 câbles    0 treillis    0
+TSA_Exemple_Dalle_Coques.tsa                 v1.10  barres     4 rotules 0  poteaux     4 câbles    0 treillis    0
+TSA_Exemple_Voile_Reservoir.tsa              v1.10  barres     0 rotules 0  poteaux     0 câbles    0 treillis    0
+TSA_Projet_Batiment_BA_R+4.tsa               v1.10  barres   345 rotules 0  poteaux   148 câbles    0 treillis    0
+TSA_Projet_Batiment_Complexe_L.tsa           v2.0   barres   323 rotules 0  poteaux   144 câbles    0 treillis    0
+TSA_Projet_Batiment_Mixte_BA_Acier.tsa       v1.10  barres   336 rotules 0  poteaux    90 câbles    0 treillis    0
+TSA_Projet_Pont_Haubans_80-180-80m.tsa       v2.0   barres   452 rotules 0  poteaux    52 câbles   64 treillis    0
+
+=== modifications locales (HEAD → copie de travail)
+examples/TSA_Projet_Batiment_Complexe_L.tsa version 1.10 → 2.0, fichier 384391 → 326198 o, payload 214474 → 186138, aperçu 169645 → 139788
+   BIMM: (146932, 564) → (147097, 564)
+   COOR: (401, 1) → (723, 1)
+   GRID: (726, 1) → (779, 1)
+   SECP: None → (27134, 1)
+   SETT: None → (663, 1)
+   THMB: (169629, 1) → (139772, 1)
+examples/TSA_Projet_Pont_Haubans_80-180-80m.tsa version 1.10 → 2.0, fichier 181229 → 67495 o, payload 112561 → 55355, aperçu 68396 → 11868
+   COOR: (401, 1) → (459, 1)
+   GRID: (715, 1) → (738, 1)
+   SECP: None → (4577, 1)
+   THMB: (68380, 1) → (11852, 1)

@@ -54,6 +54,8 @@ public:
     bool runRequested() const { return m_runRequested; }
 
     // --- Introspection (tests, IA) ---
+    /// Bandeau affiché : le contexte reçu demandait une fonctionnalité retirée (ancien projet).
+    bool showsUnsupportedWarning() const;
     TSA::Analysis::EngineId currentEngineId() const;
     bool setEngine(const TSA::Analysis::EngineId& id);
     bool hasEngineOptionsPanel() const { return m_optionsWidget != nullptr; }
@@ -89,6 +91,7 @@ private:
     bool m_runRequested = false;
     bool m_updating = false;
 
+    QLabel* m_unsupportedBanner = nullptr;   ///< fonctionnalité retirée demandée par le projet
     QComboBox* m_engineCombo = nullptr;
     QLabel* m_engineInfo = nullptr;
     QLabel* m_capabilities = nullptr;

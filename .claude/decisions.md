@@ -274,3 +274,28 @@ TSA/src se vérifie sur TSA (212 tests) ET TSALab (tests du laboratoire + tsalab
 Un besoin d'une application = composant partagé ou point d'extension, jamais une copie. La science n'inclut
 ni Qt ni OCCT ni le modèle TSA ; l'interface n'appelle jamais un solveur directement (adaptateurs).
 Status: ACTIVE (2026-10-08)
+## ADR-025
+Title: TSA est limité à l'analyse structurale linéaire ; l'analyse non linéaire est retirée
+Decision: (mission du 2026-10-31, branche `refactor/linear-only`, rapport docs/audit/2026-10-31/LINEAR_ONLY_REFACTORING_REPORT.md)
+- Types d'analyse : `AnalysisType { LinearStatic, Modal }`. `NonLinearStatic`, `supportsNonlinear`, les algorithmes
+  (Newton et variantes), intégrateurs (DisplacementControl, ArcLength, MinUnbalDispNorm), pas, tolérances, nœud de
+  contrôle, `TrussFormulation`, `GeomTransfType`, le facteur de charge final et l'historique des pas statiques sont
+  retirés. Script statique OpenSees unique : `algorithm Linear`, `integrator LoadControl 1.0`, `analyze 1`,
+  `geomTransf Linear` ; treillis `truss`.
+- Câbles : `corotTruss` + `InitStrain` conservé tel quel (résultats validés ; un seul pas linéaire, raideur de la
+  précontrainte incluse, effort recalculé sur la géométrie déformée : limite documentée dans docs/cable-system/analysis.md).
+- Anciens projets : rien n'est converti en silence. `AnalysisContext::unsupportedAnalysisType` garde la clé lue
+  (`nonlinear_static`, `pushover`…), réécrite telle quelle ; `AnalysisEngine::unsupportedSettings` signale les anciens
+  réglages qui changeaient un calcul (OpenSees : geomTransf 1/2, trussFormulation 1/3). `AnalysisManager::prepare`
+  rend une erreur et `run` refuse ; ouverture signalée (console + message), fenêtre Analysis avec bandeau ; valider la
+  fenêtre remplace la demande par l'analyse linéaire choisie. Les clés sans effet sur un calcul linéaire sont ignorées.
+- Format `.tsa` inchangé (CABL : trois champs historiques lus puis ignorés, écrits à leurs anciennes valeurs).
+- Analyse modale : linéaire, présente dans le code, conservée (le retrait annoncé par ADR-022 n'est plus exact).
+Reason: BUG-149 (facteur de charge des efforts en non linéaire, CRITICAL) et BUG-150 (P-Delta accepté sans effet en
+statique linéaire) ; le non linéaire n'était validé que par deux cas (RDM-11a/b) ; l'utilisateur choisit une version
+dont tout le calcul proposé est linéaire, implémenté et validé.
+Consequences: remplace la conséquence d'ADR-022 « un ancien contexte de type dynamique est relu comme statique
+linéaire » : tout type inconnu est désormais refusé avec un message. Réintroduire du non linéaire = nouvel ADR, nouvelle
+validation (banc), et lever les refus. Les vérifications réglementaires restent distinctes de l'analyse : elles ne sont
+pas validées du seul fait que l'analyse est linéaire. Tests 532-537.
+Status: ACTIVE (2026-10-31)

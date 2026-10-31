@@ -1,8 +1,96 @@
 # Known Issues
 
-Last Updated: 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-31 (analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-148 et BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
+
+Audit technique du 2026-10-31 : détail, reproduction et correction de BUG-148 à BUG-168 dans docs/audit/2026-10-31/TSA_BUG_REGISTER.md.
+
+## BUG-169
+Status: OPEN (LOW, reproduit le 2026-10-31) — test 457 (suite i18n) : seuil de 50 ms non tenu en Debug (pire recherche dans un
+index synthétique de 6 000 entrées : 347 à 410 ms, sans autre charge ; 18 ms en Release). L'arrêt au premier échec (BUG-104)
+empêche ensuite les tests 458 à 463 de tourner en Debug. Correction : seuil dépendant du type de compilation, ou mesure en
+Release seulement. Sans lien avec le retrait du non linéaire (code mesuré non modifié).
+
+## BUG-148
+Status: OPEN (CRITICAL, reproduit) — OpenSees : rotule + charge ponctuelle, trapézoïdale ou partielle, efforts faux sans alerte
+(M d'encastrement 13,33 au lieu de 26,67 kN·m). Forces d'encastrement bi-encastrées non condensées (OpenSeesAnalysisBuilder.cpp:824,
+OpenSeesResultsReader.cpp:380), -beamPoint sans correction de rotule. Fem3D et Custom2D justes. L'équilibre ne le détecte pas.
+
+## BUG-149
+Status: CLOSED — fonctionnalité retirée (2026-10-31, ADR-025 ; défaut historique conservé). Était : OPEN (CRITICAL, reproduit) —
+statique non linéaire, réglages par défaut : efforts le long des barres avec λ = 0,5 (OpenSeesResultsReader.cpp:553 contre
+OpenSeesAnalysisBuilder.cpp:905). M = 107,7 au lieu de 54 kN·m. Réactions justes.
+Après retrait : plus de type statique non linéaire, d'historique des pas ni de facteur de charge dans le lecteur ; un ancien projet
+`nonlinear_static` est refusé avec un message (tests 532, 535) ; NLIN-uniforme / NLIN-trapeze refusés à la lecture du banc.
+Non « corrigé » : réintroduire le non linéaire exigerait de reprendre ce cas.
+
+## BUG-150
+Status: CLOSED — fonctionnalité retirée (2026-10-31, ADR-025 ; défaut historique conservé). Était : OPEN (HIGH, reproduit) — P-Delta
+ou corotationnel accepté en statique linéaire : ni premier ni second ordre, sans alerte.
+Après retrait : option et transformations retirées (geomTransf Linear seul) ; ancien réglage geomTransf 1/2 ou trussFormulation 1/3
+refusé avant calcul (OpenSeesEngine::unsupportedSettings, tests 533, 537) ; PDELTA-LIN : « faux sans alerte » → « calcul refusé ».
+
+## BUG-151
+Status: OPEN (HIGH, reproduit) — câble comprimé accepté (N = −20,2 kN), aucun avertissement du calcul. Revérifié le 2026-10-31 après
+retrait du non linéaire : inchangé. Les cases « Traction seule (Non-linéarité géométrique) » / « Tension-only », sans effet sur le
+calcul, ont été retirées de l'interface (donnée tensionOnly conservée). Limite liée, documentée : corotTruss précontraint résolu en un
+pas (raideur de précontrainte incluse, effort recalculé sur la géométrie déformée, résidu en (u/L)²), docs/cable-system/analysis.md.
+
+## BUG-152
+Status: OPEN (HIGH, reproduit) — note Legacy, disposition par défaut : flambement sur l'axe fort seul, Lcr = L, verdict CONFORME
+(NDCGenerator.cpp:874). IPE 200, 5 m : 809 kN au lieu de 105 kN.
+
+## BUG-153
+Status: OPEN (HIGH, reproduit) — cornières sur axes géométriques, iyz() jamais utilisé : flèche sous-estimée de 35 %.
+
+## BUG-154
+Status: OPEN (MEDIUM, reproduit) — .tsa à références pendantes accepté, violation d'accès au calcul (ModelValidator.cpp:576-578).
+
+## BUG-155
+Status: OPEN (MEDIUM, reproduit) — exceptions non contenues : prepare() (Fem3DError, Standard_ConstructionError) et 8 corps de
+QThread::create sur 9 sans try.
+
+## BUG-156
+Status: OPEN (MEDIUM, reproduit) — poids propre : drapeau du cas ignoré en cas seul, case du calcul ignorée en combinaison,
+selfWeightFactor ignoré par les trois moteurs.
+
+## BUG-157
+Status: OPEN (MEDIUM, code) — aucune sauvegarde automatique ni récupération après plantage.
+
+## BUG-158
+Status: OPEN (MEDIUM, mesuré) — Fem3D : 117 s contre 18 s pour OpenSees à 29 200 barres, environ 90 % dans SimplicialLDLT.
+
+## BUG-159 à BUG-168
+Status: OPEN (LOW) — saveToFile sans QGuiApplication ; OpenSeesPlanarSolver (TSALab) sans arrêt après délai, code 259 ; banc
+Fem3D/OpenSees qui supprime ses références et conclut « 0 écart » sans comparaison ; moteur écrit en dur dans la note ; budget
+Annuler sous-estimé ; TSA_OPS_SUCCESS non contrôlé ; version OpenSees non lue ; décompression sans plafond, CRC nul accepté ;
+chiffrement XOR ; clé d'API en clair hors Windows.
+
+## BUG-147
+Status: OPEN (mineur, constat 2026-10-30) — DiagramGeometry::diagramTypeName renvoie des QStringLiteral français non
+traduits (« Effort Tranchant (Vy) »…) : infobulles des puces du dock Diagrammes 2D et libellés 3D restent en français en
+anglais / malgache. Piste : QCoreApplication::translate dans DiagramGeometry + traductions.
+
+## BUG-146
+Status: FIXED (2026-10-31, suite complète 57/57 dans build-windows-validation Release) — Qt 6.12.0 MSVC 2022 64 bits
+réinstallée dans C:/Qt/6.12.0/msvc2022_64 depuis download.qt.io (archives qtbase, qtsvg, qttools, qttranslations,
+qtdeclarative, d3dcompiler, opengl32sw ; SHA-1 vérifiés) ; OpenSees 3.8.0 réinstallé par la configuration CMake
+(conda-forge, TSA_AUTO_DOWNLOAD_DEPS=ON ; 1er essai : délai sur libopenblas, 2e essai réussi) puis copié dans
+build-windows-validation/engines/OpenSees : ce dossier VIDE masquait thirdparty/OpenSees (AppPaths::openSeesDir
+prend le premier dossier existant, même sans OpenSees.exe — piste d'amélioration). Premier lancement d'OpenSees :
+délai de vérification dépassé une fois (antivirus), réussi à la relance. Constat initial : poste sans Qt de développement (C:/Qt/6.12.0/msvc2022_64 réduit à Qt Insight
+Tracker après une maintenance Qt) ni OpenSees (thirdparty/OpenSees absent). build-windows-validation ne se reconfigure
+plus (« Qt 6 introuvable »). À faire par l'utilisateur : réinstaller Qt 6 MSVC 2022 64 bits (MaintenanceTool) et OpenSees.
+Les suites dépendant d'OpenSees (display 371–376, etc.) ne peuvent pas passer sur ce poste.
+
+## BUG-145
+Status: FIXED (2026-10-30, test 531 + images contrôlées) — dock « Diagrammes 2D » (Diagram2DWidget) : (1) une seule
+grandeur affichable ; (2) badges Max / Min dessinés à x = 0,5 L et x = 0 au lieu de la position réelle des extrêmes ;
+(3) « Flèche uz » du ruban absente de la liste : liste affichant une autre grandeur que la courbe ; (4) valeur au curseur
+calculée sur la longueur du solveur mais tracé sur la longueur géométrique ; valeur non mise à jour au-delà de la dernière
+station ; (5) widget jamais synchronisé avec la sélection 3D ; (6) treillis et câbles absents ; (7) message « Aucun résultat
+OpenSees » quel que soit le moteur ; (8) trois graduations seulement, sans grille.
 
 ## BUG-144
 Status: OPEN (constat, 2026-10-29) — secours OpenSees de Fem3D sans cas atteignable depuis l'interface : depuis

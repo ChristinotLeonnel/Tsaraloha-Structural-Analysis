@@ -421,13 +421,7 @@ bool runSuite_OpenSees(int& passed)
             p1, p2, 0.0, stations, TSA::Geometry::DiagramType::RotationRy, 200.0, true);
         TEST_CHECK(!diagRot.IsNull(), "Rotation RY 3D diagram shape must be valid");
 
-        // Test Nonlinear algorithm & integrator Tcl conversion helpers
-        TEST_CHECK(std::string(TSA::Analysis::toTclString(TSA::Analysis::NonlinearAlgorithm::NewtonLineSearch)).find("NewtonLineSearch") != std::string::npos, "NewtonLineSearch Tcl match");
-        TEST_CHECK(std::string(TSA::Analysis::toTclString(TSA::Analysis::NonlinearAlgorithm::KrylovNewton)) == "KrylovNewton", "KrylovNewton Tcl match");
-        TEST_CHECK(std::string(TSA::Analysis::toTclString(TSA::Analysis::IntegratorType::ArcLength)) == "ArcLength", "ArcLength Tcl match");
-        TEST_CHECK(std::string(TSA::Analysis::toTclString(TSA::Analysis::IntegratorType::DisplacementControl)) == "DisplacementControl", "DisplacementControl Tcl match");
-
-        // Test Multi-step tracking in ResultsModel
+        // Test Multi-step tracking in ResultsModel (formes propres de l'analyse modale)
         ResultsModel rm;
         rm.setValid(true);
         StepResults step0;

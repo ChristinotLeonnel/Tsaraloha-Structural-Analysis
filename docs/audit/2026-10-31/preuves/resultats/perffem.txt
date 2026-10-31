@@ -1,0 +1,6 @@
+1125 barres, poids propre=1 : prépare 12.0 ms (dont une conversion), conversion 3.8 ms, assemblage+factorisation 27.2 ms, cas (charges, efforts, équilibre) 22.3 ms, remappage 13.3 ms
+1125 barres, poids propre=0 : prépare 10.8 ms (dont une conversion), conversion 2.8 ms, assemblage+factorisation 24.9 ms, cas (charges, efforts, équilibre) 12.3 ms, remappage 11.7 ms
+8330 barres, poids propre=1 : prépare 110.9 ms (dont une conversion), conversion 50.4 ms, assemblage+factorisation 4023.1 ms, cas (charges, efforts, équilibre) 419.7 ms, remappage 108.1 ms
+8330 barres, poids propre=0 : prépare 100.8 ms (dont une conversion), conversion 40.9 ms, assemblage+factorisation 4094.2 ms, cas (charges, efforts, équilibre) 114.9 ms, remappage 84.5 ms
+29200 barres, poids propre=1 : prépare 1085.6 ms (dont une conversion), conversion 832.1 ms, assemblage+factorisation 81180.2 ms, cas (charges, efforts, équilibre) 4849.6 ms, remappage 385.2 ms
+29200 barres, poids propre=0 : prépare 1100.6 ms (dont une conversion), conversion 846.9 ms, assemblage+factorisation 98482.6 ms, cas (charges, efforts, équilibre) 750.1 ms, remappage 504.0 ms

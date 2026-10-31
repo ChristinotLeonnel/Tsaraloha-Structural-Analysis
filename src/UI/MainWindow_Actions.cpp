@@ -1921,6 +1921,20 @@ void MainWindow::createDockWindows()
     m_diagramWidget = new TSA::UI::Diagram2DWidget(m_diagramDock);
     m_diagramWidget->setModel(m_model);
     m_diagramDock->setWidget(m_diagramWidget);
+    // Barre sélectionnée dans la vue 3D : ses courbes s'affichent dans le dock.
+    if (m_selectionManager)
+    {
+        using TSA::Analysis::StructuralElementKind;
+        auto* diagram = m_diagramWidget;
+        connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::beamSelected, diagram,
+                [diagram](int id) { diagram->setSelectedElement(id, StructuralElementKind::Beam); });
+        connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::columnSelected, diagram,
+                [diagram](int id) { diagram->setSelectedElement(id, StructuralElementKind::Column); });
+        connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::trussMemberSelected, diagram,
+                [diagram](int id) { diagram->setSelectedElement(id, StructuralElementKind::Truss); });
+        connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::cableSelected, diagram,
+                [diagram](int id) { diagram->setSelectedElement(id, StructuralElementKind::Cable); });
+    }
     m_diagramDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/results_force.svg")));
     addDockWidget(Qt::BottomDockWidgetArea, m_diagramDock);
     if (m_consoleDock)

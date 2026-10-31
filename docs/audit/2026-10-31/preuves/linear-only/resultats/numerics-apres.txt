@@ -1,0 +1,40 @@
+
+=== A. Poids propre : drapeau du cas, coefficient, réglage du calcul ===
+poids linéique w = 0.414398 kN/m ; w·L = 3.31519 kN
+cas seul, drapeau=oui, coef=1.5, réglage=oui              [opensees] ΣRz = 3.315 kN 
+cas seul, drapeau=oui, coef=1.5, réglage=oui              [fem3d] ΣRz = 3.315 kN 
+cas seul, drapeau=oui, coef=1.5, réglage=oui              [custom2d] ΣRz = 3.315 kN 
+cas seul, drapeau=NON, coef=1.0, réglage=oui              [opensees] ΣRz = 3.315 kN 
+cas seul, drapeau=NON, coef=1.0, réglage=oui              [fem3d] ΣRz = 3.315 kN 
+cas seul, drapeau=NON, coef=1.0, réglage=oui              [custom2d] ΣRz = 3.315 kN 
+cas seul, drapeau=oui, coef=1.0, réglage=NON              [opensees] ΣRz = 0.000 kN 
+cas seul, drapeau=oui, coef=1.0, réglage=NON              [fem3d] ΣRz = 0.000 kN 
+cas seul, drapeau=oui, coef=1.0, réglage=NON              [custom2d] ΣRz = 0.000 kN 
+combinaison 1.35×cas, drapeau=oui, réglage=NON           [opensees] ΣRz = 4.476 kN 
+combinaison 1.35×cas, drapeau=oui, réglage=NON           [fem3d] ΣRz = 4.476 kN 
+combinaison 1.35×cas, drapeau=oui, réglage=NON           [custom2d] ΣRz = 4.476 kN 
+combinaison 1.35×cas, drapeau=NON, réglage=oui           [opensees] ΣRz = 0.000 kN 
+combinaison 1.35×cas, drapeau=NON, réglage=oui           [fem3d] ΣRz = 0.000 kN 
+combinaison 1.35×cas, drapeau=NON, réglage=oui           [custom2d] ΣRz = 0.000 kN 
+
+=== B. Câble comprimé (statique linéaire) ===
+calcul réussi
+N câble = -20.2 kN (négatif = câble COMPRIMÉ, impossible physiquement)
+avertissements du calcul : 0
+
+=== C. Cornière : axes géométriques et axes principaux ===
+Iy = 180 cm⁴, Iz = 180 cm⁴, Iyz = -107 cm⁴ ; Iu = 287, Iv = 73.4 cm⁴
+TSA : uz = -0.0238 m, uy = 0 m
+flexion déviée exacte : uz = -0.0367 m, uy = ±0.0217 m (rapport TSA/exact sur uz = 0.649)
+
+=== D. Flambement EC3 : axe de vérification (note « Legacy », NDCGenerator.cpp:874) ===
+IPE 200 L=3 m : axe fort Nb,Rd = 942 kN (imprimé par la note) ; axe faible Nb,Rd = 266 kN ; surestimation ×3.54
+IPE 200 L=5 m : axe fort Nb,Rd = 809 kN (imprimé par la note) ; axe faible Nb,Rd = 105 kN ; surestimation ×7.68
+HEA 200 L=3 m : axe fort Nb,Rd = 1.71e+03 kN (imprimé par la note) ; axe faible Nb,Rd = 1.28e+03 kN ; surestimation ×1.34
+HEA 200 L=5 m : axe fort Nb,Rd = 1.4e+03 kN (imprimé par la note) ; axe faible Nb,Rd = 732 kN ; surestimation ×1.91
+HEB 300 L=3 m : axe fort Nb,Rd = 5.1e+03 kN (imprimé par la note) ; axe faible Nb,Rd = 4.41e+03 kN ; surestimation ×1.16
+HEB 300 L=5 m : axe fort Nb,Rd = 4.67e+03 kN (imprimé par la note) ; axe faible Nb,Rd = 3.29e+03 kN ; surestimation ×1.42
+
+=== E. Coordonnée non finie : l'exception de Fem3D est-elle contenue ? ===
+fem3d : EXCEPTION NON CONTENUE (class TSA::Fem3D::Fem3DError) : coordonnées non finies (nœud 2)
+opensees : aucune exception ; succès = 0 ; Modèle : [Nœuds] (ID 2) Les coordonnées du nœud contiennent des valeurs NaN ou infinies. [Réf: ISO/IEC 25010 §4.2.5] ; 

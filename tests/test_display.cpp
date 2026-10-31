@@ -16,7 +16,11 @@
 //        charge rapprochés par nom (créés s'ils manquent), valeurs identiques ; collage à l'origine ou au point
 //        désigné ; une seule étape d'annulation ; aucun collage partiel (dépendance manquante → modèle inchangé) ;
 //   376  diagnostic d'affichage : nombre d'objets de la scène et de résultats conforme à la vue, échelles graphiques
-//        listées (caméra, déformée, diagrammes, annotations, charges par famille) ; sa lecture ne modifie rien.
+//        listées (caméra, déformée, diagrammes, annotations, charges par famille) ; sa lecture ne modifie rien ;
+//   531  courbes 2D superposées (dock « Diagrammes 2D ») : plusieurs grandeurs à la fois (N/Vx, Vy, Vz), ordre stable,
+//        dernière courbe conservée, ruban → une seule courbe ; interpolation (saut sous charge ponctuelle), extrêmes
+//        à leur vraie position, pas de graduation ; un axe par unité (deux au plus, sinon normalisée) ; poutre et
+//        poteau de même id distingués ; tableau de valeurs ; chaque courbe dessinée (superposées et empilées).
 
 #include "test_common.h"
 
@@ -29,12 +33,15 @@
 #include "Viewer/ResultsVisualManager.h"
 #include "Viewer/AnnotationStyle.h"
 #include "Geometry/LoadDisplayScale.h"
+#include "UI/Diagrams/Diagram2DWidget.h"
 
 #include <Prs3d_TextAspect.hxx>
 
 #include <AIS_ListOfInteractive.hxx>
 #include <Bnd_Box.hxx>
 #include <QApplication>
+#include <QImage>
+#include <QLocale>
 #include <QThread>
 
 using namespace TSA::Analysis;
@@ -86,6 +93,133 @@ std::shared_ptr<ResultsModel> portalResults(Model& m, double h = 3.0, double loa
 
 bool runSuite_Display(int& passed)
 {
+    // -------------------------------------------------------------------------
+    // TEST 531 : courbes 2D superposées (Diagram2DWidget) — en tête : n'exige ni OpenSees ni vue OCCT
+    // -------------------------------------------------------------------------
+    {
+        namespace D2 = TSA::UI::Diagram2D;
+        using DT = TSA::Geometry::DiagramType;
+        using W = TSA::UI::Diagram2DWidget;
+
+        // Poutre de 5 m : stations 0 ; 1,25 ; 2,5 (deux fois : saut de Vy sous une charge ponctuelle) ; 3,75 ; 5.
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(5, 0, 0), c = m.addNode(0, 0, 3);
+        const int beam = m.addBar(a, b, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        const int column = m.addColumn(a, c, Section::heb(200), Material::steelS235());
+        TEST_CHECK(beam == column, "Test 531: poutre et poteau de même id (" << beam << ", " << column << ")");
+
+        auto station = [](double x, double n, double vy, double vz, double mz) {
+            StationForces st;
+            st.position = x; st.N = n; st.Vy = vy; st.Vz = vz; st.Mz = mz; st.uz = -0.002 * x * (5.0 - x);
+            return st;
+        };
+        ElementResults er;
+        er.elementId = beam; er.kind = StructuralElementKind::Beam; er.length = 5.0;
+        er.startForces = station(0.0, 12.0, 30.0, -4.0, 0.0);
+        er.intermediateStations = {station(1.25, 12.0, 15.0, -2.0, 28.0), station(2.5, 12.0, 10.0, 0.0, 45.0),
+                                   station(2.5, 12.0, -10.0, 0.0, 45.0), station(3.75, 12.0, -15.0, 2.0, 28.0)};
+        er.endForces = station(5.0, 12.0, -30.0, 4.0, 0.0);
+        ElementResults ec;
+        ec.elementId = column; ec.kind = StructuralElementKind::Column; ec.length = 3.0;
+        ec.startForces = station(0.0, -80.0, 5.0, 0.0, 9.0);
+        ec.endForces = station(3.0, -80.0, 5.0, 0.0, -6.0);
+        auto results = std::make_shared<ResultsModel>();
+        results->setElementResults(er);
+        results->setElementResults(ec);
+        results->setValid(true);
+
+        // Calculs purs : interpolation, saut, extrêmes à leur position, pas « ronds ».
+        const auto vy = D2::sampleCurve(er, DT::ShearForceVy, er.length);
+        TEST_CHECK(vy.size() == 6 && approxEqual(vy[1].s, 0.25) && approxEqual(vy.back().s, 1.0), "Test 531: stations ramenées à x / L");
+        TEST_CHECK(approxEqual(D2::interpolate(vy, 0.125), 22.5) && approxEqual(D2::interpolate(vy, 0.5), 10.0)
+                       && approxEqual(D2::interpolate(vy, 0.625), -12.5) && approxEqual(D2::interpolate(vy, -1.0), 30.0)
+                       && approxEqual(D2::interpolate(vy, 2.0), -30.0),
+                   "Test 531: interpolation linéaire, saut sous charge ponctuelle, bornes de la barre");
+        const auto ext = D2::extremes(D2::sampleCurve(er, DT::BendingMz, er.length));
+        TEST_CHECK(approxEqual(ext.maxV, 45.0) && approxEqual(ext.maxS, 0.5) && approxEqual(ext.minV, 0.0) && approxEqual(ext.minS, 0.0),
+                   "Test 531: extrêmes de Mz et leur position (max à mi-portée)");
+        const auto extVz = D2::extremes(D2::sampleCurve(er, DT::ShearForceVz, er.length));
+        TEST_CHECK(approxEqual(extVz.maxS, 1.0) && approxEqual(extVz.minS, 0.0), "Test 531: extrêmes de Vz aux extrémités");
+        TEST_CHECK(D2::niceStep(10.0, 5) == 2.0 && std::abs(D2::niceStep(0.0007, 4) - 0.0002) < 1e-15 && D2::niceStep(0.0, 4) == 0.0
+                       && D2::niceStep(95.0, 10) == 10.0,
+                   "Test 531: pas de graduation 1, 2, 5 × 10^n");
+
+        W w;
+        w.resize(900, 500);
+        w.setModel(&m);
+        TEST_CHECK(w.valuesTable().isEmpty(), "Test 531: sans résultat, aucune valeur");
+        w.setResultsModel(results);
+        w.setSelectedElement(beam, StructuralElementKind::Beam);
+        w.setCurveLayout(W::Layout::Overlay);
+        w.setScaling(W::Scaling::PerUnit);
+
+        // Plusieurs courbes à la fois, ordre stable, dernière courbe conservée.
+        w.setDiagramTypes({DT::ShearForceVz, DT::AxialForceN, DT::ShearForceVy});
+        TEST_CHECK((w.diagramTypes() == std::vector<DT>{DT::AxialForceN, DT::ShearForceVy, DT::ShearForceVz}) && w.diagramType() == DT::AxialForceN,
+                   "Test 531: N (Vx), Vy et Vz superposés, dans l'ordre des grandeurs");
+        w.setDiagramTypeVisible(DT::ShearForceVy, false);
+        TEST_CHECK((w.diagramTypes() == std::vector<DT>{DT::AxialForceN, DT::ShearForceVz}), "Test 531: retrait d'une courbe");
+        w.setDiagramTypeVisible(DT::AxialForceN, false);
+        w.setDiagramTypeVisible(DT::ShearForceVz, false);
+        TEST_CHECK((w.diagramTypes() == std::vector<DT>{DT::ShearForceVz}), "Test 531: la dernière courbe n'est jamais retirée");
+        w.setDiagramType(DT::DeflectionUz);
+        TEST_CHECK((w.diagramTypes() == std::vector<DT>{DT::DeflectionUz}), "Test 531: commande du ruban (flèche uz) = une seule courbe");
+        w.setDiagramType(DT::None);
+        TEST_CHECK((w.diagramTypes() == std::vector<DT>{DT::DeflectionUz}), "Test 531: grandeur inconnue du widget ignorée");
+
+        // Échelles : un axe par unité (deux au plus), sinon normalisée ; bandes empilées toujours en valeurs réelles.
+        w.setDiagramTypes({DT::AxialForceN, DT::ShearForceVy, DT::ShearForceVz});
+        TEST_CHECK(w.effectiveScaling() == W::Scaling::PerUnit, "Test 531: N, Vy, Vz : un seul axe (kN)");
+        w.setDiagramTypes({DT::ShearForceVy, DT::BendingMz});
+        TEST_CHECK(w.effectiveScaling() == W::Scaling::PerUnit, "Test 531: Vy et Mz : deux axes (kN, kNm)");
+        w.setDiagramTypes({DT::ShearForceVy, DT::BendingMz, DT::DeflectionUz});
+        TEST_CHECK(w.effectiveScaling() == W::Scaling::Normalized, "Test 531: trois unités superposées : échelle normalisée");
+        w.setCurveLayout(W::Layout::Stacked);
+        TEST_CHECK(w.effectiveScaling() == W::Scaling::PerUnit, "Test 531: bandes empilées : valeurs réelles");
+        w.setCurveLayout(W::Layout::Overlay);
+
+        // Tableau des valeurs : une ligne par station, une colonne par courbe.
+        w.setDiagramTypes({DT::AxialForceN, DT::ShearForceVy, DT::ShearForceVz});
+        const QStringList rows = w.valuesTable().split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        const QLocale locale;
+        TEST_CHECK(rows.size() == 7 && rows.front() == QStringLiteral("x (m)\tN (Vx) (kN)\tVy (kN)\tVz (kN)"),
+                   "Test 531: en-tête du tableau (" << rows.value(0).toStdString() << ")");
+        const QStringList r4 = rows[4].split(QLatin1Char('\t'));
+        TEST_CHECK(r4.size() == 4 && approxEqual(locale.toDouble(r4[0]), 2.5) && approxEqual(locale.toDouble(r4[1]), 12.0)
+                       && approxEqual(locale.toDouble(r4[2]), -10.0) && approxEqual(locale.toDouble(r4[3]), 0.0),
+                   "Test 531: valeurs de la station 2,5 m après le saut (" << rows[4].toStdString() << ")");
+
+        // Poteau de même id : ses propres valeurs.
+        w.setSelectedElement(column, StructuralElementKind::Column);
+        TEST_CHECK(w.selectedElementKind() == StructuralElementKind::Column && w.valuesTable().split(QLatin1Char('\n'), Qt::SkipEmptyParts).size() == 3
+                       && w.valuesTable().contains(locale.toString(-80.0, 'g', 8)),
+                   "Test 531: poteau et poutre de même id distingués");
+        w.setSelectedElement(beam, StructuralElementKind::Beam);
+
+        // Dessin : chaque courbe est tracée (pixels de sa couleur bien au-delà de la légende), superposées et empilées.
+        auto colorCount = [](const QImage& img, const QColor& col) {
+            int n = 0;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x)
+                    if (img.pixel(x, y) == col.rgb()) ++n;
+            return n;
+        };
+        for (W::Layout layout : {W::Layout::Overlay, W::Layout::Stacked})
+        {
+            w.setCurveLayout(layout);
+            const QImage img = w.renderImage(QSize(900, 450)).convertToFormat(QImage::Format_RGB32);
+            TEST_CHECK(!img.isNull(), "Test 531: image rendue");
+            for (DT t : w.diagramTypes())
+            {
+                const int n = colorCount(img, D2::curveColor(t));
+                std::cout << "  " << (layout == W::Layout::Overlay ? "superposées" : "empilées") << " : " << D2::shortName(t).toStdString() << " " << n << " px" << std::endl;
+                TEST_CHECK(n > 300, "Test 531: courbe " << D2::shortName(t).toStdString() << " dessinée (" << n << " px)");
+            }
+        }
+        std::cout << "[PASS] Test 531: Courbes 2D superposées (N/Vx, Vy, Vz…), échelles, valeurs et dessin" << std::endl;
+        ++passed;
+    }
+
     // -------------------------------------------------------------------------
     // TEST 371 : aucun résultat résiduel dans la scène
     // -------------------------------------------------------------------------
@@ -517,5 +651,6 @@ bool runSuite_Display(int& passed)
         std::cout << "[PASS] Test 376: Diagnostic d'affichage (scène, résultats, échelles)" << std::endl;
         ++passed;
     }
+    
     return true;
 }

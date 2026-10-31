@@ -56,7 +56,7 @@ TSA::Analysis::ResultsModel
 |---|---|
 | `OpenSeesManager` | Détection locale du binaire `OpenSees.exe`, validation de version, gestion des chemins utilisateur et téléchargement de secours. |
 | `CalculationSnapshot` | Capture figée et optimisée du modèle structural (`NodeSnapshot`, `ElementSnapshot`, `LoadSnapshot`), mapping des degrés de liberté (DOFs). |
-| `OpenSeesAnalysisBuilder` | Générateur de scripts Tcl selon le type d'analyse : Linéaire statique, Non-linéaire statique (P-Delta, corotationnel). Charges trapézoïdales par forces d'encastrement parfait (OpenSees 3.8 ne gère en 3D que la charge uniforme partielle). |
+| `OpenSeesAnalysisBuilder` | Générateur de scripts Tcl : statique linéaire (un pas, `algorithm Linear`) et modale (`eigen`). Charges trapézoïdales par forces d'encastrement parfait (OpenSees 3.8 ne gère en 3D que la charge uniforme partielle). |
 | `OpenSeesSolver` | Exécution asynchrone non-bloquante du processus OpenSees, streaming des logs et gestion du cycle de vie (démarrage, arrêt, timeout). |
 | `OpenSeesResultsReader` | Analyse et dé-sérialisation des fichiers de sortie OpenSees (recorders), intégration des efforts tranchants et moments fléchissants locaux. |
 | `ResultsModel` | Conteneur des résultats d'analyse : déplacements $\mathbf{U}$, réactions aux appuis $\mathbf{R}$, efforts internes aux stations (convention RDM documentée sur `StationForces`), bilan d'équilibre forces ET moments. |
@@ -70,13 +70,19 @@ TSA::Analysis::ResultsModel
 - Superposition des cas de charges simples ou combinaisons Eurocodes (ELU / ELS).
 - Calcul des efforts intérieurs le long de 11 à 21 stations par membre avec prise en compte isostatique des charges réparties directes sur élément (`eleLoad -beamUniform` et `-beamPoint`).
 
-### 4.2 Analyse Non-Linéaire Statique
-- Transformation géométrique `Corotational` ou `PDelta`, pilotage `LoadControl` / `DisplacementControl` / `ArcLength`.
-- Facteur de charge λ de chaque pas lu et appliqué aux efforts des stations.
+### 4.2 Analyse Modale
+- `eigen` puis `modalProperties` : fréquences, périodes, formes propres normalisées (translation maximale = 1), masses
+  participantes.
 
 ### 4.3 Hors périmètre
-Modal, pushover et temporel ont été retirés (ADR-022) : la version qui les contenait est figée sur
-la branche `archive/dynamique` (tag `v0.2.0-dynamique`).
+TSA prend actuellement en charge l'analyse structurale linéaire. L'analyse non linéaire n'est pas disponible dans cette
+version (ADR-025) : ni transformation `PDelta` ou `Corotational`, ni algorithme de Newton, ni pilotage `DisplacementControl`
+ou `ArcLength`. Le script statique contient toujours `algorithm Linear`, `integrator LoadControl 1.0` et `analyze 1`.
+Un ancien projet qui demandait l'une de ces options s'ouvre, mais son calcul est refusé avec un message tant qu'une
+analyse linéaire n'a pas été choisie.
+
+Pushover et temporel ont été retirés (ADR-022) : la version qui les contenait est figée sur la branche
+`archive/dynamique` (tag `v0.2.0-dynamique`).
 
 ---
 

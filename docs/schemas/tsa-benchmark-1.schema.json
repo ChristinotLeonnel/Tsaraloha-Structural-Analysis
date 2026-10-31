@@ -14,7 +14,7 @@
     "sources": { "type": "array", "minItems": 1, "items": { "type": "string" } },
     "hypotheses": { "type": "array", "items": { "type": "string" } },
     "units": { "type": "object" },
-    "engines": { "type": "array", "items": { "enum": ["opensees", "custom2d"] } },
+    "engines": { "type": "array", "items": { "enum": ["opensees", "custom2d", "fem3d"] } },
     "parameters": {
       "type": "object",
       "description": "Paramètres numériques ou dérivés (formule évaluée à partir des autres paramètres).",

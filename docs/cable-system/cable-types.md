@@ -25,7 +25,7 @@ Le module Cable & Tension System de **TSA** prend en charge neuf (9) typologies 
 ### 2.1 Câbles Génériques (`Generic`)
 - **Modélisation** : Profil droit par défaut avec prise en compte optionnelle d'une courbure initiale.
 - **Section** : Cercle plein équivalent ou section métallique nette $A_{metal}$.
-- **Comportement** : Traction seule (*tension-only*) avec formulation d'Ernst pour la flexibilité géométrique sous faible tension.
+- **Comportement** : destiné à travailler en traction seule (*tension-only*, donnée descriptive) ; module d'Ernst disponible pour la flexibilité sous faible tension. Le calcul linéaire n'utilise ni l'un ni l'autre ([analysis.md](analysis.md)).
 
 ### 2.2 Torons de Précontrainte (`Strand`)
 - **Norme** : EN 10138-3 (Y1770S7, Y1860S7) et ASTM A416 / AASHTO M203 (Grade 250, Grade 270).

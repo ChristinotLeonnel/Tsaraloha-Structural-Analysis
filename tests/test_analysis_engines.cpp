@@ -13,6 +13,8 @@
 #ifdef TSA_HAS_FEM3D
 #include "Analysis/Engines/Fem3D/Fem3DEngine.h"
 #endif
+#include "Analysis/CalculationSnapshot.h"
+#include "Analysis/OpenSeesAnalysisBuilder.h"
 #include "Analysis/OpenSeesManager.h"
 #include "Analysis/OpenSeesSolver.h"
 #include "Model/Load/LoadManager.h"
@@ -20,7 +22,11 @@
 #include "UI/Analysis/AnalysisDialog.h"
 #include "UI/Analysis/AnalysisEngineOptions.h"
 
+#include <QAbstractButton>
+#include <QComboBox>
 #include <QEventLoop>
+#include <QGroupBox>
+#include <QLabel>
 #include <QTimer>
 
 using namespace TSA::Analysis;
@@ -159,17 +165,17 @@ bool runSuite_Engines(int& passed)
         TEST_CHECK(os.supports3D && !os.supports2D, "Test 131: OpenSees 3D uniquement (ndm 3)");
         TEST_CHECK(os.supportsFrame && os.supportsTruss && os.supportsCable && os.supportsSprings && os.supportsShell,
                    "Test 131: OpenSees éléments filaires et coques maillées (ShellMITC4 / ShellDKGT, suite surfaces)");
-        TEST_CHECK(os.supportsStatic && os.supportsNonlinear,
-                   "Test 131: OpenSees statique linéaire et non linéaire (TSA : calcul statique uniquement)");
+        TEST_CHECK(os.supportsStatic && os.supportsModal,
+                   "Test 131: OpenSees statique linéaire et modale");
         TEST_CHECK(os.planarElementPolicy == UnsupportedElementPolicy::ExcludeWithWarning, "Test 131: OpenSees exclut avec avertissement les dalles/voiles non maillés");
 
         const auto c2 = Custom2DEngine().capabilities();
         TEST_CHECK(c2.supports2D && !c2.supports3D && c2.supportsFrame && !c2.supportsShell && c2.supportsStatic,
                    "Test 131: Custom2D ossature plane statique");
-        TEST_CHECK(!c2.supportsNonlinear && !c2.providesGlobalStiffness,
+        TEST_CHECK(!c2.supportsModal && !c2.providesGlobalStiffness,
                    "Test 131: Custom2D ne déclare rien d'autre");
         TEST_CHECK(c2.planarElementPolicy == UnsupportedElementPolicy::Reject, "Test 131: Custom2D refuse les coques");
-        TEST_CHECK(c2.supportsAnalysisType(AnalysisType::LinearStatic) && !c2.supportsAnalysisType(AnalysisType::NonLinearStatic),
+        TEST_CHECK(c2.supportsAnalysisType(AnalysisType::LinearStatic) && !c2.supportsAnalysisType(AnalysisType::Modal),
                    "Test 131: supportsAnalysisType");
         TEST_CHECK(!Custom2DEngine().availability().available && Custom2DEngine(std::make_unique<IndexEchoSolver>()).availability().available,
                    "Test 131: Custom2D disponible seulement avec un solveur connecté");
@@ -193,13 +199,13 @@ bool runSuite_Engines(int& passed)
         AnalysisContext c = custom2dContext(gid, "B");
         c.scope.levelId = "L2";
         c.loadCaseIds = { dead, live };
-        c.engineSettings["opensees"] = QJsonObject{ { "numSteps", 42 } };
+        c.engineSettings["opensees"] = QJsonObject{ { "systemSolver", 2 } };
 
         const AnalysisContext back = AnalysisContext::fromJson(c.toJson());
         TEST_CHECK(back.engineId == "custom2d" && back.dimension == AnalysisDimension::Plane2D, "Test 132: moteur et dimension");
         TEST_CHECK(back.scope == c.scope && back.scope.hasLevelRestriction(), "Test 132: portée axe B ∩ niveau 2");
         TEST_CHECK(back.loadCaseIds == std::vector<int>({ dead, live }), "Test 132: cas Dead + Live");
-        TEST_CHECK(back.settingsFor("opensees").value("numSteps").toInt() == 42, "Test 132: réglages par moteur conservés");
+        TEST_CHECK(back.settingsFor("opensees").value("systemSolver").toInt() == 2, "Test 132: réglages par moteur conservés");
         bool ok = false;
         AnalysisContext::fromJson(QJsonObject{ { "schemaVersion", 99 } }, &ok);
         TEST_CHECK(!ok, "Test 132: version de schéma future signalée");
@@ -334,9 +340,9 @@ bool runSuite_Engines(int& passed)
         in3d.dimension = AnalysisDimension::Space3D;
         TEST_CHECK(hasError(mgr.prepare(m, &gm, in3d).validation, "ne calcule pas en 3D"), "Test 135: dimension non supportée");
 
-        AnalysisContext nonlinear = custom2dContext(gid, "B");
-        nonlinear.type = AnalysisType::NonLinearStatic;
-        TEST_CHECK(hasError(mgr.prepare(m, &gm, nonlinear).validation, "type d'analyse"), "Test 135: type non supporté");
+        AnalysisContext modal = custom2dContext(gid, "B");
+        modal.type = AnalysisType::Modal;
+        TEST_CHECK(hasError(mgr.prepare(m, &gm, modal).validation, "type d'analyse"), "Test 135: type non supporté");
 
         AnalysisContext unknown = custom2dContext(gid, "B");
         unknown.engineId = "moteur-x";
@@ -432,8 +438,8 @@ bool runSuite_Engines(int& passed)
         TEST_CHECK(dlg.offeredDimensions() == std::vector<AnalysisDimension>({ AnalysisDimension::Space3D }),
                    "Test 137: dimensions d'OpenSees");
         const auto osTypes = dlg.offeredAnalysisTypes();
-        TEST_CHECK(osTypes == std::vector<AnalysisType>({ AnalysisType::LinearStatic, AnalysisType::NonLinearStatic, AnalysisType::Modal }),
-                   "Test 137: types filtrés par capacités (statique, non linéaire, modale)");
+        TEST_CHECK(osTypes == std::vector<AnalysisType>({ AnalysisType::LinearStatic, AnalysisType::Modal }),
+                   "Test 137: types filtrés par capacités (statique linéaire, modale)");
         const QJsonObject osSettings = dlg.context().settingsFor("opensees");
         TEST_CHECK(!osSettings.isEmpty(), "Test 137: réglages OpenSees produits par son panneau");
 
@@ -795,6 +801,204 @@ bool runSuite_Engines(int& passed)
         std::cout << "[PASS] Test 212: Charge uniforme partielle transmise au calcul" << std::endl;
         ++passed;
     }
+
+    // -------------------------------------------------------------------------
+    // TESTS 532-536 : version linéaire seule (analyse non linéaire retirée, ADR-025). Un ancien projet qui la demandait
+    // est signalé et refusé : il n'est jamais calculé en linéaire à la place.
+    // -------------------------------------------------------------------------
+    auto textHas = [](const std::string& text, const std::string& needle) { return text.find(needle) != std::string::npos; };
+    auto validationHas = [&](const ValidationResult& v, const std::string& needle) {
+        for (const auto& e : v.texts(ValidationSeverity::Error))
+            if (textHas(e, needle)) return true;
+        return false;
+    };
+    // Portique simple calculable par OpenSees : poteau encastré, poutre, charge en tête.
+    auto smallFrame = [](Model& m) {
+        const int a = m.addNode(0, 0, 0), b = m.addNode(0, 0, 3), c = m.addNode(4, 0, 3);
+        m.getNode(a)->setSupport(SupportDefinition::fixed());
+        m.getNode(c)->setSupport(SupportDefinition::pinned());
+        m.addColumn(a, b, Section::heb(200), Material::steelS235());
+        m.addBar(b, c, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        m.loadManager().addNodalLoad(NodalLoad(0, b, lc, 5.0, 0.0, -10.0));
+        return b;
+    };
+    {
+        Model m;
+        GridManager gm;
+        smallFrame(m);
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        AnalysisManager mgr(reg);
+
+        QJsonObject old { { "schemaVersion", 1 }, { "engineId", "opensees" }, { "analysisType", "nonlinear_static" } };
+        bool ok = false;
+        const AnalysisContext c = AnalysisContext::fromJson(old, &ok);
+        TEST_CHECK(ok && c.unsupportedAnalysisType == "nonlinear_static", "Test 532: ancien type lu et marqué, réglages lisibles");
+        TEST_CHECK(c.toJson().value("analysisType").toString() == "nonlinear_static", "Test 532: demande d'origine réécrite telle quelle");
+        const auto features = mgr.unsupportedFeatures(c);
+        TEST_CHECK(features.size() == 1 && textHas(features.front(), "non linéaire"), "Test 532: fonctionnalité retirée nommée");
+        const auto prep = mgr.prepare(m, &gm, c);
+        TEST_CHECK(!prep.canRun() && validationHas(prep.validation, "n'est plus prise en charge"), "Test 532: préparation refusée");
+
+        // run() refuse aussi, même avec un modèle préparé par un contexte linéaire valide.
+        AnalysisContext linear = c;
+        linear.unsupportedAnalysisType.clear();
+        linear.common.includeSelfWeight = false;
+        const auto linearPrep = mgr.prepare(m, &gm, linear);
+        TEST_CHECK(linearPrep.canRun() && mgr.unsupportedFeatures(linear).empty(), "Test 532: même contexte en linéaire accepté");
+        AnalysisContext marked = linear;
+        marked.unsupportedAnalysisType = "nonlinear_static";
+        const auto refused = mgr.run(marked, linearPrep);
+        TEST_CHECK(!refused.success && !refused.results.hasResults() && textHas(refused.message, "n'est plus prise en charge"),
+                   "Test 532: calcul refusé sans résultat (" << refused.message << ")");
+
+        old["analysisType"] = "pushover";
+        const AnalysisContext unknown = AnalysisContext::fromJson(old, &ok);
+        TEST_CHECK(ok && !mgr.unsupportedFeatures(unknown).empty() && textHas(mgr.unsupportedFeatures(unknown).front(), "pushover"),
+                   "Test 532: type inconnu refusé, jamais converti en statique linéaire");
+        old.remove("analysisType");
+        TEST_CHECK(AnalysisContext::fromJson(old, &ok).unsupportedAnalysisType.empty() && ok, "Test 532: sans type → statique linéaire (anciens fichiers)");
+        std::cout << "[PASS] Test 532: Ancien type d'analyse non linéaire refusé" << std::endl;
+        ++passed;
+    }
+    {
+        Model m;
+        GridManager gm;
+        smallFrame(m);
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        AnalysisManager mgr(reg);
+        AnalysisContext c;
+        c.engineId = "opensees";
+        c.common.includeSelfWeight = false;
+        const std::vector<std::pair<QJsonObject, std::string>> refusedSettings {
+            { QJsonObject { { "geomTransf", 1 } }, "P-Delta" },
+            { QJsonObject { { "geomTransf", 2 } }, "corotationnelle" },
+            { QJsonObject { { "trussFormulation", 1 } }, "treillis corotationnels" },
+            { QJsonObject { { "trussFormulation", 3 } }, "treillis corotationnels" },
+        };
+        for (const auto& [settings, needle] : refusedSettings)
+        {
+            c.engineSettings["opensees"] = settings;
+            const auto prep = mgr.prepare(m, &gm, c);
+            TEST_CHECK(!prep.canRun() && validationHas(prep.validation, needle), "Test 533: ancien réglage « " << needle << " » refusé");
+        }
+        // Réglages des anciennes versions sans effet sur un calcul linéaire : ignorés, le calcul reste possible.
+        c.engineSettings["opensees"] = QJsonObject { { "geomTransf", 0 }, { "trussFormulation", 2 }, { "algorithm", 3 }, { "integrator", 0 },
+                                                     { "numSteps", 10 }, { "tolerance", 1e-8 }, { "saveAllSteps", true } };
+        TEST_CHECK(mgr.unsupportedFeatures(c).empty() && mgr.prepare(m, &gm, c).canRun(), "Test 533: clés inertes ignorées");
+
+        // Le panneau OpenSees ne relit ni ne réécrit ces réglages.
+        TSA::UI::AnalysisEngineOptionsRegistry options;
+        TSA::UI::registerBuiltInEngineOptions(options);
+        std::unique_ptr<TSA::UI::AnalysisEngineOptionsWidget> panel(options.create("opensees", nullptr));
+        panel->loadSettings(QJsonObject { { "geomTransf", 1 }, { "numSteps", 10 }, { "systemSolver", 2 } });
+        const QJsonObject saved = panel->saveSettings();
+        TEST_CHECK(saved.keys() == QStringList({ "constraintHandler", "extractionLevel", "maxGlobalStiffnessDofs", "systemSolver", "useKiloNewtons" }) &&
+                       saved.value("systemSolver").toInt() == 2,
+                   "Test 533: panneau OpenSees limité aux réglages linéaires");
+        std::cout << "[PASS] Test 533: Anciens réglages OpenSees non linéaires refusés" << std::endl;
+        ++passed;
+    }
+    {
+        Model m;
+        const int head = smallFrame(m);
+        const int top = m.addNode(4, 3, 3), ground = m.addNode(4, 3, 0);
+        m.getNode(ground)->setSupport(SupportDefinition::pinned());
+        m.addTrussMember(head, top, 0.05);
+        m.addCable(top, ground, 0.020);
+        AnalysisParameters p;
+        p.type = AnalysisType::LinearStatic;
+        p.includeSelfWeight = false;
+        const std::string tcl = OpenSeesAnalysisBuilder::buildScript(CalculationSnapshot::capture(m), p);
+        TEST_CHECK(textHas(tcl, "algorithm Linear\n") && textHas(tcl, "integrator LoadControl 1.0\n") && textHas(tcl, "analysis Static\n") &&
+                       textHas(tcl, "set ok [analyze 1]\n") && textHas(tcl, "geomTransf Linear "),
+                   "Test 534: statique linéaire, un seul pas, transformation linéaire");
+        std::size_t analyzeCount = 0;
+        for (std::size_t pos = tcl.find("[analyze "); pos != std::string::npos; pos = tcl.find("[analyze ", pos + 1)) ++analyzeCount;
+        TEST_CHECK(analyzeCount == 1, "Test 534: une seule résolution (" << analyzeCount << ")");
+        for (const char* forbidden : { "Newton", "BFGS", "Broyden", "PDelta", "Corotational", "DisplacementControl", "ArcLength", "MinUnbalDispNorm",
+                                       "TSA_OPS_LOAD_FACTOR", "getTime" })
+            TEST_CHECK(!textHas(tcl, forbidden), "Test 534: aucune commande non linéaire (" << forbidden << ")");
+        TEST_CHECK(textHas(tcl, "element truss ") && textHas(tcl, "element corotTruss "),
+                   "Test 534: treillis en truss ; câble en corotTruss historique, résolu en un pas linéaire");
+        std::cout << "[PASS] Test 534: Script OpenSees statique linéaire" << std::endl;
+        ++passed;
+    }
+    {
+        // Ancien projet .tsa : contexte non linéaire et réglage P-Delta enregistrés (chunk SETT).
+        const std::string dir = "./build/test_tsa_data/";
+        std::filesystem::create_directories(dir);
+        const QString file = QString::fromStdString(dir + "test_linear_only_legacy.tsa");
+        Model legacy;
+        smallFrame(legacy);
+        QJsonObject settings { { "schemaVersion", 1 }, { "engineId", "opensees" }, { "analysisType", "nonlinear_static" },
+                               { "engineSettings", QJsonObject { { "opensees", QJsonObject { { "geomTransf", 1 }, { "numSteps", 10 } } } } } };
+        legacy.setAnalysisSettingsJson(QJsonDocument(settings).toJson(QJsonDocument::Compact).toStdString());
+        std::string err;
+        TEST_CHECK(TSAProjectIO::saveToFile(file, legacy, nullptr, &err), "Test 535: ancien projet écrit (" << err << ")");
+
+        Model r;
+        GridManager gm;
+        TEST_CHECK(TSAProjectIO::loadFromFile(file, r, nullptr, &err), "Test 535: ancien projet ouvert (" << err << ")");
+        TEST_CHECK(r.nodes().size() == legacy.nodes().size() && r.loadManager().nodalLoads().size() == 1, "Test 535: données du projet conservées");
+        AnalysisController ac(&r, &gm);
+        TEST_CHECK(ac.restoreContextFromModel(), "Test 535: réglages lisibles (pas remplacés par les valeurs par défaut)");
+        const std::string message = ac.unsupportedFeaturesMessage();
+        TEST_CHECK(textHas(message, "non linéaire") && textHas(message, "P-Delta") && textHas(message, "analyse structurale linéaire"),
+                   "Test 535: message clair (" << message << ")");
+        const auto run = ac.runBlocking(ac.context(), ac.prepare());
+        TEST_CHECK(!run.success && !ac.results(), "Test 535: aucun calcul, aucun résultat");
+        ac.storeContextInModel();
+        TEST_CHECK(textHas(r.analysisSettingsJson(), "nonlinear_static"), "Test 535: réenregistrer conserve la demande d'origine");
+
+        // Fenêtre Analysis : bandeau, puis choix explicite d'une analyse linéaire.
+        TSA::UI::AnalysisEngineOptionsRegistry options;
+        TSA::UI::registerBuiltInEngineOptions(options);
+        TSA::UI::AnalysisDialog dlg(ac.manager(), options, &r, &gm, ElementSet {});
+        dlg.setContext(ac.context());
+        TEST_CHECK(dlg.showsUnsupportedWarning(), "Test 535: bandeau d'avertissement affiché");
+        const AnalysisContext chosen = dlg.context();
+        TEST_CHECK(chosen.unsupportedAnalysisType.empty() && chosen.type == AnalysisType::LinearStatic && ac.manager().unsupportedFeatures(chosen).empty(),
+                   "Test 535: analyse linéaire choisie dans la fenêtre");
+        ac.setContext(chosen);
+        TEST_CHECK(ac.unsupportedFeaturesMessage().empty() && ac.prepare().canRun(), "Test 535: calcul de nouveau possible après le choix");
+        dlg.setContext(chosen);
+        TEST_CHECK(!dlg.showsUnsupportedWarning(), "Test 535: bandeau retiré");
+        std::cout << "[PASS] Test 535: Ancien projet non linéaire ouvert, signalé, jamais calculé en linéaire" << std::endl;
+        ++passed;
+    }
+    {
+        // Interface : aucun libellé qui laisse croire à une analyse non linéaire.
+        Model m;
+        GridManager gm;
+        smallFrame(m);
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        AnalysisManager mgr(reg);
+        TSA::UI::AnalysisEngineOptionsRegistry options;
+        TSA::UI::registerBuiltInEngineOptions(options);
+        TSA::UI::AnalysisDialog dlg(mgr, options, &m, &gm, ElementSet {});
+        QStringList texts;
+        for (const auto* w : dlg.findChildren<QWidget*>())
+        {
+            texts << w->toolTip();
+            if (const auto* l = qobject_cast<const QLabel*>(w)) texts << l->text();
+            if (const auto* b = qobject_cast<const QAbstractButton*>(w)) texts << b->text();
+            if (const auto* g = qobject_cast<const QGroupBox*>(w)) texts << g->title();
+            if (const auto* cb = qobject_cast<const QComboBox*>(w))
+                for (int i = 0; i < cb->count(); ++i) texts << cb->itemText(i);
+        }
+        const QString all = texts.join('\n').toLower();
+        for (const char* forbidden : { "non linéaire", "non-linéaire", "nonlinear", "newton", "p-delta", "second ordre", "2nd ordre", "corot",
+                                       "arc-length", "displacement control", "contrôle du déplacement", "load control", "nombre de pas",
+                                       "incrément", "itérations", "tolérance de convergence", "grands déplacements", "bfgs", "broyden" })
+            TEST_CHECK(!all.contains(QString::fromUtf8(forbidden)), "Test 536: fenêtre Analysis sans « " << forbidden << " »");
+        TEST_CHECK(all.contains(QStringLiteral("statique linéaire")), "Test 536: libellés lus (statique linéaire présent)");
+        std::cout << "[PASS] Test 536: Fenêtre Analysis sans option non linéaire" << std::endl;
+        ++passed;
+    }
 #ifdef TSA_HAS_FEM3D
     // -------------------------------------------------------------------------
     // TESTS 476-480 : moteur EF 3D Fem3D (moteur secondaire, logique de secours explicite)
@@ -808,7 +1012,7 @@ bool runSuite_Engines(int& passed)
         const AnalysisCapabilities c = fem->capabilities();
         TEST_CHECK(c.supports3D && !c.supports2D && c.supportsFrame && c.supportsSprings && c.supportsStatic,
                    "Test 476: périmètre déclaré (3D, poutres, ressorts, statique)");
-        TEST_CHECK(!c.supportsTruss && !c.supportsCable && !c.supportsShell && !c.supportsNonlinear && !c.supportsModal && !c.supportsMesh,
+        TEST_CHECK(!c.supportsTruss && !c.supportsCable && !c.supportsShell && !c.supportsModal && !c.supportsMesh,
                    "Test 476: rien de plus que le périmètre qualifié");
         TEST_CHECK(fem->info().version == "0.3.0" && fem->availability().available, "Test 476: version réelle de la bibliothèque");
         TEST_CHECK(fem->defaultSettings().value("mode").toString() == "fem3d" && fem->defaultSettings().value("fallback").toString() == "none",

@@ -48,6 +48,12 @@ public:
 
     void cancel(const EngineId& id);
 
+    /// Fonctionnalités retirées demandées par ce contexte (ancien projet) : type d'analyse et réglages du moteur choisi.
+    /// Liste non vide : prepare() rend une erreur et run() refuse, le calcul n'est jamais fait en linéaire à la place.
+    std::vector<std::string> unsupportedFeatures(const AnalysisContext& context) const;
+    /// Message destiné à l'utilisateur pour ces fonctionnalités.
+    static std::string unsupportedFeaturesMessage(const std::vector<std::string>& features);
+
     /// Contrôles communs déduits des capacités du moteur (public pour les tests).
     static ValidationResult validateGeneric(const AnalysisContext& context,
                                             const AnalysisModel& model,

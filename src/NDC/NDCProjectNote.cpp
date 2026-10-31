@@ -1484,7 +1484,8 @@ void chapterValidation(Ctx& x, NDCDocument& doc)
 
     NDCSection sl;
     sl.title = QStringLiteral("Limites connues du logiciel");
-    for (const auto& l : { QStringLiteral("Analyse élastique linéaire au premier ordre (statique) et analyse modale ; non linéaire géométrique selon les options du moteur, non validé par le banc."),
+    for (const auto& l : { QStringLiteral("Analyse élastique linéaire au premier ordre (statique) et analyse modale. L'analyse non linéaire (second ordre, "
+                                          "grands déplacements, plasticité) n'est pas disponible dans cette version."),
                            QStringLiteral("Poutres d'Euler-Bernoulli (cisaillement transverse négligé) ; gauchissement des sections ouvertes non pris en compte dans la rigidité."),
                            QStringLiteral("Cornières : axes principaux inclinés non pris en compte (flexions supposées découplées dans les axes des ailes)."),
                            QStringLiteral("UPN et cornières : ailes inclinées et congés non modélisés (UPN 200 : Iz +15 % par rapport au catalogue)."),

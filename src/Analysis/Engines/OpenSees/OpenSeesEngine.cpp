@@ -35,12 +35,11 @@ AnalysisCapabilities OpenSeesEngine::capabilities() const
     AnalysisCapabilities c;
     c.supports3D = true;                 // BasicBuilder -ndm 3 -ndf 6 uniquement
     c.supportsFrame = true;              // elasticBeamColumn
-    c.supportsTruss = true;              // truss / corotTruss
+    c.supportsTruss = true;              // truss
     c.supportsCable = true;              // corotTruss + InitStrain
     c.supportsSprings = true;            // zeroLength
     c.planarElementPolicy = UnsupportedElementPolicy::ExcludeWithWarning;   // comportement historique (BUG-002)
     c.supportsStatic = true;
-    c.supportsNonlinear = true;          // NonLinearStatic (algorithme / intégrateur configurables)
     c.providesDisplacements = true;
     c.providesReactions = true;
     c.providesElementForces = true;
@@ -89,24 +88,27 @@ QJsonObject OpenSeesEngine::defaultSettings() const
 QJsonObject OpenSeesEngine::settingsFromParameters(const AnalysisParameters& p)
 {
     return QJsonObject{
-        { "algorithm", static_cast<int>(p.algorithmType) },
-        { "integrator", static_cast<int>(p.integratorType) },
         { "systemSolver", static_cast<int>(p.systemSolver) },
         { "constraintHandler", static_cast<int>(p.constraintHandler) },
-        { "trussFormulation", static_cast<int>(p.trussFormulation) },
-        { "geomTransf", static_cast<int>(p.geomTransf) },
-        { "maxIterations", p.maxIterations },
-        { "tolerance", p.tolerance },
-        { "numSteps", p.numSteps },
-        { "stepSize", p.stepSize },
-        { "controlNodeId", p.controlNodeId },
-        { "controlDof", p.controlDof },
-        { "dispIncrement", p.dispIncrement },
-        { "saveAllSteps", p.saveAllSteps },
         { "useKiloNewtons", p.useKiloNewtons },
         { "extractionLevel", static_cast<int>(p.extractionLevel) },
         { "maxGlobalStiffnessDofs", p.maxGlobalStiffnessDofs },
     };
+}
+
+std::vector<std::string> OpenSeesEngine::unsupportedSettings(const QJsonObject& settings) const
+{
+    // Valeurs enregistrées par les versions qui proposaient ces formulations. Elles changeaient le script d'un calcul :
+    // geomTransf 1 PDelta, 2 Corotational ; trussFormulation 1 corotTruss, 3 corotTruss avec section. Les autres clés
+    // de ces versions (algorithme, intégrateur, pas, tolérance…) étaient sans effet sur un calcul linéaire : ignorées.
+    auto text = [](const char* source) { return QCoreApplication::translate("TSA::Analysis::OpenSeesEngine", source).toStdString(); };
+    std::vector<std::string> features;
+    const int geomTransf = settings.value("geomTransf").toInt(0);
+    if (geomTransf == 1) features.push_back(text(QT_TRANSLATE_NOOP("TSA::Analysis::OpenSeesEngine", "transformation P-Delta (second ordre)")));
+    if (geomTransf == 2) features.push_back(text(QT_TRANSLATE_NOOP("TSA::Analysis::OpenSeesEngine", "transformation corotationnelle (grands déplacements)")));
+    const int truss = settings.value("trussFormulation").toInt(0);
+    if (truss == 1 || truss == 3) features.push_back(text(QT_TRANSLATE_NOOP("TSA::Analysis::OpenSeesEngine", "treillis corotationnels (grands déplacements)")));
+    return features;
 }
 
 AnalysisParameters OpenSeesEngine::parametersFromContext(const AnalysisContext& context)
@@ -115,24 +117,9 @@ AnalysisParameters OpenSeesEngine::parametersFromContext(const AnalysisContext& 
     p.supportRestraints = context.common.supportRestraints;
     const QJsonObject s = context.settingsFor(kId);
     auto i = [&](const char* k, int d) { return s.value(k).toInt(d); };
-    auto d = [&](const char* k, double v) { return s.value(k).toDouble(v); };
 
-    // Les deux jeux de champs historiques (algorithm / algorithmType…) sont alignés : le générateur
-    // utilise *Type, les journaux le champ court.
-    p.algorithmType = p.algorithm = static_cast<NonlinearAlgorithm>(i("algorithm", static_cast<int>(p.algorithmType)));
-    p.integratorType = p.integrator = static_cast<IntegratorType>(i("integrator", static_cast<int>(p.integratorType)));
     p.systemSolver = static_cast<SystemSolver>(i("systemSolver", static_cast<int>(p.systemSolver)));
     p.constraintHandler = static_cast<ConstraintHandler>(i("constraintHandler", static_cast<int>(p.constraintHandler)));
-    p.trussFormulation = static_cast<TrussFormulation>(i("trussFormulation", static_cast<int>(p.trussFormulation)));
-    p.geomTransf = static_cast<GeomTransfType>(i("geomTransf", static_cast<int>(p.geomTransf)));
-    p.maxIterations = i("maxIterations", p.maxIterations);
-    p.tolerance = d("tolerance", p.tolerance);
-    p.numSteps = i("numSteps", p.numSteps);
-    p.stepSize = d("stepSize", p.stepSize);
-    p.controlNodeId = i("controlNodeId", p.controlNodeId);
-    p.controlDof = i("controlDof", p.controlDof);
-    p.dispIncrement = d("dispIncrement", p.dispIncrement);
-    p.saveAllSteps = s.value("saveAllSteps").toBool(p.saveAllSteps);
     p.useKiloNewtons = s.value("useKiloNewtons").toBool(p.useKiloNewtons);
     p.extractionLevel = static_cast<ExtractionLevel>(i("extractionLevel", static_cast<int>(p.extractionLevel)));
     p.maxGlobalStiffnessDofs = i("maxGlobalStiffnessDofs", p.maxGlobalStiffnessDofs);
@@ -154,13 +141,6 @@ ValidationResult OpenSeesEngine::validate(const AnalysisContext& context, const 
         v.addError("OpenSees", QCoreApplication::translate("TSA::Analysis::OpenSeesEngine",
                                    "Le générateur OpenSees calcule un cas, tous les cas superposés ou une combinaison : "
                                    "créez une combinaison pour calculer plusieurs cas ensemble.").toStdString());
-
-    const AnalysisParameters p = parametersFromContext(context);
-    if (p.type == AnalysisType::NonLinearStatic && p.integratorType == IntegratorType::DisplacementControl &&
-        model.mapping.analysisNode(p.controlNodeId) == 0)
-        v.addError("OpenSees", QCoreApplication::translate("TSA::Analysis::OpenSeesEngine",
-                                   "Le nœud de contrôle N%1 (Displacement Control) n'appartient pas à la portée calculée.")
-                                   .arg(p.controlNodeId).toStdString());
 
     if (!model.entireModel && context.scope.isPlanar())
         v.addWarning("OpenSees", QCoreApplication::translate("TSA::Analysis::OpenSeesEngine",

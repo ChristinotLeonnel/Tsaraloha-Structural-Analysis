@@ -10,8 +10,6 @@
 //       ub3 = ul4  + (ul8 - ul2)/L      ub4 = ul10 + (ul8 - ul2)/L
 //       ub5 = ul9 - ul3
 //   - k_local = T_blᵀ · k_basic · T_bl ; K_global = Rᵀ · k_local · R (R bloc-diagonale 12×12)
-// Ces relations ne valent que pour la transformation Linear (ou PDelta/Corotational à
-// l'état initial non chargé) : l'appelant porte la responsabilité de l'étiquetage.
 // Ordre des 12 DDL d'un élément : [UX UY UZ RX RY RZ]_i puis [UX UY UZ RX RY RZ]_j.
 
 #include "AnalysisTypes.h"

@@ -1,0 +1,181 @@
+{
+ "format": "tsa.benchmark/1",
+ "id": "GERBER-02-trap",
+ "title": "Poutre à rotule, trapézoïdale constante (voie nodale)",
+ "category": "rdm",
+ "description": "Poutre à rotule, trapézoïdale constante (voie nodale)",
+ "sources": [
+  "W. Young, R. Budynas — Roark's Formulas for Stress and Strain, poutres hyperstatiques"
+ ],
+ "hypotheses": [
+  "Euler-Bernoulli, petits déplacements"
+ ],
+ "units": {
+  "force": "kN",
+  "length": "m",
+  "stress": "kPa"
+ },
+ "engines": [
+  "opensees",
+  "fem3d",
+  "custom2d"
+ ],
+ "parameters": {
+  "E": 210000000.0,
+  "nu": 0.3,
+  "L1": 3.0,
+  "L2": 6.0,
+  "q": 12.0
+ },
+ "model": {
+  "materials": {
+   "S": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "rho": 7850
+   }
+  },
+  "sections": {
+   "R": {
+    "shape": "rectangular",
+    "b": 0.2,
+    "h": 0.4
+   }
+  },
+  "nodes": [
+   {
+    "id": 1,
+    "x": 0,
+    "y": 0,
+    "z": 0,
+    "support": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   {
+    "id": 2,
+    "x": 3.0,
+    "y": 0,
+    "z": 0,
+    "support": [
+     0,
+     1,
+     0,
+     1,
+     0,
+     1
+    ]
+   },
+   {
+    "id": 3,
+    "x": 9.0,
+    "y": 0,
+    "z": 0,
+    "support": [
+     1,
+     1,
+     1,
+     1,
+     0,
+     1
+    ]
+   }
+  ],
+  "members": [
+   {
+    "id": 1,
+    "i": 1,
+    "j": 2,
+    "section": "R",
+    "material": "S"
+   },
+   {
+    "id": 2,
+    "i": 2,
+    "j": 3,
+    "section": "R",
+    "material": "S",
+    "release_i": "my"
+   }
+  ],
+  "cases": [
+   {
+    "id": 1,
+    "name": "Q"
+   }
+  ],
+  "memberLoads": [
+   {
+    "member": 2,
+    "type": "trapezoidal",
+    "case": 1,
+    "q1": -12.0,
+    "q2": -12.0,
+    "x1": 0.0,
+    "x2": 1.0,
+    "direction": "globalZ"
+   }
+  ]
+ },
+ "analysis": {
+  "case": 1,
+  "selfWeight": false
+ },
+ "checks": [
+  {
+   "quantity": "reaction:3:fz",
+   "label": "R_3 = qL2/2",
+   "expected": "q*L2/2",
+   "unit": "kN",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-09
+   }
+  },
+  {
+   "quantity": "reaction:1:fz",
+   "label": "V_1 = qL2/2",
+   "expected": "q*L2/2",
+   "unit": "kN",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-09
+   }
+  },
+  {
+   "quantity": "reaction:1:my",
+   "label": "|M_1| = qL2 L1 / 2 (signe : main droite)",
+   "expected": "-q*L2/2*L1",
+   "unit": "kN·m",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-09
+   }
+  },
+  {
+   "quantity": "member:2:M:start",
+   "label": "moment nul à la rotule",
+   "expected": 0,
+   "unit": "kN·m",
+   "tolerance": {
+    "rel": 1e-06,
+    "abs": 1e-06
+   }
+  },
+  {
+   "quantity": "member:2:M:absmax",
+   "label": "M travée = qL2²/8",
+   "expected": "q*L2^2/8",
+   "unit": "kN·m",
+   "tolerance": {
+    "rel": 0.001,
+    "abs": 0.001
+   }
+  }
+ ]
+}

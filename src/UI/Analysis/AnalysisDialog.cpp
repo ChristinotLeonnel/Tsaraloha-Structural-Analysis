@@ -34,7 +34,6 @@ QString typeLabel(AnalysisType t)
     switch (t)
     {
     case AnalysisType::LinearStatic: return QObject::tr("Statique linéaire");
-    case AnalysisType::NonLinearStatic: return QObject::tr("Statique non linéaire");
     case AnalysisType::Modal: return QObject::tr("Modale (fréquences et modes propres)");
     }
     return {};
@@ -52,8 +51,8 @@ QString capabilityText(const AnalysisCapabilities& c)
         row(QObject::tr("2D"), c.supports2D), row(QObject::tr("3D"), c.supports3D),
         row(QObject::tr("Poutres/poteaux"), c.supportsFrame), row(QObject::tr("Treillis"), c.supportsTruss),
         row(QObject::tr("Câbles"), c.supportsCable), row(QObject::tr("Coques (dalles/voiles)"), c.supportsShell),
-        row(QObject::tr("Ressorts"), c.supportsSprings), row(QObject::tr("Statique"), c.supportsStatic),
-        row(QObject::tr("Non linéaire"), c.supportsNonlinear),
+        row(QObject::tr("Ressorts"), c.supportsSprings), row(QObject::tr("Statique linéaire"), c.supportsStatic),
+        row(QObject::tr("Modale"), c.supportsModal),
         row(QObject::tr("Déplacements"), c.providesDisplacements), row(QObject::tr("Réactions"), c.providesReactions),
         row(QObject::tr("Efforts"), c.providesElementForces), row(QObject::tr("K globale"), c.providesGlobalStiffness),
     };
@@ -102,6 +101,12 @@ void AnalysisDialog::buildUi()
     auto* lay = new QVBoxLayout(content);
     scroll->setWidget(content);
     root->addWidget(scroll, 1);
+
+    m_unsupportedBanner = new QLabel(content);
+    m_unsupportedBanner->setWordWrap(true);
+    m_unsupportedBanner->setStyleSheet("QLabel { background: #fef3c7; color: #92400e; border: 1px solid #d97706; padding: 6px; }");
+    m_unsupportedBanner->setVisible(false);
+    lay->addWidget(m_unsupportedBanner);
 
     auto* groupEngine = new QGroupBox(tr("Moteur de calcul"), content);
     auto* fe = new QFormLayout(groupEngine);
@@ -286,6 +291,14 @@ void AnalysisDialog::setContext(const AnalysisContext& context)
     if (!m_manager.registry().hasEngine(m_context.engineId) && !m_manager.registry().ids().empty())
         m_context.engineId = m_manager.registry().ids().front();
 
+    // Ancien projet : la demande d'origine n'est remplacée que si l'utilisateur valide cette fenêtre (context()).
+    const auto features = m_manager.unsupportedFeatures(m_context);
+    m_unsupportedBanner->setText(features.empty() ? QString()
+                                                  : qs(AnalysisManager::unsupportedFeaturesMessage(features)) + QStringLiteral("\n") +
+                                                        tr("Valider cette fenêtre remplace cette demande par l'analyse choisie ci-dessous ; "
+                                                           "« Annuler » la conserve et aucun calcul n'est lancé."));
+    m_unsupportedBanner->setVisible(!features.empty());
+
     m_updating = true;
     const int ei = m_engineCombo->findData(qs(m_context.engineId));
     if (ei >= 0) m_engineCombo->setCurrentIndex(ei);
@@ -399,7 +412,7 @@ void AnalysisDialog::refreshEngineDependentWidgets()
 
     const int wantedType = static_cast<int>(m_context.type);
     m_typeCombo->clear();
-    for (auto t : { AnalysisType::LinearStatic, AnalysisType::NonLinearStatic, AnalysisType::Modal })
+    for (auto t : { AnalysisType::LinearStatic, AnalysisType::Modal })
         if (caps.supportsAnalysisType(t)) m_typeCombo->addItem(typeLabel(t), static_cast<int>(t));
     const int ti = m_typeCombo->findData(wantedType);
     m_typeCombo->setCurrentIndex(ti >= 0 ? ti : 0);
@@ -425,6 +438,7 @@ AnalysisContext AnalysisDialog::context() const
     if (m_dimensionCombo->currentIndex() >= 0)
         c.dimension = static_cast<AnalysisDimension>(m_dimensionCombo->currentData().toInt());
     if (m_typeCombo->currentIndex() >= 0) c.type = static_cast<AnalysisType>(m_typeCombo->currentData().toInt());
+    c.unsupportedAnalysisType.clear();   // type choisi dans cette fenêtre, sous le bandeau qui signale la demande retirée
 
     const int si = m_scopeCombo->currentIndex();
     if (si >= 0 && si < static_cast<int>(m_scopes.size())) c.scope = m_scopes[si];
@@ -457,6 +471,11 @@ void AnalysisDialog::updateTypeDependentRows()
     m_commonForm->setRowVisible(m_selfWeight, !modal);
     m_commonForm->setRowVisible(m_modeCount, modal);
     m_commonForm->setRowVisible(m_massCases, modal);
+}
+
+bool AnalysisDialog::showsUnsupportedWarning() const
+{
+    return !m_unsupportedBanner->isHidden();
 }
 
 EngineId AnalysisDialog::currentEngineId() const

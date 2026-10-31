@@ -206,7 +206,7 @@ Pour maintenir la lisibilité sans surcharge artificielle, les marqueurs normali
 | **REQ-CALC-EC2-002** | Eurocodes | EN 1992 | §6.1 | Dimensionnement du ferraillage longitudinal en flexion | `ConcreteDesignEC2.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |
 | **REQ-CALC-EC3-001** | Eurocodes | EN 1993 | Tab. 3.1 | Aciers S235/S355 et profilés normalisés IPE/HEA/HEB/UPN | `Section.cpp`, `Material.cpp` | `TSA_ModelElementsTests` | **IMPLEMENTED** |
 | **REQ-CALC-EC3-002** | Eurocodes | EN 1993 | §6.3 | Justification des barres aux instabilités (flambement, déversement) | `SteelDesignEC3.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |
-| **REQ-CALC-CAB-001** | Câbles | EN 1993-1-11 | §5 & §6 | Câbles tendus, module d'Ernst, haubans, rentrée de mors | `CableStandards.cpp` | `TSA_CablesTests` | **IMPLEMENTED** |
+| **REQ-CALC-CAB-001** | Câbles | EN 1993-1-11 | §5 & §6 | Câbles tendus, module d'Ernst, haubans, rentrée de mors. Calcul linéaire seulement, sans relâchement en compression (BUG-151) ; module d'Ernst non utilisé par le calcul | `CableStandards.cpp` | `TSA_CablesTests` | **PARTIAL** |
 | **REQ-UI-PORT-001** | Ergonomie | ISO/IEC 25010 | §4.2.4 | Espace de travail CAD direct avec Viewport 3D principal unique | `ViewportContainer.cpp` | `TSA_WindowManagerTests` | **IMPLEMENTED** |
 | **REQ-NDC-GEN-001** | Rapport | IEEE Std 1063 | Justification | Note de calcul réglementaire certifiée HTML / Texte brut | `NDCGenerator.cpp` | `TSA_AllTests` | **IMPLEMENTED** |
 | **REQ-RES-META-001** | Résultats | ISO/IEC 25010 | §4.2.5 | Métadonnées d'exécution certifiées (Annexe Nationale, OpenSees, résidu max) | `ResultsModel.h`, `OpenSeesSolver.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |

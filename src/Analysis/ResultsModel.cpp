@@ -443,7 +443,7 @@ void ResultsModel::attachSurfaceResults(const std::map<int, int>& meshToNode, co
         if (const auto* d = getNodeDisplacement(node)) m_surfaceNodeDisplacements[mesh] = *d;
         if (const auto* rc = getNodeReaction(node); rc && surfaceOnly.count(node)) m_surfaceNodeReactions[mesh] = *rc;
     }
-    for (auto& st : m_stepResults)   // pas de calcul ou modes propres
+    for (auto& st : m_stepResults)   // modes propres
         for (const auto& [mesh, node] : meshToNode)
             if (auto it = st.displacements.find(node); it != st.displacements.end()) st.surfaceDisplacements[mesh] = it->second;
     for (int id : surfaceOnly)

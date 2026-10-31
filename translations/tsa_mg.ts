@@ -5858,12 +5858,20 @@ Maj + tsindry amin'ny fitaovana: ampiasao indray mandeha ny fomba iray hafa.</tr
         <translation>Tsy azo vakiana ny fikirana ny kajin'ny tetikasa: fikirana tsotra no ampiasaina.</translation>
     </message>
     <message>
+        <source>Fonctionnalité non prise en charge</source>
+        <translation>Asa tsy zakaina</translation>
+    </message>
+    <message>
         <source>Analyse</source>
         <translation>Kajy</translation>
     </message>
     <message>
         <source>Aucun moteur d'analyse sélectionné.</source>
         <translation>Tsy misy motera kajy voafidy.</translation>
+    </message>
+    <message>
+        <source>Analyse non prise en charge</source>
+        <translation>Kajy tsy zakaina</translation>
     </message>
     <message>
         <source>Moteur %1 indisponible</source>
@@ -6936,10 +6944,6 @@ Haben'ny sary (fampisehoana ihany: tsy miova ny sanda nokajina sy ny enta)
         <translation>Statika tsipika</translation>
     </message>
     <message>
-        <source>Statique non linéaire</source>
-        <translation>Statika tsy tsipika</translation>
-    </message>
-    <message>
         <source>Modale (fréquences et modes propres)</source>
         <translation>Fihetsika voajanahary (matetika sy endrika voajanahary)</translation>
     </message>
@@ -6980,12 +6984,8 @@ Haben'ny sary (fampisehoana ihany: tsy miova ny sanda nokajina sy ny enta)
         <translation>Resôra</translation>
     </message>
     <message>
-        <source>Statique</source>
-        <translation>Statika</translation>
-    </message>
-    <message>
-        <source>Non linéaire</source>
-        <translation>Tsy tsipika</translation>
+        <source>Modale</source>
+        <translation>Fihetsika voajanahary</translation>
     </message>
     <message>
         <source>Déplacements</source>
@@ -7004,12 +7004,12 @@ Haben'ny sary (fampisehoana ihany: tsy miova ny sanda nokajina sy ny enta)
         <translation>K ankapobeny</translation>
     </message>
     <message>
-        <source>modale</source>
-        <translation>fihetsika voajanahary</translation>
+        <source>type « %1 » non pris en charge</source>
+        <translation>karazana « %1 » tsy zakaina</translation>
     </message>
     <message>
-        <source>statique non linéaire</source>
-        <translation>statika tsy tsipika</translation>
+        <source>modale</source>
+        <translation>fihetsika voajanahary</translation>
     </message>
     <message>
         <source>statique linéaire</source>
@@ -7626,6 +7626,18 @@ Atomboka ve ny kajy?</translation>
         <translation>Tsy ampitaina ny enta %1 apetraka ivelan'ny sehatra.</translation>
     </message>
     <message>
+        <source>analyse statique non linéaire</source>
+        <translation>kajy statika tsy tsipika</translation>
+    </message>
+    <message>
+        <source>analyse de type « %1 »</source>
+        <translation>kajy karazana « %1 »</translation>
+    </message>
+    <message>
+        <source>Ce projet demande une fonctionnalité qui n'est plus prise en charge : %1. TSA prend actuellement en charge l'analyse structurale linéaire : ce calcul n'est pas lancé à la place d'un autre. Choisissez une analyse linéaire dans les paramètres d'analyse. Les autres données du projet sont conservées.</source>
+        <translation>Mangataka asa tsy zakaina intsony ity tetikasa ity: %1. Ny kajy ara-drafitra tsipika ihany no zakain'i TSA amin'izao fotoana izao: tsy misy kajy hafa atao ho solony. Mifidiana kajy tsipika ao amin'ny fikirana ny kajy. Voatahiry ny angon-drakitra hafa ao amin'ny tetikasa.</translation>
+    </message>
+    <message>
         <source>Moteur d'analyse inconnu : « %1 ».</source>
         <translation>Motera kajy tsy fantatra: « %1 ».</translation>
     </message>
@@ -8072,18 +8084,6 @@ Atomboka ve ny kajy?</translation>
         <translation>Enta amin'ny fihaonana « %1 » voalaza ho eo an-toerana: ampiharina amin'ny famaky ankapobeny (tsy manana rafitra famaky eo an-toerana ny fihaonana).</translation>
     </message>
     <message>
-        <source>%1 : charge ponctuelle sur barre</source>
-        <translation>%1: enta tokana amin'ny tsorakazo</translation>
-    </message>
-    <message>
-        <source>%1 : moment réparti</source>
-        <translation>%1: momenta miparitaka</translation>
-    </message>
-    <message>
-        <source>%1 : charge répartie sur une partie de la barre</source>
-        <translation>%1: enta miparitaka amin'ny ampahany amin'ny tsorakazo</translation>
-    </message>
-    <message>
         <source>Méthode des déplacements (Fem3D) : éléments poutre 3D d'Euler–Bernoulli à rigidité exacte, charges sur barre (réparties sur tout ou partie de la barre, ponctuelles, moments répartis) par forces nodales équivalentes exactes, rotules par condensation statique, appuis élastiques sur la diagonale de K, résolution LDLᵀ creuse (Eigen SimplicialLDLT).</source>
         <translation>Fomba fifindrana (Fem3D): singa andry mitsivalana 3D Euler–Bernoulli manana hahenjana marina, enta amin'ny andry (miparitaka amin'ny andry manontolo na amin'ny ampahany, enta iray toerana, momenta miparitaka) amin'ny alalan'ny hery mitovy marina eo amin'ny fihaonana, tonona amin'ny alalan'ny fanafohezana statika, fanohanana elastika eo amin'ny diagonalin'ny K, famahana LDLᵀ ho an'ny matrisy tsy feno (Eigen SimplicialLDLT).</translation>
     </message>
@@ -8198,12 +8198,20 @@ Atomboka ve ny kajy?</translation>
         <translation>Tsy hita na tsy voamarina ny OpenSees.exe.</translation>
     </message>
     <message>
-        <source>Le générateur OpenSees calcule un cas, tous les cas superposés ou une combinaison : créez une combinaison pour calculer plusieurs cas ensemble.</source>
-        <translation>Ny mpamokatra OpenSees dia manao kajy tranga iray, ny tranga rehetra mifanindry na fitambaran'enta iray: mamorona fitambaran'enta mba hanaovana kajy tranga maromaro miaraka.</translation>
+        <source>transformation P-Delta (second ordre)</source>
+        <translation>fanovana P-Delta (ambaratonga faharoa)</translation>
     </message>
     <message>
-        <source>Le nœud de contrôle N%1 (Displacement Control) n'appartient pas à la portée calculée.</source>
-        <translation>Tsy ao amin'ny sehatra voakajy ny fihaonana arahi-maso N%1 (Displacement Control).</translation>
+        <source>transformation corotationnelle (grands déplacements)</source>
+        <translation>fanovana korotasionaly (fifindrana lehibe)</translation>
+    </message>
+    <message>
+        <source>treillis corotationnels (grands déplacements)</source>
+        <translation>rafitra makarakara korotasionaly (fifindrana lehibe)</translation>
+    </message>
+    <message>
+        <source>Le générateur OpenSees calcule un cas, tous les cas superposés ou une combinaison : créez une combinaison pour calculer plusieurs cas ensemble.</source>
+        <translation>Ny mpamokatra OpenSees dia manao kajy tranga iray, ny tranga rehetra mifanindry na fitambaran'enta iray: mamorona fitambaran'enta mba hanaovana kajy tranga maromaro miaraka.</translation>
     </message>
     <message>
         <source>Calcul 3D d'une portée plane : la stabilité hors plan n'est assurée que par les appuis définis dans la portée.</source>
@@ -8281,12 +8289,20 @@ Atomboka ve ny kajy?</translation>
         <translation>Lany ny fotoana natokana ho an'ny fakana.</translation>
     </message>
     <message>
-        <source>Erreur lors du téléchargement de l'archive OpenSees.</source>
-        <translation>Nisy hadisoana nandritra ny fakana ny arsivan'ny OpenSees.</translation>
+        <source>Téléchargement de l'archive OpenSees impossible (%1, code curl %2). Installer OpenSees manuellement et indiquer son exécutable dans les préférences.</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>Erreur de téléchargement.</source>
         <translation>Hadisoana tamin'ny fakana.</translation>
+    </message>
+    <message>
+        <source>Archive OpenSees rejetée : empreinte SHA-256 %1, attendue %2.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Archive rejetée (empreinte inattendue).</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>Extraction de l'archive OpenSees...</source>
@@ -8524,8 +8540,8 @@ Atomboka ve ny kajy?</translation>
         <translation>Matrisin'ny hahenjana tsy azo avadika: mekanisma ny rafitra (tsy ampy ny fanohanana, tonona na fihodinana navela malalaka — ohatra ny fihodinan'ny tsorakazo iray manodidina ny tsipika fototra misy azy, amin'ny fiolonana, tsy voasakan'ny fanohanana na iray aza). Hamarino ny fanohanana sy ny fanalefahana.</translation>
     </message>
     <message>
-        <source>Non-convergence détectée lors de la résolution OpenSees.</source>
-        <translation>Tsy nahatratra vahaolana (non-convergence) nandritra ny famahana nataon'ny OpenSees.</translation>
+        <source>La résolution OpenSees a échoué.</source>
+        <translation>Tsy nahomby ny famahana OpenSees.</translation>
     </message>
     <message>
         <source>OpenSees s'est terminé avec le code d'erreur %1</source>
@@ -8550,10 +8566,6 @@ Atomboka ve ny kajy?</translation>
     <message>
         <source>non extraite</source>
         <translation>tsy nalaina</translation>
-    </message>
-    <message>
-        <source>Statique non linéaire : résultats au facteur de charge λ = %1, et non à la charge complète (λ = 1) : vérifier l'intégrateur (longueur d'arc, contrôle en déplacement) et le nombre de pas.</source>
-        <translation>Statika tsy tsipika: vokatra amin'ny tahan'ny enta λ = %1, fa tsy amin'ny enta feno (λ = 1): hamarino ny mpanao integraly (halavan'ny arka, fanaraha-maso ny fifindrana) sy ny isan'ny dingana.</translation>
     </message>
     <message>
         <source>Calcul et post-traitement terminés avec succès.</source>
@@ -15414,6 +15426,10 @@ Voatanisa alohan'ny kajy ny fanakanana tsirairay ary ambara raha mitondra hery i
         <translation>Fitambarana: %1</translation>
     </message>
     <message>
+        <source>Valider cette fenêtre remplace cette demande par l'analyse choisie ci-dessous ; « Annuler » la conserve et aucun calcul n'est lancé.</source>
+        <translation>Raha ekena ity varavarankely ity dia ny kajy voafidy etsy ambany no misolo io fangatahana io; « Aoka ihany » dia mitazona azy ary tsy misy kajy atomboka.</translation>
+    </message>
+    <message>
         <source>Portée enregistrée</source>
         <translation>Sehatra voatahiry</translation>
     </message>
@@ -16980,6 +16996,10 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
         <translation>Lisitry ny bloka</translation>
     </message>
     <message>
+        <source>Mini-carte : cliquer ou glisser pour déplacer la vue</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Zoom du graphe (molette autour du curseur, bouton du milieu pour déplacer)</source>
         <translation>Fanakaikezana ny grafy (kodiarana manodidina ny tondro, bokotra afovoany hanetsehana)</translation>
     </message>
@@ -17321,8 +17341,8 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
         <translation>Fatorana fiafarana:</translation>
     </message>
     <message>
-        <source>Élément tendu uniquement (Tension-only)</source>
-        <translation>Singa misintona ihany</translation>
+        <source>&lt;b&gt;Élément Câble (1D) :&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;Section :&lt;/b&gt; Section circulaire définie par son diamètre nominal Ø et son aire métallique A.&lt;br&gt;• &lt;b&gt;Tension initiale T₀ :&lt;/b&gt; Précontrainte axiale appliquée à l'élément.&lt;br&gt;• &lt;b&gt;Géométrie :&lt;/b&gt; Droit (cylindre direct) ou Parabolique/Caténaire selon la flèche f.&lt;br&gt;• &lt;b&gt;Calcul :&lt;/b&gt; Analyse linéaire : le câble est une barre articulée précontrainte. Une compression n'est pas relâchée : vérifier le signe de l'effort normal.&lt;br&gt;• &lt;b&gt;Tracé 3D :&lt;/b&gt; Cliquez sur deux nœuds successifs dans le viewport pour créer le câble.&lt;br&gt;• &lt;b&gt;Étirer :&lt;/b&gt; Permet de tracer en chaîne plusieurs câbles d'affilée.</source>
+        <translation>&lt;b&gt;Singa tariby (1D):&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;Fizarana:&lt;/b&gt; fizarana boribory voafaritry ny savaivony nominaly Ø sy ny velarana vy A.&lt;br&gt;• &lt;b&gt;Fanenjanana voalohany T₀:&lt;/b&gt; fanenjanana mialoha ara-tsipika ampiharina amin'ny singa.&lt;br&gt;• &lt;b&gt;Joometria:&lt;/b&gt; Mahitsy (varingarina mivantana) na Parabolika/Katenary araka ny fiondrika f.&lt;br&gt;• &lt;b&gt;Kajy:&lt;/b&gt; kajy tsipika: tsorakazo mifamatotra voaenjana mialoha ny tariby. Tsy esorina ny fanerena: hamarino ny famantarana ny hery mahitsy.&lt;br&gt;• &lt;b&gt;Sary 3D:&lt;/b&gt; tsindrio misesy ny fihaonana roa ao amin'ny fijery mba hamoronana ny tariby.&lt;br&gt;• &lt;b&gt;Mifanesy:&lt;/b&gt; ahafahana manao sary tariby maromaro mifanesy.</translation>
     </message>
     <message>
         <source>Coordonnées des Nœuds</source>
@@ -17424,10 +17444,6 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
         <source>Aide - Câbles et Systèmes de Tension</source>
         <translation>Fanampiana - Tariby sy rafitra fanenjanana</translation>
     </message>
-    <message>
-        <source>&lt;b&gt;Élément Câble (1D) :&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;Section :&lt;/b&gt; Section circulaire définie par son diamètre nominal Ø et son aire métallique A.&lt;br&gt;• &lt;b&gt;Tension initiale T₀ :&lt;/b&gt; Précontrainte axiale appliquée à l'élément.&lt;br&gt;• &lt;b&gt;Géométrie :&lt;/b&gt; Droit (cylindre direct) ou Parabolique/Caténaire selon la flèche f.&lt;br&gt;• &lt;b&gt;Tension-only :&lt;/b&gt; L'élément ne reprend que des efforts de traction.&lt;br&gt;• &lt;b&gt;Tracé 3D :&lt;/b&gt; Cliquez sur deux nœuds successifs dans le viewport pour créer le câble.&lt;br&gt;• &lt;b&gt;Étirer :&lt;/b&gt; Permet de tracer en chaîne plusieurs câbles d'affilée.</source>
-        <translation>&lt;b&gt;Singa tariby (1D):&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;Fizarana:&lt;/b&gt; fizarana boribory voafaritry ny savaivony nominaly Ø sy ny velarana vy A.&lt;br&gt;• &lt;b&gt;Fanenjanana voalohany T₀:&lt;/b&gt; fanenjanana mialoha ara-tsipika ampiharina amin'ny singa.&lt;br&gt;• &lt;b&gt;Joometria:&lt;/b&gt; Mahitsy (varingarina mivantana) na Parabolika/Katenary araka ny fiondrika f.&lt;br&gt;• &lt;b&gt;Misintona ihany:&lt;/b&gt; hery fisintonana ihany no zakain'ny singa.&lt;br&gt;• &lt;b&gt;Sary 3D:&lt;/b&gt; tsindrio misesy ny fihaonana roa ao amin'ny fijery mba hamoronana ny tariby.&lt;br&gt;• &lt;b&gt;Mifanesy:&lt;/b&gt; ahafahana manao sary tariby maromaro mifanesy.</translation>
-    </message>
 </context>
 <context>
     <name>TSA::UI::CablePropertiesView</name>
@@ -17506,10 +17522,6 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
     <message>
         <source>Flèche maximale (f) :</source>
         <translation>Fiondrika ambony indrindra (f):</translation>
-    </message>
-    <message>
-        <source>Traction seule (Non-linéarité géométrique)</source>
-        <translation>Fisintonana ihany (tsy tsipika ara-joometria)</translation>
     </message>
     <message>
         <source>Ancrages et Rendu Visuel</source>
@@ -17737,32 +17749,96 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
 <context>
     <name>TSA::UI::Diagram2DWidget</name>
     <message>
-        <source>Moment Fléchissant Mz (kNm)</source>
-        <translation>Momenta fiforetana Mz (kNm)</translation>
+        <source>Efforts N (Vx), Vy, Vz</source>
+        <translation>Hery N (Vx), Vy, Vz</translation>
     </message>
     <message>
-        <source>Moment Fléchissant My (kNm)</source>
-        <translation>Momenta fiforetana My (kNm)</translation>
+        <source>Efforts tranchants Vy, Vz</source>
+        <translation>Hery manapaka Vy, Vz</translation>
     </message>
     <message>
-        <source>Effort Tranchant Vz (kN)</source>
-        <translation>Hery manapaka Vz (kN)</translation>
+        <source>Moments Mx, My, Mz</source>
+        <translation>Momenta Mx, My, Mz</translation>
     </message>
     <message>
-        <source>Effort Tranchant Vy (kN)</source>
-        <translation>Hery manapaka Vy (kN)</translation>
+        <source>Flexion dans le plan local xy : Vy, Mz</source>
+        <translation>Fiforetana amin'ny planina eo an-toerana xy: Vy, Mz</translation>
     </message>
     <message>
-        <source>Effort Normal N (kN)</source>
-        <translation>Hery mahitsy N (kN)</translation>
+        <source>Flexion dans le plan local xz : Vz, My</source>
+        <translation>Fiforetana amin'ny planina eo an-toerana xz: Vz, My</translation>
     </message>
     <message>
-        <source>Moment de Torsion Mx (kNm)</source>
-        <translation>Momenta fiolonana Mx (kNm)</translation>
+        <source>Tous les efforts</source>
+        <translation>Ny hery rehetra</translation>
+    </message>
+    <message>
+        <source>Déplacements ux, uy, uz</source>
+        <translation>Fifindrana ux, uy, uz</translation>
+    </message>
+    <message>
+        <source>Rotations θx, θy, θz</source>
+        <translation>Fihodinana θx, θy, θz</translation>
+    </message>
+    <message>
+        <source>Choix libre</source>
+        <translation>Safidy malalaka</translation>
+    </message>
+    <message>
+        <source>Groupes de courbes à superposer</source>
+        <translation>Vondron'ny fiolahana hampifanindriana</translation>
+    </message>
+    <message>
+        <source>Superposées</source>
+        <translation>Mifanindry</translation>
+    </message>
+    <message>
+        <source>Empilées</source>
+        <translation>Mifanongoa</translation>
+    </message>
+    <message>
+        <source>Superposées : un seul graphe. Empilées : une bande par courbe, abscisses alignées.</source>
+        <translation>Mifanindry: kisary tokana. Mifanongoa: tsipika iray isaky ny fiolahana, mirindra ny abscisse.</translation>
+    </message>
+    <message>
+        <source>Valeurs réelles</source>
+        <translation>Sanda tena izy</translation>
+    </message>
+    <message>
+        <source>Normalisée (%)</source>
+        <translation>Voalamina (%)</translation>
+    </message>
+    <message>
+        <source>Valeurs réelles : un axe par unité (gauche et droite).
+Normalisée : chaque courbe rapportée à sa plus grande valeur absolue.</source>
+        <translation>Sanda tena izy: famaky iray isaky ny venty (ankavia sy ankavanana).
+Voalamina: ny fiolahana tsirairay zaraina amin'ny sanda tanteraka ambony indrindra aminy.</translation>
     </message>
     <message>
         <source>Recentrer</source>
         <translation>Avereno eo afovoany</translation>
+    </message>
+    <message>
+        <source>Molette : zoom vertical. Ctrl + molette : zoom le long de la barre.
+Glisser : déplacer la vue zoomée. Double-clic : recentrer.</source>
+        <translation>Kodiaran'ny totozy: fanakaikezana mitsangana. Ctrl + kodiarana: fanakaikezana manaraka ny tsorakazo.
+Sintony: afindrao ny fijery nohakaikezina. Tsindry indroa: avereno eo afovoany.</translation>
+    </message>
+    <message>
+        <source>Exporter</source>
+        <translation>Avoahy</translation>
+    </message>
+    <message>
+        <source>Copier l'image</source>
+        <translation>Adikao ny sary</translation>
+    </message>
+    <message>
+        <source>Enregistrer l'image (PNG)…</source>
+        <translation>Tehirizo ny sary (PNG)…</translation>
+    </message>
+    <message>
+        <source>Copier les valeurs (tableur)</source>
+        <translation>Adikao ny sanda (tabilao)</translation>
     </message>
     <message>
         <source>Prêt</source>
@@ -17773,8 +17849,82 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
         <translation>Singa:</translation>
     </message>
     <message>
-        <source>Grandeur :</source>
-        <translation>Habe ara-batana:</translation>
+        <source>Courbes :</source>
+        <translation>Fiolahana:</translation>
+    </message>
+    <message>
+        <source>%1 (%2) — cliquer pour ajouter ou retirer la courbe</source>
+        <translation>%1 (%2) — tsindrio mba hanampiana na hanesorana ny fiolahana</translation>
+    </message>
+    <message>
+        <source>Barre de treillis #%1 (L = %2 m)</source>
+        <translation>Tsorakazon'ny rafitra makarakara #%1 (L = %2 m)</translation>
+    </message>
+    <message>
+        <source>Câble #%1 (L = %2 m)</source>
+        <translation>Tariby #%1 (L = %2 m)</translation>
+    </message>
+    <message>
+        <source>Aucun résultat d'analyse disponible.
+Lancez le calcul (F5) pour tracer les courbes.</source>
+        <translation>Tsy misy vokatry ny kajy.
+Atombohy ny kajy (F5) mba hanoritana ny fiolahana.</translation>
+    </message>
+    <message>
+        <source>Sélectionnez une barre pour afficher ses courbes de résultats.</source>
+        <translation>Fidio ny tsorakazo iray mba hampisehoana ny fiolahan'ny vokany.</translation>
+    </message>
+    <message>
+        <source>Aucun résultat pour cet élément.</source>
+        <translation>Tsy misy vokatra ho an'ity singa ity.</translation>
+    </message>
+    <message>
+        <source>x = %1 m (%2 %)</source>
+        <translation>x = %1 m (%2 %)</translation>
+    </message>
+    <message>
+        <source>max</source>
+        <translation>max</translation>
+    </message>
+    <message>
+        <source>min</source>
+        <translation>min</translation>
+    </message>
+    <message>
+        <source>  (axe de droite)</source>
+        <translation>  (famaky ankavanana)</translation>
+    </message>
+    <message>
+        <source>x = %1 m</source>
+        <translation>x = %1 m</translation>
+    </message>
+    <message>
+        <source>Image des courbes copiée dans le presse-papiers.</source>
+        <translation>Voadika ao amin'ny fitehirizana vonjimaika ny sarin'ny fiolahana.</translation>
+    </message>
+    <message>
+        <source>Enregistrer l'image des courbes</source>
+        <translation>Tehirizo ny sarin'ny fiolahana</translation>
+    </message>
+    <message>
+        <source>Image PNG (*.png)</source>
+        <translation>Sary PNG (*.png)</translation>
+    </message>
+    <message>
+        <source>Image enregistrée : %1</source>
+        <translation>Voatahiry ny sary: %1</translation>
+    </message>
+    <message>
+        <source>Échec de l'enregistrement : %1</source>
+        <translation>Tsy nahomby ny fitehirizana: %1</translation>
+    </message>
+    <message>
+        <source>Aucune valeur à copier.</source>
+        <translation>Tsy misy sanda hadika.</translation>
+    </message>
+    <message>
+        <source>Valeurs copiées (%1 lignes) : à coller dans un tableur.</source>
+        <translation>Voadika ny sanda (andalana %1): apetaho ao anaty tabilao.</translation>
     </message>
     <message>
         <source>Poutre #%1 (L = %2 m)</source>
@@ -17783,20 +17933,6 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
     <message>
         <source>Poteau #%1 (H = %2 m)</source>
         <translation>Andry #%1 (H = %2 m)</translation>
-    </message>
-    <message>
-        <source>x = %1 m (%2%) | %3 = %4 %5</source>
-        <translation>x = %1 m (%2%) | %3 = %4 %5</translation>
-    </message>
-    <message>
-        <source>Aucun résultat OpenSees disponible.
-Lancez le calcul EF (F5) pour générer les diagrammes.</source>
-        <translation>Tsy misy vokatra OpenSees.
-Atombohy ny kajy EF (F5) mba hamoronana ny kisary.</translation>
-    </message>
-    <message>
-        <source>Sélectionnez une barre pour afficher son diagramme d'efforts.</source>
-        <translation>Fidio ny tsorakazo iray mba hampisehoana ny kisarin'ny heriny.</translation>
     </message>
 </context>
 <context>
@@ -22995,150 +23131,6 @@ Tianao ho fidiana ve izy toy izay hamorona dika mitovy?</translation>
 <context>
     <name>TSA::UI::OpenSeesOptionsWidget</name>
     <message>
-        <source>Formulation</source>
-        <translation>Famolavolana</translation>
-    </message>
-    <message>
-        <source>Truss (linéaire standard)</source>
-        <translation>Truss (tsipika mahazatra)</translation>
-    </message>
-    <message>
-        <source>CorotTruss (grands déplacements)</source>
-        <translation>CorotTruss (fifindrana lehibe)</translation>
-    </message>
-    <message>
-        <source>TrussSection (section discrète)</source>
-        <translation>TrussSection (fizarana misaraka)</translation>
-    </message>
-    <message>
-        <source>CorotTrussSection</source>
-        <translation>CorotTrussSection</translation>
-    </message>
-    <message>
-        <source>Formulation treillis :</source>
-        <translation>Famolavolana rafitra makarakara:</translation>
-    </message>
-    <message>
-        <source>Linéaire (petits déplacements)</source>
-        <translation>Tsipika (fifindrana kely)</translation>
-    </message>
-    <message>
-        <source>P-Delta (2nd ordre)</source>
-        <translation>P-Delta (ambaratonga faharoa)</translation>
-    </message>
-    <message>
-        <source>Corotational (grands déplacements 3D)</source>
-        <translation>Corotational (fifindrana 3D lehibe)</translation>
-    </message>
-    <message>
-        <source>Transformation 3D :</source>
-        <translation>Fiovana 3D:</translation>
-    </message>
-    <message>
-        <source>Résolution non linéaire</source>
-        <translation>Famahana tsy tsipika</translation>
-    </message>
-    <message>
-        <source>Newton-Raphson</source>
-        <translation>Newton-Raphson</translation>
-    </message>
-    <message>
-        <source>Newton avec Line Search</source>
-        <translation>Newton miaraka amin'ny line search</translation>
-    </message>
-    <message>
-        <source>Modified Newton</source>
-        <translation>Modified Newton</translation>
-    </message>
-    <message>
-        <source>Krylov-Newton</source>
-        <translation>Krylov-Newton</translation>
-    </message>
-    <message>
-        <source>BFGS</source>
-        <translation>BFGS</translation>
-    </message>
-    <message>
-        <source>Broyden</source>
-        <translation>Broyden</translation>
-    </message>
-    <message>
-        <source>Secant Newton</source>
-        <translation>Secant Newton</translation>
-    </message>
-    <message>
-        <source>Algorithme :</source>
-        <translation>Algorithma:</translation>
-    </message>
-    <message>
-        <source>Load Control</source>
-        <translation>Load Control</translation>
-    </message>
-    <message>
-        <source>Displacement Control</source>
-        <translation>Displacement Control</translation>
-    </message>
-    <message>
-        <source>Arc-Length</source>
-        <translation>Arc-Length</translation>
-    </message>
-    <message>
-        <source>Min Unbalanced Displacement Norm</source>
-        <translation>Min Unbalanced Displacement Norm</translation>
-    </message>
-    <message>
-        <source>Intégrateur :</source>
-        <translation>Mpanao integraly:</translation>
-    </message>
-    <message>
-        <source>Nombre de pas :</source>
-        <translation>Isan'ny dingana:</translation>
-    </message>
-    <message>
-        <source>Longueur d'arc ou incrément de norme (ArcLength, MinUnbalDispNorm). Contrôle du chargement : Δλ = 1 / nombre de pas, la charge complète est toujours atteinte.</source>
-        <translation>Halavan'ny arka na fitomboan'ny norma (ArcLength, MinUnbalDispNorm). Fanaraha-maso ny enta: Δλ = 1 / isan'ny dingana, tratra foana ny enta feno.</translation>
-    </message>
-    <message>
-        <source>Taille de pas (arc, norme) :</source>
-        <translation>Haben'ny dingana (arka, norma):</translation>
-    </message>
-    <message>
-        <source>Tolérance de convergence :</source>
-        <translation>Fandeferana amin'ny fifanatonana:</translation>
-    </message>
-    <message>
-        <source>Itérations maximales :</source>
-        <translation>Isan'ny famerimberenana ambony indrindra:</translation>
-    </message>
-    <message>
-        <source>Contrôle du déplacement</source>
-        <translation>Fanaraha-maso ny fifindrana</translation>
-    </message>
-    <message>
-        <source>Nœud contrôlé :</source>
-        <translation>Fihaonana arahi-maso:</translation>
-    </message>
-    <message>
-        <source>UX</source>
-        <translation>UX</translation>
-    </message>
-    <message>
-        <source>UY</source>
-        <translation>UY</translation>
-    </message>
-    <message>
-        <source>UZ</source>
-        <translation>UZ</translation>
-    </message>
-    <message>
-        <source>DDL contrôlé :</source>
-        <translation>DDL arahi-maso:</translation>
-    </message>
-    <message>
-        <source>Incrément (m) :</source>
-        <translation>Fitomboana (m):</translation>
-    </message>
-    <message>
         <source>Système et contraintes</source>
         <translation>Sisitema sy fepetra</translation>
     </message>
@@ -23217,10 +23209,6 @@ Tianao ho fidiana ve izy toy izay hamorona dika mitovy?</translation>
     <message>
         <source>Unités kN, m, kPa</source>
         <translation>Refy fandrefesana kN, m, kPa</translation>
-    </message>
-    <message>
-        <source>Enregistrer tous les incréments</source>
-        <translation>Tehirizo ny fitomboana rehetra</translation>
     </message>
 </context>
 <context>
@@ -24134,12 +24122,16 @@ Tsindrio indroa raha hanokatra</translation>
         <translation>Fanelanelanana hita maso eo amin'ny joometria voalohany sy ny endrika miova nokajina (tsy kajy dinamika).</translation>
     </message>
     <message>
-        <source>Pas de Calcul / Incréments</source>
-        <translation>Dingan'ny kajy / fitomboana</translation>
+        <source>Modes propres</source>
+        <translation>Fihetsika voajanahary</translation>
     </message>
     <message>
-        <source>Pas 1 / 1 (Charge 100%)</source>
-        <translation>Dingana 1 / 1 (enta 100%)</translation>
+        <source>Résultat unique (statique linéaire)</source>
+        <translation>Vokatra tokana (statika tsipika)</translation>
+    </message>
+    <message>
+        <source>Résultat %1 / %2</source>
+        <translation>Vokatra %1 / %2</translation>
     </message>
     <message>
         <source>◀</source>
@@ -24236,10 +24228,6 @@ Tsindrio indroa raha hanokatra</translation>
         <translation>Endriky ny fihetsika voajanahary nampitoviana (famindrana ambony indrindra = 1); habetsahana: %1.</translation>
     </message>
     <message>
-        <source>✓ Calcul disponible (%1 pas)</source>
-        <translation>✓ Misy kajy (dingana %1)</translation>
-    </message>
-    <message>
         <source>✓ Calcul disponible</source>
         <translation>✓ Misy kajy</translation>
     </message>
@@ -24294,16 +24282,8 @@ Tsindrio indroa raha hanokatra</translation>
 • Taha ambony indrindra EC3 (vy): %1% (#%2)</translation>
     </message>
     <message>
-        <source>Pas unique (Statique linéaire)</source>
-        <translation>Dingana tokana (kajy statika tsipika)</translation>
-    </message>
-    <message>
         <source>Mode %1 / %2 : f = %3 Hz, T = %4 s</source>
         <translation>Fihetsika %1 / %2: f = %3 Hz, T = %4 s</translation>
-    </message>
-    <message>
-        <source>Pas %1 / %2 (Facteur de charge λ = %3%)</source>
-        <translation>Dingana %1 / %2 (tahan'ny enta λ = %3%)</translation>
     </message>
     <message>
         <source>Modèle non initialisé</source>

@@ -1,0 +1,309 @@
+TOTAL 179570 lignes 763 fichiers
+module                   lignes  fich.
+UI                        60468    225
+Viewer                    16674     38
+Model                     13987     79
+Analysis                  12435     57
+BIM                        6749     33
+NDC                        6421     26
+AI                         6360     36
+Grid                       6324     33
+Mesh                       6288     20
+IO                         5605     15
+ExtensionSystem            4233     22
+Blueprint                  3603     12
+Geometry                   3543     20
+Interaction                3488     13
+Coordinate                 3020     21
+Standards                  3018     17
+Commands                   2232     16
+Topology                   1973      6
+Automation                 1821      4
+Templates                  1384      6
+Diagnostics                1372      9
+Validation                 1233      2
+Library                    1101      4
+Project                    1085     10
+Annotation                  890      6
+UndoRedo                    814      6
+Modules                     677      2
+Core                        603      7
+Reports                     494      4
+ShellExtension              385      1
+Plugins                     359      3
+Api                         333      2
+Help                        240      2
+Platform                    203      2
+App                         130      3
+(racine)                     25      1
+
+--- 50 plus gros fichiers
+2944 Viewer/OccView_Shapes.cpp
+2938 Viewer/OccView_Navigation.cpp
+2530 UI/MainWindow_Actions.cpp
+2185 UI/Blueprint/BlueprintEditor.cpp
+2106 UI/MainWindow.cpp
+1692 UI/Dialogs/GridDialog.cpp
+1666 NDC/NDCProjectNote.cpp
+1471 Model/Model.cpp
+1419 IO/TSAFile.cpp
+1418 Mesh/Gmsh/GmshMeshEngine.cpp
+1378 UI/Theme/ThemeManager.cpp
+1376 UI/ModelTree/ModelTreeWidget.cpp
+1336 Viewer/OccView.cpp
+1256 UI/Diagrams/Diagram2DWidget.cpp
+1236 BIM/IFC/IfcImporter.cpp
+1222 Analysis/OpenSeesResultsReader.cpp
+1149 Viewer/ResultsVisualManager.cpp
+1128 Automation/CommandRegistry.cpp
+1127 Viewer/OccView_Events.cpp
+1125 Interaction/Tools/ModifyTools.cpp
+1104 Validation/BenchmarkSuite.cpp
+1103 AI/Core/AIOrchestrator.cpp
+1077 UI/MainWindow_Tools.cpp
+1041 Model/StructuralClipboard.cpp
+1032 Analysis/OpenSeesAnalysisBuilder.cpp
+1019 Viewer/SelectionManager.cpp
+1017 Grid/GridDefinition.cpp
+1003 UI/Dialogs/ExtensionManagerDialog.cpp
+991 Viewer/OccView.h
+964 NDC/NDCGenerator.cpp
+907 UI/Shell/AppShell.cpp
+886 BIM/IFC/IfcOpenShellImport.cpp
+877 UI/MainWindow.h
+864 Topology/NumberingStrategies.cpp
+858 Blueprint/BlueprintSubgraph.cpp
+825 BIM/Core/BimModel.cpp
+796 UI/Dock/ResultsDockWidget.cpp
+784 Mesh/Solvers/OpenSeesMeshAdapter.cpp
+761 ExtensionSystem/DefinitionModels.cpp
+742 UI/Ruler/ViewportContainer.cpp
+733 Blueprint/BlueprintRuntime.cpp
+732 IO/TSAFileReader_Chunks.cpp
+727 UI/Blueprint/BlueprintScene.cpp
+723 BIM/IFC/IfcExporter.cpp
+721 UI/Dialogs/CableCreationDialog.cpp
+711 Library/LibraryManager.cpp
+702 UI/Dialogs/StructurePresetDialog.cpp
+699 Grid/GridRenderer.cpp
+683 Geometry/SupportGeometry.cpp
+682 UI/Properties/PropertyPanel.cpp
+
+> 1000 lignes : 28  > 2000 : 5  > 4000 : 0
+
+--- composantes fortement connexes (modules) de taille > 1 :
+28 ['AI', 'Analysis', 'Annotation', 'App', 'Automation', 'BIM', 'Blueprint', 'Commands', 'Coordinate', 'Diagnostics', 'ExtensionSystem', 'Geometry', 'Grid', 'IO', 'Interaction', 'Library', 'Mesh', 'Model', 'NDC', 'Platform', 'Plugins', 'Project', 'Reports', 'Standards', 'Topology', 'UI', 'UndoRedo', 'Viewer']
+
+--- arêtes inter-modules (nb d'inclusions)
+UI                   -> Model                  141
+UI                   -> Viewer                  63
+Viewer               -> Model                   50
+UI                   -> Analysis                36
+Analysis             -> Model                   30
+NDC                  -> Model                   30
+IO                   -> Model                   29
+UI                   -> Coordinate              28
+UI                   -> UndoRedo                23
+Viewer               -> Geometry                20
+UI                   -> Project                 19
+Geometry             -> Model                   18
+UI                   -> Grid                    18
+Interaction          -> Model                   17
+UI                   -> App                     15
+BIM                  -> Model                   14
+Standards            -> Model                   14
+Automation           -> Model                   11
+UI                   -> Blueprint               11
+ExtensionSystem      -> Model                   10
+NDC                  -> Analysis                10
+UI                   -> Interaction             10
+UI                   -> BIM                     10
+Viewer               -> Grid                    10
+UI                   -> Commands                 9
+UI                   -> Core                     9
+Viewer               -> Coordinate               9
+Project              -> Grid                     8
+UI                   -> Mesh                     8
+Analysis             -> Coordinate               7
+Mesh                 -> Model                    7
+NDC                  -> App                      7
+UI                   -> AI                       7
+AI                   -> Analysis                 6
+AI                   -> Model                    6
+IO                   -> Coordinate               6
+UI                   -> Annotation               6
+UI                   -> NDC                      6
+UI                   -> Diagnostics              6
+Viewer               -> Analysis                 6
+Api                  -> Model                    5
+BIM                  -> Coordinate               5
+Commands             -> Model                    5
+Geometry             -> Analysis                 5
+Library              -> Model                    5
+Model                -> Coordinate               5
+NDC                  -> Standards                5
+UI                   -> Automation               5
+UI                   -> ExtensionSystem          5
+Grid                 -> Coordinate               4
+Grid                 -> Model                    4
+Mesh                 -> Analysis                 4
+Model                -> UndoRedo                 4
+Standards            -> Analysis                 4
+UI                   -> Library                  4
+UndoRedo             -> Model                    4
+Viewer               -> Mesh                     4
+Viewer               -> Interaction              4
+Analysis             -> Core                     3
+Automation           -> AI                       3
+Automation           -> Mesh                     3
+Interaction          -> UndoRedo                 3
+IO                   -> Grid                     3
+Project              -> IO                       3
+Project              -> App                      3
+Project              -> Model                    3
+Topology             -> Model                    3
+UI                   -> Modules                  3
+UI                   -> Geometry                 3
+Validation           -> Analysis                 3
+Validation           -> Mesh                     3
+Viewer               -> BIM                      3
+Viewer               -> Diagnostics              3
+AI                   -> App                      2
+AI                   -> Automation               2
+Analysis             -> Standards                2
+Analysis             -> Diagnostics              2
+Annotation           -> Model                    2
+App                  -> UI                       2
+Automation           -> Project                  2
+Automation           -> Analysis                 2
+Blueprint            -> Automation               2
+Commands             -> Grid                     2
+Commands             -> Coordinate               2
+Diagnostics          -> Core                     2
+ExtensionSystem      -> Core                     2
+ExtensionSystem      -> Library                  2
+Grid                 -> Viewer                   2
+Interaction          -> Annotation               2
+IO                   -> Diagnostics              2
+IO                   -> App                      2
+IO                   -> BIM                      2
+Model                -> ExtensionSystem          2
+Model                -> Diagnostics              2
+Model                -> BIM                      2
+Model                -> Annotation               2
+Plugins              -> Blueprint                2
+Reports              -> Coordinate               2
+Reports              -> Model                    2
+UI                   -> IO                       2
+UI                   -> Topology                 2
+UI                   -> Platform                 2
+UI                   -> Reports                  2
+UI                   -> Templates                2
+UI                   -> Standards                2
+Validation           -> Model                    2
+Viewer               -> Annotation               2
+Viewer               -> UI                       2
+Viewer               -> Commands                 2
+Viewer               -> App                      2
+(racine)             -> App                      1
+AI                   -> Project                  1
+AI                   -> UndoRedo                 1
+AI                   -> Blueprint                1
+Analysis             -> AI                       1
+Analysis             -> App                      1
+Analysis             -> Grid                     1
+Api                  -> Analysis                 1
+Api                  -> BIM                      1
+Api                  -> Mesh                     1
+Automation           -> Blueprint                1
+Automation           -> UndoRedo                 1
+BIM                  -> Mesh                     1
+BIM                  -> App                      1
+Coordinate           -> Model                    1
+Diagnostics          -> Model                    1
+Geometry             -> Coordinate               1
+Grid                 -> Diagnostics              1
+Interaction          -> Coordinate               1
+Interaction          -> Grid                     1
+IO                   -> Standards                1
+IO                   -> Core                     1
+IO                   -> UndoRedo                 1
+IO                   -> ExtensionSystem          1
+IO                   -> Analysis                 1
+Library              -> UndoRedo                 1
+Library              -> Core                     1
+Mesh                 -> Core                     1
+Model                -> Grid                     1
+Modules              -> Core                     1
+NDC                  -> Reports                  1
+NDC                  -> Templates                1
+Platform             -> App                      1
+Plugins              -> Automation               1
+Plugins              -> Project                  1
+Project              -> Coordinate               1
+Project              -> Analysis                 1
+Project              -> UndoRedo                 1
+Project              -> Core                     1
+Reports              -> Templates                1
+Reports              -> Analysis                 1
+Reports              -> App                      1
+ShellExtension       -> IO                       1
+Templates            -> Core                     1
+Topology             -> Analysis                 1
+UI                   -> Help                     1
+UI                   -> Plugins                  1
+UndoRedo             -> Diagnostics              1
+UndoRedo             -> Commands                 1
+Validation           -> App                      1
+Validation           -> Grid                     1
+Viewer               -> NDC                      1
+Viewer               -> Core                     1
+
+--- en-têtes : plus fort fan-in
+156 Model/Model.h
+42 Analysis/ResultsModel.h
+42 Viewer/OccView.h
+36 App/ProductInfo.h
+34 Model/Material.h
+31 Model/Load/LoadManager.h
+31 Model/Beam.h
+30 UndoRedo/EditTransaction.h
+30 Model/Section.h
+30 Model/Node.h
+27 UI/Theme/ThemedIcon.h
+26 Grid/GridManager.h
+24 Coordinate/LevelManager.h
+22 Model/TrussMember.h
+22 Model/Cable/Cable.h
+22 UI/Theme/ThemeManager.h
+21 Model/Column.h
+21 Viewer/SelectionManager.h
+19 Coordinate/WorkPlane.h
+19 BIM/Core/BimModel.h
+19 UI/MainWindow.h
+18 Diagnostics/Logger.h
+16 Model/Slab.h
+15 Model/SelectionQuery.h
+15 Core/AppPaths.h
+
+--- fichiers : plus fort fan-out
+67 UI/MainWindow.cpp
+42 UI/MainWindow_Actions.cpp
+31 Viewer/OccView_Shapes.cpp
+26 UI/MainWindow_Tools.cpp
+25 Viewer/OccView.cpp
+22 NDC/NDCGenerator.cpp
+20 Viewer/OccView_Events.cpp
+19 Automation/CommandRegistry.cpp
+19 Viewer/OccView_Navigation.cpp
+18 UI/MainWindow_AI.cpp
+18 UI/Dialogs/GridDialog.cpp
+17 UI/MainWindow_Mesh.cpp
+17 Viewer/OccView.h
+16 Model/Model.h
+16 UI/Properties/PropertyPanel.cpp
+15 Model/StructuralClipboard.h
+15 NDC/NDCProjectNote.cpp
+15 Standards/ModelValidator.cpp
+14 IO/TSAFileReader_Chunks.cpp
+14 UI/Shell/AppShell.cpp
