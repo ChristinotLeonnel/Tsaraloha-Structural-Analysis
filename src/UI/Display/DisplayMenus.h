@@ -40,6 +40,7 @@ public:
     DisplayMenus(QWidget* dialogParent, Context context);
 
     QMenu* annotationMenu() const { return m_annotationMenu; }
+    QMenu* axisMenu() const { return m_axisMenu; }
     QMenu* loadScaleMenu() const { return m_loadMenu; }
     QMenu* profilesMenu() const { return m_profilesMenu; }
     QAction* diagnosticAction() const { return m_diagnostic; }
@@ -59,6 +60,7 @@ signals:
 
 private:
     void buildAnnotationMenu();
+    void buildAxisMenu();
     void buildLoadMenu();
     void rebuildProfilesMenu();
     OccView* view() const { return m_context.view ? m_context.view() : nullptr; }
@@ -66,6 +68,7 @@ private:
     QWidget* m_parent = nullptr;
     Context m_context;
     QMenu* m_annotationMenu = nullptr;
+    QMenu* m_axisMenu = nullptr;
     QMenu* m_loadMenu = nullptr;
     QMenu* m_profilesMenu = nullptr;
     QAction* m_diagnostic = nullptr;

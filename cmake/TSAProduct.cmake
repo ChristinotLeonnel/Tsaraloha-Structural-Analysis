@@ -444,6 +444,13 @@ set(VIEWER_MAIN_SOURCES
     ${TSA_ROOT}/src/Viewer/MeshVSDataSource.cpp
     ${TSA_ROOT}/src/Viewer/OccView_DisplayMode.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Navigation.cpp
+    ${TSA_ROOT}/src/Viewer/OccView_Axes.cpp
+    ${TSA_ROOT}/src/Viewer/AxisTriad.h
+    ${TSA_ROOT}/src/Viewer/AxisTriad.cpp
+    ${TSA_ROOT}/src/Viewer/AxisDisplayStyle.h
+    ${TSA_ROOT}/src/Viewer/AxisDisplayStyle.cpp
+    ${TSA_ROOT}/src/Viewer/ElementAxisFrames.h
+    ${TSA_ROOT}/src/Viewer/ElementAxisFrames.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Events.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Tools.cpp
     ${TSA_ROOT}/src/Viewer/SelectionManager.h
@@ -1267,6 +1274,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_audit.cpp
     ${TSA_ROOT}/tests/test_benchmarks.cpp
     ${TSA_ROOT}/tests/test_display.cpp
+    ${TSA_ROOT}/tests/test_axes.cpp
     ${TSA_ROOT}/tests/test_multidoc.cpp
     ${TSA_ROOT}/tests/test_torsion.cpp
     ${TSA_ROOT}/tests/test_meshview.cpp

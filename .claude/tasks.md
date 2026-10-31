@@ -2,6 +2,11 @@
 
 Last Updated: 2026-10-31. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
+## Repères de la vue 3D (2026-10-31, branche feature/coordinate-axis-gizmos)
+- [x] Calcul des repères, trièdre partagé, vue, menu, tests 541-548, traductions en / mg, documentation.
+- [ ] Contrôle à l'œil dans TSA.exe (barre d'état au-delà de 32 éléments, menu Repères), Linux, Debug.
+- [x] Commit, fusion dans main et push demandés par l'utilisateur le 2026-10-31.
+
 ## Version linéaire seule (ADR-025, 2026-10-31, branche refactor/linear-only)
 - [x] Inventaire, retrait du non linéaire (moteur, OpenSees, contexte, interface, données, textes), refus des anciens projets.
 - [x] Tests 532-537 ; RDM-11a/b supprimés ; RDM-13a-c, RDM-14a-d, FEA-08 à 10 ajoutés au banc ; traductions en / mg.

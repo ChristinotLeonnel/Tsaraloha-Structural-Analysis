@@ -3,6 +3,7 @@
 #include "../../Geometry/LoadDisplayScale.h"
 #include "../../Model/Model.h"
 #include "../../Viewer/AnnotationStyle.h"
+#include "../../Viewer/AxisDisplayStyle.h"
 #include "../../Viewer/DisplayProfile.h"
 #include "../../Viewer/OccView.h"
 
@@ -13,6 +14,7 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QMessageBox>
+#include <QSignalBlocker>
 
 #include <algorithm>
 #include <cmath>
@@ -27,6 +29,7 @@ DisplayMenus::DisplayMenus(QWidget* dialogParent, Context context)
     , m_context(std::move(context))
 {
     buildAnnotationMenu();
+    buildAxisMenu();
     buildLoadMenu();
     m_profilesMenu = new QMenu(tr("Profils d'affichage"), m_parent);
     m_profilesMenu->setToolTipsVisible(true);
@@ -48,6 +51,7 @@ void DisplayMenus::addTo(QMenu* menu)
 {
     if (!menu) return;
     menu->addMenu(m_annotationMenu);
+    menu->addMenu(m_axisMenu);
     menu->addMenu(m_loadMenu);
     menu->addMenu(m_profilesMenu);
     menu->addAction(m_diagnostic);
@@ -111,6 +115,67 @@ void DisplayMenus::buildAnnotationMenu()
         style.adaptTo(v ? v->height() : 800, span);
     });
     connect(m_annotationMenu->addAction(tr("Réinitialiser les tailles")), &QAction::triggered, this, [&style] { style.reset(); });
+}
+
+void DisplayMenus::buildAxisMenu()
+{
+    using TSA::Viewer::AxisDisplayStyle;
+    using TSA::Viewer::LocalAxisAnchor;
+    auto& style = AxisDisplayStyle::instance();
+
+    m_axisMenu = new QMenu(tr("Repères"), m_parent);
+    m_axisMenu->setToolTipsVisible(true);
+    auto addCheck = [this](const QString& text, const QString& tip) {
+        QAction* a = m_axisMenu->addAction(text);
+        a->setCheckable(true);
+        a->setToolTip(tip);
+        return a;
+    };
+    QAction* global = addCheck(tr("Repère global"), tr("Trièdre X, Y, Z à l'origine du modèle."));
+    QAction* corner = addCheck(tr("Indicateur d'angle"), tr("Trièdre fixe dans le coin de la vue."));
+    QAction* local = addCheck(tr("Repères locaux"), tr("Trièdre x, y, z des éléments sélectionnés, tel que le calcul le définit."));
+    QAction* letters = addCheck(tr("Lettres des axes"), tr("X, Y, Z pour le repère global ; x, y, z pour les repères locaux."));
+    connect(global, &QAction::toggled, &style, &AxisDisplayStyle::setGlobalAxes);
+    connect(corner, &QAction::toggled, &style, &AxisDisplayStyle::setCornerIndicator);
+    connect(local, &QAction::toggled, &style, &AxisDisplayStyle::setLocalAxes);
+    connect(letters, &QAction::toggled, &style, &AxisDisplayStyle::setLetters);
+
+    m_axisMenu->addSeparator();
+    auto* anchors = new QActionGroup(m_axisMenu);
+    QAction* atCenter = addCheck(tr("Repère local au centre de l'élément"), QString());
+    QAction* atPoint = addCheck(tr("Repère local au point cliqué"), tr("Sinon au centre : élément choisi dans l'arborescence, sélection multiple."));
+    anchors->addAction(atCenter);
+    anchors->addAction(atPoint);
+    connect(atCenter, &QAction::triggered, &style, [&style] { style.setAnchor(LocalAxisAnchor::ElementCenter); });
+    connect(atPoint, &QAction::triggered, &style, [&style] { style.setAnchor(LocalAxisAnchor::SelectedLocation); });
+
+    m_axisMenu->addSeparator();
+    connect(m_axisMenu->addAction(tr("Taille des axes…")), &QAction::triggered, this, [this, &style] {
+        bool ok = false;
+        const int px = QInputDialog::getInt(m_parent, tr("Taille des axes"), tr("Longueur des axes (pixels logiques, 30 à 200) :"),
+                                            int(std::lround(style.settings().axisPixels)), 30, 200, 5, &ok);
+        if (ok) style.setAxisPixels(px);
+    });
+    connect(m_axisMenu->addAction(tr("Taille des lettres…")), &QAction::triggered, this, [this, &style] {
+        bool ok = false;
+        const int px = QInputDialog::getInt(m_parent, tr("Taille des lettres"), tr("Hauteur des lettres (pixels logiques, 8 à 32) :"),
+                                            int(std::lround(style.settings().labelPixels)), 8, 32, 1, &ok);
+        if (ok) style.setLabelPixels(px);
+    });
+    connect(m_axisMenu->addAction(tr("Réinitialiser les repères")), &QAction::triggered, this, [&style] { style.reset(); });
+
+    auto sync = [=, &style] {
+        const auto& s = style.settings();
+        for (auto [action, on] : { std::pair { global, s.globalAxes }, std::pair { corner, s.cornerIndicator }, std::pair { local, s.localAxes },
+                                   std::pair { letters, s.letters } })
+        {
+            const QSignalBlocker block(action);
+            action->setChecked(on);
+        }
+        (s.anchor == LocalAxisAnchor::SelectedLocation ? atPoint : atCenter)->setChecked(true);
+    };
+    sync();
+    connect(&style, &AxisDisplayStyle::changed, this, sync);
 }
 
 void DisplayMenus::buildLoadMenu()

@@ -1,4 +1,5 @@
 #include "OccView.h"
+#include "../Coordinate/AxisColorConfig.h"
 #include "AnnotationStyle.h"
 #include "BimGeometryRenderer.h"
 #include "DimensionRenderer.h"
@@ -202,21 +203,10 @@ void OccView::applyViewDecorations()
     m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
 
     // Configuration explicite des axes du trièdre : X=Rouge, Y=Vert, Z=Bleu
-    m_view->ZBufferTriedronSetup(
-        Quantity_NOC_RED,       // Axe X
-        Quantity_NOC_GREEN,     // Axe Y
-        Quantity_NOC_BLUE1,     // Axe Z
-        0.8,
-        0.05,
-        12
-    );
-
-    m_view->TriedronDisplay(
-        Aspect_TOTP_LEFT_LOWER,
-        Quantity_NOC_BLACK,
-        0.1,
-        V3d_ZBUFFER
-    );
+    const auto& axisColors = TSA::Coordinate::AxisColorConfig::instance();
+    m_view->ZBufferTriedronSetup(TSA::Viewer::axisScreenColor(axisColors.axisXColor()), TSA::Viewer::axisScreenColor(axisColors.axisYColor()),
+                                 TSA::Viewer::axisScreenColor(axisColors.axisZColor()), 0.8, 0.05, 12);
+    displayCornerIndicator();
 }
 
 bool OccView::contextHasCore20() const
@@ -392,6 +382,7 @@ void OccView::initOcc()
     ));
 
     m_context->Display(m_viewCube, false);
+    initAxisDisplay();
 }
 
 void OccView::setModel(TSA::Model::Model* model)
@@ -438,6 +429,7 @@ void OccView::setSelectionManager(TSA::Viewer::SelectionManager* selectionManage
                 m_dimensionRenderer->setHighlighted(*m_model, m_selectionManager->selectedDimensions());
                 if (!m_view.IsNull()) m_view->Redraw();
             }
+            updateSelectedElementLocalAxes();
         });
     }
     if (m_selectionManager && !m_workPlaneShape.IsNull())
@@ -1301,10 +1293,15 @@ QImage OccView::captureViewImage(int width, int height, bool hideNavigationAids)
     const bool cubeShown = hideNavigationAids && !m_context.IsNull() && !m_viewCube.IsNull() && m_context->IsDisplayed(m_viewCube);
     if (cubeShown) m_context->Erase(m_viewCube, false);
     if (hideNavigationAids) m_view->TriedronErase();
+    const bool globalShown = hideNavigationAids && !m_globalAxisTriad.IsNull() && !m_context.IsNull() && m_context->IsDisplayed(m_globalAxisTriad);
+    const bool localShown = hideNavigationAids && !m_localAxisFrames.empty();
+    if (globalShown) showGlobalAxisTriad(false);
+    if (localShown) clearSelectedElementLocalAxes();
     auto restoreAids = [&] {
         if (!hideNavigationAids) return;
-        m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, m_isDarkMode ? Quantity_NOC_WHITE : Quantity_NOC_BLACK, 0.1,
-                                V3d_ZBUFFER); // mêmes réglages que setDarkMode()
+        displayCornerIndicator();
+        if (globalShown) showGlobalAxisTriad(true);
+        if (localShown) updateSelectedElementLocalAxes();
         if (cubeShown) m_context->Display(m_viewCube, false);
         m_view->Redraw();
     };

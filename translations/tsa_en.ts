@@ -18159,6 +18159,82 @@ Run the analysis (F5) to plot the curves.</translation>
         <translation>Reset sizes</translation>
     </message>
     <message>
+        <source>Repères</source>
+        <translation>Coordinate systems</translation>
+    </message>
+    <message>
+        <source>Repère global</source>
+        <translation>Global coordinate system</translation>
+    </message>
+    <message>
+        <source>Trièdre X, Y, Z à l'origine du modèle.</source>
+        <translation>X, Y, Z triad at the model origin.</translation>
+    </message>
+    <message>
+        <source>Indicateur d'angle</source>
+        <translation>Corner indicator</translation>
+    </message>
+    <message>
+        <source>Trièdre fixe dans le coin de la vue.</source>
+        <translation>Fixed triad in the corner of the view.</translation>
+    </message>
+    <message>
+        <source>Repères locaux</source>
+        <translation>Local coordinate systems</translation>
+    </message>
+    <message>
+        <source>Trièdre x, y, z des éléments sélectionnés, tel que le calcul le définit.</source>
+        <translation>x, y, z triad of the selected elements, as defined by the analysis.</translation>
+    </message>
+    <message>
+        <source>Lettres des axes</source>
+        <translation>Axis letters</translation>
+    </message>
+    <message>
+        <source>X, Y, Z pour le repère global ; x, y, z pour les repères locaux.</source>
+        <translation>X, Y, Z for the global system; x, y, z for local systems.</translation>
+    </message>
+    <message>
+        <source>Repère local au centre de l'élément</source>
+        <translation>Local system at element center</translation>
+    </message>
+    <message>
+        <source>Repère local au point cliqué</source>
+        <translation>Local system at clicked point</translation>
+    </message>
+    <message>
+        <source>Sinon au centre : élément choisi dans l'arborescence, sélection multiple.</source>
+        <translation>Otherwise at the center: element picked in the tree, multiple selection.</translation>
+    </message>
+    <message>
+        <source>Taille des axes…</source>
+        <translation>Axis size…</translation>
+    </message>
+    <message>
+        <source>Taille des axes</source>
+        <translation>Axis size</translation>
+    </message>
+    <message>
+        <source>Longueur des axes (pixels logiques, 30 à 200) :</source>
+        <translation>Axis length (logical pixels, 30 to 200):</translation>
+    </message>
+    <message>
+        <source>Taille des lettres…</source>
+        <translation>Letter size…</translation>
+    </message>
+    <message>
+        <source>Taille des lettres</source>
+        <translation>Letter size</translation>
+    </message>
+    <message>
+        <source>Hauteur des lettres (pixels logiques, 8 à 32) :</source>
+        <translation>Letter height (logical pixels, 8 to 32):</translation>
+    </message>
+    <message>
+        <source>Réinitialiser les repères</source>
+        <translation>Reset coordinate systems</translation>
+    </message>
+    <message>
         <source>Échelle des charges</source>
         <translation>Load scale</translation>
     </message>
@@ -24856,6 +24932,10 @@ Otherwise, click 'Apply'.</translation>
     <message>
         <source>Résultats d'analyse</source>
         <translation>Analysis results</translation>
+    </message>
+    <message>
+        <source>Repères locaux masqués : plus de %1 éléments sélectionnés</source>
+        <translation>Local coordinate systems hidden: more than %1 elements selected</translation>
     </message>
     <message>
         <source>Selected Node %1</source>

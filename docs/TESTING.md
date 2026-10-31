@@ -26,7 +26,7 @@ py tools/ci/run_test_suites.py --exe build-windows-validation/TSA_TestSuite.exe 
 |-----------|----------------|---------------|
 | Logique d'interface (actions, commandes, préférences, états) | `blueprint` 524–528, `shortcuts`, `i18n`, `ribbon`, `undo`, `commands` | widgets Qt, pas d'OpenGL ; hors écran possible |
 | Qt hors écran | toutes les suites sans vue OCCT | `QT_QPA_PLATFORM=offscreen` (Linux sans affichage) |
-| Vue 3D OCCT (OpenGL réel) | `views` (sautés sous offscreen), `drawing` 419, `coordinates` 408, `meshview` 343–346, `display`, `multidoc` 387–388, `audit` 370, `demo` | plateforme native ou Xvfb ; **jamais offscreen** pour `display`, `multidoc`, `meshview`, `audit`, `demo` (BUG-076 : arrêt brutal) |
+| Vue 3D OCCT (OpenGL réel) | `views` (sautés sous offscreen), `drawing` 419, `coordinates` 408, `meshview` 343–346, `display`, `axes`, `multidoc` 387–388, `audit` 370, `demo` | plateforme native ou Xvfb ; **jamais offscreen** pour `display`, `multidoc`, `meshview`, `audit`, `demo` (BUG-076 : arrêt brutal) |
 | Performance | `benchmarks` ; test 526 (2 000 nœuds, seuils larges) | durées indicatives propres au poste |
 | Intégration graphique réelle (MainWindow, AppShell) | aucune suite : couche `app` non liée aux tests | validation manuelle ou pilotée (§3) |
 

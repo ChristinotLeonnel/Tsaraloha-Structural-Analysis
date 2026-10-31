@@ -46,6 +46,7 @@ Architecture en Ruban structurée en 9 onglets métier :
 6. **Résultats** : Panneau dock de résultats 3D, déformée amplifiée, 4 familles de diagrammes 3D ($M, V, N, U, R$), réactions vectorielles 3D, cadrage caméra contextuel, note de calcul (NDC) et multiport.
 7. **Édition** : Outils de sélection, déplacement 3D, duplication/copie 3D, repère d'origine et suppression.
 8. **Affichage** : Projections standards 2D/3D, navigation caméra, plans de travail & coupes 3D, aides visuelles (grilles, niveaux, nœuds) et bascule des panneaux docks.
+   Le sous-menu **Repères** règle le repère global, l'indicateur d'angle, les repères locaux à la sélection, les lettres et les tailles (`docs/AXIS_DISPLAY.md`).
 9. **Outils** : Mesure spatiale 3D, bascule de thème sombre/clair, aide et raccourcis clavier.
 
 > État actuel du code (test 464) : onze onglets — Accueil, Modélisation, Modifier, Blueprint, Grille et plans, Charges,

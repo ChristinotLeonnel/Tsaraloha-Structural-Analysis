@@ -2,6 +2,14 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-31 — repères de la vue 3D (branche feature/coordinate-axis-gizmos, fusionnée dans main)
+
+- Nouveaux : `src/Viewer/ElementAxisFrames`, `AxisTriad`, `AxisDisplayStyle`, `OccView_Axes.cpp`, menu Affichage > Repères, `docs/AXIS_DISPLAY.md`.
+- `OccView::fitScene` remplace `m_view->FitAll` dans `OccView` : OCCT compte l'ancrage des objets en persistance de zoom.
+- Trièdre du plan de travail non dessiné s'il coïncide avec le repère global affiché ; lettres Xwp, Ywp, Zwp sinon.
+- ViewCube et indicateur d'angle : couleurs rouge, vert, bleu de la convention (lues en sRVB par `axisScreenColor`).
+- Tests 541-548 (suite `axes`), test 388 étendu au menu Repères.
+
 ## 2026-10-31 — BUG-148 corrigé (branche fix/bug-148-hinge-member-loads)
 OpenSees : toute charge d'une barre à rotule, poids propre compris, passe par des forces d'encastrement condensées
 (BeamElementLoad::fixedEndForces, fixedFixedEndForces, Releases, interval) ; moment nul à la rotule ; aucun eleLoad sur ces barres.

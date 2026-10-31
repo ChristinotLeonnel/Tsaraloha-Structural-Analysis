@@ -52,6 +52,9 @@ namespace TSA::Grid
 #include <AIS_RubberBand.hxx>
 #include <AIS_Manipulator.hxx>
 #include <AIS_Trihedron.hxx>
+#include "AxisTriad.h"
+#include "ElementAxisFrames.h"
+#include <gp_Lin.hxx>
 #include <gp_Trsf.hxx>
 #include <Graphic3d_ClipPlane.hxx>
 #include <Graphic3d_Camera.hxx>
@@ -343,10 +346,15 @@ public:
     bool isSurfaceElementOnActiveWorkPlane(const std::vector<int>& nodeIds, double tol = 0.05) const;
 
     // Repère Local des Éléments Structuraux (LCS - Règle 10 & 11)
-    void setShowLocalAxes(bool show);
-    bool showLocalAxes() const { return m_showLocalAxes; }
+    /// Repères locaux des éléments sélectionnés, selon AxisDisplayStyle (OccView_Axes.cpp) : à appeler quand la sélection change.
     void updateSelectedElementLocalAxes();
     void clearSelectedElementLocalAxes();
+    const std::vector<TSA::Viewer::ElementAxisFrame>& localAxisFrames() const { return m_localAxisFrames; }
+    bool localAxesTooMany() const { return m_localAxesTooMany; }
+    std::size_t localAxisTriadPoolSize() const { return m_localAxisTriads.size(); }
+    const Handle(AIS_Trihedron)& localAxisTriad(std::size_t index) const { return m_localAxisTriads[index].object; }
+    const Handle(AIS_Trihedron)& globalAxisTriad() const { return m_globalAxisTriad; }
+    const Handle(AIS_Trihedron)& workPlaneAxisTriad() const { return m_workPlaneTrihedron; }
 
     /// Rendu hors écran du viewport réel (miniature .tsa, aperçus). Le cube de navigation et le
     /// trièdre, aides d'interface, sont masqués pendant la capture puis réaffichés.
@@ -718,6 +726,16 @@ private:
     void updateSectionPlaneVisual();
     /// Applique au trièdre du WorkPlane la rotation (sans translation) + l'ancrage au point d'origine
     void applyWorkPlaneTrihedronTransform(const gp_Trsf& workPlaneTrsf);
+    // Repères (OccView_Axes.cpp)
+    TSA::Viewer::AxisTriadAppearance axisAppearance(bool global, bool transverseAxes) const;
+    TSA::Viewer::AxisTriadAppearance workPlaneAxisAppearance() const;
+    void initAxisDisplay();
+    void applyAxisDisplay();
+    void displayCornerIndicator();
+    void showGlobalAxisTriad(bool show);
+    void fitScene();
+    bool workPlaneTriadCoincidesWithGlobal() const;
+    void rememberPickRay(int px, int py);
 
 private:
     TSA::Model::Model* m_model = nullptr;
@@ -913,8 +931,19 @@ private:
     bool reapplyIsolationIfActive();
 
     // Repère local de l'élément sélectionné
-    Handle(AIS_Shape) m_elementLocalAxesShape;
-    bool m_showLocalAxes = true;
+    Handle(AIS_Trihedron) m_globalAxisTriad;
+    /// Trièdres réutilisés d'une sélection à l'autre : seule leur transformation change.
+    struct LocalAxisTriad
+    {
+        Handle(AIS_Trihedron) object;
+        bool transverseAxes = true;
+    };
+    std::vector<LocalAxisTriad> m_localAxisTriads;
+    std::vector<TSA::Viewer::ElementAxisFrame> m_localAxisFrames;   ///< repères affichés
+    bool m_localAxesTooMany = false;
+    std::optional<gp_Lin> m_pendingPickRay;   ///< rayon du dernier clic, pas encore rattaché à un élément
+    std::optional<gp_Lin> m_pickRay;
+    std::pair<int, int> m_pickRayElement { -1, -1 };
 
     // Historique Caméra (Previous / Next View)
     std::vector<Handle(Graphic3d_Camera)> m_cameraUndoStack;

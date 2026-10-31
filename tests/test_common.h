@@ -208,6 +208,7 @@ bool runSuite_Surfaces(int& passed);
 bool runSuite_Audit(int& passed);
 bool runSuite_Benchmarks(int& passed);
 bool runSuite_Display(int& passed);
+bool runSuite_Axes(int& passed);
 bool runSuite_MultiDoc(int& passed);
 bool runSuite_I18n(int& passed);
 bool runSuite_Ribbon(int& passed);

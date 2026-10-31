@@ -35,7 +35,7 @@ SUITES = [
     "loads", "opensees", "supports", "standards", "ndc", "extraction", "ai", "operator", "ailive", "preview", "thumbnail",
     "engines", "tools", "mdd", "cleanup", "bim", "ifc", "drawing", "views", "snap", "automation", "blueprint", "help",
     "appearance", "groupedit", "topology", "dimensions", "displaymodes", "shortcuts", "tsa3d", "modules", "templates",
-    "deployment", "mesh", "torsion", "meshview", "demo", "surfaces", "audit", "benchmarks", "display", "multidoc",
+    "deployment", "mesh", "torsion", "meshview", "demo", "surfaces", "audit", "benchmarks", "display", "axes", "multidoc",
     "i18n", "ribbon", "templates_wp", "undo",
 ]
 
@@ -47,7 +47,7 @@ REQUIREMENTS = {
     "audit": ["opensees"], "benchmarks": ["opensees"], "mdd": ["opensees"], "displaymodes": ["opensees"],
     "mesh": ["gmsh", "opensees"], "surfaces": ["gmsh", "opensees"], "meshview": ["gmsh", "display"],
     "ifc": ["ifcopenshell"],
-    "display": ["display", "opensees"], "multidoc": ["display"],
+    "display": ["display", "opensees"], "axes": ["display"], "multidoc": ["display"],
 }
 KNOWN_CAPABILITIES = {"opensees", "gmsh", "ifcopenshell", "display"}
 

@@ -38,6 +38,12 @@ Apparence visuelle (couleur, rugosité, texture) — voir `VisualProperties` dan
 modèle (`baseColor`, `roughness`, `metallic`, `transparency`, `shininess`, `textureName`,
 `texturePath`, `textureScaleU/V`).
 
+### Repères (`src/Viewer/AxisTriad`, `OccView_Axes.cpp`)
+
+Repère global, repères locaux des éléments sélectionnés et trièdre du plan de travail : un seul dessin, `AIS_Trihedron` en
+persistance de zoom. Tout appel à `FitAll` depuis `OccView` passe par `fitScene()`, car OCCT compte le point d'ancrage de ces
+objets dans l'ajustement. Détails et pièges : `docs/AXIS_DISPLAY.md`.
+
 ### `src/Viewer/ResultsVisualManager`
 
 Gestionnaire dédié à la visualisation interactive des résultats structurels dans le contexte OCCT :

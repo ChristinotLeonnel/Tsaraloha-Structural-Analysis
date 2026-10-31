@@ -96,6 +96,9 @@ Trois causes faisaient réapparaître des courbes d'un ancien calcul. Elles sont
 Depuis les onglets multi-projets (`docs/MULTI_DOCUMENT.md`), chaque document a sa propre vue et ses propres
 résultats. Un nouveau projet s'ouvre dans un onglet neuf.
 
+Les repères (global, locaux, indicateur d'angle) ont eux aussi une taille constante à l'écran, réglée à part dans
+**Affichage > Repères** : voir `docs/AXIS_DISPLAY.md`.
+
 ## 7. Profils d'affichage
 
 **Affichage > Profils d'affichage** propose d'appliquer un profil, d'enregistrer l'affichage actuel comme profil,

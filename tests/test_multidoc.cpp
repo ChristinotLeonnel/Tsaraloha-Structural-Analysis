@@ -35,6 +35,7 @@
 #include "Viewer/ResultsVisualManager.h"
 #include "Viewer/AnnotationStyle.h"
 #include "UI/Display/DisplayMenus.h"
+#include "Viewer/AxisDisplayStyle.h"
 #include "Geometry/LoadDisplayScale.h"
 
 #include <QDir>
@@ -680,7 +681,24 @@ bool runSuite_MultiDoc(int& passed)
                    "Test 388: menus d'échelles, de profils et diagnostic construits par le composant partagé");
         QMenu viewMenu;
         menus.addTo(&viewMenu);
-        TEST_CHECK(viewMenu.actions().size() == 4, "Test 388: ajout au menu Affichage de la fenêtre hôte (3 menus + diagnostic)");
+        TEST_CHECK(viewMenu.actions().size() == 5, "Test 388: ajout au menu Affichage de la fenêtre hôte (4 menus + diagnostic)");
+
+        auto& axisStyle = TSA::Viewer::AxisDisplayStyle::instance();
+        const TSA::Viewer::AxisDisplaySettings axisSettings = axisStyle.settings();
+        axisStyle.reset();
+        const QStringList axisTitles = titles(menus.axisMenu());
+        TEST_CHECK(axisTitles.contains("Repère global") && axisTitles.contains("Indicateur d'angle") && axisTitles.contains("Lettres des axes") &&
+                       axisTitles.contains("Repère local au point cliqué") && axisTitles.contains("Taille des axes…"),
+                   "Test 388: menu Repères construit par le composant partagé");
+        QAction* localAxes = nullptr;
+        for (QAction* a : menus.axisMenu()->actions())
+            if (a->text() == "Repères locaux") localAxes = a;
+        TEST_CHECK(localAxes && localAxes->isChecked(), "Test 388: case des repères locaux conforme au réglage");
+        localAxes->trigger();
+        TEST_CHECK(!axisStyle.settings().localAxes, "Test 388: la case change le réglage");
+        axisStyle.setLocalAxes(true);
+        TEST_CHECK(localAxes->isChecked(), "Test 388: le réglage met à jour la case");
+        axisStyle.setSettings(axisSettings);
 
         int applied = 0;
         QObject::connect(&menus, &TSA::UI::DisplayMenus::profileApplied, [&](const QString&) { ++applied; });

@@ -122,24 +122,25 @@ void SelectionSynchronizer::connectTree()
 // 2. Sélection depuis le viewport (clic souris)
 void SelectionSynchronizer::connectViewport()
 {
-    // Élément filaire : axes locaux affichés ; autres : masqués. Manipulateur détaché dans tous les cas.
-    auto element = [this](bool localAxes) {
-        m_view->detachManipulator();
-        if (localAxes) m_view->updateSelectedElementLocalAxes();
-        else m_view->clearSelectedElementLocalAxes();
-    };
+    // Manipulateur détaché pour tout élément.
+    auto element = [this]() { m_view->detachManipulator(); };
+    connect(m_selection, &SelectionManager::selectionChanged, this, [this]() {
+        if (m_view->localAxesTooMany())
+            emit statusMessage(tr("Repères locaux masqués : plus de %1 éléments sélectionnés").arg(TSA::Viewer::kMaxElementAxisFrames));
+    });
+
 
     connect(m_selection, &SelectionManager::nodeSelected, this, [this, element](int id) {
         m_tree->selectNodeItem(id);
         m_view->highlightNode(id);
-        element(false);
+        element();
         m_properties->showNodeProperties(id);
         emit statusMessage(tr("Selected Node %1").arg(id));
     });
     connect(m_selection, &SelectionManager::beamSelected, this, [this, element](int id) {
         m_tree->selectBeamItem(id);
         m_view->highlightBeam(id);
-        element(true);
+        element();
         m_properties->showBeamProperties(id);
         emit beamActivated(id);
         emit statusMessage(tr("Selected Beam %1").arg(id));
@@ -147,42 +148,42 @@ void SelectionSynchronizer::connectViewport()
     connect(m_selection, &SelectionManager::columnSelected, this, [this, element](int id) {
         m_tree->selectColumnItem(id);
         m_view->highlightColumn(id);
-        element(true);
+        element();
         m_properties->showColumnProperties(id);
         emit statusMessage(tr("Selected Column %1").arg(id));
     });
     connect(m_selection, &SelectionManager::slabSelected, this, [this, element](int id) {
         m_tree->selectSlabItem(id);
         m_view->highlightSlab(id);
-        element(false);
+        element();
         m_properties->showSlabProperties(id);
         emit statusMessage(tr("Selected Slab %1").arg(id));
     });
     connect(m_selection, &SelectionManager::wallSelected, this, [this, element](int id) {
         m_tree->selectWallItem(id);
         m_view->highlightWall(id);
-        element(false);
+        element();
         m_properties->showWallProperties(id);
         emit statusMessage(tr("Selected Wall %1").arg(id));
     });
     connect(m_selection, &SelectionManager::foundationSelected, this, [this, element](int id) {
         m_tree->selectFoundationItem(id);
         m_view->highlightFoundation(id);
-        element(false);
+        element();
         m_properties->showFoundationProperties(id);
         emit statusMessage(tr("Selected Foundation %1").arg(id));
     });
     connect(m_selection, &SelectionManager::trussMemberSelected, this, [this, element](int id) {
         m_tree->selectTrussMemberItem(id);
         m_view->highlightTrussMember(id);
-        element(true);
+        element();
         m_properties->showTrussMemberProperties(id);
         emit statusMessage(tr("Selected Truss Member %1").arg(id));
     });
     connect(m_selection, &SelectionManager::cableSelected, this, [this, element](int id) {
         m_tree->selectCableItem(id);
         m_view->highlightCable(id);
-        element(true);
+        element();
         m_properties->showCableProperties(id);
         emit cableActivated(id);
         emit statusMessage(tr("Câble sélectionné C%1").arg(id));
@@ -194,19 +195,19 @@ void SelectionSynchronizer::connectViewport()
         emit statusMessage(tr("Plan de travail WP%1 sélectionné (Manipulateur 3D interactif)").arg(id));
     });
     connect(m_selection, &SelectionManager::nodalLoadSelected, this, [this, element](int id) {
-        element(false);
+        element();
         m_properties->showNodalLoadProperties(id);
         emit statusMessage(tr("Charge Nodale #%1 sélectionnée").arg(id));
     });
     connect(m_selection, &SelectionManager::memberLoadSelected, this, [this, element](int id) {
-        element(false);
+        element();
         m_properties->showMemberLoadProperties(id);
         emit statusMessage(tr("Charge sur Barre #%1 sélectionnée").arg(id));
     });
     connect(m_selection, &SelectionManager::selectionCleared, this, [this, element]() {
         m_tree->clearTreeSelection();
         m_view->clearHighlight();
-        element(false);
+        element();
         m_properties->clearProperties();
         emit statusMessage(tr("Ready"));
     });
@@ -216,7 +217,7 @@ void SelectionSynchronizer::connectViewport()
     // des milliers d'items dans l'arbre serait coûteux et illisible).
     connect(m_selection, &SelectionManager::multipleSelectionChanged, this, [this, element]() {
         m_tree->clearTreeSelection();
-        element(false);
+        element();
         m_view->highlightSelection();
         const int id = m_selection->primarySelectedId();
         switch (m_selection->currentSelectionType())
