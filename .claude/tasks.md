@@ -15,7 +15,8 @@ Last Updated: 2026-10-31. Uniquement des tâches réellement identifiées (voir 
 
 ## Audit technique du 2026-10-31 (docs/audit/2026-10-31/TSA_REMEDIATION_ROADMAP.md)
 - [x] Audit, 9 rapports, preuves ; branche docs/audit-technique-2026-10-31, commit a7b163e, fusion dans main demandée le 2026-10-31.
-- [ ] Phase 0, mise en sécurité : BUG-148, BUG-151 à BUG-153 (refus ou correction). BUG-149 et BUG-150 clos par retrait
+- [x] BUG-148 corrigé (forces d'encastrement condensées, tests 538-540, OpenSees réintégré au banc).
+- [ ] Phase 0, mise en sécurité : BUG-151 à BUG-153 (refus ou correction). BUG-149 et BUG-150 clos par retrait
       (ADR-025) ; cas de rotules et portiques aléatoires ajoutés au banc pour les moteurs qui les passent.
 - [ ] Revoir les résultats déjà produits avec rotules + charge non uniforme, ou en non linéaire.
 - [ ] Non exécuté : TSALab_TestSuite, tsalab_science_tests S6 (non concluant), fem3dpost_tests (délai), ASan, Linux, Debug, interface réelle.

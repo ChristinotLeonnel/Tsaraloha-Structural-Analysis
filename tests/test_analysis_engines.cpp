@@ -999,6 +999,171 @@ bool runSuite_Engines(int& passed)
         std::cout << "[PASS] Test 536: Fenêtre Analysis sans option non linéaire" << std::endl;
         ++passed;
     }
+
+    // -------------------------------------------------------------------------
+    // TESTS 538-540 : BUG-148, barre à rotule sous charge non uniforme. Toutes les charges d'une barre à rotule passent par
+    // des forces d'encastrement condensées. Avant correction (OpenSees) : moment non nul à la rotule et moment d'encastrement
+    // faux, sans alerte (13,33 au lieu de 26,67 kN·m), équilibre global pourtant vérifié.
+    // -------------------------------------------------------------------------
+    {
+        const double L = 6.0, w = 12.0;
+        auto fixedEnd = [&](const BeamElementLoad& load) {
+            std::array<double, 12> f {};
+            load.fixedEndForces(L, f.data(), f.data() + 6);
+            return f;
+        };
+        auto uniform = [&](double wy, double wz, BeamElementLoad::Releases releases) {
+            BeamElementLoad q;
+            q.wy = wy;
+            q.wz = wz;
+            q.releases = releases;
+            return fixedEnd(q);
+        };
+        // [Fx Fy Fz Mx My Mz] en i (0-5) puis en j (6-11), forces exercées sur la barre.
+        const double m8 = w * L * L / 8.0, v5 = 5.0 * w * L / 8.0, v3 = 3.0 * w * L / 8.0;
+        auto f = uniform(w, 0.0, { false, false, false, true });
+        TEST_CHECK(approxEqual(f[5], -m8, 1e-9) && std::abs(f[11]) < 1e-12 && approxEqual(f[1], -v5, 1e-9) && approxEqual(f[7], -v3, 1e-9),
+                   "Test 538: rotule Mz en j : encastrée-appuyée (wL²/8, 5wL/8, 3wL/8)");
+        f = uniform(w, 0.0, { false, true, false, false });
+        TEST_CHECK(std::abs(f[5]) < 1e-12 && approxEqual(f[11], m8, 1e-9) && approxEqual(f[1], -v3, 1e-9) && approxEqual(f[7], -v5, 1e-9),
+                   "Test 538: rotule Mz en i");
+        f = uniform(0.0, w, { false, false, true, false });
+        TEST_CHECK(approxEqual(f[4], m8, 1e-9) && std::abs(f[10]) < 1e-12 && approxEqual(f[2], -v5, 1e-9) && approxEqual(f[8], -v3, 1e-9),
+                   "Test 538: rotule My en j (autre convention de signe du plan x-z)");
+        f = uniform(0.0, w, { true, false, false, false });
+        TEST_CHECK(std::abs(f[4]) < 1e-12 && approxEqual(f[10], -m8, 1e-9) && approxEqual(f[2], -v3, 1e-9) && approxEqual(f[8], -v5, 1e-9),
+                   "Test 538: rotule My en i");
+        f = uniform(w, 0.0, { false, true, false, true });
+        TEST_CHECK(std::abs(f[5]) < 1e-12 && std::abs(f[11]) < 1e-12 && approxEqual(f[1], -w * L / 2.0, 1e-9) && approxEqual(f[7], -w * L / 2.0, 1e-9),
+                   "Test 538: deux rotules : réactions de la poutre sur deux appuis");
+
+        // Toute combinaison de rotules, toute famille de charges : moment nul à chaque rotule, charge statiquement inchangée.
+        BeamElementLoad kinds[4];
+        kinds[0].wx = 2.0, kinds[0].wy = -3.0, kinds[0].wz = 5.0;
+        kinds[1] = kinds[0], kinds[1].kind = BeamElementLoad::Kind::Point, kinds[1].relativePosition = 0.3;
+        kinds[2] = kinds[0], kinds[2].kind = BeamElementLoad::Kind::Linear, kinds[2].relativePosition = 0.2, kinds[2].relativeEnd = 0.9;
+        kinds[2].wxB = -1.0, kinds[2].wyB = 4.0, kinds[2].wzB = 7.0;
+        kinds[3] = kinds[2], kinds[3].kind = BeamElementLoad::Kind::Couple;
+        for (auto load : kinds)
+        {
+            double gI[6], gJ[6];
+            load.fixedFixedEndForces(L, gI, gJ);
+            f = fixedEnd(load);
+            TEST_CHECK(std::equal(f.begin(), f.begin() + 6, gI) && std::equal(f.begin() + 6, f.end(), gJ), "Test 538: sans rotule, forces de la barre bi-encastrée, à l'identique");
+            for (int bits = 1; bits < 16; ++bits)
+            {
+                load.releases = { (bits & 1) != 0, (bits & 2) != 0, (bits & 4) != 0, (bits & 8) != 0 };
+                TEST_CHECK(load.nodalEquivalent(), "Test 538: charge d'une barre à rotule transmise aux nœuds");
+                f = fixedEnd(load);
+                TEST_CHECK((!load.releases.myI || std::abs(f[4]) < 1e-12) && (!load.releases.mzI || std::abs(f[5]) < 1e-12) &&
+                               (!load.releases.myJ || std::abs(f[10]) < 1e-12) && (!load.releases.mzJ || std::abs(f[11]) < 1e-12),
+                           "Test 538: moment nul à chaque rotule (rotules " << bits << ")");
+                for (int k = 0; k < 4; ++k)
+                    TEST_CHECK(std::abs(f[k] + f[k + 6] - gI[k] - gJ[k]) < 1e-9, "Test 538: résultante inchangée (composante " << k << ", rotules " << bits << ")");
+                TEST_CHECK(std::abs(f[5] + f[11] + L * f[7] - (gI[5] + gJ[5] + L * gJ[1])) < 1e-9 &&
+                               std::abs(f[4] + f[10] - L * f[8] - (gI[4] + gJ[4] - L * gJ[2])) < 1e-9,
+                           "Test 538: moment résultant inchangé (rotules " << bits << ")");
+            }
+        }
+        std::cout << "[PASS] Test 538: Forces d'encastrement condensées sur les rotules" << std::endl;
+        ++passed;
+    }
+    {
+        // Barre de 6 m entre deux nœuds encastrés : les rotules de la barre font seules le schéma statique, solutions analytiques.
+        const double L = 6.0;
+        struct Hinged
+        {
+            AnalysisRunResult run;
+            int i = 0, j = 0;
+            std::string script;
+        };
+        auto solve = [&](const EndRelease& atI, const EndRelease& atJ, auto&& addLoads) {
+            Model m;
+            GridManager gm;
+            Hinged h;
+            h.i = m.addNode(0, 0, 0);
+            h.j = m.addNode(L, 0, 0);
+            m.getNode(h.i)->setSupport(SupportDefinition::fixed());
+            m.getNode(h.j)->setSupport(SupportDefinition::fixed());
+            const int bar = m.addBar(h.i, h.j, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+            m.getBeam(bar)->setStartRelease(atI);
+            m.getBeam(bar)->setEndRelease(atJ);
+            const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+            addLoads(m.loadManager(), bar, lc);
+            AnalysisEngineRegistry reg;
+            registerBuiltInEngines(reg);
+            AnalysisManager mgr(reg);
+            AnalysisContext c;
+            c.engineId = "opensees";
+            c.common.includeSelfWeight = false;
+            h.run = mgr.run(c, mgr.prepare(m, &gm, c));
+            AnalysisParameters p;
+            p.type = AnalysisType::LinearStatic;
+            p.includeSelfWeight = false;
+            h.script = OpenSeesAnalysisBuilder::buildScript(CalculationSnapshot::capture(m), p);
+            return h;
+        };
+        auto barOf = [](const Hinged& h) -> const ElementResults& { return h.run.results.allElementResults().begin()->second; };
+        auto atMid = [&](const ElementResults& r) {
+            for (const auto& s : r.intermediateStations)
+                if (std::abs(s.position - 0.5 * L) < 1e-9) return s;
+            return StationForces {};
+        };
+
+        EndRelease none, hingeY, hingeZ;
+        hingeY.my = true;
+        hingeZ.mz = true;
+        const double P = 30.0, a = 2.0, b = L - a;
+        const double mFixed = P * a * b * (L + a) / (2.0 * L * L);            // encastrement en j, rotule en i
+        const double rHinge = P * b * b * (3.0 * L - b) / (2.0 * L * L * L);  // réaction côté rotule
+
+        auto pointZ = [&](auto& lm, int bar, int lc) { lm.addMemberLoad(MemberLoad::pointOnMember(bar, lc, -P, a, LoadDirection::GlobalZ, "P")); };
+        const Hinged y = solve(hingeY, none, pointZ);
+        TEST_CHECK(y.run.success, "Test 539: calcul, rotule My (" << y.run.message << ")");
+        TEST_CHECK(std::abs(barOf(y).startForces.My) < 1e-9, "Test 539: moment nul à la rotule (" << barOf(y).startForces.My << ")");
+        TEST_CHECK(approxEqual(std::abs(barOf(y).endForces.My), mFixed, 1e-9), "Test 539: moment d'encastrement Pab(L+a)/2L² (" << barOf(y).endForces.My << ", attendu " << mFixed << ")");
+        TEST_CHECK(approxEqual(y.run.results.nodeReaction(y.i).rz, rHinge, 1e-9) && approxEqual(y.run.results.nodeReaction(y.j).rz, P - rHinge, 1e-9),
+                   "Test 539: réactions (" << y.run.results.nodeReaction(y.i).rz << ", " << y.run.results.nodeReaction(y.j).rz << ")");
+        TEST_CHECK(y.script.find("eleLoad") == std::string::npos && y.script.find("barre à rotule") != std::string::npos,
+                   "Test 539: aucun eleLoad sur une barre à rotule, forces nodales condensées");
+
+        const Hinged z = solve(hingeZ, none, [&](auto& lm, int bar, int lc) {
+            lm.addMemberLoad(MemberLoad::pointOnMember(bar, lc, -P, a, LoadDirection::GlobalY, "P"));
+        });
+        TEST_CHECK(z.run.success, "Test 539: calcul, rotule Mz (" << z.run.message << ")");
+        TEST_CHECK(std::abs(barOf(z).startForces.Mz) < 1e-9 && approxEqual(std::abs(barOf(z).endForces.Mz), mFixed, 1e-9),
+                   "Test 539: plan x-y, moment nul à la rotule, encastrement (" << barOf(z).startForces.Mz << ", " << barOf(z).endForces.Mz << ")");
+        TEST_CHECK(approxEqual(z.run.results.nodeReaction(z.i).ry, rHinge, 1e-9), "Test 539: plan x-y, réaction (" << z.run.results.nodeReaction(z.i).ry << ")");
+
+        // Deux rotules, charge trapézoïdale à intensité constante sur toute la barre : M = qL²/8 à mi-portée, moments d'extrémité nuls.
+        const double q = 12.0;
+        const Hinged pin = solve(hingeY, hingeY, [&](auto& lm, int bar, int lc) {
+            lm.addMemberLoad(MemberLoad::trapezoidal(bar, lc, -q, -q, 0.0, L, LoadDirection::GlobalZ, "q"));
+        });
+        TEST_CHECK(pin.run.success, "Test 539: calcul, deux rotules (" << pin.run.message << ")");
+        TEST_CHECK(std::abs(barOf(pin).startForces.My) < 1e-9 && std::abs(barOf(pin).endForces.My) < 1e-9, "Test 539: deux rotules : moments d'extrémité nuls");
+        TEST_CHECK(approxEqual(std::abs(atMid(barOf(pin)).My), q * L * L / 8.0, 1e-9), "Test 539: deux rotules : qL²/8 à mi-portée (" << atMid(barOf(pin)).My << ")");
+
+        // Uniforme partielle sur [1, 3] m, rotule en j : M_i = ∫ q·x·(L−x)·(2L−x)/2L² dx, fixe à l'encastrement i.
+        const double qp = 10.0, c1 = 1.0, c2 = 3.0;
+        auto primitive = [&](double x) { return L * L * x * x - L * x * x * x + x * x * x * x / 4.0; };
+        const double mPartial = qp * (primitive(c2) - primitive(c1)) / (2.0 * L * L);
+        const Hinged partial = solve(none, hingeY, [&](auto& lm, int bar, int lc) {
+            lm.addMemberLoad(MemberLoad::trapezoidal(bar, lc, -qp, -qp, c1, c2, LoadDirection::GlobalZ, "q partielle"));
+        });
+        TEST_CHECK(partial.run.success, "Test 539: calcul, charge partielle (" << partial.run.message << ")");
+        TEST_CHECK(std::abs(barOf(partial).endForces.My) < 1e-9 && approxEqual(std::abs(barOf(partial).startForces.My), mPartial, 1e-9),
+                   "Test 539: charge partielle, rotule en j (" << barOf(partial).startForces.My << ", attendu " << mPartial << ")");
+
+        // Témoin sans rotule : chemin eleLoad d'origine, bi-encastrée.
+        const Hinged plain = solve(none, none, pointZ);
+        TEST_CHECK(plain.run.success && plain.script.find("-beamPoint") != std::string::npos && plain.script.find("barre à rotule") == std::string::npos,
+                   "Test 539: barre sans rotule : eleLoad -beamPoint conservé");
+        TEST_CHECK(approxEqual(std::abs(barOf(plain).startForces.My), P * a * b * b / (L * L), 1e-9) && approxEqual(std::abs(barOf(plain).endForces.My), P * a * a * b / (L * L), 1e-9),
+                   "Test 539: barre sans rotule : Pab²/L², Pa²b/L²");
+        std::cout << "[PASS] Test 539: OpenSees : barre à rotule sous charge ponctuelle, trapézoïdale ou partielle, deux plans" << std::endl;
+        ++passed;
+    }
 #ifdef TSA_HAS_FEM3D
     // -------------------------------------------------------------------------
     // TESTS 476-480 : moteur EF 3D Fem3D (moteur secondaire, logique de secours explicite)
@@ -1230,6 +1395,92 @@ bool runSuite_Engines(int& passed)
         }
         TEST_CHECK(scale > 1.0 && worst <= 1e-6 * scale, "Test 530: efforts aux stations identiques (écart " << worst << " / " << scale << ")");
         std::cout << "[PASS] Test 530: Fem3D calcule les charges ponctuelles, partielles et les moments répartis (= OpenSees)" << std::endl;
+        ++passed;
+    }
+    {
+        // TEST 540 : BUG-148 — portique spatial à rotules (deux plans, une ou deux extrémités) sous toutes les familles de
+        // charges, moments répartis et poids propre compris : OpenSees = Fem3D (condensation indépendante), déplacements,
+        // réactions et efforts aux stations ; moment nul à chaque rotule.
+        Model m;
+        GridManager gm;
+        Frames f = buildFrames(m, true);
+        EndRelease hingeY, hingeZ, hingeYZ;
+        hingeY.my = true;
+        hingeZ.mz = true;
+        hingeYZ.my = hingeYZ.mz = true;
+        m.getBeam(f.members['A'][1])->setStartRelease(hingeY);
+        m.getBeam(f.members['B'][1])->setEndRelease(hingeZ);
+        m.getBeam(f.members['C'][1])->setStartRelease(hingeY);
+        m.getBeam(f.members['C'][1])->setEndRelease(hingeY);
+        m.getBeam(f.transverse[0])->setEndRelease(hingeYZ);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        auto& lm = m.loadManager();
+        lm.addMemberLoad(MemberLoad::pointOnMember(f.members['A'][1], lc, -25.0, 2.0, LoadDirection::GlobalZ, "P"));
+        lm.addMemberLoad(MemberLoad::pointOnMember(f.members['B'][1], lc, 8.0, 0.35, LoadDirection::LocalY, LoadCoordSystem::Local, true, "P local"));
+        lm.addMemberLoad(MemberLoad::trapezoidal(f.members['A'][1], lc, -9.0, -9.0, 1.0, 4.5, LoadDirection::GlobalZ, "uniforme partielle"));
+        lm.addMemberLoad(MemberLoad::trapezoidal(f.members['C'][1], lc, -3.0, -12.0, 0.2, 0.7, LoadDirection::GlobalZ, LoadCoordSystem::Global, true,
+                                                 "trapèze partiel"));
+        lm.addMemberLoad(MemberLoad::uniform(0, f.transverse[0], lc, 6.0));
+        lm.addMemberLoad(MemberLoad(0, f.transverse[0], lc, LoadType::MemberMoment, 2.0, 2.0, LoadDirection::LocalX,
+                                    MemberLoad::coordSystemFor(LoadDirection::LocalX), 0.0, 0.0));   // torsion répartie
+        lm.addMemberLoad(MemberLoad(0, f.members['B'][1], lc, LoadType::MemberMoment, 1.5, 4.0, LoadDirection::LocalZ,
+                                    MemberLoad::coordSystemFor(LoadDirection::LocalZ), 1.0, 5.0));   // couple de flexion partiel, plan de la rotule
+        lm.addMemberLoad(MemberLoad(0, f.members['A'][1], lc, LoadType::MemberMoment, 2.5, 1.0, LoadDirection::LocalY,
+                                    MemberLoad::coordSystemFor(LoadDirection::LocalY), 0.5, 3.5));   // couple de flexion partiel, plan de la rotule
+
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        AnalysisManager mgr(reg);
+        AnalysisContext c;
+        c.engineId = "fem3d";
+        c.loadCaseIds = { lc };
+        c.common.includeSelfWeight = true;
+        c.engineSettings["fem3d"] = QJsonObject { { "mode", "compare" }, { "fallback", "none" } };
+        const auto prep = mgr.prepare(m, &gm, c);
+        const auto errors = prep.validation.texts(ValidationSeverity::Error);
+        TEST_CHECK(prep.canRun(), "Test 540: préparation (" << (errors.empty() ? std::string() : errors.front()) << ")");
+        const auto run = mgr.run(c, prep);
+        TEST_CHECK(run.success && run.results.executionMetadata().solverEngine == "Fem3D", "Test 540: calcul Fem3D (" << run.message << ")");
+        TEST_CHECK(run.message.find(" 0 hors tolérance") != std::string::npos, "Test 540: Fem3D = OpenSees (" << run.message << ")");
+
+        AnalysisContext os = c;
+        os.engineId = "opensees";
+        const auto osRun = mgr.run(os, mgr.prepare(m, &gm, os));
+        TEST_CHECK(osRun.success, "Test 540: calcul OpenSees (" << osRun.message << ")");
+        double worst = 0.0, scale = 0.0;
+        for (const auto& [key, e] : osRun.results.allElementResults())
+        {
+            const ElementResults* a = run.results.getElementResults(key);
+            TEST_CHECK(a && a->intermediateStations.size() == e.intermediateStations.size(), "Test 540: mêmes stations");
+            for (std::size_t i = 0; i < e.intermediateStations.size(); ++i)
+            {
+                const auto& x = a->intermediateStations[i];
+                const auto& y = e.intermediateStations[i];
+                for (const auto& [u, v] : { std::pair { x.My, y.My }, std::pair { x.Mz, y.Mz }, std::pair { x.Vy, y.Vy }, std::pair { x.Vz, y.Vz },
+                                            std::pair { x.N, y.N }, std::pair { x.Mx, y.Mx } })
+                {
+                    worst = std::max(worst, std::abs(u - v));
+                    scale = std::max(scale, std::abs(v));
+                }
+            }
+        }
+        TEST_CHECK(scale > 1.0 && worst <= 1e-6 * scale, "Test 540: efforts aux stations identiques (écart " << worst << " / " << scale << ")");
+
+        // Moment nul à chaque rotule, côté OpenSees (ce qu'aucun contrôle d'équilibre ne voit).
+        int hinges = 0;
+        for (const auto& [key, e] : osRun.results.allElementResults())
+        {
+            if (e.kind != StructuralElementKind::Beam) continue;
+            const auto* beam = m.getBeam(e.elementId);
+            if (!beam) continue;
+            const auto si = beam->startRelease(), sj = beam->endRelease();
+            TEST_CHECK((!si.my || std::abs(e.startForces.My) < 1e-9) && (!si.mz || std::abs(e.startForces.Mz) < 1e-9) &&
+                           (!sj.my || std::abs(e.endForces.My) < 1e-9) && (!sj.mz || std::abs(e.endForces.Mz) < 1e-9),
+                       "Test 540: moment nul à la rotule de la barre " << e.elementId);
+            hinges += si.my + si.mz + sj.my + sj.mz;
+        }
+        TEST_CHECK(hinges == 6, "Test 540: 6 rotules contrôlées (" << hinges << ")");
+        std::cout << "[PASS] Test 540: Portique à rotules, toutes charges : OpenSees = Fem3D, moment nul aux rotules" << std::endl;
         ++passed;
     }
     {

@@ -3,7 +3,7 @@
  "id": "RDM-14d",
  "title": "Deux rotules, ponctuelle excentrée",
  "category": "rdm",
- "description": "Deux rotules, ponctuelle excentrée. Cas « PIN2-point » de l'audit technique du 2026-10-31 (docs/audit/2026-10-31/preuves). OpenSees exclu tant que BUG-148 est ouvert (rotule + charge ponctuelle, trapézoïdale ou triangulaire : efforts faux sans alerte).",
+ "description": "Deux rotules, ponctuelle excentrée. Cas « PIN2-point » de l'audit technique du 2026-10-31 (docs/audit/2026-10-31/preuves). Non-régression de BUG-148 : charge non uniforme sur barre à rotule, OpenSees calcule ce cas par forces d'encastrement condensées.",
  "sources": [
   "RDM : poutre isostatique sur deux appuis"
  ],
@@ -16,6 +16,7 @@
   "stress": "kPa"
  },
  "engines": [
+  "opensees",
   "fem3d",
   "custom2d"
  ],

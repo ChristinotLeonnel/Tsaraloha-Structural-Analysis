@@ -7,6 +7,9 @@ demandées par l'utilisateur le 2026-10-31. Décision d'architecture : ADR-025 (
 > **TSA prend actuellement en charge l'analyse structurale linéaire. L'analyse non linéaire n'est pas disponible dans
 > cette version.**
 
+> **Mise à jour du 2026-10-31** : BUG-148 a été corrigé après ce rapport (voir [le registre](TSA_BUG_REGISTER.md)). Les mentions
+> ci-dessous décrivent l'état au moment du retrait du non linéaire.
+
 ## Résumé
 
 L'analyse non linéaire était réellement implémentée, uniquement dans le chemin OpenSees : 7 algorithmes itératifs,

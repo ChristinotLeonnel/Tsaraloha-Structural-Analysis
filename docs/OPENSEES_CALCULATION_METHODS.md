@@ -113,6 +113,15 @@ effet en statique linéaire) ont disparu avec la fonctionnalité : voir `docs/au
 - Intégration numérique Gauss-Legendre 4 points (exacte pour degrés 1–4)
 - Les forces équivalentes sont appliquées aux nœuds pour reconstituer la charge distribuée
 
+**Barre à rotule** (relâchement de moment `-releasey` / `-releasez`) : toutes les charges de la barre, poids propre compris,
+passent par des forces nodales équivalentes **condensées**, quel que soit leur type. Aucun `eleLoad` n'est écrit pour
+ces barres : `-beamPoint` d'OpenSees 3.8.0 ignore les relâchements (BUG-148).
+- Condensation statique de la barre prismatique d'Euler-Bernoulli, plan par plan : le moment d'encastrement de
+  l'extrémité relâchée s'annule et sa moitié se reporte sur l'autre extrémité si elle reste encastrée ; les efforts
+  tranchants rétablissent l'équilibre de la barre.
+- Aucun moment n'est transmis au nœud par une extrémité relâchée, et les efforts d'extrémité reconstruits y sont nuls.
+- Les déplacements nodaux restent exacts, et les stations sont obtenues par équilibre du tronçon, comme pour toute barre.
+
 ### 3.2 Charges Nodales
 
 | Type | Composantes | Repère |

@@ -1,0 +1,63 @@
+=== suites
+code 0
+Suites : 57 réussie(s), 0 en échec, 0 non exécutée(s) — rapport : C:\Users\TSARAL~1\AppData\Local\Temp\claude\d--T
+- Tests réussis : 547 ; en échec : 0 ; ignorés : 1
+=== harnais
+harnais code 0
+=== empreinte des exemples
+fichiers : 104 identiques, 0 différents, 0 absents d'un côté
+=== bancs
+official : 2097 réussie(s), 0 en échec, 0 non disponible(s)
+random : 12678 réussie(s), 0 en échec, 0 non disponible(s)
+hinge : 90 réussie(s), 0 en échec, 0 non disponible(s)
+more : 1188 réussie(s), 0 en échec, 3 non disponible(s)
+nl : 3 réussie(s), 0 en échec, 0 non disponible(s)
+units : 629 réussie(s), 583 en échec, 0 non disponible(s)
+=== comparaison des bancs (avant correction -> après)
+== official
+vérifications communes : 1682 ; valeurs identiques : 1590 ; statut identique : 1682 ; écart relatif max 2.76e-13 ('FEA-09', 'OpenSees', 'member:21:N:start', 218)
+seulement avant : 0 ; seulement après : 415
+cas seulement après : FEA-10, RDM-14a, RDM-14b, RDM-14c, RDM-14d, RDM-14e, RDM-14f, RDM-14g
+== random
+vérifications communes : 12678 ; valeurs identiques : 9715 ; statut identique : 10908 ; écart relatif max 6.79 ('RND-C088', 'OpenSees', 'member:52:N:start', 407)
+seulement avant : 0 ; seulement après : 0
+statut changé ('RND-C074', 'OpenSees', 'member:10:M:end', 256) ÉCHEC -> RÉUSSI
+statut changé ('RND-C074', 'OpenSees', 'member:10:M:start', 255) ÉCHEC -> RÉUSSI
+statut changé ('RND-C074', 'OpenSees', 'member:10:N:start', 257) ÉCHEC -> RÉUSSI
+statut changé ('RND-C074', 'OpenSees', 'member:11:M:end', 259) ÉCHEC -> RÉUSSI
+statut changé ('RND-C074', 'OpenSees', 'member:11:M:start', 258) ÉCHEC -> RÉUSSI
+statut changé ('RND-C074', 'OpenSees', 'member:11:N:start', 260) ÉCHEC -> RÉUSSI
+statut changé ('RND-C074', 'OpenSees', 'member:12:M:end', 262) ÉCHEC -> RÉUSSI
+statut changé ('RND-C074', 'OpenSees', 'member:12:M:start', 261) ÉCHEC -> RÉUSSI
+statut changé ('RND-C074', 'OpenSees', 'member:12:N:start', 263) ÉCHEC -> RÉUSSI
+statut changé ('RND-C074', 'OpenSees', 'member:13:M:end', 265) ÉCHEC -> RÉUSSI
+== hinge
+vérifications communes : 90 ; valeurs identiques : 64 ; statut identique : 69 ; écart relatif max 1 ('HINGE-02-point', 'OpenSees', 'member:1:M:end', 3)
+seulement avant : 0 ; seulement après : 0
+statut changé ('GERBER-02-trap', 'OpenSees', 'member:2:M:absmax', 4) ÉCHEC -> RÉUSSI
+statut changé ('GERBER-02-trap', 'OpenSees', 'member:2:M:start', 3) ÉCHEC -> RÉUSSI
+statut changé ('GERBER-02-trap', 'OpenSees', 'reaction:1:fz', 1) ÉCHEC -> RÉUSSI
+statut changé ('GERBER-02-trap', 'OpenSees', 'reaction:1:my', 2) ÉCHEC -> RÉUSSI
+statut changé ('GERBER-02-trap', 'OpenSees', 'reaction:3:fz', 0) ÉCHEC -> RÉUSSI
+statut changé ('HINGE-02-point', 'OpenSees', 'member:1:M:end', 3) ÉCHEC -> RÉUSSI
+statut changé ('HINGE-02-point', 'OpenSees', 'member:1:M:start', 2) ÉCHEC -> RÉUSSI
+statut changé ('HINGE-02-point', 'OpenSees', 'reaction:1:fz', 0) ÉCHEC -> RÉUSSI
+statut changé ('HINGE-02-point', 'OpenSees', 'reaction:2:fz', 1) ÉCHEC -> RÉUSSI
+statut changé ('HINGE-03-trap-constant', 'OpenSees', 'member:1:M:end', 3) ÉCHEC -> RÉUSSI
+== more
+vérifications communes : 1191 ; valeurs identiques : 1182 ; statut identique : 1184 ; écart relatif max 1 ('PIN2-point', 'OpenSees', 'member:1:M:end', 1)
+seulement avant : 0 ; seulement après : 0
+statut changé ('PIN2-point', 'OpenSees', 'member:1:M:absmax', 2) ÉCHEC -> RÉUSSI
+statut changé ('PIN2-point', 'OpenSees', 'member:1:M:end', 1) ÉCHEC -> RÉUSSI
+statut changé ('PIN2-point', 'OpenSees', 'member:1:M:start', 0) ÉCHEC -> RÉUSSI
+statut changé ('PIN2-point', 'OpenSees', 'reaction:1:fz', 3) ÉCHEC -> RÉUSSI
+statut changé ('PIN2-trap', 'OpenSees', 'member:1:M:absmax', 2) ÉCHEC -> RÉUSSI
+statut changé ('PIN2-trap', 'OpenSees', 'member:1:M:end', 1) ÉCHEC -> RÉUSSI
+statut changé ('PIN2-trap', 'OpenSees', 'member:1:M:start', 0) ÉCHEC -> RÉUSSI
+== nl
+vérifications communes : 3 ; valeurs identiques : 3 ; statut identique : 3 ; écart relatif max 0 
+seulement avant : 0 ; seulement après : 0
+== units
+vérifications communes : 1212 ; valeurs identiques : 898 ; statut identique : 1212 ; écart relatif max 9.76e-11 ('RND-B073-N', 'OpenSees', 'reaction:5:mx', 219)
+seulement avant : 0 ; seulement après : 0
+=== fin de validation

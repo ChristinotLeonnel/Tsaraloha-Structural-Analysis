@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-10-31 (analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-148 et BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
 
@@ -13,9 +13,12 @@ empêche ensuite les tests 458 à 463 de tourner en Debug. Correction : seuil d�
 Release seulement. Sans lien avec le retrait du non linéaire (code mesuré non modifié).
 
 ## BUG-148
-Status: OPEN (CRITICAL, reproduit) — OpenSees : rotule + charge ponctuelle, trapézoïdale ou partielle, efforts faux sans alerte
+Status: FIXED (2026-10-31, CRITICAL) — était : OpenSees : rotule + charge ponctuelle, trapézoïdale ou partielle, efforts faux sans alerte
 (M d'encastrement 13,33 au lieu de 26,67 kN·m). Forces d'encastrement bi-encastrées non condensées (OpenSeesAnalysisBuilder.cpp:824,
 OpenSeesResultsReader.cpp:380), -beamPoint sans correction de rotule. Fem3D et Custom2D justes. L'équilibre ne le détecte pas.
+Correction : toutes les charges d'une barre à rotule, poids propre compris, passent par des forces d'encastrement condensées
+(BeamElementLoad::fixedEndForces) ; aucun eleLoad sur ces barres ; chemin inchangé sans rotule. Preuve : 57/57 suites, 547 tests ; tests 538-540 ; portiques aléatoires 12 678/12 678 (1 770 échecs avant) ; rotules 90/90 (21 avant) ; cases-more 0 échec (7 avant, 3 PDELTA-LIN refusés) ; banc officiel 2 097/2 097, 39 cas ;
+empreinte des 9 exemples identique à l'octet (aucune rotule). Résultats antérieurs de barres à rotule sous charge non uniforme : à recalculer.
 
 ## BUG-149
 Status: CLOSED — fonctionnalité retirée (2026-10-31, ADR-025 ; défaut historique conservé). Était : OPEN (CRITICAL, reproduit) —
