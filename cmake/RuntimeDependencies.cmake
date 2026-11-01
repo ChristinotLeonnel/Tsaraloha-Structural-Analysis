@@ -1,6 +1,6 @@
 # Résolution des DLL réellement importées (mode script : cmake -P). Commun au déploiement de développement
 # (DeployDependencies.cmake) et au paquet distribuable (PackageTSA.cmake). Remplace l'ancienne copie de
-# toutes les DLL de 3rdparty-vc14-64 (Qt 5, VTK, Tcl/Tk, Doxygen… inutiles à TSA).
+# toutes les DLL de thirdparty/3rdparty-vc14-64 (Qt 5, VTK, Tcl/Tk, Doxygen… inutiles à TSA).
 #
 # tsa_runtime_search_dirs(<var> <source_dir> [<extra>...])
 #   Dossiers où chercher : SDK OpenCASCADE (OCCT_BIN_DIR s'il est défini), bin/ de chaque bibliothèque 3rdparty,
@@ -21,10 +21,15 @@ function(tsa_runtime_search_dirs out source_dir)
     if(OCCT_BIN_DIR)
         set(dirs "${OCCT_BIN_DIR}")
     else()
-        set(dirs "${source_dir}/opencascade-8.0.1-vc14-64/win64/vc14/bin")
+        set(dirs "${source_dir}/thirdparty/opencascade-8.0.1-vc14-64/win64/vc14/bin")
     endif()
-    # bin/ et bin/win64/ (ex. openvr_api.dll, importée par TKOpenGl).
-    file(GLOB tp LIST_DIRECTORIES true "${source_dir}/3rdparty-vc14-64/*/bin" "${source_dir}/3rdparty-vc14-64/*/bin/win64")
+    # bin/ et bin/win64/ (ex. openvr_api.dll, importée par TKOpenGl). thirdparty/3rdparty-vc14-64, ou l'ancien
+    # emplacement à la racine tant qu'il n'a pas pu être déplacé (SetupDependencies.cmake, tsa_migrate_legacy_layout).
+    set(tp_root "${source_dir}/thirdparty/3rdparty-vc14-64")
+    if(NOT IS_DIRECTORY "${tp_root}" AND IS_DIRECTORY "${source_dir}/3rdparty-vc14-64")
+        set(tp_root "${source_dir}/3rdparty-vc14-64")
+    endif()
+    file(GLOB tp LIST_DIRECTORIES true "${tp_root}/*/bin" "${tp_root}/*/bin/win64")
     foreach(d ${tp})
         # Qt 5.11 du SDK OCCT : jamais utilisé par TSA (Qt 6) ; exclu pour éviter toute confusion.
         if(NOT d MATCHES "qt5\\.")

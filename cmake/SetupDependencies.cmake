@@ -4,13 +4,16 @@
 # - versions prises en charge et validees (Qt, OCCT), rapport tsa-dependencies.txt ;
 # - tsa_find_qt() : choix automatique d'une installation Qt compatible (avant find_package(Qt6)) ;
 # - tsa_validate_dependencies() : controles apres find_package (chaine de compilation, melange, versions) ;
-# - telechargement Windows d'OpenCASCADE 8.0.1, des 3rdparty (FreeType, TBB, FreeImage…) et d'OpenSees.
+# - dependances absentes installees dans thirdparty/ (TSA_AUTO_DOWNLOAD_DEPS) : Windows, OpenCASCADE 8.0.1, ses
+#   3rdparty (FreeType, TBB, FreeImage…) et OpenSees ; Linux, toutes (Qt, OCCT, Gmsh, Eigen, OpenSees, IfcOpenShell)
+#   par install_dependencies.py (racine), appele depuis tsa_find_qt().
+# Versions, adresses et empreintes : cmake/dependencies.json (source unique, lue aussi par install_dependencies.py).
 # Gmsh et IfcOpenShell : cmake/Gmsh.cmake et cmake/IfcOpenShell.cmake (meme rapport).
 # =============================================================================
 
 cmake_minimum_required(VERSION 3.20)
 
-option(TSA_AUTO_DOWNLOAD_DEPS "Telecharger automatiquement OpenCASCADE, 3rdparty et OpenSees (Windows) s'ils sont absents" ON)
+option(TSA_AUTO_DOWNLOAD_DEPS "Installer automatiquement dans thirdparty/ les dependances absentes (Windows : OCCT, 3rdparty, OpenSees ; Linux : toutes, par install_dependencies.py)" ON)
 set(TSA_OCCT_VERSION "8.0.1" CACHE STRING "Version d'OpenCASCADE a utiliser")
 # OpenSees absent de thirdparty/OpenSees et du PATH : paquets conda-forge épinglés (TSA_OPENSEES_CONDA_PACKAGES), ou
 # archive officielle OpenSees3.8.0-x64.exe.zip déjà obtenue (le serveur officiel ne la publie plus depuis 2026-10, W-3),
@@ -19,8 +22,20 @@ set(TSA_OCCT_VERSION "8.0.1" CACHE STRING "Version d'OpenCASCADE a utiliser")
 set(TSA_OPENSEES_SHA256 "5E37A5A95C645E31C7700CE6EC5B08C178BAEDC83241F7CBE10EF10CF6A4FB41" CACHE STRING "Empreinte SHA-256 attendue de l'archive OpenSees")
 set(TSA_OPENSEES_ARCHIVE "" CACHE FILEPATH "Archive locale OpenSees3.8.0-x64.exe.zip (empreinte vérifiée)")
 
-# SDK partagés (OCCT, 3rdparty) : racine de la base commune TSA, aussi utilisée par TSALab.
+# SDK partagés (OCCT, 3rdparty…) : <racine de la base commune TSA>/thirdparty, aussi utilisée par TSALab.
 get_filename_component(TSA_DEPS_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+set(TSA_THIRDPARTY_DIR "${TSA_DEPS_ROOT}/thirdparty")
+
+# Manifeste des dépendances téléchargées (versions, adresses, SHA-256), partagé avec install_dependencies.py.
+file(READ "${CMAKE_CURRENT_LIST_DIR}/dependencies.json" TSA_DEPS_MANIFEST)
+# tsa_manifest_get(<var> <clé>...) : valeur du manifeste (chaîne vide si la clé n'existe pas).
+function(tsa_manifest_get out)
+    string(JSON _v ERROR_VARIABLE _err GET "${TSA_DEPS_MANIFEST}" ${ARGN})
+    if(_err)
+        set(_v "")
+    endif()
+    set(${out} "${_v}" PARENT_SCOPE)
+endfunction()
 
 # -----------------------------------------------------------------------------
 # Versions prises en charge (justification : docs/DEPENDENCIES.md). « Validée » = compilée ET testée ; une version
@@ -146,22 +161,23 @@ endfunction()
 # Un Qt6_DIR resté en cache vers une installation disparue (ex. 6.11.2 désinstallé) est remplacé, et les autres
 # Qt6*_DIR du cache qui pointent hors de la Qt retenue sont effacés (aucun mélange de deux installations).
 function(tsa_find_qt)
+    # Première fonction appelée par chaque produit (TSA, TSALab) : sous Linux, les dépendances absentes sont
+    # installées ici, avant toute recherche de Qt ou d'OCCT.
+    tsa_provision_unix_dependencies()
+
     if(WIN32)
         set(_roots "C:/Qt" "$ENV{SystemDrive}/Qt" "$ENV{USERPROFILE}/Qt")
     else()
         set(_roots "$ENV{HOME}/Qt")
     endif()
     set(TSA_QT_SEARCH_ROOTS "${_roots}" CACHE STRING "Dossiers d'installation de Qt explorés (<racine>/6.*/<kit>)")
+    # Qt installée par install_dependencies.py, toujours explorée (y compris avec un TSA_QT_SEARCH_ROOTS en cache).
+    set(_all_roots "${TSA_THIRDPARTY_DIR}/Qt" ${TSA_QT_SEARCH_ROOTS})
 
     if(Qt6_DIR AND EXISTS "${Qt6_DIR}/Qt6Config.cmake")
         return()
     endif()
-    set(_prefixes ${CMAKE_PREFIX_PATH})
-    set(_env_prefixes "$ENV{CMAKE_PREFIX_PATH}")
-    if(NOT WIN32)
-        string(REPLACE ":" ";" _env_prefixes "${_env_prefixes}")
-    endif()
-    list(APPEND _prefixes ${_env_prefixes})
+    _tsa_prefix_paths(_prefixes)
     foreach(_p ${_prefixes})
         if(EXISTS "${_p}/lib/cmake/Qt6/Qt6Config.cmake")
             return()
@@ -178,7 +194,7 @@ function(tsa_find_qt)
             list(APPEND _candidates "${_v}")
         endif()
     endforeach()
-    foreach(_r ${TSA_QT_SEARCH_ROOTS})
+    foreach(_r ${_all_roots})
         file(GLOB _kits LIST_DIRECTORIES true "${_r}/6.*/*")
         foreach(_k ${_kits})
             if(EXISTS "${_k}/lib/cmake/Qt6/Qt6Config.cmake")
@@ -215,7 +231,8 @@ function(tsa_find_qt)
             message(FATAL_ERROR
                 "Qt 6 (≥ ${TSA_QT_MIN_VERSION}, ${_want}) introuvable.\n"
                 "Installations examinées :\n  ${_seen_text}\n"
-                "Solutions : installer Qt 6 pour ${_want} (kit msvc20xx_64 avec Visual Studio) dans C:/Qt, ou indiquer "
+                "Solutions : « python install_dependencies.py --only qt » (Qt dans thirdparty/Qt), installer Qt 6 "
+                "pour ${_want} (kit msvc20xx_64 avec Visual Studio) dans C:/Qt, ou indiquer "
                 "-DQt6_DIR=<Qt>/<version>/<kit>/lib/cmake/Qt6, -DCMAKE_PREFIX_PATH=<Qt>/<version>/<kit>, "
                 "-DTSA_QT_SEARCH_ROOTS=<dossier>.")
         endif()
@@ -329,10 +346,16 @@ function(tsa_validate_dependencies)
     tsa_dependency_record(OpenCASCADE "${_st}" "${OpenCASCADE_VERSION}" "${OpenCASCADE_DIR}" "${_note}")
 
     # --- OpenSees : exécutable externe facultatif, cherché comme OpenSeesManager (sans le lancer) ---
+    # thirdparty/OpenSees peut contenir les deux plateformes (copie de travail partagée) : seuls les noms de celle-ci.
     set(_ops "")
-    foreach(_exe bin/OpenSees.exe bin/gOpenSees.exe OpenSees.exe gOpenSees.exe bin/OpenSees OpenSees)
-        if(NOT _ops AND EXISTS "${TSA_DEPS_ROOT}/thirdparty/OpenSees/${_exe}")
-            set(_ops "${TSA_DEPS_ROOT}/thirdparty/OpenSees/${_exe}")
+    if(WIN32)
+        set(_ops_names bin/OpenSees.exe bin/gOpenSees.exe OpenSees.exe gOpenSees.exe)
+    else()
+        set(_ops_names bin/OpenSees OpenSees)
+    endif()
+    foreach(_exe ${_ops_names})
+        if(NOT _ops AND EXISTS "${TSA_THIRDPARTY_DIR}/OpenSees/${_exe}")
+            set(_ops "${TSA_THIRDPARTY_DIR}/OpenSees/${_exe}")
         endif()
     endforeach()
     if(NOT _ops)
@@ -345,7 +368,8 @@ function(tsa_validate_dependencies)
         tsa_dependency_record(OpenSees "TROUVÉE" "" "${_ops}" "version contrôlée au lancement par OpenSeesManager")
     else()
         tsa_dependency_record(OpenSees "ABSENTE" "" "" "facultative : calculs OpenSees indisponibles, suites qui en dépendent NON EXÉCUTÉES —"
-                              "placer OpenSees.exe dans thirdparty/OpenSees/bin, dans le PATH, ou -DTSA_OPENSEES_ARCHIVE=<zip officiel>")
+                              "python install_dependencies.py --only opensees, OpenSees dans le PATH, ou (Windows) "
+                              "-DTSA_OPENSEES_ARCHIVE=<zip officiel>")
     endif()
 
     # --- Outils de déploiement Windows ---
@@ -359,20 +383,254 @@ function(tsa_validate_dependencies)
     endif()
 endfunction()
 
-function(setup_external_dependencies)
-    # Les SDK téléchargés ici (opencascade-*-vc14-64, 3rdparty-vc14-64) sont des binaires MSVC : hors Windows,
-    # OCCT est trouvé par find_package (OpenCASCADE_DIR ou CMAKE_PREFIX_PATH, voir docs/LINUX_BUILD.md).
+# CMAKE_PREFIX_PATH (variable et environnement ; séparateur « : » sous Unix).
+function(_tsa_prefix_paths out)
+    set(_prefixes ${CMAKE_PREFIX_PATH})
+    set(_env_prefixes "$ENV{CMAKE_PREFIX_PATH}")
     if(NOT WIN32)
-        if(NOT OpenCASCADE_DIR)
+        string(REPLACE ":" ";" _env_prefixes "${_env_prefixes}")
+    endif()
+    list(APPEND _prefixes ${_env_prefixes})
+    set(${out} ${_prefixes} PARENT_SCOPE)
+endfunction()
+
+# Préfixe d'une dépendance Unix contenant <marker> : thirdparty/<dossier>, variable d'environnement <env_var>, puis la
+# version la plus récente de ~/opt/<motif> (mêmes emplacements que scripts/linux/common.sh et install_dependencies.py).
+function(_tsa_unix_find out marker thirdparty_name env_var opt_glob)
+    set(_c "")
+    if(thirdparty_name)
+        list(APPEND _c "${TSA_THIRDPARTY_DIR}/${thirdparty_name}")
+    endif()
+    if(env_var AND DEFINED ENV{${env_var}})
+        list(APPEND _c "$ENV{${env_var}}")
+    endif()
+    if(opt_glob)
+        file(GLOB _g LIST_DIRECTORIES true "$ENV{HOME}/opt/${opt_glob}")
+        list(SORT _g COMPARE NATURAL ORDER DESCENDING)
+        list(APPEND _c ${_g})
+    endif()
+    foreach(_p ${_c})
+        if(EXISTS "${_p}/${marker}")
+            set(${out} "${_p}" PARENT_SCOPE)
+            return()
+        endif()
+    endforeach()
+    set(${out} "" PARENT_SCOPE)
+endfunction()
+
+# Linux (et autres Unix) : chaque dépendance absente de ses emplacements connus est installée dans thirdparty/ par
+# install_dependencies.py (téléchargements vérifiés par SHA-256 ; OCCT et IfcOpenShell compilés depuis les sources).
+# Les paquets système (compilateur, en-têtes d'OCCT, bibliothèques X11) exigent sudo : jamais installés depuis CMake,
+# seulement signalés (« python3 install_dependencies.py » les installe). Désactivation : -DTSA_AUTO_DOWNLOAD_DEPS=OFF ;
+# une dépendance facultative se désactive aussi par -DTSA_WITH_GMSH=OFF ou -DTSA_WITH_IFCOPENSHELL=OFF.
+function(tsa_provision_unix_dependencies)
+    if(WIN32 OR NOT TSA_AUTO_DOWNLOAD_DEPS)
+        return()
+    endif()
+    _tsa_prefix_paths(_prefixes)
+    set(_need "")
+
+    # Qt 6 (kit ELF ≥ minimum) : Qt6_DIR, CMAKE_PREFIX_PATH, <racine>/6.*/<kit>. Le Qt du système n'est pas retenu
+    # (souvent < 6.9 : traductions désactivées, version non validée).
+    set(_have FALSE)
+    if(Qt6_DIR AND EXISTS "${Qt6_DIR}/Qt6Config.cmake")
+        set(_have TRUE)
+    endif()
+    foreach(_p ${_prefixes})
+        if(EXISTS "${_p}/lib/cmake/Qt6/Qt6Config.cmake")
+            set(_have TRUE)
+        endif()
+    endforeach()
+    if(NOT _have)
+        file(GLOB _kits LIST_DIRECTORIES true "${TSA_THIRDPARTY_DIR}/Qt/6.*/*" "$ENV{HOME}/Qt/6.*/*")
+        foreach(_r ${TSA_QT_SEARCH_ROOTS})
+            file(GLOB _more LIST_DIRECTORIES true "${_r}/6.*/*")
+            list(APPEND _kits ${_more})
+        endforeach()
+        foreach(_k ${_kits})
+            tsa_qt_kit_info("${_k}" _ver _tc)
+            if(_tc STREQUAL "ELF" AND _ver AND NOT _ver VERSION_LESS TSA_QT_MIN_VERSION)
+                set(_have TRUE)
+            endif()
+        endforeach()
+    endif()
+    if(NOT _have)
+        list(APPEND _need qt)
+    endif()
+
+    # OpenCASCADE 8
+    if(NOT (OpenCASCADE_DIR AND EXISTS "${OpenCASCADE_DIR}/OpenCASCADEConfig.cmake"))
+        set(_have FALSE)
+        foreach(_p ${_prefixes})
+            if(EXISTS "${_p}/lib/cmake/opencascade/OpenCASCADEConfig.cmake")
+                set(_have TRUE)
+            endif()
+        endforeach()
+        tsa_manifest_get(_dir occt linux install_dir)
+        _tsa_unix_find(_found "lib/cmake/opencascade/OpenCASCADEConfig.cmake" "${_dir}" TSA_OCCT_DIR "occt-8.*")
+        if(NOT _have AND NOT _found)
+            list(APPEND _need occt)
+        endif()
+    endif()
+
+    # Gmsh (facultatif)
+    if(NOT (DEFINED TSA_WITH_GMSH AND NOT TSA_WITH_GMSH) AND NOT (TSA_GMSH_SDK AND EXISTS "${TSA_GMSH_SDK}/include/gmsh.h"))
+        tsa_manifest_get(_dir gmsh linux dir)
+        _tsa_unix_find(_found "include/gmsh.h" "${_dir}" TSA_GMSH_SDK "gmsh-*-Linux64-sdk")
+        if(NOT _found)
+            list(APPEND _need gmsh)
+        endif()
+    endif()
+
+    # Eigen (en-têtes du moteur fem3d, si le dépôt voisin 3DDesplacement est présent)
+    tsa_manifest_get(_dir eigen dir)
+    if(EXISTS "${TSA_DEPS_ROOT}/../3DDesplacement/CMakeLists.txt"
+       AND NOT EXISTS "${TSA_THIRDPARTY_DIR}/${_dir}/include/eigen3/Eigen/Core")
+        list(APPEND _need eigen)
+    endif()
+
+    # OpenSees (facultatif, exécutable externe)
+    if(NOT EXISTS "${TSA_THIRDPARTY_DIR}/OpenSees/bin/OpenSees")
+        find_program(TSA_OPENSEES_IN_PATH NAMES OpenSees gOpenSees)
+        if(NOT TSA_OPENSEES_IN_PATH)
+            list(APPEND _need opensees)
+        endif()
+    endif()
+
+    # IfcOpenShell (facultatif ; compilé contre l'OCCT retenu, avec DataExchange)
+    if(NOT (DEFINED TSA_WITH_IFCOPENSHELL AND NOT TSA_WITH_IFCOPENSHELL)
+       AND NOT (TSA_IFCOPENSHELL_ROOT AND EXISTS "${TSA_IFCOPENSHELL_ROOT}/lib/cmake/IfcOpenShell/IfcOpenShellConfig.cmake"))
+        tsa_manifest_get(_dir ifcopenshell linux_dir)
+        _tsa_unix_find(_found "lib/cmake/IfcOpenShell/IfcOpenShellConfig.cmake" "${_dir}" TSA_IFCOPENSHELL_ROOT "ifcopenshell-*")
+        if(NOT _found)
+            list(APPEND _need ifcopenshell)
+        endif()
+    endif()
+
+    if(NOT _need)
+        return()
+    endif()
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(NOT Python3_FOUND)
+        message(FATAL_ERROR "Dépendances absentes (${_need}) et Python 3 introuvable : installer python3, ou installer "
+                            "les dépendances à la main (docs/LINUX_BUILD.md), ou -DTSA_AUTO_DOWNLOAD_DEPS=OFF.")
+    endif()
+    string(REPLACE ";" "," _only "${_need}")
+    string(REPLACE ";" ", " _need_text "${_need}")
+    message(STATUS "==================================================================")
+    message(STATUS "[${PROJECT_NAME}] Dépendances absentes : ${_need_text}")
+    message(STATUS "[${PROJECT_NAME}] Installation dans ${TSA_THIRDPARTY_DIR} par install_dependencies.py")
+    message(STATUS "[${PROJECT_NAME}] (OCCT et IfcOpenShell sont compilés : de 15 min à plus d'une heure la première fois ;")
+    message(STATUS "[${PROJECT_NAME}]  désactiver : -DTSA_AUTO_DOWNLOAD_DEPS=OFF)")
+    message(STATUS "==================================================================")
+    execute_process(COMMAND "${Python3_EXECUTABLE}" "${TSA_DEPS_ROOT}/install_dependencies.py" --from-cmake
+                            --cmake "${CMAKE_COMMAND}" --only "${_only}"
+                    RESULT_VARIABLE _r)
+    if(NOT _r EQUAL 0)
+        message(FATAL_ERROR "install_dependencies.py n'a pas pu installer une dépendance obligatoire (détails ci-dessus). "
+                            "Paquets système manquants : lancer « python3 install_dependencies.py » (sudo apt-get).")
+    endif()
+endfunction()
+
+# Ancienne disposition (avant 2026-11) : SDK OCCT et 3rdparty à la racine du dépôt. Déplacés dans thirdparty/
+# (même volume : simple renommage), comme le fait install_dependencies.py ; le chemin d'OCCT inscrit dans la
+# construction Windows d'IfcOpenShell (IfcOpenShellTargets.cmake, chemin absolu) est mis à jour.
+function(tsa_migrate_legacy_layout)
+    tsa_manifest_get(_sdk occt windows sdk_dir)
+    tsa_manifest_get(_tp occt windows thirdparty_dir)
+    set(_dirs "${_sdk}" "${_tp}" "opencascade-${TSA_OCCT_VERSION}-vc14-64")
+    list(REMOVE_DUPLICATES _dirs)
+    foreach(_d ${_dirs})
+        if(NOT _d OR NOT IS_DIRECTORY "${TSA_DEPS_ROOT}/${_d}")
+            continue()
+        endif()
+        if(EXISTS "${TSA_THIRDPARTY_DIR}/${_d}")
+            message(WARNING "${TSA_DEPS_ROOT}/${_d} n'est plus utilisé (remplacé par thirdparty/${_d}) : le supprimer à la main.")
+            continue()
+        endif()
+        message(STATUS "[${PROJECT_NAME}] Déplacement de ${_d} dans thirdparty/ (nouvelle disposition)")
+        file(MAKE_DIRECTORY "${TSA_THIRDPARTY_DIR}")
+        execute_process(COMMAND "${CMAKE_COMMAND}" -E rename "${TSA_DEPS_ROOT}/${_d}" "${TSA_THIRDPARTY_DIR}/${_d}"
+                        RESULT_VARIABLE _r)
+        if(NOT _r EQUAL 0)
+            # Dossier verrouillé (fenêtre de l'Explorateur, indexation, antivirus…) : l'ancien emplacement reste
+            # utilisé pour cette configuration (setup_external_dependencies, RuntimeDependencies.cmake).
+            message(WARNING "Déplacement impossible de ${TSA_DEPS_ROOT}/${_d} vers thirdparty/ (dossier utilisé par "
+                            "un autre programme) : ancien emplacement conservé pour cette fois. Fermer ce qui "
+                            "l'utilise, puis relancer CMake ou « python install_dependencies.py ».")
+        endif()
+    endforeach()
+    tsa_manifest_get(_ifc ifcopenshell windows_dir)
+    set(_targets "${TSA_THIRDPARTY_DIR}/${_ifc}/lib/cmake/IfcOpenShell/IfcOpenShellTargets.cmake")
+    if(_sdk AND EXISTS "${_targets}" AND EXISTS "${TSA_THIRDPARTY_DIR}/${_sdk}/cmake/OpenCASCADEConfig.cmake")
+        file(READ "${_targets}" _text)
+        string(REPLACE "${TSA_DEPS_ROOT}/${_sdk}" "${TSA_THIRDPARTY_DIR}/${_sdk}" _fixed "${_text}")
+        if(NOT _fixed STREQUAL _text)
+            file(WRITE "${_targets}" "${_fixed}")
+            message(STATUS "[${PROJECT_NAME}] Chemin d'OCCT mis à jour dans ${_targets}")
+        endif()
+    endif()
+endfunction()
+
+# Téléchargement d'un SDK Windows d'OCCT : empreinte du manifeste exigée quand la version est celle du manifeste.
+function(_tsa_download_occt_archive url dest key)
+    tsa_manifest_get(_mver occt version)
+    set(_hash_args "")
+    if(TSA_OCCT_VERSION STREQUAL _mver)
+        tsa_manifest_get(_sha occt windows ${key} sha256)
+        set(_hash_args EXPECTED_HASH "SHA256=${_sha}")
+    else()
+        message(WARNING "OpenCASCADE ${TSA_OCCT_VERSION} ≠ ${_mver} (cmake/dependencies.json) : archive non vérifiée.")
+    endif()
+    message(STATUS "[${PROJECT_NAME}] Telechargement de ${url} ...")
+    file(DOWNLOAD "${url}" "${dest}" SHOW_PROGRESS STATUS _st LOG _log TLS_VERIFY ON ${_hash_args})
+    list(GET _st 0 _code)
+    list(GET _st 1 _msg)
+    if(NOT _code EQUAL 0)
+        file(REMOVE "${dest}")
+        message(FATAL_ERROR "Echec du telechargement de ${url} : ${_msg}\n${_log}")
+    endif()
+endfunction()
+
+function(setup_external_dependencies)
+    # Linux : OCCT installé par install_dependencies.py (tsa_find_qt) ou trouvé dans CMAKE_PREFIX_PATH, TSA_OCCT_DIR,
+    # ~/opt/occt-8.* (docs/LINUX_BUILD.md). Un CMAKE_PREFIX_PATH qui contient un OCCT l'emporte (find_package).
+    if(NOT WIN32)
+        if(OpenCASCADE_DIR AND EXISTS "${OpenCASCADE_DIR}/OpenCASCADEConfig.cmake")
+            return()
+        endif()
+        _tsa_prefix_paths(_prefixes)
+        foreach(_p ${_prefixes})
+            if(EXISTS "${_p}/lib/cmake/opencascade/OpenCASCADEConfig.cmake")
+                message(STATUS "OpenCASCADE : CMAKE_PREFIX_PATH (${_p})")
+                return()
+            endif()
+        endforeach()
+        tsa_manifest_get(_dir occt linux install_dir)
+        _tsa_unix_find(_found "lib/cmake/opencascade/OpenCASCADEConfig.cmake" "${_dir}" TSA_OCCT_DIR "occt-8.*")
+        if(_found)
+            set(OpenCASCADE_DIR "${_found}/lib/cmake/opencascade" CACHE PATH "Path to OpenCASCADE CMake config" FORCE)
+            message(STATUS "OpenCASCADE : ${_found}")
+        else()
             message(STATUS "OpenCASCADE : recherche par find_package (OpenCASCADE_DIR ou CMAKE_PREFIX_PATH)")
         endif()
         return()
     endif()
 
+    # Windows : SDK officiel MSVC (binaires) et ses 3rdparty dans thirdparty/.
+    tsa_migrate_legacy_layout()
     set(OCCT_FOLDER_NAME "opencascade-${TSA_OCCT_VERSION}-vc14-64")
-    set(LOCAL_OCCT_DIR "${TSA_DEPS_ROOT}/${OCCT_FOLDER_NAME}")
+    set(LOCAL_OCCT_DIR "${TSA_THIRDPARTY_DIR}/${OCCT_FOLDER_NAME}")
+    set(LOCAL_3RDPARTY_DIR "${TSA_THIRDPARTY_DIR}/3rdparty-vc14-64")
+    # Déplacement impossible (dossier verrouillé) : ancien emplacement à la racine, plutôt qu'un nouveau téléchargement.
+    if(NOT EXISTS "${LOCAL_OCCT_DIR}/cmake/OpenCASCADEConfig.cmake"
+       AND EXISTS "${TSA_DEPS_ROOT}/${OCCT_FOLDER_NAME}/cmake/OpenCASCADEConfig.cmake")
+        set(LOCAL_OCCT_DIR "${TSA_DEPS_ROOT}/${OCCT_FOLDER_NAME}")
+    endif()
+    if(NOT EXISTS "${LOCAL_3RDPARTY_DIR}" AND IS_DIRECTORY "${TSA_DEPS_ROOT}/3rdparty-vc14-64")
+        set(LOCAL_3RDPARTY_DIR "${TSA_DEPS_ROOT}/3rdparty-vc14-64")
+    endif()
     set(LOCAL_OCCT_CMAKE "${LOCAL_OCCT_DIR}/cmake")
-    set(LOCAL_3RDPARTY_DIR "${TSA_DEPS_ROOT}/3rdparty-vc14-64")
 
     # -------------------------------------------------------------------------
     # 1. Verification de la presence d'OpenCASCADE
@@ -389,13 +647,13 @@ function(setup_external_dependencies)
     endif()
 
     # -------------------------------------------------------------------------
-    # 2. Telechargement d'OpenCASCADE si absent
+    # 2. Telechargement d'OpenCASCADE si absent (empreinte SHA-256 du manifeste)
     # -------------------------------------------------------------------------
     if(NEED_OCCT_DOWNLOAD)
         if(NOT TSA_AUTO_DOWNLOAD_DEPS)
             message(FATAL_ERROR
                 "OpenCASCADE ${TSA_OCCT_VERSION} introuvable.\n"
-                "Veuillez definir -DOpenCASCADE_DIR=\"<chemin>/cmake\" ou "
+                "Veuillez definir -DOpenCASCADE_DIR=\"<chemin>/cmake\", lancer « python install_dependencies.py » ou "
                 "activer le telechargement automatique avec -DTSA_AUTO_DOWNLOAD_DEPS=ON."
             )
         endif()
@@ -412,20 +670,8 @@ function(setup_external_dependencies)
 
         file(MAKE_DIRECTORY "${DOWNLOAD_DIR}")
         file(MAKE_DIRECTORY "${EXTRACT_STAGE}")
-
-        message(STATUS "[${PROJECT_NAME}] Telechargement de ${OCCT_URL} ...")
-        file(DOWNLOAD
-            "${OCCT_URL}"
-            "${OUTER_ZIP}"
-            SHOW_PROGRESS
-            STATUS OCCT_DL_STATUS
-            LOG OCCT_DL_LOG
-        )
-        list(GET OCCT_DL_STATUS 0 OCCT_DL_CODE)
-        list(GET OCCT_DL_STATUS 1 OCCT_DL_MSG)
-        if(NOT OCCT_DL_CODE EQUAL 0)
-            message(FATAL_ERROR "Echec du telechargement d'OpenCASCADE : ${OCCT_DL_MSG}\n${OCCT_DL_LOG}")
-        endif()
+        file(MAKE_DIRECTORY "${TSA_THIRDPARTY_DIR}")
+        _tsa_download_occt_archive("${OCCT_URL}" "${OUTER_ZIP}" sdk)
 
         message(STATUS "[${PROJECT_NAME}] Extraction de l'archive principale...")
         file(ARCHIVE_EXTRACT INPUT "${OUTER_ZIP}" DESTINATION "${EXTRACT_STAGE}")
@@ -434,8 +680,8 @@ function(setup_external_dependencies)
         file(GLOB INNER_OCCT_ZIPS "${EXTRACT_STAGE}/*.zip")
         if(INNER_OCCT_ZIPS)
             list(GET INNER_OCCT_ZIPS 0 INNER_ZIP)
-            message(STATUS "[${PROJECT_NAME}] Decompression du package SDK vers ${TSA_DEPS_ROOT} ...")
-            file(ARCHIVE_EXTRACT INPUT "${INNER_ZIP}" DESTINATION "${TSA_DEPS_ROOT}")
+            message(STATUS "[${PROJECT_NAME}] Decompression du package SDK vers ${TSA_THIRDPARTY_DIR} ...")
+            file(ARCHIVE_EXTRACT INPUT "${INNER_ZIP}" DESTINATION "${TSA_THIRDPARTY_DIR}")
         else()
             execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory "${EXTRACT_STAGE}" "${LOCAL_OCCT_DIR}")
         endif()
@@ -452,7 +698,7 @@ function(setup_external_dependencies)
     endif()
 
     # -------------------------------------------------------------------------
-    # 3. Verification et telechargement des dependances 3rdparty
+    # 3. Verification et telechargement des dependances 3rdparty (empreinte SHA-256 du manifeste)
     # -------------------------------------------------------------------------
     if(NOT EXISTS "${LOCAL_3RDPARTY_DIR}")
         if(NOT TSA_AUTO_DOWNLOAD_DEPS)
@@ -475,20 +721,7 @@ function(setup_external_dependencies)
             file(MAKE_DIRECTORY "${DOWNLOAD_DIR}")
             file(MAKE_DIRECTORY "${EXTRACT_STAGE}")
             file(MAKE_DIRECTORY "${FINAL_STAGE}")
-
-            message(STATUS "[${PROJECT_NAME}] Telechargement de ${TP_URL} ...")
-            file(DOWNLOAD
-                "${TP_URL}"
-                "${OUTER_TP_ZIP}"
-                SHOW_PROGRESS
-                STATUS TP_DL_STATUS
-                LOG TP_DL_LOG
-            )
-            list(GET TP_DL_STATUS 0 TP_DL_CODE)
-            list(GET TP_DL_STATUS 1 TP_DL_MSG)
-            if(NOT TP_DL_CODE EQUAL 0)
-                message(FATAL_ERROR "Echec du telechargement des dependances 3rdparty : ${TP_DL_MSG}\n${TP_DL_LOG}")
-            endif()
+            _tsa_download_occt_archive("${TP_URL}" "${OUTER_TP_ZIP}" thirdparty)
 
             message(STATUS "[${PROJECT_NAME}] Extraction de l'archive 3rdparty...")
             file(ARCHIVE_EXTRACT INPUT "${OUTER_TP_ZIP}" DESTINATION "${EXTRACT_STAGE}")
@@ -520,7 +753,7 @@ function(setup_external_dependencies)
     # 4. OpenSees (executable externe, facultatif) si thirdparty/OpenSees n'en contient aucun
     # -------------------------------------------------------------------------
     if(TSA_AUTO_DOWNLOAD_DEPS)
-        tsa_download_opensees("${TSA_DEPS_ROOT}/thirdparty/OpenSees" "${CMAKE_BINARY_DIR}/_deps_download")
+        tsa_download_opensees("${TSA_THIRDPARTY_DIR}/OpenSees" "${CMAKE_BINARY_DIR}/_deps_download")
     endif()
 
 endfunction()
@@ -615,23 +848,26 @@ endfunction()
 # dumpbin /dependents ET exports transférés, établie les 2026-10-28 et 29 ; chargement et commande de contrôle vérifiés)
 # et la bibliothèque Tcl 8.6 de tcl86t.dll sont installés : <dest>/bin et <dest>/lib,
 # disposition attendue par OpenSeesManager (Tcl dans <bin>/../lib/tcl8.6). Runtime MSVC : celui de Windows / du paquet.
-# Entrées : « fichier|sha256|fichiers de Library/bin à installer (séparés par des virgules) ».
-set(TSA_OPENSEES_CONDA_PACKAGES
-    "opensees-3.8.0-py312hf1c2195_4|db2b4b8d4a48e871991036b82744834f3d4ef0ee288e53cf80c6230bf8cede43|OpenSees.exe"
-    "tk-8.6.13-h967ab96_4|f19618a3a82cc483dacf1c70a30367ee7b0c7e71b90f1f80e14feff44fbd3688|tcl86t.dll,zlib1.dll"
-    "hdf5-1.14.6-nompi_hae35d4c_110|54f5211e698a468fd74def162e277d834e956c5b24a9ba4f9cf6298209328475|hdf5.dll"
-    "libblas-3.9.0-43_h0adab6e_openblas|6299f79ab67ff5f5c0bd702bf14437c290747a3e00cd1ce1455b5800a8dab2f6|libblas.dll"
-    "liblapack-3.9.0-43_hd232482_openblas|6f19096892015cd1fcb4cdfbab443fe201dc89209cdf93c45544d07f393ff272|liblapack.dll"
-    # libblas.dll / liblapack.dll ne contiennent aucun code : leurs exports sont TRANSFÉRÉS à openblas.dll (invisible pour
-    # dumpbin /dependents ; sans lui, OpenSees.exe ne se charge pas : 0xC0000135, constaté le 2026-10-29).
-    "libopenblas-0.3.34-pthreads_h952cde7_2|138056f68cf8f92cb1830fe1ed950d70856cc840f5f4b2569f9e849cb109bf7e|openblas.dll"
-    "libaec-1.1.5-haf901d7_0|e54c08964262c73671d9e80e400333e59c617e0b454476ad68933c0c458156c8|szip.dll"
-    "libcurl-8.23.0-hdb0ef4a_0|d3088e1fd049fe0c1905ba6174e77279ddb4817739a204aaf4bd31d59d38ea6a|libcurl.dll"
-    "libzlib-1.3.2-hfd05255_3|0629c2cc0404d3bb29d6baa7b4ba62da80797015e86de050db81ea5a07050527|zlib.dll"
-    "openssl-3.5.9-hf411b9b_0|827e55e37cc3208f285ae435b13bd1f389d35728d3aa6974ee447c7086232cc5|libcrypto-3-x64.dll"
-    "libssh2-1.11.1-h734d217_1|1097b08429b4f53f5751a32c6d99a083d227ca7f7812c0b239eea124cec073a0|libssh2.dll"
-    "libpsl-0.23.1-h9b16d47_1|e53fe3b09f82b59b644264133d6d148ac31bb5451b7583cff55690bf038f2f62|psl-5.dll"
-    "icu-78.3-h5112557_2|75c549b55b673e15de8785a8e5dd85bca7eb612eee0ff4dc8d7bdaa15eacbdbb|icuuc78.dll,icudt78.dll")
+# Entrées construites depuis cmake/dependencies.json (opensees.windows.packages, source unique partagée avec
+# install_dependencies.py) : « fichier|sha256|fichiers de Library/bin à installer (séparés par des virgules) ».
+# libblas.dll / liblapack.dll ne contiennent aucun code : leurs exports sont TRANSFÉRÉS à openblas.dll (invisible pour
+# dumpbin /dependents ; sans lui, OpenSees.exe ne se charge pas : 0xC0000135, constaté le 2026-10-29).
+set(TSA_OPENSEES_CONDA_PACKAGES "")
+string(JSON _tsa_n LENGTH "${TSA_DEPS_MANIFEST}" opensees windows packages)
+math(EXPR _tsa_last "${_tsa_n} - 1")
+foreach(_tsa_i RANGE ${_tsa_last})
+    string(JSON _tsa_file GET "${TSA_DEPS_MANIFEST}" opensees windows packages ${_tsa_i} file)
+    string(JSON _tsa_sha GET "${TSA_DEPS_MANIFEST}" opensees windows packages ${_tsa_i} sha256)
+    string(JSON _tsa_nf LENGTH "${TSA_DEPS_MANIFEST}" opensees windows packages ${_tsa_i} files)
+    math(EXPR _tsa_lf "${_tsa_nf} - 1")
+    set(_tsa_files "")
+    foreach(_tsa_j RANGE ${_tsa_lf})
+        string(JSON _tsa_f GET "${TSA_DEPS_MANIFEST}" opensees windows packages ${_tsa_i} files ${_tsa_j})
+        list(APPEND _tsa_files "${_tsa_f}")
+    endforeach()
+    string(REPLACE ";" "," _tsa_files "${_tsa_files}")
+    list(APPEND TSA_OPENSEES_CONDA_PACKAGES "${_tsa_file}|${_tsa_sha}|${_tsa_files}")
+endforeach()
 
 # Télécharge, vérifie et assemble dans <stage>/OpenSees, puis copie dans <dest> seulement si tout a réussi.
 function(tsa_install_opensees_condaforge dest stage out_problem)
@@ -685,7 +921,7 @@ function(tsa_install_opensees_condaforge dest stage out_problem)
     file(WRITE "${_root}/SOURCE.txt"
          "OpenSees 3.8.0 (licence UC, docs/THIRD_PARTY_LICENSES.md), compilé par conda-forge depuis "
          "https://github.com/OpenSees/OpenSees/archive/refs/tags/v3.8.0.tar.gz (recette conda-forge/opensees-feedstock).\n"
-         "Paquets (cmake/SetupDependencies.cmake, TSA_OPENSEES_CONDA_PACKAGES) :\n")
+         "Paquets (cmake/dependencies.json, opensees.windows) :\n")
     foreach(_entry ${TSA_OPENSEES_CONDA_PACKAGES})
         file(APPEND "${_root}/SOURCE.txt" "  ${_entry}\n")
     endforeach()

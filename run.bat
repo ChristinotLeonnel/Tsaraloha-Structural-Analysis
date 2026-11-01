@@ -55,8 +55,11 @@ if defined QT_DIR if not exist "%QT_DIR%\bin\Qt6Core.dll" if not exist "%QT_DIR%
 if not defined QT_DIR (
     for /f "usebackq delims=" %%Q in (`powershell -NoProfile -NoLogo -Command "Get-ChildItem 'C:\Qt' -Directory -Filter '6.*' -ErrorAction SilentlyContinue | Sort-Object { try { [version]$_.Name } catch { [version]'0.0' } } -Descending | ForEach-Object { Get-ChildItem $_.FullName -Directory -Filter 'msvc*_64' } | Where-Object { Test-Path (Join-Path $_.FullName 'bin\Qt6Core.dll') } | Select-Object -First 1 -ExpandProperty FullName"`) do set "QT_DIR=%%Q"
 )
-if not defined OCCT_DIR set "OCCT_DIR=%TSA_DIR%opencascade-8.0.1-vc14-64"
-set "TP_DIR=%TSA_DIR%3rdparty-vc14-64"
+if not defined OCCT_DIR set "OCCT_DIR=%TSA_DIR%thirdparty\opencascade-8.0.1-vc14-64"
+set "TP_DIR=%TSA_DIR%thirdparty\3rdparty-vc14-64"
+:: Ancien emplacement (racine du depot) tant que le dossier n'a pas ete deplace dans thirdparty\
+if not exist "%OCCT_DIR%" if exist "%TSA_DIR%opencascade-8.0.1-vc14-64" set "OCCT_DIR=%TSA_DIR%opencascade-8.0.1-vc14-64"
+if not exist "%TP_DIR%" if exist "%TSA_DIR%3rdparty-vc14-64" set "TP_DIR=%TSA_DIR%3rdparty-vc14-64"
 
 if not defined QT_DIR (
     echo [AVERTISSEMENT] Build non deploye et aucune Qt 6 MSVC trouvee ^(CMakeCache.txt, C:\Qt^) : TSA risque de ne pas demarrer.

@@ -13,7 +13,7 @@ utilisateurs (commandes).
 | Vue | `OccView` (QWidget, contexte OpenGL natif d'OCCT créé au premier affichage) : caméra, cube de vue, grille, plan de travail, accrochage, sélection du modèle (`SelectionManager`), coupe (`Graphic3d_ClipPlane`) |
 | Données Gmsh | `GmshMeshEngine` → `FeMesh` (nœuds, éléments, groupes) → `MeshProject` (chunk MESH du `.tsa`) |
 | Affichage précédent | `MeshOverlay` : un tableau de segments (arêtes de coins), sans faces, sans sélection, sans étiquettes, sans résultats |
-| VTK | `3rdparty-vc14-64/vtk-9.4.1-x64` présent mais compilé **sans Qt** (ni `vtkGUISupportQt` ni `QVTKOpenGLNativeWidget`) |
+| VTK | `thirdparty/3rdparty-vc14-64/vtk-9.4.1-x64` présent mais compilé **sans Qt** (ni `vtkGUISupportQt` ni `QVTKOpenGLNativeWidget`) |
 | Modules OCCT disponibles | `TKMeshVS.dll` (MeshVS : visualisation de maillages) livré avec le SDK, non encore lié |
 | Déploiement Windows | dépendances résolues par la table d'import (`RuntimeDependencies.cmake`), `windeployqt`, `verify_package.py` |
 

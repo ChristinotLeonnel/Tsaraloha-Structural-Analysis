@@ -3,6 +3,20 @@
 Vérifié sur Ubuntu 24.04 LTS (x86_64), GCC 13.3, CMake 3.28, Ninja 1.11, Qt 6.12.0 (installateur Qt, `gcc_64`),
 OpenCASCADE 8.0.1 compilé depuis les sources. La compilation Windows (presets `ninja-*`, `windows-x64-*`) est inchangée.
 
+## 0. Tout installer en une fois
+
+```bash
+python3 install_dependencies.py          # paquets apt (sudo), Qt 6.12.0, OCCT 8.0.1 compilé, Gmsh, Eigen, OpenSees, IfcOpenShell
+python3 install_dependencies.py --list   # état, rien n'est modifié
+bash scripts/linux/configure.sh release  # lance aussi le script (TSA_NO_AUTO_DEPS=1 pour l'éviter)
+```
+Tout est installé dans `thirdparty/` (`docs/DEPENDENCIES.md` § 6), versions et empreintes dans
+`cmake/dependencies.json`. Sans le script, `cmake --preset linux-release` installe lui-même les dépendances absentes
+(sauf les paquets système, qui exigent sudo) ; désactivation : `-DTSA_AUTO_DOWNLOAD_DEPS=OFF`. Durée de la première
+installation : compilation d'OCCT (~15 à 30 min) et d'IfcOpenShell (long, `-j 4`). Les sections suivantes décrivent
+les procédures manuelles équivalentes, toujours reconnues (`~/Qt`, `~/opt`, variables `TSA_*`).
+**Non vérifié sous Linux à ce jour** (script écrit et essayé sous Windows le 2026-11-01).
+
 ## 1. Dépendances
 
 | Dépendance | Version | Source |
@@ -14,8 +28,10 @@ OpenCASCADE 8.0.1 compilé depuis les sources. La compilation Windows (presets `
 | Plugin X11 de Qt (lancement de l'interface) | — | `sudo apt install libxcb-cursor0` |
 | Dépôts voisins | — | `../TSALab` (obligatoire : cœur scientifique), `../3DDesplacement` (moteur fem3d, facultatif ; Eigen dans `thirdparty/eigen-3.4.1`) |
 
-Les dossiers `opencascade-*-vc14-64/`, `3rdparty-vc14-64/` et `thirdparty/` contiennent des binaires **MSVC** :
-ils ne sont jamais utilisés sous Linux (seul Eigen, en-têtes seuls, sert au moteur fem3d).
+Dans `thirdparty/`, les dossiers Windows (`opencascade-*-vc14-64/`, `3rdparty-vc14-64/`, `boost-1.92.0`,
+`ifcopenshell-0.9.0post1`, `gmsh-*-Windows64-sdk`, `OpenSees/bin/*.exe`) contiennent des binaires **MSVC** jamais
+utilisés sous Linux ; les dossiers Linux ont des noms distincts (`docs/DEPENDENCIES.md` § 6). Eigen (en-têtes) sert
+aux deux.
 
 Facultatives (TSA se construit sans, et le signale) ; installées hors du dépôt, dans `~/opt` :
 - **OpenSees 3.8.0** : aucun exécutable Linux publié ; compilation vérifiée (§7). Sans lui : moteur OpenSees

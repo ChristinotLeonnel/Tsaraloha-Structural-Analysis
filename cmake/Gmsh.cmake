@@ -14,12 +14,21 @@
 #
 # Résultat : cible importée TSA::Gmsh (si disponible), variables TSA_GMSH_DLL, TSA_GMSH_LICENSE_DIR.
 
+# SDK de la plateforme dans thirdparty/ (install_dependencies.py, cmake/dependencies.json) : les deux peuvent coexister
+# dans une copie de travail partagée entre Windows et Linux.
 if(WIN32)
     set(_gmsh_default_sdk "${TSA_ROOT}/thirdparty/gmsh-4.15.2-Windows64-sdk")
 else()
-    set(_gmsh_default_sdk "")   # thirdparty/ ne contient que le SDK Windows ; scripts/linux/configure.sh le renseigne
+    tsa_manifest_get(_gmsh_dir gmsh linux dir)
+    set(_gmsh_default_sdk "${TSA_ROOT}/thirdparty/${_gmsh_dir}")
+    if(NOT _gmsh_dir OR NOT EXISTS "${_gmsh_default_sdk}/include/gmsh.h")
+        set(_gmsh_default_sdk "")   # scripts/linux/configure.sh renseigne alors ~/opt/gmsh-*-Linux64-sdk
+    endif()
 endif()
 set(TSA_GMSH_SDK "${_gmsh_default_sdk}" CACHE PATH "SDK Gmsh (gmsh.info, Windows64-sdk ou Linux64-sdk)")
+if(NOT TSA_GMSH_SDK AND _gmsh_default_sdk)   # vide en cache (configuration antérieure à l'installation)
+    set(TSA_GMSH_SDK "${_gmsh_default_sdk}" CACHE PATH "SDK Gmsh (gmsh.info, Windows64-sdk ou Linux64-sdk)" FORCE)
+endif()
 option(TSA_WITH_GMSH "Maillage par Gmsh (SDK)" ON)
 option(TSA_PACKAGE_GMSH "Inclure la DLL Gmsh dans le paquet distribuable — licence GPL : voir docs/THIRD_PARTY_LICENSES.md" ON)
 

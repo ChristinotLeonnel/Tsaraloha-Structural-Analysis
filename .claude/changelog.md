@@ -2,6 +2,18 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — dépendances installées en une fois, disposition thirdparty/ (branche build/auto-dependencies, non commitée)
+
+- `install_dependencies.py` (racine) : Qt 6.12.0, OCCT 8.0.1 (SDK Windows ; compilé sous Linux), Gmsh 4.15.2, Eigen 3.4.1, OpenSees 3.8.0
+  (conda-forge win-64 et linux-64), IfcOpenShell (scripts existants), paquets apt (Linux) ; `--list`, `--only`, `--skip`, `--force`.
+- `cmake/dependencies.json` : manifeste unique (adresses, SHA-256), lu par le script et par `SetupDependencies.cmake` (liste OpenSees Windows,
+  empreintes des SDK OCCT Windows, désormais vérifiées).
+- Linux : `tsa_find_qt()` → `tsa_provision_unix_dependencies()` installe ce qui manque ; `configure.sh` lance le script ; `common.sh`,
+  `Gmsh.cmake`, `IfcOpenShell.cmake` cherchent d'abord dans `thirdparty/`.
+- OCCT et 3rdparty : `thirdparty/opencascade-8.0.1-vc14-64`, `thirdparty/3rdparty-vc14-64` (presets TSA et TSALab, déploiement, paquet,
+  run.bat, CI, scripts) ; ancien emplacement déplacé automatiquement, repli s'il est verrouillé.
+- Déplacement sur ce poste : REFUSÉ (Accès refusé, dossiers verrouillés par un processus non identifié) ; repli vérifié.
+
 ## 2026-10-31 — repères locaux, rotation de section et axes des charges (branche refactor/load-axes-section-rotation, fusionnée le 2026-11-01)
 
 - Repère local et γ alignés sur Robot Structural Analysis 2024 (mesures figées dans `tests/data/robot_rsa2024_reference.json`).

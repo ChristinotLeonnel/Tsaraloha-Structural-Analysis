@@ -10,7 +10,7 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "OpenCASCADE_DIR": "${sourceDir}/opencascade-8.0.1-vc14-64/cmake"
+        "OpenCASCADE_DIR": "${sourceDir}/thirdparty/opencascade-8.0.1-vc14-64/cmake"
       }
     },
     {
@@ -22,7 +22,7 @@
       "binaryDir": "${sourceDir}/build-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "OpenCASCADE_DIR": "${sourceDir}/opencascade-8.0.1-vc14-64/cmake"
+        "OpenCASCADE_DIR": "${sourceDir}/thirdparty/opencascade-8.0.1-vc14-64/cmake"
       }
     },
     {
@@ -42,7 +42,7 @@
       },
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "cl",
-        "OpenCASCADE_DIR": "${sourceDir}/opencascade-8.0.1-vc14-64/cmake"
+        "OpenCASCADE_DIR": "${sourceDir}/thirdparty/opencascade-8.0.1-vc14-64/cmake"
       }
     },
     {

@@ -5,6 +5,14 @@ revues depuis le 2026-10-07 : voir l'audit du 2026-10-31 (TSA_CODE_QUALITY_AUDIT
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
+## Dépendances installées en une fois, disposition thirdparty/ (2026-11-01, branche build/auto-dependencies, non commitée)
+Status: IMPLEMENTED (Windows vérifié) / UNKNOWN (Linux, jamais exécuté) — `install_dependencies.py` (racine) installe toutes les
+dépendances dans thirdparty/ d'après `cmake/dependencies.json` (SHA-256) ; sous Linux, CMake l'appelle pour ce qui manque
+(tsa_provision_unix_dependencies). OCCT et 3rdparty attendus dans thirdparty/ (déplacement automatique de l'ancien emplacement,
+repli s'il est verrouillé). Sur ce poste, le déplacement a été refusé (dossiers verrouillés) : OCCT encore à la racine, utilisé par repli.
+Vérifié (Windows, 2026-11-01) : build-ninja-release reconfigurée par le preset modifié et recompilée (311 étapes, 0 erreur, DLL déployées),
+60/60 suites réussies (bureau masqué) ; TSALab configuré (dossier neuf). Détail : docs/DEPENDENCIES.md § 6.
+
 ## Repères locaux, rotation de section et axes des charges (2026-10-31, branche refactor/load-axes-section-rotation, fusionnée dans main le 2026-11-01)
 Status: IMPLEMENTED — convention de Robot Structural Analysis 2024 mesurée par son API : barre verticale (écart horizontal / L < 1e-3)
 y = +Y à γ = 0 ; γ de la copie recalculé en rotation, symétrie, inversion (CopyTransform::barRotationImage). Charges : axes seuls

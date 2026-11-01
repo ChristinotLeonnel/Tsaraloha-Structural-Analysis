@@ -371,7 +371,7 @@ En C++, le mélange arbitraire d'ABI (Application Binary Interface) provoque des
 
 | Compilateur Sélectionné | Toolchain Qt Requise | Toolchain OCCT Requise |
 |---|---|---|
-| **MSVC** | `Qt 6 MSVC` (ex. `msvc2022_64`) | `OCCT MSVC` (`opencascade-8.0.1-vc14-64`) |
+| **MSVC** | `Qt 6 MSVC` (ex. `msvc2022_64`) | `OCCT MSVC` (`thirdparty/opencascade-8.0.1-vc14-64`) |
 | **MinGW** | `Qt 6 MinGW` (ex. `mingw_64`) | `OCCT MinGW` (non fourni : TSA n'est pas compilable avec MinGW sous Windows) |
 
 Si la version de Qt détectée ne correspond pas au compilateur sélectionné, le système stoppe immédiatement la configuration et affiche l'erreur explicite :
@@ -388,7 +388,7 @@ VTK n'est pas une dépendance de TSA (il fait seulement partie de l'archive 3rdp
 ### 10.4 Téléchargement Automatisé des Bibliothèques Tierces
 
 Grâce au module CMake [`cmake/SetupDependencies.cmake`](file:///e:/Book/Dev/TSA/cmake/SetupDependencies.cmake) :
-- Si `opencascade-8.0.1-vc14-64` ou `3rdparty-vc14-64` ne sont pas présents localement (ex. clone Git frais), CMake télécharge automatiquement les archives officielles de **OCCT 8.0.1** (~53 Mo) et **3rdparty** (~188 Mo) depuis GitHub Releases avec affichage de la progression en direct (`SHOW_PROGRESS`).
+- Si `thirdparty/opencascade-8.0.1-vc14-64` ou `thirdparty/3rdparty-vc14-64` ne sont pas présents localement (ex. clone Git frais), CMake télécharge automatiquement les archives officielles de **OCCT 8.0.1** (~53 Mo) et **3rdparty** (~188 Mo) depuis GitHub Releases, vérifiées par leur SHA-256 (`cmake/dependencies.json`). Toutes les dépendances (Windows et Linux) s'installent aussi en une fois par `python install_dependencies.py` (`docs/DEPENDENCIES.md` § 6).
 - Les archives imbriquées sont décompressées directement à la racine du projet et les fichiers d'archive temporaires sont purgés.
 - Si `thirdparty/OpenSees` ne contient aucun exécutable (`bin/OpenSees.exe` ou `bin/gOpenSees.exe`), CMake télécharge l'archive officielle Windows d'**OpenSees 3.8.0** (`TSA_OPENSEES_URL`) et ne l'installe que si son empreinte SHA-256 correspond (`TSA_OPENSEES_SHA256`, manifeste winget). Un échec (serveur indisponible, empreinte différente) n'émet qu'un avertissement : OpenSees est facultatif.
   **Depuis 2026-10, le serveur officiel ne publie plus cette archive (404, W-3)** : CMake installe désormais OpenSees
