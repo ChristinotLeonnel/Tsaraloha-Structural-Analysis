@@ -44,6 +44,19 @@ dépend donc jamais d'un chemin de compilation, même sur le poste qui l'a const
 
 ## 3. Produire le paquet
 
+En une commande (environnement MSVC chargé par le script, aucune invite « x64 Native Tools » nécessaire) :
+
+```powershell
+py -3 install_dependencies.py --package                  # preset ninja-release
+py -3 install_dependencies.py --package --with-opensees  # OpenSees inclus (licence : § 6)
+```
+
+Le script configure (`-DTSA_PACKAGE_OPENSEES=OFF`, ou `ON` avec `--with-opensees`), compile, construit
+`package_TSA`, lance `tools/verify_package.py`, écrit `dist/TSA-<version>-windows-x64-portable.zip` puis, si
+Inno Setup 6 est installé, l'installateur (§ 8). Un preset Debug est refusé (runtime de débogage non redistribuable).
+
+Étapes équivalentes, à la main (dans une invite « x64 Native Tools ») :
+
 ```powershell
 cmake --preset ninja-release
 cmake --build --preset ninja-release

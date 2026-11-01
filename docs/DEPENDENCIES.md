@@ -173,7 +173,9 @@ Statuts : VALIDÉE, NON VALIDÉE, TROUVÉE (outil sans plage de versions), ABSEN
 - **`install_dependencies.py`** (racine, Python ≥ 3.8, bibliothèque standard ; CMake extrait les archives 7z et zstd) :
   `--list` (état, rien n'est modifié), `--only`, `--skip`, `--force`, `--no-system-packages`, `--jobs`,
   `--configure [PRESET]` (ensuite `cmake --preset`, défaut `ninja-debug` / `linux-debug` ; sous Windows un preset
-  Ninja est lancé dans l'environnement de `vcvars64.bat`, trouvé par vswhere). Composants :
+  Ninja est lancé dans l'environnement de `vcvars64.bat`, trouvé par vswhere), `--build [PRESET]` (configuration puis
+  `cmake --build --preset` dans le même environnement ; `--jobs`, sinon `TSA_JOBS`, sinon 4 sous Windows, C3859). Sans
+  cet environnement, `cl.exe` ne trouve ni `<array>` ni `windows.h` (C1083). Composants :
   `system` (Linux, `sudo apt-get install` des paquets du manifeste), `tsalab` (dépôt voisin obligatoire, cherché sous
   les noms `tsalab.dirs` du manifeste — `../TSALab`, `../Tsaraloha-Structural-Analysis-Virtual-Laboratory` —, sinon
   `git clone` dans `../TSALab` ; `TSAProduct.cmake` cherche les mêmes noms et remplace un `TSALAB_ROOT_DIR` en cache

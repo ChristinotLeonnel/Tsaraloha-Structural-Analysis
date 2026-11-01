@@ -6,6 +6,9 @@ Usage (depuis n'importe quel dossier) :
     python3 install_dependencies.py                  # tout ce qui manque
     python3 install_dependencies.py --configure      # tout ce qui manque, puis cmake --preset (prêt à compiler)
     python3 install_dependencies.py --configure ninja-release   # idem avec un autre preset (CMakePresets.json)
+    python3 install_dependencies.py --build          # configuration puis compilation Debug (ninja-debug, MSVC chargé)
+    python3 install_dependencies.py --build ninja-release       # idem en Release (build-ninja-release)
+    python3 install_dependencies.py --package        # Windows : version distribuable (dossier, ZIP, installateur)
     python3 install_dependencies.py --list           # état de chaque dépendance, rien n'est modifié
     python3 install_dependencies.py --only qt,occt   # seulement ces composants
     python3 install_dependencies.py --skip ifcopenshell
@@ -899,38 +902,138 @@ def preset_generator(preset):
     return ""
 
 
-def configure(ctx, preset):
-    """cmake --preset <preset> ; sous Windows, un preset Ninja est lancé dans l'environnement de vcvars64.bat."""
-    if preset == "auto":
-        preset = "ninja-debug" if ctx.windows else "linux-debug"
-    generator = preset_generator(preset)
+def _run_cmake(ctx, cmake_args, generator):
+    """Lance CMake ; sous Windows, un générateur autre que Visual Studio (Ninja) a besoin de l'environnement MSVC
+    (INCLUDE, LIB, PATH de cl.exe) : CMake est alors lancé après vcvars64.bat. Renvoie le code de sortie."""
     cmake = ctx.cmake
     if not cmake:
         raise InstallError("CMake introuvable : l'installer (https://cmake.org, 3.20 ou plus) ou indiquer --cmake.")
+    if not ctx.windows:
+        return subprocess.call([cmake] + cmake_args, cwd=str(ROOT))
+    vcvars = find_vcvars64()
+    if not vcvars:
+        raise InstallError("Visual Studio avec les outils C++ introuvable : installer Visual Studio 2026 Community, "
+                           "charge de travail « Développement Desktop en C++ » (MSVC x64 + Windows SDK), puis "
+                           "relancer. Qt et OCCT de TSA sont des builds MSVC : MinGW ne convient pas.")
+    if "Visual Studio" in generator or (shutil.which("cl") and os.environ.get("INCLUDE")):
+        return subprocess.call([cmake] + cmake_args, cwd=str(ROOT))
+    line = f'"{vcvars}" >nul && "{cmake}" ' + " ".join(f'"{a}"' if " " in a else a for a in cmake_args)
+    info(f"  $ {line}")
+    env = dict(os.environ)   # vcvars64.bat appelle vswhere sans chemin : dossier de l'installateur dans le PATH
+    env["PATH"] = str(Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) /
+                      "Microsoft Visual Studio" / "Installer") + os.pathsep + env.get("PATH", "")
+    return subprocess.call(f'cmd /d /s /c "{line}"', cwd=str(ROOT), env=env)
+
+
+def resolve_preset(ctx, preset):
+    return ("ninja-debug" if ctx.windows else "linux-debug") if preset in ("", "auto") else preset
+
+
+def configure(ctx, preset, extra=()):
+    """cmake --preset <preset> [-D…] (environnement MSVC chargé si nécessaire)."""
+    preset = resolve_preset(ctx, preset)
+    generator = preset_generator(preset)
     info(f"Configuration CMake : preset {preset} ({generator or 'générateur par défaut'})")
-    if ctx.windows:
-        vcvars = find_vcvars64()
-        if not vcvars:
-            raise InstallError("Visual Studio avec les outils C++ introuvable : installer Visual Studio 2026 Community, "
-                               "charge de travail « Développement Desktop en C++ » (MSVC x64 + Windows SDK), puis "
-                               "relancer. Qt et OCCT de TSA sont des builds MSVC : MinGW ne convient pas.")
-        if "Visual Studio" not in generator and not shutil.which("cl"):
-            line = f'"{vcvars}" >nul && "{cmake}" --preset {preset}'
-            info(f"  $ {line}")
-            env = dict(os.environ)   # vcvars64.bat appelle vswhere sans chemin : dossier de l'installateur dans le PATH
-            env["PATH"] = str(Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) /
-                              "Microsoft Visual Studio" / "Installer") + os.pathsep + env.get("PATH", "")
-            rc = subprocess.call(f'cmd /d /s /c "{line}"', cwd=str(ROOT), env=env)
-            build = f'"{vcvars}" puis cmake --build --preset {preset}  (ou invite « x64 Native Tools »)'
-        else:
-            rc = subprocess.call([cmake, "--preset", preset], cwd=str(ROOT))
-            build = f"cmake --build --preset {preset}"
-    else:
-        rc = subprocess.call([cmake, "--preset", preset], cwd=str(ROOT))
-        build = f"cmake --build --preset {preset}"
+    rc = _run_cmake(ctx, ["--preset", preset] + list(extra), generator)
     if rc != 0:
         raise InstallError(f"échec de la configuration CMake (code {rc}) : voir les messages ci-dessus.")
-    ok(f"Projet configuré. Compilation : {build}")
+    ok(f"Projet configuré (preset {preset}).")
+
+
+def build(ctx, preset, target=None):
+    """cmake --build --preset <preset> dans le même environnement. Parallélisme : --jobs, TSA_JOBS, sinon 4 sous
+    Windows (au-delà, MSVC manque de mémoire virtuelle pour les en-têtes précompilés : erreur C3859)."""
+    preset = resolve_preset(ctx, preset)
+    generator = preset_generator(preset)
+    jobs = ctx.args.jobs or int(os.environ.get("TSA_JOBS", "0") or 0) or (4 if ctx.windows else (os.cpu_count() or 2))
+    info(f"Compilation : preset {preset}" + (f", cible {target}" if target else "") + f", {jobs} tâches en parallèle")
+    t0 = time.time()
+    rc = _run_cmake(ctx, ["--build", "--preset", preset, "--parallel", str(jobs)]
+                    + (["--target", target] if target else []), generator)
+    if rc != 0:
+        raise InstallError(f"échec de la compilation (code {rc}) : voir les messages ci-dessus. Relancer la même "
+                           "commande reprend là où la compilation s'est arrêtée.")
+    if not target:
+        ok(f"Compilation terminée en {(time.time() - t0) / 60:.0f} min (preset {preset}). Lancement : run.bat")
+
+
+def preset_binary_dir(preset):
+    """Dossier de compilation du preset (binaryDir, héritage suivi, ${sourceDir} remplacé)."""
+    presets = {p["name"]: p for p in
+               json.loads((ROOT / "CMakePresets.json").read_text(encoding="utf-8"))["configurePresets"]}
+    p, seen = presets.get(preset), set()
+    while p and p["name"] not in seen:
+        seen.add(p["name"])
+        if p.get("binaryDir"):
+            return Path(p["binaryDir"].replace("${sourceDir}", str(ROOT)))
+        inh = p.get("inherits")
+        inh = inh[0] if isinstance(inh, list) and inh else inh
+        p = presets.get(inh) if isinstance(inh, str) else None
+    raise InstallError(f"preset {preset} : binaryDir introuvable dans CMakePresets.json")
+
+
+def product_identity():
+    """(nom, version) du produit : product/ProductIdentity.h, seule source d'identité."""
+    text = (ROOT / "product" / "ProductIdentity.h").read_text(encoding="utf-8")
+    name = re.search(r'kName\[\]\s*=\s*"([^"]+)"', text)
+    version = re.search(r'kVersion\[\]\s*=\s*"([^"]+)"', text)
+    if not (name and version):
+        raise InstallError("product/ProductIdentity.h : kName ou kVersion introuvable")
+    return name.group(1), version.group(1)
+
+
+def package(ctx, preset, with_opensees):
+    """Version distribuable pour d'autres postes Windows : compilation Release, paquet autonome (cible
+    package_<produit> : DLL réellement importées, runtime MSVC, plugins Qt, ressources OCCT, MANIFEST.json),
+    vérification (tools/verify_package.py), ZIP portable, puis installateur si Inno Setup 6 est installé."""
+    if not ctx.windows:
+        raise InstallError("--package : paquet distribuable Windows seulement (cmake/PackageTSA.cmake).")
+    preset = preset if preset not in ("", "auto") else "ninja-release"
+    if "debug" in preset.lower():
+        raise InstallError(f"--package {preset} : le runtime MSVC de débogage n'est pas redistribuable ; utiliser un "
+                           "preset Release (ninja-release ou windows-x64-release).")
+    name, version = product_identity()
+    if with_opensees:
+        warn("OpenSees inclus : licence de l'Université de Californie, usage éducatif, de recherche ou non lucratif ; "
+             "diffusion commerciale non autorisée sans accord (docs/THIRD_PARTY_LICENSES.md).")
+    configure(ctx, preset, [f"-DTSA_PACKAGE_OPENSEES={'ON' if with_opensees else 'OFF'}"])
+    build(ctx, preset)
+    build(ctx, preset, f"package_{name}")
+    bdir = preset_binary_dir(preset)
+    dist = bdir / "dist" / name
+    if not (dist / "MANIFEST.json").exists():
+        raise InstallError(f"paquet incomplet : {dist / 'MANIFEST.json'} absent")
+    info("Vérification du paquet (dépendances, fichiers obligatoires, empreintes)")
+    r = subprocess.call([sys.executable, str(ROOT / "tools" / "verify_package.py"), str(dist)], cwd=str(ROOT))
+    if r != 0:
+        raise InstallError(f"tools/verify_package.py a refusé le paquet (code {r}) : voir ci-dessus.")
+    archive = bdir / "dist" / f"{name}-{version}-windows-x64-portable.zip"
+    info(f"Archive portable : {archive.name}")
+    if archive.exists():
+        archive.unlink()
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+        for f in sorted(dist.rglob("*")):
+            if f.is_file():
+                z.write(f, Path(name) / f.relative_to(dist))
+    setup = None
+    cache = bdir / "CMakeCache.txt"
+    iscc = re.search(r"^TSA_ISCC_EXECUTABLE:\w+=(.+)$", cache.read_text(encoding="utf-8", errors="replace"), re.M) \
+        if cache.exists() else None
+    if iscc and not iscc.group(1).strip().endswith("NOTFOUND"):
+        build(ctx, preset, f"installer_{name}")
+        setup = bdir / "dist" / f"{name}-{version}-windows-x64-setup.exe"
+    print()
+    ok(f"Version distribuable de {name} {version} prête :")
+    print(f"  Dossier autonome : {dist}")
+    print(f"  ZIP portable     : {archive}  ({human(archive.stat().st_size)})")
+    if setup and setup.exists():
+        print(f"  Installateur     : {setup}  ({human(setup.stat().st_size)})")
+    else:
+        print("  Installateur     : non construit (Inno Setup 6 absent : « winget install JRSoftware.InnoSetup », "
+              "puis relancer --package)")
+    print(f"  OpenSees         : {'inclus' if with_opensees else 'non inclus (licence ; --with-opensees pour l’ajouter)'}")
+    info("Sur le poste client : décompresser le ZIP et lancer " + f"{name}\\{name}.exe (ni Qt, ni Visual Studio requis), "
+         "ou exécuter l'installateur (sans droits administrateur).")
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -995,6 +1098,14 @@ def parse_args(argv):
     p.add_argument("--platform", choices=("linux", "windows"), help=argparse.SUPPRESS)   # essais
     p.add_argument("--thirdparty-dir", default="", help=argparse.SUPPRESS)               # essais
     p.add_argument("--work-dir", default="", help="dossier de travail des compilations (défaut : thirdparty/_build)")
+    p.add_argument("--package", nargs="?", const="auto", default="", metavar="PRESET",
+                   help="Windows : version distribuable pour d'autres postes (Release, paquet autonome vérifié, ZIP "
+                        "portable, installateur si Inno Setup 6) ; défaut ninja-release")
+    p.add_argument("--with-opensees", action="store_true",
+                   help="--package : inclure OpenSees (licence UC : usage éducatif, recherche, non lucratif)")
+    p.add_argument("--build", nargs="?", const="auto", default="", metavar="PRESET",
+                   help="ensuite, configurer puis compiler avec ce preset dans l'environnement MSVC (défaut : celui "
+                        "de --configure, sinon ninja-debug / linux-debug)")
     p.add_argument("--configure", nargs="?", const="auto", default="", metavar="PRESET",
                    help="ensuite, configurer CMake avec ce preset (défaut : ninja-debug sous Windows, linux-debug "
                         "sous Linux)")
@@ -1084,15 +1195,27 @@ def main(argv=None):
              if required_ok else "Dépendances obligatoires manquantes : voir ci-dessus.")
     if not required_ok:
         return 1
-    if args.configure:
+    if args.package:
         try:
-            configure(ctx, args.configure)
+            package(ctx, args.package, args.with_opensees)
+        except InstallError as e:
+            fail(str(e))
+            return 1
+    elif args.configure or args.build:
+        preset = args.build if args.build not in ("", "auto") else args.configure
+        try:
+            configure(ctx, preset)
+            if args.build:
+                build(ctx, preset)
+            else:
+                info(f"Compilation : py -3 install_dependencies.py --build {resolve_preset(ctx, preset)}"
+                     + ("  (un simple « cmake --build » exige l'invite « x64 Native Tools » : sans elle, cl.exe ne "
+                        "trouve ni <array> ni windows.h)" if ctx.windows else ""))
         except InstallError as e:
             fail(str(e))
             return 1
     elif not args.from_cmake:
-        info("Suite : python install_dependencies.py --configure, ou cmake --preset "
-             + ("ninja-debug (invite x64 Native Tools)" if ctx.windows else "linux-debug") + ".")
+        info("Suite : py -3 install_dependencies.py --build (configure puis compile).")
     return 0
 
 

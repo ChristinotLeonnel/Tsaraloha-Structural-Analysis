@@ -409,7 +409,10 @@ py -3 install_dependencies.py --configure ninja-release --skip ifcopenshell
 # 3. État des dépendances, sans rien modifier
 py -3 install_dependencies.py --list
 
-# 4. Compilation (preset Ninja : environnement MSVC requis)
+# 4. Configuration puis compilation, environnement MSVC chargé par le script
+py -3 install_dependencies.py --build ninja-release
+
+# 5. Ou compilation directe (preset Ninja : environnement MSVC requis, sinon C1083 sur <array> / windows.h)
 cmd /c "`"C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat`" >nul && cmake --build --preset ninja-debug -- -k 0 -j 4"
 ```
 
