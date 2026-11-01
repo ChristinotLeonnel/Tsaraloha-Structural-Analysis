@@ -1,6 +1,15 @@
 # Tasks
 
-Last Updated: 2026-10-31. Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir known-issues.md).
+
+## Dépendances en une fois, disposition thirdparty/ (2026-11-01, branche build/auto-dependencies, TSA et TSALab)
+- [x] install_dependencies.py, cmake/dependencies.json, installation Linux depuis CMake, chemins thirdparty/ (TSA, TSALab), documentation.
+- [x] Essais Windows : --list ; installation Windows et logique Linux dans des dossiers d'essai ; configuration CMake (dossier neuf).
+- [ ] Déplacer réellement opencascade-8.0.1-vc14-64 et 3rdparty-vc14-64 sur ce poste (refusé : dossiers verrouillés) : relancer
+      `python install_dependencies.py` ou CMake après fermeture du programme qui les tient (au besoin après redémarrage).
+- [ ] Linux : exécuter le script de bout en bout (apt, compilation OCCT et IfcOpenShell, OpenSees linux-64 et sa commande de contrôle),
+      puis compiler et tester TSA ; chemin avec espaces, volume NTFS.
+- [ ] Commit, fusion, push : sur demande de l'utilisateur.
 
 ## Repères locaux, rotation de section, axes des charges (2026-10-31, branche refactor/load-axes-section-rotation)
 - [x] Mesures Robot (tests/data/robot_rsa2024_reference.json), repère et γ, axes des charges, migration, fenêtres, tests 558-565.

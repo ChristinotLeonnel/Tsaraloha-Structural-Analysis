@@ -1,0 +1,3 @@
+- [Audit technique 2026-10-31](audit-2026-10-31.md) — rapports, 2 défauts critiques, points non vérifiés
+- [Essais sans effet de bord](essais-sans-effet-de-bord.md) — lire un outil avant de le lancer, aucune fenêtre sur le poste
+- [Exécution masquée](execution-masquee.md) — scripts sans fenêtre (tests, bancs, builds), git TSALab, test L9

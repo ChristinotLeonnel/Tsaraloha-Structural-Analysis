@@ -2,15 +2,18 @@
 # Compile IfcOpenShell 0.9.0post1 (lecture IFC et noyau géométrique OpenCASCADE) contre l'OCCT 8 de TSA sous Linux,
 # avec Boost 1.92.0 (program_options, regex, statiques) et Eigen 3.4.1 (en-têtes) : même recette, mêmes sources et
 # mêmes empreintes que scripts/build_ifcopenshell.ps1 (Windows). Tout est installé dans un seul préfixe, à passer à
-# CMake par -DTSA_IFCOPENSHELL_ROOT (scripts/linux/configure.sh le trouve dans ~/opt/ifcopenshell-*).
+# CMake par -DTSA_IFCOPENSHELL_ROOT (CMake et scripts/linux/configure.sh le trouvent dans thirdparty/ ou ~/opt).
+# Appelé par install_dependencies.py (composant ifcopenshell).
 #
-# Usage : bash scripts/linux/build-ifcopenshell.sh [préfixe (défaut ~/opt/ifcopenshell-0.9.0post1)] [dossier de travail]
-# Variables : TSA_OCCT_DIR (sinon ~/opt/occt-8.*), TSA_JOBS (défaut 4 : schémas IFC très gourmands en mémoire).
+# Usage : bash scripts/linux/build-ifcopenshell.sh [préfixe (défaut thirdparty/ifcopenshell-0.9.0post1-linux-x86_64)]
+#         [dossier de travail (défaut thirdparty/_build/ifcopenshell)]
+# Variables : TSA_OCCT_DIR (sinon thirdparty/occt-8.*-linux-x86_64, ~/opt/occt-8.*), TSA_JOBS (défaut 4 : schémas IFC
+# très gourmands en mémoire).
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
-prefix="${1:-$HOME/opt/ifcopenshell-0.9.0post1}"
-work="${2:-$HOME/build-deps/ifcopenshell}"
+prefix="${1:-$TSA_THIRDPARTY_DIR/ifcopenshell-0.9.0post1-linux-x86_64}"
+work="${2:-$TSA_THIRDPARTY_DIR/_build/ifcopenshell}"
 jobs="${TSA_JOBS:-4}"
 occt="$(tsa_find_occt)"
 [[ -f "$occt/include/opencascade/Standard_Version.hxx" ]] || { tsa_error "OCCT 8 introuvable (TSA_OCCT_DIR)"; exit 1; }

@@ -53,8 +53,8 @@ def setup_environment():
     """Configure le PATH pour que TSA.exe trouve Qt 6, OCCT et toutes les DLLs tierces."""
     env = os.environ.copy()
     qt_bin = r"C:\Qt\6.11.2\msvc2022_64\bin"
-    occt_bin = str(WORKSPACE_DIR / "opencascade-8.0.1-vc14-64" / "win64" / "vc14" / "bin")
-    tp_dir = WORKSPACE_DIR / "3rdparty-vc14-64"
+    occt_bin = str(WORKSPACE_DIR / "thirdparty" / "opencascade-8.0.1-vc14-64" / "win64" / "vc14" / "bin")
+    tp_dir = WORKSPACE_DIR / "thirdparty" / "3rdparty-vc14-64"
     
     tp_bins = [
         str(tp_dir / "freetype-2.13.3-x64" / "bin"),
@@ -69,8 +69,8 @@ def setup_environment():
     
     extra_path = os.pathsep.join([qt_bin, occt_bin] + tp_bins)
     env["PATH"] = extra_path + os.pathsep + env.get("PATH", "")
-    env["CSF_OCCTResourcePath"] = str(WORKSPACE_DIR / "opencascade-8.0.1-vc14-64" / "src")
-    env["CSF_OCCTShadersPath"] = str(WORKSPACE_DIR / "opencascade-8.0.1-vc14-64" / "src" / "OpenGl")
+    env["CSF_OCCTResourcePath"] = str(WORKSPACE_DIR / "thirdparty" / "opencascade-8.0.1-vc14-64" / "src")
+    env["CSF_OCCTShadersPath"] = str(WORKSPACE_DIR / "thirdparty" / "opencascade-8.0.1-vc14-64" / "src" / "OpenGl")
     env["QT_PLUGIN_PATH"] = r"C:\Qt\6.11.2\msvc2022_64\plugins"
     return env
 

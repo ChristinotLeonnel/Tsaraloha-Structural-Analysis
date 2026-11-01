@@ -225,7 +225,11 @@ elseif(NOT CONFIG STREQUAL "Debug")
 endif()
 
 # --- 5. Ressources OpenCASCADE ----------------------------------------------------------------------
-set(occt_src "${SOURCE_DIR}/opencascade-8.0.1-vc14-64/src")
+set(occt_root "${SOURCE_DIR}/thirdparty/opencascade-8.0.1-vc14-64")
+if(NOT IS_DIRECTORY "${occt_root}" AND IS_DIRECTORY "${SOURCE_DIR}/opencascade-8.0.1-vc14-64")   # ancien emplacement
+    set(occt_root "${SOURCE_DIR}/opencascade-8.0.1-vc14-64")
+endif()
+set(occt_src "${occt_root}/src")
 foreach(r Shaders Textures StdResource SHMessage XSMessage UnitsAPI XSTEPResource TObj)
     if(EXISTS "${occt_src}/${r}")
         file(COPY "${occt_src}/${r}" DESTINATION "${DIST_DIR}/resources/occt")
@@ -306,7 +310,7 @@ configure_file("${PRODUCT_LICENSE}" "${DIST_DIR}/LICENSE.txt" COPYONLY)
 if(EXISTS "${SOURCE_DIR}/docs/THIRD_PARTY_LICENSES.md")
     file(COPY "${SOURCE_DIR}/docs/THIRD_PARTY_LICENSES.md" DESTINATION "${DIST_DIR}/licenses")
 endif()
-foreach(lic "${SOURCE_DIR}/opencascade-8.0.1-vc14-64/LICENSE_LGPL_21.txt" "${SOURCE_DIR}/opencascade-8.0.1-vc14-64/OCCT_LGPL_EXCEPTION.txt")
+foreach(lic "${occt_root}/LICENSE_LGPL_21.txt" "${occt_root}/OCCT_LGPL_EXCEPTION.txt")
     if(EXISTS "${lic}")
         file(COPY "${lic}" DESTINATION "${DIST_DIR}/licenses/OpenCASCADE")
     endif()
@@ -323,7 +327,10 @@ if(WINDEPLOYQT_EXECUTABLE)
 endif()
 # Bibliothèques tierces importées par OpenCASCADE : textes fournis par le SDK (les absents sont signalés
 # dans docs/THIRD_PARTY_LICENSES.md).
-set(tp "${SOURCE_DIR}/3rdparty-vc14-64")
+set(tp "${SOURCE_DIR}/thirdparty/3rdparty-vc14-64")
+if(NOT IS_DIRECTORY "${tp}" AND IS_DIRECTORY "${SOURCE_DIR}/3rdparty-vc14-64")   # ancien emplacement non déplacé
+    set(tp "${SOURCE_DIR}/3rdparty-vc14-64")
+endif()
 foreach(pair "FreeType|${tp}/freetype-2.13.3-x64/LICENSE.TXT" "oneTBB|${tp}/tbb-2021.13.0-x64/LICENSE.txt"
              "FreeImage|${tp}/freeimage-3.18.0-x64/license-fi.txt")
     string(REPLACE "|" ";" pair "${pair}")

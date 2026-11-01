@@ -15,7 +15,9 @@ Technologies constatées :
 - C++20 (`CMAKE_CXX_STANDARD 20`), MSVC 19.51 (Visual Studio 18 / 2026 Community)
 - Qt 6 (≥ 6.2, validées 6.11.2 et 6.12.0 ; poste actuel `C:/Qt/6.12.0/msvc2022_64`, détectée automatiquement,
   `docs/DEPENDENCIES.md`) : Core, Gui, Widgets, Svg, Network
-- Open CASCADE Technology 8.0.1 (`opencascade-8.0.1-vc14-64/`)
+- Open CASCADE Technology 8.0.1 (`thirdparty/opencascade-8.0.1-vc14-64/` ; ancien emplacement à la racine déplacé automatiquement)
+- Dépendances : `python install_dependencies.py` (racine) installe tout dans `thirdparty/` ; manifeste `cmake/dependencies.json`
+  (`docs/DEPENDENCIES.md` § 6) ; sous Linux, CMake l'appelle lui-même pour ce qui manque
 - CMake ≥ 3.20 (installé : 4.3.3), Ninja (presets `ninja-debug` / `ninja-release`)
 - OpenSees (exécutable externe piloté par `QProcess`, scripts Tcl générés)
 
@@ -163,6 +165,7 @@ Start working
 ## Memory maintenance
 
 After each significant task, update `current-state.md`, `known-issues.md`, `tasks.md`,
-`changelog.md`. Update `architecture.md` / `decisions.md` only after a real architectural
+`changelog.md`. Copie versionnée de la mémoire automatique de Claude Code : `.claude/memory/` (restauration sur un autre poste et
+mise à jour : `.claude/memory/README.md`) ; la recopier avant un commit si elle a changé. Update `architecture.md` / `decisions.md` only after a real architectural
 change. Never invent a class or feature, never mark a bug FIXED without a test or a
 reproduced verification, never mark a feature IMPLEMENTED without evidence in the code.

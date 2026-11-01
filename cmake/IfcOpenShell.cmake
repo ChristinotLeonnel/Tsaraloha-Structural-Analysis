@@ -8,16 +8,24 @@
 # Résultat : TSA_HAVE_IFCOPENSHELL, TSA_IFCOPENSHELL_DLLS ; fonctions tsa_link_ifcopenshell(),
 # tsa_copy_ifcopenshell_runtime().
 
-# thirdparty/ifcopenshell-0.9.0post1 contient la construction MSVC : hors Windows, indiquer une construction
-# native par -DTSA_IFCOPENSHELL_ROOT=<chemin> (sinon import IFC par le lecteur STEP interne) : celle de
-# scripts/linux/build-ifcopenshell.sh installe Boost et Eigen dans ce même préfixe, et les modules restent dans
-# <préfixe>/lib, à côté de libifcparse qui les cherche dans son propre dossier (RUNPATH, aucune copie).
+# thirdparty/ifcopenshell-0.9.0post1 contient la construction MSVC ; hors Windows, construction native de
+# thirdparty/ifcopenshell-0.9.0post1-linux-x86_64 (install_dependencies.py) ou -DTSA_IFCOPENSHELL_ROOT=<chemin>
+# (sinon import IFC par le lecteur STEP interne) : scripts/linux/build-ifcopenshell.sh installe Boost et Eigen dans ce
+# même préfixe, et les modules restent dans <préfixe>/lib, à côté de libifcparse qui les cherche dans son propre
+# dossier (RUNPATH, aucune copie).
 if(WIN32)
     set(_tsa_ifcopenshell_default "${TSA_ROOT}/thirdparty/ifcopenshell-0.9.0post1")
 else()
-    set(_tsa_ifcopenshell_default "")
+    tsa_manifest_get(_tsa_ifc_dir ifcopenshell linux_dir)
+    set(_tsa_ifcopenshell_default "${TSA_ROOT}/thirdparty/${_tsa_ifc_dir}")
+    if(NOT _tsa_ifc_dir OR NOT EXISTS "${_tsa_ifcopenshell_default}/lib/cmake/IfcOpenShell/IfcOpenShellConfig.cmake")
+        set(_tsa_ifcopenshell_default "")
+    endif()
 endif()
 set(TSA_IFCOPENSHELL_ROOT "${_tsa_ifcopenshell_default}" CACHE PATH "IfcOpenShell installé (scripts/build_ifcopenshell.ps1)")
+if(NOT TSA_IFCOPENSHELL_ROOT AND _tsa_ifcopenshell_default)   # vide en cache (configuration antérieure)
+    set(TSA_IFCOPENSHELL_ROOT "${_tsa_ifcopenshell_default}" CACHE PATH "IfcOpenShell installé (scripts/build_ifcopenshell.ps1)" FORCE)
+endif()
 option(TSA_WITH_IFCOPENSHELL "Import IFC complet par IfcOpenShell (LGPL-3.0)" ON)
 # Versions publiées : jamais de paquet sans l'import IFC complet (configuration en échec si la bibliothèque manque).
 option(TSA_REQUIRE_IFCOPENSHELL "Échec de la configuration si IfcOpenShell est absent ou inutilisable" OFF)

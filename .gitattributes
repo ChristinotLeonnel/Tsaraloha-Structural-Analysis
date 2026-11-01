@@ -12,3 +12,5 @@ tests/data/ifc/**/LICENSE.txt -text
 
 # Scripts shell : LF obligatoire (bash refuse le CR), y compris dans une copie extraite sous Windows.
 *.sh text eol=lf
+# Installateur des dépendances : exécutable directement sous Linux (./install_dependencies.py, ligne #! sans CR).
+install_dependencies.py text eol=lf

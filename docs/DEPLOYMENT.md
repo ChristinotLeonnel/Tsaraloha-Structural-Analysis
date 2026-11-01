@@ -32,7 +32,7 @@ par raccourci, par association de fichier ou depuis un autre dossier donne les m
 | Fonction | Paquet | Développement |
 |---|---|---|
 | `applicationDir()` | dossier de l'exécutable | idem |
-| `occtResourcesDir()` | `resources/occt` | `opencascade-8.0.1-vc14-64/src` |
+| `occtResourcesDir()` | `resources/occt` | `thirdparty/opencascade-8.0.1-vc14-64/src` |
 | `openSeesDir()` | `engines/OpenSees` (ancien : `thirdparty/OpenSees`) | `thirdparty/OpenSees` |
 | `shippedModulesDir()` | `modules` | `<build>/modules`, puis `sdk/modules` |
 | `shippedExtensionsDir()` | `Extensions` | `Extensions` des sources |
@@ -58,7 +58,7 @@ dossier de compilation n'est jamais réutilisé. Les étapes sont les suivantes 
 2. **Qt** : `windeployqt --release --no-translations --no-compiler-runtime --no-opengl-sw --no-system-d3d-compiler --no-quick-import`, puis `translations/qtbase_fr.qm`.
 2 bis. **Gmsh** (option `TSA_PACKAGE_GMSH`, activée par défaut) : `gmsh-4.15.dll` à côté de l'exécutable (elle n'importe que des DLL système de Windows) et `licenses/Gmsh`. **Licence GPL** : voir `docs/THIRD_PARTY_LICENSES.md`. Sans la DLL, TSA démarre et le maillage est indisponible (chargement différé). Elle est copiée avant l'étape 3, qui analyse donc aussi ses importations.
 3. **Autres DLL** :
-   - seules les DLL **réellement importées** sont copiées, récursivement (lecture des tables d'import avec `dumpbin`, `cmake/RuntimeDependencies.cmake`), depuis OCCT puis les dossiers `3rdparty-vc14-64/*/bin` (Qt 5 exclu) ;
+   - seules les DLL **réellement importées** sont copiées, récursivement (lecture des tables d'import avec `dumpbin`, `cmake/RuntimeDependencies.cmake`), depuis OCCT puis les dossiers `thirdparty/3rdparty-vc14-64/*/bin` (Qt 5 exclu) ;
    - une DLL introuvable autre que le runtime arrête le paquet avec une erreur.
 4. **Runtime MSVC** : les DLL `Microsoft.VC*.CRT` et `OpenMP` du dossier `VCToolsRedistDir` sont copiées à côté de l'exécutable (déploiement app-local autorisé pour le « Redistributable Code » de Visual Studio). En Debug, le runtime de débogage n'est pas redistribuable : le paquet Debug ne sert qu'aux essais.
 5. **Ressources OCCT** : `Shaders`, `Textures`, `StdResource`, `SHMessage`, `XSMessage`, `UnitsAPI`, `XSTEPResource`, `TObj`.

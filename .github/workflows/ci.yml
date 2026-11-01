@@ -172,9 +172,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            TSA/opencascade-${{ env.OCCT_VERSION }}-vc14-64
-            TSA/3rdparty-vc14-64
-          key: occt-${{ env.OCCT_VERSION }}-vc14-64-v1
+            TSA/thirdparty/opencascade-${{ env.OCCT_VERSION }}-vc14-64
+            TSA/thirdparty/3rdparty-vc14-64
+          key: occt-${{ env.OCCT_VERSION }}-vc14-64-thirdparty-v2
 
       - name: Configuration (Release)
         shell: pwsh

@@ -30,7 +30,7 @@ if [[ -n "$qt" && -f "$qt/lib/cmake/Qt6/Qt6Config.cmake" ]]; then
         warn "plugin xcb : $(ldd "$qt/plugins/platforms/libqxcb.so" | awk '/not found/ {print $1}' | sort -u | tr '\n' ' ')— interface X11 impossible (sudo apt install libxcb-cursor0)"
     fi
 else
-    bad "Qt 6 introuvable (définir TSA_QT_DIR=<préfixe contenant lib/cmake/Qt6>)"
+    bad "Qt 6 introuvable (python3 install_dependencies.py --only qt, ou TSA_QT_DIR=<préfixe contenant lib/cmake/Qt6>)"
 fi
 
 tsa_info "OpenCASCADE 8"
@@ -40,26 +40,26 @@ if [[ -n "$occt" && -f "$occt/lib/cmake/opencascade/OpenCASCADEConfig.cmake" ]];
     ok "OCCT $ver : $occt"
     [[ "$ver" == 8.* ]] || bad "OCCT 8.x requis (code écrit pour 8.0.1)"
 else
-    bad "OCCT 8 introuvable (définir TSA_OCCT_DIR ; compilation : docs/LINUX_BUILD.md)"
+    bad "OCCT 8 introuvable (python3 install_dependencies.py --only occt, ou TSA_OCCT_DIR ; docs/LINUX_BUILD.md)"
 fi
 
 tsa_info "Bibliothèques système (en-têtes de développement)"
 for pc in freetype2 gl x11; do
-    pkg-config --exists "$pc" 2>/dev/null && ok "$pc" || bad "$pc (paquets libfreetype-dev libgl-dev libx11-dev)"
+    pkg-config --exists "$pc" 2>/dev/null && ok "$pc" || bad "$pc (python3 install_dependencies.py --only system)"
 done
 
 tsa_info "Dépôts voisins"
 root="$(dirname "$TSA_SOURCE_DIR")"
 [[ -f "$root/TSALab/science/CMakeLists.txt" ]] && ok "TSALab/science" || bad "../TSALab (cœur scientifique obligatoire)"
 [[ -f "$root/3DDesplacement/CMakeLists.txt" ]] && ok "3DDesplacement (moteur fem3d)" || warn "../3DDesplacement (moteur fem3d facultatif)"
-[[ -f "$TSA_SOURCE_DIR/thirdparty/eigen-3.4.1/include/eigen3/Eigen/Core" ]] && ok "Eigen (thirdparty)" || warn "Eigen thirdparty/eigen-3.4.1 (requis par fem3d)"
+[[ -f "$TSA_SOURCE_DIR/thirdparty/eigen-3.4.1/include/eigen3/Eigen/Core" ]] && ok "Eigen (thirdparty)" || warn "Eigen thirdparty/eigen-3.4.1 (requis par fem3d ; python3 install_dependencies.py --only eigen)"
 
 tsa_info "Maillage"
 gmsh="$(tsa_find_gmsh)"
 if [[ -n "$gmsh" && -f "$gmsh/include/gmsh.h_cwrap" ]] && ls "$gmsh"/lib/libgmsh.so* >/dev/null 2>&1; then
     ok "SDK Gmsh : $gmsh"
 else
-    warn "SDK Gmsh absent (TSA_GMSH_SDK ou ~/opt/gmsh-*-Linux64-sdk) : maillage et suites mesh/surfaces indisponibles"
+    warn "SDK Gmsh absent (python3 install_dependencies.py --only gmsh, ou TSA_GMSH_SDK) : maillage et suites mesh/surfaces indisponibles"
 fi
 
 tsa_info "Import IFC"
@@ -67,10 +67,12 @@ ifc="$(tsa_find_ifcopenshell)"
 if [[ -n "$ifc" && -f "$ifc/lib/cmake/IfcOpenShell/IfcOpenShellConfig.cmake" ]]; then
     ok "IfcOpenShell : $ifc"
 else
-    warn "IfcOpenShell absent (scripts/linux/build-ifcopenshell.sh) : import IFC par le lecteur STEP interne, test 400 en échec"
+    warn "IfcOpenShell absent (python3 install_dependencies.py --only ifcopenshell) : import IFC par le lecteur STEP interne, test 400 en échec"
 fi
 
 tsa_info "Exécution"
-command -v OpenSees >/dev/null && ok "OpenSees : $(command -v OpenSees)" || warn "OpenSees absent du PATH (moteur OpenSees et suites opensees/extraction)"
+if [[ -x "$TSA_THIRDPARTY_DIR/OpenSees/bin/OpenSees" ]]; then ok "OpenSees : $TSA_THIRDPARTY_DIR/OpenSees/bin/OpenSees"
+elif command -v OpenSees >/dev/null; then ok "OpenSees : $(command -v OpenSees)"
+else warn "OpenSees absent (python3 install_dependencies.py --only opensees) : moteur OpenSees et suites opensees/extraction"; fi
 
 exit "$missing"

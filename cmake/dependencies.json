@@ -1,0 +1,129 @@
+{
+  "_comment": [
+    "Dépendances téléchargées de TSA (et de TSALab) : source unique des versions, adresses et empreintes SHA-256.",
+    "Lu par install_dependencies.py (racine) et par cmake/SetupDependencies.cmake. Tout est installé dans thirdparty/.",
+    "Une archive dont l'empreinte diffère n'est jamais extraite. Mise à jour : docs/DEPENDENCIES.md § 6."
+  ],
+  "schema": 1,
+  "qt": {
+    "version": "6.12.0",
+    "package_version": "6.12.0-0-202609280346",
+    "_comment": "Dépôt officiel download.qt.io (archives 7z de l'installateur en ligne) ; SHA-256 relevées le 2026-11-01, SHA-1 officielles concordantes.",
+    "linux": {
+      "kit": "gcc_64",
+      "base_url": "https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_6120/qt6_6120/qt.qt6.6120.linux_gcc_64/",
+      "archives": [
+        {"name": "qtbase-Linux-RHEL_9_6-GCC-Linux-RHEL_9_6-X86_64.7z", "sha256": "943023b929d0c08eafe7341700b5ed7601284410b7afd6093f950be291d1d7cd"},
+        {"name": "qtsvg-Linux-RHEL_9_6-GCC-Linux-RHEL_9_6-X86_64.7z", "sha256": "22a7404505a2883c54556183f19adfff1cdbea30664e34bfd4171180802142e9"},
+        {"name": "qttools-Linux-RHEL_9_6-GCC-Linux-RHEL_9_6-X86_64.7z", "sha256": "5d6f90961df3a1e5a57fac69bbbe6983860bad11c419a49736b84914588b4334"},
+        {"name": "qttranslations-Linux-RHEL_9_6-GCC-Linux-RHEL_9_6-X86_64.7z", "sha256": "bd10fbbce93b076d9bc29576f41e9ccbaf3f7782625f9bebb418d2d9b9f97c47"},
+        {"name": "icu-linux-Rhel8.6-x86_64.7z", "sha256": "1fdbcd67b1760f3a3f031c64637a9f19992aed2f35aa615e12a468f8c655d4da", "subdir": "lib"}
+      ]
+    },
+    "windows": {
+      "kit": "msvc2022_64",
+      "base_url": "https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_6120/qt6_6120_msvc2022_64/qt.qt6.6120.win64_msvc2022_64/",
+      "archives": [
+        {"name": "qtbase-Windows-Windows_11_24H2-MSVC2022-Windows-Windows_11_24H2-X86_64.7z", "sha256": "219d1b86def3be418e31d704572bc4acc91b2ec373c65595c9fb12b42bf098dc"},
+        {"name": "qtsvg-Windows-Windows_11_24H2-MSVC2022-Windows-Windows_11_24H2-X86_64.7z", "sha256": "dfcad02224b71724e3314d0bc3ffc0b862dfa6e02bc4aadd39f1738f6c364c79"},
+        {"name": "qttools-Windows-Windows_11_24H2-MSVC2022-Windows-Windows_11_24H2-X86_64.7z", "sha256": "73328e361429378df518f391ebe4d82c51e833f4d5a951692768ab5a5a1d7da5"},
+        {"name": "qttranslations-Windows-Windows_11_24H2-MSVC2022-Windows-Windows_11_24H2-X86_64.7z", "sha256": "328321e8879a3dc119775b4404d6e32ec2a361696e73f760540a732921507917"},
+        {"name": "d3dcompiler_47-x64.7z", "sha256": "067506b5424849133fb4291737da010ff336be91195fd6299f47096fbf413a50"},
+        {"name": "opengl32sw-64-mesa_11_2_2-signed_sha256.7z", "sha256": "edc94ad93e8bb6a97b27932fe01a71c37dd435690eeeff2d0085880e1eda8be6"}
+      ]
+    }
+  },
+  "occt": {
+    "version": "8.0.1",
+    "windows": {
+      "_comment": "Publication GitHub V8.0.1 ; SHA-256 publiées par l'API GitHub (champ digest des fichiers).",
+      "sdk_dir": "opencascade-8.0.1-vc14-64",
+      "sdk": {"url": "https://github.com/Open-Cascade-SAS/OCCT/releases/download/V8.0.1/opencascade-release-no-pch.zip", "sha256": "307f694f1d4a280c7f58ee2ddb69a7f7e2b78d82749339efd40ce8b8b116d76c"},
+      "thirdparty_dir": "3rdparty-vc14-64",
+      "thirdparty": {"url": "https://github.com/Open-Cascade-SAS/OCCT/releases/download/V8.0.1/3rdparty-vc14-64.zip", "sha256": "12d04f688c583b8e896758f65cd7012458fee921cedb792ec6caaf469b372598"}
+    },
+    "linux": {
+      "_comment": "Aucun binaire Linux publié : compilé depuis les sources (docs/LINUX_BUILD.md § 2), installé dans install_dir.",
+      "install_dir": "occt-8.0.1-linux-x86_64",
+      "source": {"url": "https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V8_0_1.tar.gz", "sha256": "0d6913eae4bcc09a3653ceced6dda1aec11c35a1513d4c06762c9b002092c68a", "dir": "OCCT-8_0_1"}
+    }
+  },
+  "gmsh": {
+    "version": "4.15.2",
+    "linux": {"url": "https://gmsh.info/bin/Linux/gmsh-4.15.2-Linux64-sdk.tgz", "sha256": "2dbd68d033f99b05789554bf4db6d47f4108dd36b0b36d4a50935df0ceb9e772", "dir": "gmsh-4.15.2-Linux64-sdk"},
+    "windows": {"url": "https://gmsh.info/bin/Windows/gmsh-4.15.2-Windows64-sdk.zip", "sha256": "7513cc7096e0492af88eab8c217f313ee4fb6155a3155723042e2547f55845e8", "dir": "gmsh-4.15.2-Windows64-sdk"}
+  },
+  "eigen": {
+    "version": "3.4.1",
+    "_comment": "En-têtes seuls (moteur fem3d de ../3DDesplacement) ; même archive que les scripts IfcOpenShell.",
+    "url": "https://gitlab.com/libeigen/eigen/-/archive/3.4.1/eigen-3.4.1.tar.gz",
+    "sha256": "b93c667d1b69265cdb4d9f30ec21f8facbbe8b307cf34c0b9942834c6d4fdbe2",
+    "dir": "eigen-3.4.1"
+  },
+  "opensees": {
+    "version": "3.8.0",
+    "channel_url": "https://conda.anaconda.org/conda-forge",
+    "_comment": "conda-forge, compilé depuis l'étiquette officielle v3.8.0 (recette conda-forge/opensees-feedstock) ; SHA-256 publiées par anaconda.org. Installé dans thirdparty/OpenSees (bin/, lib/), disposition attendue par OpenSeesManager.",
+    "windows": {
+      "subdir": "win-64",
+      "_comment": "Fichiers de Library/bin : fermeture des imports de OpenSees.exe (dumpbin /dependents ET exports transférés, 2026-10-28/29).",
+      "packages": [
+        {"file": "opensees-3.8.0-py312hf1c2195_4", "sha256": "db2b4b8d4a48e871991036b82744834f3d4ef0ee288e53cf80c6230bf8cede43", "files": ["OpenSees.exe"]},
+        {"file": "tk-8.6.13-h967ab96_4", "sha256": "f19618a3a82cc483dacf1c70a30367ee7b0c7e71b90f1f80e14feff44fbd3688", "files": ["tcl86t.dll", "zlib1.dll"]},
+        {"file": "hdf5-1.14.6-nompi_hae35d4c_110", "sha256": "54f5211e698a468fd74def162e277d834e956c5b24a9ba4f9cf6298209328475", "files": ["hdf5.dll"]},
+        {"file": "libblas-3.9.0-43_h0adab6e_openblas", "sha256": "6299f79ab67ff5f5c0bd702bf14437c290747a3e00cd1ce1455b5800a8dab2f6", "files": ["libblas.dll"]},
+        {"file": "liblapack-3.9.0-43_hd232482_openblas", "sha256": "6f19096892015cd1fcb4cdfbab443fe201dc89209cdf93c45544d07f393ff272", "files": ["liblapack.dll"]},
+        {"file": "libopenblas-0.3.34-pthreads_h952cde7_2", "sha256": "138056f68cf8f92cb1830fe1ed950d70856cc840f5f4b2569f9e849cb109bf7e", "files": ["openblas.dll"]},
+        {"file": "libaec-1.1.5-haf901d7_0", "sha256": "e54c08964262c73671d9e80e400333e59c617e0b454476ad68933c0c458156c8", "files": ["szip.dll"]},
+        {"file": "libcurl-8.23.0-hdb0ef4a_0", "sha256": "d3088e1fd049fe0c1905ba6174e77279ddb4817739a204aaf4bd31d59d38ea6a", "files": ["libcurl.dll"]},
+        {"file": "libzlib-1.3.2-hfd05255_3", "sha256": "0629c2cc0404d3bb29d6baa7b4ba62da80797015e86de050db81ea5a07050527", "files": ["zlib.dll"]},
+        {"file": "openssl-3.5.9-hf411b9b_0", "sha256": "827e55e37cc3208f285ae435b13bd1f389d35728d3aa6974ee447c7086232cc5", "files": ["libcrypto-3-x64.dll"]},
+        {"file": "libssh2-1.11.1-h734d217_1", "sha256": "1097b08429b4f53f5751a32c6d99a083d227ca7f7812c0b239eea124cec073a0", "files": ["libssh2.dll"]},
+        {"file": "libpsl-0.23.1-h9b16d47_1", "sha256": "e53fe3b09f82b59b644264133d6d148ac31bb5451b7583cff55690bf038f2f62", "files": ["psl-5.dll"]},
+        {"file": "icu-78.3-h5112557_2", "sha256": "75c549b55b673e15de8785a8e5dd85bca7eb612eee0ff4dc8d7bdaa15eacbdbb", "files": ["icuuc78.dll", "icudt78.dll"]}
+      ]
+    },
+    "linux": {
+      "subdir": "linux-64",
+      "_comment": "Fermeture DT_NEEDED de bin/OpenSees hors glibc (lecture des en-têtes ELF, 2026-11-01), builds publiées avant le 2026-10-15 et compatibles avec les contraintes depends. Installés : bin/OpenSees, lib/*.so* de chaque paquet, lib/tcl8.6 et lib/tcl8 ; chemins de construction remplacés comme le fait conda (info/has_prefix).",
+      "packages": [
+        {"file": "opensees-3.8.0-py312h33aa623_4", "sha256": "8dc873c63c667fa5bf508f841528f97c6a1e9da77c7e389993f328cf1ab31964"},
+        {"file": "tk-8.6.13-noxft_h1df4ec4_4", "sha256": "a1a241d172c1ccab067ba245206dd048bc3c2d1b84504b53c9468e99adfc16a1"},
+        {"file": "hdf5-1.14.6-nompi_h19486de_110", "sha256": "ac57ce3abbda2a82d6192bc36fbd7fe96e867d84c999ef81a3da034dfd01a995"},
+        {"file": "libopenblas-0.3.34-openmp_h156ec52_2", "sha256": "dbcd501070d124ee7e02740e5483e2e83158ab4a0cabfc65fb4253e0168ff428"},
+        {"file": "libgomp-16.2.0-he0feb66_7", "sha256": "92a0bb350c7be6a4eedcb4e111c60aefd176018e6b1c009a6e025dbe9bbcd758"},
+        {"file": "libgfortran5-16.2.0-h6b99dfc_7", "sha256": "04dbab12c925b92977bb835dd2f5eda413607afa79f95a554e5a04b07a380322"},
+        {"file": "libgcc-16.2.0-ha9f2e26_7", "sha256": "e031634c3a928f9594eba868bc46ef5230d6571a364a0c63215b06c4563bfcea"},
+        {"file": "libstdcxx-16.2.0-h934c35e_7", "sha256": "fa7018298629fc429971fffd6ecba3d27a7b02e4e890d6a93ea01ffebe8cb745"},
+        {"file": "libaec-1.1.5-h088129d_0", "sha256": "822e4ae421a7e9c04e841323526321185f6659222325e1a9aedec811c686e688"},
+        {"file": "libcurl-8.23.0-ha042cf0_0", "sha256": "d2db14d80efb4f2e76e76561c633f1767f7543987f2bcb54a067a9d264d432ab"},
+        {"file": "libzlib-1.3.2-h25fd6f3_3", "sha256": "eb8a0db0aa570124f7d2a93d7c7f596e3390df5e047818d873baad32985fc736"},
+        {"file": "openssl-3.6.5-h781a0a9_0", "sha256": "9c1533f1cf784f0e250919c0c9762d0b0e6bc727a79290ffb7cea1ceca1d038c"},
+        {"file": "libssh2-1.11.1-h6154650_1", "sha256": "7e463000fa1cba3f3a6597b776f6ab301d425a96e3bc20d0d9d76a3b9f237aa3"},
+        {"file": "libnghttp2-1.68.1-h74cf4be_1", "sha256": "11a2f54a6f391e25738bce0023e6ef499600147bbcf21c1fa69d2e251b03cc6a"},
+        {"file": "libpsl-0.23.1-hd9e3e90_1", "sha256": "09e8effdc89bc5d021349318d32b85594f5b8d8e3ab8f90a85b81f8fe695a566"},
+        {"file": "icu-78.3-py311hf51f001_2", "sha256": "3c3504d5ab5f9fb6fcfff2159df4d4d88b45a034f6de6ef50246896f36e7b7c6"},
+        {"file": "krb5-1.22.2-hbc21106_2", "sha256": "2a5c38c85e63df84c4e69ee71439841ce570d259ae3060627bb9a49a938d66f4"},
+        {"file": "keyutils-1.6.3-h7cc23a3_1", "sha256": "dd053c96dcb0dcfd59422aefea9d2fe937a190167f34fba7893ec1e10a7e8963"},
+        {"file": "zstd-1.5.7-hb78ec9c_7", "sha256": "47d682b9f6d6ec9eb1a6e6c3e75ea6273e899e78fb7fc59f81d39745009fbc60"}
+      ]
+    }
+  },
+  "ifcopenshell": {
+    "version": "0.9.0post1",
+    "_comment": "Compilé contre l'OCCT de TSA par les scripts existants (sources et empreintes dans ces scripts) : scripts/linux/build-ifcopenshell.sh, scripts/build_ifcopenshell.ps1.",
+    "linux_dir": "ifcopenshell-0.9.0post1-linux-x86_64",
+    "windows_dir": "ifcopenshell-0.9.0post1"
+  },
+  "linux_system_packages": {
+    "_comment": "Debian / Ubuntu (apt). Outils, en-têtes d'OCCT (docs/LINUX_BUILD.md § 1) et bibliothèques d'exécution des plugins X11 de Qt 6.",
+    "apt": [
+      "build-essential", "cmake", "ninja-build", "git", "python3", "pkg-config",
+      "libfreetype-dev", "libfontconfig-dev", "libgl-dev", "libglu1-mesa-dev", "libegl-dev",
+      "libx11-dev", "libxext-dev", "libxi-dev",
+      "libx11-xcb1", "libxcb-cursor0", "libxcb-icccm4", "libxcb-image0", "libxcb-keysyms1", "libxcb-randr0",
+      "libxcb-render-util0", "libxcb-shape0", "libxcb-xinerama0", "libxcb-xkb1", "libxkbcommon-x11-0",
+      "libdbus-1-3", "libopengl0"
+    ]
+  }
+}

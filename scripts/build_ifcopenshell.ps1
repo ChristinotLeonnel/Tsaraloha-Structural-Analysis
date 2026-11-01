@@ -8,7 +8,7 @@
 # Composants exclus : Python, IfcConvert, CGAL, COLLADA, glTF, USD, PROJ (licences et taille).
 #
 # Usage (PowerShell, depuis la racine de TSA) :
-#   .\scripts\build_ifcopenshell.ps1 [-OcctRoot <dossier opencascade-8.0.1-vc14-64>] [-Prefix thirdparty]
+#   .\scripts\build_ifcopenshell.ps1 [-OcctRoot <dossier thirdparty\opencascade-8.0.1-vc14-64>] [-Prefix thirdparty]
 # Le compilateur MSVC est pris dans l'environnement courant (Developer PowerShell, msvc-dev-cmd) ou, à défaut,
 # chargé depuis Visual Studio (vswhere).
 # =============================================================================
@@ -23,7 +23,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $SourceDir = Split-Path $PSScriptRoot -Parent
-if (-not $OcctRoot) { $OcctRoot = Join-Path $SourceDir "opencascade-8.0.1-vc14-64" }
+if (-not $OcctRoot) { $OcctRoot = Join-Path $SourceDir "thirdparty\opencascade-8.0.1-vc14-64" }
 if (-not $Prefix) { $Prefix = Join-Path $SourceDir "thirdparty" }
 if (-not $WorkDir) { $WorkDir = Join-Path $Prefix "_build-ifcopenshell" }
 if ($Jobs -le 0) { $Jobs = [Environment]::ProcessorCount }
