@@ -2,6 +2,19 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — état du projet, étape 3 : disposition de la fenêtre propre au fichier (bloc UIST)
+
+- `UI/WindowManager/ProjectLayoutState` (couche widgets) : `captureProjectLayout` / `applyProjectLayout`, JSON schema 1 : état
+  binaire des panneaux (QMainWindow::saveState, base64), listes lisibles `openDocks` / `closedDocks` (repli si Qt refuse l'état ;
+  un panneau absent des listes garde sa visibilité), espace de travail, onglet du ruban (titre, sinon indice). Panneaux masqués
+  par le mode Blueprint ou focus enregistrés ouverts sans être réaffichés. Ruban passé par sa QTabBar (RibbonBar = couche app).
+- `WindowManager::saveState` / `restoreState` ; préférence D2 `Layout/restoreFromProject` (vrai par défaut), case du sous-menu
+  Disposition. `WorkspaceView::stateJson` / `applyStateJson` ; saveState / restoreState (QSettings) passent par eux, mêmes clés.
+- MainWindow : UIST relevé avec VSTA ; appliqué avant la vue si la préférence est active (masquages temporaires levés, puis
+  onWorkspaceModeChanged). Géométrie de la fenêtre non enregistrée par fichier (fenêtre partagée par les onglets de l'AppShell) ;
+  aucune multi-vue 2×2 dans le code (README à corriger). Test 576 (suite window).
+- Vérifié : window, blueprint (test 524), multidoc, io, undo ; suite complète 59/60, 564 tests (test 367 : BUG-173) ; TSALab 27/27.
+
 ## 2026-11-01 — état du projet, étape 2 : vue 3D et affichage (bloc VSTA) ; tests TSALab indépendants du nom des dépôts
 
 - `Viewer/DisplayProfile` : `captureDocumentViewState` / `applyDocumentViewState` (JSON schema 1 : caméra exacte par vue nommée,

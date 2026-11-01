@@ -1,5 +1,13 @@
 #include "test_common.h"
 #include "UI/WindowManager/WindowManager.h"
+#include "UI/WindowManager/ProjectLayoutState.h"
+#include <QTabBar>
+#include <QTabWidget>
+#include "UI/Workspace/WorkspaceView.h"
+#include <QCoreApplication>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QSettings>
 #include <QMainWindow>
 #include <QDockWidget>
 #include <QLabel>
@@ -197,5 +205,104 @@ bool runSuite_WindowManager(int& passed)
 
     std::cout << "[PASS] Test 54: Centralized WindowManager, Docking & Layout Profiles Passed Successfully!" << std::endl;
     passed++;
+
+    // -------------------------------------------------------------------------
+    // TEST 576 : disposition propre au projet (bloc UIST, docs/PROJECT_STATE_PLAN.md étape 3) — panneaux (binaire Qt et
+    // listes lisibles), masquage temporaire, espace de travail, onglet du ruban, repli, version inconnue, préférence D2.
+    // -------------------------------------------------------------------------
+    {
+        using namespace TSA::UI;
+        QMainWindow win;
+        win.resize(1024, 768);
+        auto* model3d = new QLabel("vue 3D");
+        auto* workspace = new WorkspaceView(model3d);
+        win.setCentralWidget(workspace);
+        auto makeDock = [&](const char* name, Qt::DockWidgetArea area) {
+            auto* d = new QDockWidget(QString::fromLatin1(name), &win);
+            d->setObjectName(QString::fromLatin1(name));
+            win.addDockWidget(area, d);
+            return d;
+        };
+        QDockWidget* tree = makeDock("TreeDock", Qt::LeftDockWidgetArea);
+        QDockWidget* props = makeDock("PropsDock", Qt::RightDockWidgetArea);
+        QDockWidget* console = makeDock("ConsoleDock", Qt::BottomDockWidgetArea);
+        WindowManager wm(&win);
+        wm.registerDock("tree", "Arbre", "Modélisation", tree, Qt::LeftDockWidgetArea, true);
+        wm.registerDock("props", "Propriétés", "Général", props, Qt::RightDockWidgetArea, true);
+        wm.registerDock("console", "Console", "Outils", console, Qt::BottomDockWidgetArea, true);
+        QTabWidget ribbonWidget;   // comme le ruban : QTabWidget dont la barre d'onglets est passée (RibbonBar::tabBar)
+        for (const char* t : { "Accueil", "Modélisation", "Résultats" }) ribbonWidget.addTab(new QWidget, QString::fromUtf8(t));
+        QTabBar& ribbon = *ribbonWidget.tabBar();
+        win.show();
+        QCoreApplication::processEvents();
+
+        // Disposition A : console fermée, arbre masqué temporairement (mode Blueprint), onglet « Résultats », partage vertical
+        console->hide();
+        tree->hide();
+        ribbon.setCurrentIndex(2);
+        workspace->setSplitOrientation(Qt::Vertical);
+        QCoreApplication::processEvents();
+        const QJsonObject a = captureProjectLayout(wm, workspace, &ribbon, { tree });
+        TEST_CHECK(a.value("schema").toInt() == 1 && !a.value("docks").toString().isEmpty() &&
+                       a.value("openDocks").toArray().contains("tree") && a.value("closedDocks").toArray().contains("console") &&
+                       a.value("ribbonTab").toObject().value("title").toString() == "Résultats",
+                   "Test 576: disposition relevée — panneau masqué temporairement enregistré ouvert, console fermée, onglet");
+        TEST_CHECK(tree->isHidden(), "Test 576: relevé sans réafficher le panneau masqué temporairement");
+
+        // Tout changer, puis appliquer A
+        console->show();
+        props->hide();
+        ribbon.setCurrentIndex(0);
+        workspace->setSplitOrientation(Qt::Horizontal);
+        QCoreApplication::processEvents();
+        const QStringList w = applyProjectLayout(wm, workspace, &ribbon, a);
+        QCoreApplication::processEvents();
+        TEST_CHECK(w.isEmpty(), "Test 576: application sans avertissement (" << w.join("; ").toStdString() << ")");
+        TEST_CHECK(!tree->isHidden() && !props->isHidden() && console->isHidden(),
+                   "Test 576: panneaux rétablis (arbre ouvert, propriétés ouvertes, console fermée)");
+        TEST_CHECK(ribbonWidget.currentIndex() == 2 && workspace->splitOrientation() == Qt::Vertical,
+                   "Test 576: onglet du ruban et orientation de l'espace de travail rétablis");
+
+        // Onglets réordonnés depuis : retrouvé par son titre ; état binaire illisible : listes lisibles appliquées
+        QTabWidget otherWidget;
+        otherWidget.addTab(new QWidget, QStringLiteral("Résultats"));
+        otherWidget.addTab(new QWidget, QStringLiteral("Accueil"));
+        QTabBar& other = *otherWidget.tabBar();
+        QJsonObject broken = a;
+        broken["docks"] = QStringLiteral("AAAA");
+        console->show();
+        const QStringList w2 = applyProjectLayout(wm, nullptr, &other, broken);
+        TEST_CHECK(otherWidget.currentIndex() == 0 && w2.size() == 1 && console->isHidden(),
+                   "Test 576: onglet retrouvé par son titre ; état binaire refusé signalé, listes lisibles appliquées");
+
+        // Panneau apparu depuis l'enregistrement : sa visibilité n'est pas touchée
+        QDockWidget* fresh = makeDock("FreshDock", Qt::RightDockWidgetArea);
+        wm.registerDock("fresh", "Nouveau", "Outils", fresh, Qt::RightDockWidgetArea, true);
+        fresh->show();
+        applyProjectLayout(wm, workspace, &ribbon, a);
+        QCoreApplication::processEvents();
+        TEST_CHECK(!fresh->isHidden(), "Test 576: panneau inconnu de la disposition enregistrée laissé tel quel");
+
+        // Version inconnue : signalée, rien appliqué
+        QJsonObject future = a;
+        future["schema"] = 7;
+        console->show();
+        TEST_CHECK(applyProjectLayout(wm, workspace, &ribbon, future).size() == 1 && !console->isHidden(),
+                   "Test 576: version inconnue — signalée, rien appliqué");
+
+        // Préférence D2 (réglages isolés : la suite n'a pas d'identité de réglages)
+        const QString savedOrg = QCoreApplication::organizationName(), savedApp = QCoreApplication::applicationName();
+        QCoreApplication::setOrganizationName(QStringLiteral("TSA_TestSuite_Isolated"));
+        QCoreApplication::setApplicationName(QStringLiteral("layout%1").arg(QCoreApplication::applicationPid()));
+        const bool byDefault = WindowManager::restoresProjectLayout();
+        WindowManager::setRestoresProjectLayout(false);
+        const bool off = !WindowManager::restoresProjectLayout();
+        QSettings().clear();
+        QCoreApplication::setOrganizationName(savedOrg);
+        QCoreApplication::setApplicationName(savedApp);
+        TEST_CHECK(byDefault && off, "Test 576: préférence « Restaurer la disposition enregistrée dans le projet » — vraie par défaut, désactivable");
+        std::cout << "[PASS] Test 576: Disposition propre au projet (bloc UIST) — panneaux, espace de travail, ruban, repli" << std::endl;
+        passed++;
+    }
     return true;
 }

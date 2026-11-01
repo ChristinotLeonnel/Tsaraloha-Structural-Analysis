@@ -1,6 +1,6 @@
 # Plan — un `.tsa` qui conserve tout l'état du projet
 
-Statut : **VALIDÉ** le 2026-11-01 (décisions D1 à D6 acceptées). Étapes 0 à 2 faites.
+Statut : **VALIDÉ** le 2026-11-01 (décisions D1 à D6 acceptées). Étapes 0 à 3 faites.
 Demande : chaque fichier garde sa propre disposition de fenêtre, sa vue, ses résultats de calcul, ses messages et
 erreurs, ses fichiers liés et ses bibliothèques. Il rouvre dans l'état de son dernier enregistrement.
 
@@ -114,7 +114,7 @@ JSON UTF-8 (`schema` 1) :
 | **0** | BUG-074 : « * » et demande d'enregistrement après Ctrl+S | test 573 — **fait** |
 | 1 | Socle : emplacements opaques dans `Model` (hors historique, sans marque « modifié »), écriture et lecture de chunks JSON génériques, format 3.1 | test 574 — **fait** |
 | 2 | `VSTA` : relevé et application de la vue et de l'affichage | test 575 — **fait** |
-| 3 | `UIST` : disposition par fichier, préférence de restauration | aller-retour, deux fichiers, deux dispositions |
+| 3 | `UIST` : disposition par fichier, préférence de restauration | test 576 — **fait** (géométrie de la fenêtre exclue : fenêtre partagée par les onglets) |
 | 4 | `RSLT` : sérialisation binaire de `ResultsModel`, empreinte, résultats périmés | aller-retour bit à bit, modèle modifié → périmés, gros modèle (taille, durée) |
 | 5 | `DIAG` : messages, validation, historique des calculs | aller-retour, calcul en échec |
 | 6 | `PMAN` : bibliothèques, fichiers liés, historique, panneau « Fichiers liés » | bibliothèque absente, fichier déplacé ou modifié |

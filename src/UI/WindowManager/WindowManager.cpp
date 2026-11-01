@@ -4,6 +4,7 @@
 #include <QCoreApplication>
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QSettings>
 
 namespace TSA::UI
 {
@@ -319,6 +320,31 @@ bool WindowManager::restoreLayout()
     return m_layoutManager->restoreFromSettings();
 }
 
+QByteArray WindowManager::saveState() const
+{
+    return m_layoutManager->saveState();
+}
+
+bool WindowManager::restoreState(const QByteArray& state)
+{
+    return m_layoutManager->restoreState(state);
+}
+
+namespace
+{
+const QString kRestoreProjectLayoutKey = QStringLiteral("Layout/restoreFromProject");
+}
+
+bool WindowManager::restoresProjectLayout()
+{
+    return QSettings().value(kRestoreProjectLayoutKey, true).toBool();
+}
+
+void WindowManager::setRestoresProjectLayout(bool enabled)
+{
+    QSettings().setValue(kRestoreProjectLayoutKey, enabled);
+}
+
 bool WindowManager::applyProfile(const QString& name)
 {
     return m_layoutManager->applyProfile(name);
@@ -387,6 +413,14 @@ void WindowManager::populateWindowsMenu(QMenu* menu)
     connect(actSaveProfile, &QAction::triggered, this, [this]() {
         saveProfile("Personnalisée");
     });
+
+    layoutSubMenu->addSeparator();
+    auto* actProjectLayout = layoutSubMenu->addAction(tr("Restaurer la disposition enregistrée dans le projet"));
+    actProjectLayout->setCheckable(true);
+    actProjectLayout->setChecked(restoresProjectLayout());
+    actProjectLayout->setToolTip(tr("À l'ouverture d'un projet, rétablir les panneaux, l'onglet du ruban et l'espace de "
+                                    "travail tels qu'ils étaient lors de son dernier enregistrement"));
+    connect(actProjectLayout, &QAction::toggled, this, [](bool on) { setRestoresProjectLayout(on); });
 
     menu->addSeparator();
 

@@ -2,6 +2,8 @@
 
 #include "UI/Blueprint/BlueprintEditor.h"
 
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QSettings>
 #include <QSplitter>
 #include <QVBoxLayout>
@@ -135,15 +137,45 @@ bool WorkspaceView::modeFromKey(const QString& key, Mode* mode)
     return false;
 }
 
+QJsonObject WorkspaceView::stateJson() const
+{
+    QJsonObject o;
+    o["mode"] = modeKey(m_mode);
+    o["orientation"] = m_split->orientation() == Qt::Vertical ? QStringLiteral("vertical") : QStringLiteral("horizontal");
+    QJsonArray sizes;
+    for (int s : (m_mode == Mode::Split ? m_split->sizes() : m_splitSizes)) sizes.append(s);
+    o["splitSizes"] = sizes;
+    const QByteArray editor = m_blueprint ? m_blueprint->saveLayoutState() : m_pendingEditorState;
+    if (!editor.isEmpty()) o["blueprintLayout"] = QString::fromLatin1(editor.toBase64());
+    return o;
+}
+
+void WorkspaceView::applyStateJson(const QJsonObject& state)
+{
+    Mode mode = Mode::Model3D;
+    if (!modeFromKey(state.value("mode").toString(), &mode)) mode = Mode::Model3D;
+    m_split->setOrientation(state.value("orientation").toString() == QLatin1String("vertical") ? Qt::Vertical : Qt::Horizontal);
+    m_splitSizes.clear();
+    const QJsonArray sizes = state.value("splitSizes").toArray();
+    if (sizes.size() == 2)
+    {
+        const int a = sizes[0].toInt(0), b = sizes[1].toInt(0);
+        if (a > 0 && b > 0) m_splitSizes = { a, b };
+    }
+    const QByteArray editorState = QByteArray::fromBase64(state.value("blueprintLayout").toString().toLatin1());
+    if (m_blueprint) m_blueprint->restoreLayoutState(editorState);
+    else m_pendingEditorState = editorState;
+    setMode(mode);
+}
+
 void WorkspaceView::saveState(QSettings& settings) const
 {
+    // Mêmes clés qu'auparavant (réglages existants des utilisateurs relus tels quels).
+    const QJsonObject o = stateJson();
     settings.beginGroup(QStringLiteral("Workspace"));
-    settings.setValue(QStringLiteral("mode"), modeKey(m_mode));
-    settings.setValue(QStringLiteral("orientation"), m_split->orientation() == Qt::Vertical ? QStringLiteral("vertical") : QStringLiteral("horizontal"));
-    QList<int> sizes = m_mode == Mode::Split ? m_split->sizes() : m_splitSizes;
-    QVariantList list;
-    for (int s : sizes) list << s;
-    settings.setValue(QStringLiteral("splitSizes"), list);
+    settings.setValue(QStringLiteral("mode"), o.value("mode").toString());
+    settings.setValue(QStringLiteral("orientation"), o.value("orientation").toString());
+    settings.setValue(QStringLiteral("splitSizes"), o.value("splitSizes").toArray().toVariantList());
     if (m_blueprint) settings.setValue(QStringLiteral("blueprintLayout"), m_blueprint->saveLayoutState());
     settings.endGroup();
 }
@@ -151,23 +183,15 @@ void WorkspaceView::saveState(QSettings& settings) const
 void WorkspaceView::restoreState(QSettings& settings)
 {
     settings.beginGroup(QStringLiteral("Workspace"));
-    Mode mode = Mode::Model3D;
-    if (!modeFromKey(settings.value(QStringLiteral("mode")).toString(), &mode)) mode = Mode::Model3D;
-    const QString orientation = settings.value(QStringLiteral("orientation")).toString();
-    m_split->setOrientation(orientation == QLatin1String("vertical") ? Qt::Vertical : Qt::Horizontal);
-    m_splitSizes.clear();
-    const QVariantList list = settings.value(QStringLiteral("splitSizes")).toList();
-    if (list.size() == 2)
-    {
-        bool ok0 = false, ok1 = false;
-        const int a = list[0].toInt(&ok0), b = list[1].toInt(&ok1);
-        if (ok0 && ok1 && a > 0 && b > 0) m_splitSizes = { a, b };
-    }
-    const QByteArray editorState = settings.value(QStringLiteral("blueprintLayout")).toByteArray();
+    QJsonObject o;
+    o["mode"] = settings.value(QStringLiteral("mode")).toString();
+    o["orientation"] = settings.value(QStringLiteral("orientation")).toString();
+    QJsonArray sizes;   // valeurs relues en entiers (un fichier INI les rend sous forme de texte)
+    for (const QVariant& v : settings.value(QStringLiteral("splitSizes")).toList()) sizes.append(v.toInt());
+    o["splitSizes"] = sizes;
+    o["blueprintLayout"] = QString::fromLatin1(settings.value(QStringLiteral("blueprintLayout")).toByteArray().toBase64());
     settings.endGroup();
-    if (m_blueprint) m_blueprint->restoreLayoutState(editorState);
-    else m_pendingEditorState = editorState;
-    setMode(mode);
+    applyStateJson(o);
 }
 
 } // namespace TSA::UI

@@ -270,6 +270,8 @@ set(UI_WINDOWMANAGER_SOURCES
     ${TSA_ROOT}/src/UI/WindowManager/LayoutManager.cpp
     ${TSA_ROOT}/src/UI/WindowManager/WindowManager.h
     ${TSA_ROOT}/src/UI/WindowManager/WindowManager.cpp
+    ${TSA_ROOT}/src/UI/WindowManager/ProjectLayoutState.h
+    ${TSA_ROOT}/src/UI/WindowManager/ProjectLayoutState.cpp
 )
 
 # --- Système d'extensions / bibliothèques de composants — [CORE] ------------

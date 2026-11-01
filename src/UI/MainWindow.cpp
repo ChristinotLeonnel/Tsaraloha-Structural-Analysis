@@ -4,6 +4,7 @@
 #include "Dock/AnalysisDataDock.h"
 #include "MainWindow.h"
 #include "../Viewer/DisplayProfile.h"
+#include "WindowManager/ProjectLayoutState.h"
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
 #include "../Model/Model.h"
@@ -1887,6 +1888,15 @@ void MainWindow::captureProjectState()
     using Block = TSA::Model::Model::ProjectStateBlock;
     const QJsonObject view = TSA::Viewer::captureDocumentViewState(*m_occView);
     m_model->setProjectStateBlock(Block::ViewState, QJsonDocument(view).toJson(QJsonDocument::Compact).toStdString());
+    if (m_windowManager)
+    {
+        // Panneaux masqués par le mode Blueprint ou le mode focus : enregistrés comme ouverts, sans être réaffichés.
+        QList<const QDockWidget*> hidden;
+        for (const QPointer<QDockWidget>& dock : std::as_const(m_docksHiddenByWorkspace))
+            if (dock) hidden.append(dock.data());
+        const QJsonObject layout = TSA::UI::captureProjectLayout(*m_windowManager, m_workspace, m_ribbonBar ? m_ribbonBar->tabBar() : nullptr, hidden);
+        m_model->setProjectStateBlock(Block::WindowLayout, QJsonDocument(layout).toJson(QJsonDocument::Compact).toStdString());
+    }
 }
 
 void MainWindow::applyProjectState()
@@ -1894,6 +1904,26 @@ void MainWindow::applyProjectState()
     if (!m_model || !m_occView)
         return;
     using Block = TSA::Model::Model::ProjectStateBlock;
+    // Disposition d'abord (panneaux, espace de travail, ruban), si l'utilisateur ne l'a pas désactivée (décision D2).
+    const std::string& layoutState = m_model->projectStateBlock(Block::WindowLayout);
+    if (!layoutState.empty() && m_windowManager && TSA::UI::WindowManager::restoresProjectLayout())
+    {
+        const QJsonDocument layoutDoc = QJsonDocument::fromJson(QByteArray::fromStdString(layoutState));
+        if (layoutDoc.isObject())
+        {
+            restoreContextualDocks();   // masquages temporaires du projet précédent levés avant d'appliquer
+            for (const QString& w : TSA::UI::applyProjectLayout(*m_windowManager, m_workspace, m_ribbonBar ? m_ribbonBar->tabBar() : nullptr, layoutDoc.object()))
+                TSA_LOG_WARN("MainWindow", "ProjectLayout", w.toStdString());
+            {
+                QSignalBlocker block(m_actionWorkspaceVertical);
+                m_actionWorkspaceVertical->setChecked(m_workspace && m_workspace->splitOrientation() == Qt::Vertical);
+            }
+            onWorkspaceModeChanged();   // comme restoreWorkspaceState : panneaux du mode Blueprint, actions
+        }
+        else
+            TSA_LOG_WARN("MainWindow", "ProjectLayout", "disposition enregistrée illisible, ignorée");
+    }
+
     const std::string& viewState = m_model->projectStateBlock(Block::ViewState);
     if (viewState.empty())
         return;   // projet antérieur au format 3.1 : cadrage et profil d'affichage habituels
