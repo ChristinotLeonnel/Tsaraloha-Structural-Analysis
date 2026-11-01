@@ -1,4 +1,5 @@
 #include "IfcGeometryMapper.h"
+#include "../../Coordinate/CoordinateTransformationService.h"
 
 #include "../../Model/Model.h"
 
@@ -65,10 +66,10 @@ void IfcGeometryMapper::barFrame(const Vec3& a, const Vec3& b, double rotationDe
     // Même construction que TSA::Geometry::BeamGeometry::createBeamShape
     z = unit(sub(b, a));
     Vec3 x0, y0;
-    if (std::abs(z[2]) > 0.999)
+    if (std::hypot(z[0], z[1]) < TSA::Coordinate::CoordinateTransformationService::kVerticalTolerance)
     {
-        y0 = unit(cross(z, { 1, 0, 0 }));
-        x0 = unit(cross(y0, z));
+        x0 = unit(sub({ 0, 1, 0 }, mul(z, z[1])));
+        y0 = unit(cross(z, x0));
     }
     else
     {

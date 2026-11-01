@@ -1,4 +1,5 @@
 #include "BeamGeometry.h"
+#include "../Coordinate/CoordinateTransformationService.h"
 #include "../Model/Node.h"
 #include "../Model/Beam.h"
 #include "../Model/Section.h"
@@ -95,14 +96,13 @@ BeamGeometry::SectionFrame BeamGeometry::sectionFrame(const gp_Pnt& a, const gp_
     const gp_Vec globalZ(0.0, 0.0, 1.0);
     gp_Vec dirX0;
     gp_Vec dirY0;
-    if (std::abs(dirZ.Dot(globalZ)) > 0.999)
+    if (TSA::Coordinate::CoordinateTransformationService::isVertical(gp_Dir(dirZ)))
     {
-        // Quasi-verticale (poteau vertical selon Z)
-        const gp_Vec refX(1.0, 0.0, 0.0);
-        dirY0 = dirZ.Crossed(refX);
-        dirY0.Normalize();
-        dirX0 = dirY0.Crossed(dirZ);
+        // Barre verticale : mêmes axes que le repère local du calcul (y = +Y global, z = x × y)
+        dirX0 = gp_Vec(0.0, 1.0, 0.0) - dirZ * dirZ.Y();
         dirX0.Normalize();
+        dirY0 = dirZ.Crossed(dirX0);
+        dirY0.Normalize();
     }
     else
     {

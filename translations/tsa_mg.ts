@@ -6833,12 +6833,16 @@ Jereo Fanampiana &gt; Môdiola.</translation>
         <translation>Z ankapobeny</translation>
     </message>
     <message>
-        <source>normale locale</source>
-        <translation>tsipika mahitsy eo an-toerana</translation>
+        <source>x local</source>
+        <translation>x eo an-toerana</translation>
     </message>
     <message>
-        <source>gravité</source>
-        <translation>herin'ny tany</translation>
+        <source>y local</source>
+        <translation>y eo an-toerana</translation>
+    </message>
+    <message>
+        <source>z local</source>
+        <translation>z eo an-toerana</translation>
     </message>
     <message>
         <source>DIAGNOSTIC D'AFFICHAGE
@@ -7168,12 +7172,16 @@ Tsy ao amin'ity solosaina ity ny loharano (fonosana nozaraina): jereo ny tahirin
         <translation>Z ankapobeny</translation>
     </message>
     <message>
-        <source>normale locale (−N)</source>
-        <translation>tsipika mahitsy eo an-toerana (−N)</translation>
+        <source>x local (U)</source>
+        <translation>x eo an-toerana (U)</translation>
     </message>
     <message>
-        <source>gravité (−Z)</source>
-        <translation>herin'ny tany (−Z)</translation>
+        <source>y local (V)</source>
+        <translation>y eo an-toerana (V)</translation>
+    </message>
+    <message>
+        <source>z local (N)</source>
+        <translation>z eo an-toerana (N)</translation>
     </message>
     <message>
         <source>P =</source>
@@ -8927,8 +8935,8 @@ Atomboka ve ny kajy?</translation>
         <translation>Ampio enta miparitaka</translation>
     </message>
     <message>
-        <source>Charge uniforme (kN/m) sur une poutre, sens de la pesanteur pour q &gt; 0.</source>
-        <translation>Enta mitovy (kN/m) amin'ny andry mitsivalana, manaraka ny fitodian'ny herin'ny tany raha q &gt; 0.</translation>
+        <source>Charge uniforme (kN/m) sur une poutre, suivant Z global : q &lt; 0 vers le bas.</source>
+        <translation>Enta mitovy (kN/m) amin'ny andry mitsivalana, araka ny Z ankapobeny: q &lt; 0 midina.</translation>
     </message>
     <message>
         <source>Intensité</source>
@@ -12915,10 +12923,6 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
         <translation>Z ankapobeny</translation>
     </message>
     <message>
-        <source>Gravité (-Z)</source>
-        <translation>Herin'ny tany (-Z)</translation>
-    </message>
-    <message>
         <source>Local x</source>
         <translation>x eo an-toerana</translation>
     </message>
@@ -13148,10 +13152,6 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
     <message>
         <source>élément sans ses nœuds</source>
         <translation>singa tsy misy ireo fihaonany</translation>
-    </message>
-    <message>
-        <source>les charges de gravité restent verticales sur la copie, contrairement à la structure copiée</source>
-        <translation>mitsangana foana ny entan'ny hery misintona eo amin'ny dika, tsy toy ny rafitra nadika</translation>
     </message>
     <message>
         <source>cas de charge « %1 » : un cas de même nom et d'autre catégorie existe ; créé sous le nom « %2 »</source>
@@ -13955,10 +13955,6 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
     <message>
         <source>%1 charge(s) sur barre de type « poids propre » explicite : OpenSees l'applique comme une charge uniforme vers le bas d'intensité q1, le moteur 2D l'ignore. Le poids propre se règle par l'option « Inclure le poids propre » (double comptage possible).</source>
         <translation>Enta %1 amin'ny tsorakazo karazana « lanja manokana » mazava: ampiharin'i OpenSees ho enta mitovy midina ambany manana hamafy q1 izany, tsy raisin'ny motera 2D. Ny safidy « Ampidiro ny lanja manokana » no mamaritra ny lanja manokana (mety ho voaisa indroa).</translation>
-    </message>
-    <message>
-        <source>Le moment réparti « %1 » n'a pas d'axe défini (direction « gravité » ou axe incompatible avec le repère) : indiquer l'axe du vecteur moment (local x pour une torsion, ou un axe global).</source>
-        <translation>Tsy manana tsipika fototra voafaritra ny momenta miparitaka « %1 » (fitodiana « herin'ny tany » na tsipika fototra tsy mifanaraka amin'ny fanondroana): lazao ny tsipika fototry ny vektora momenta (x eo an-toerana ho an'ny fiolonana, na tsipika fototra ankapobeny).</translation>
     </message>
     <message>
         <source>Le moment réparti « %1 » s'applique à une barre articulée (treillis ou câble), sans rigidité en rotation : il n'est pas transmis au calcul.</source>
@@ -20531,6 +20527,33 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
     </message>
 </context>
 <context>
+    <name>TSA::UI::LoadAxisCombo</name>
+    <message>
+        <source>X global</source>
+        <translation>X ankapobeny</translation>
+    </message>
+    <message>
+        <source>Y global</source>
+        <translation>Y ankapobeny</translation>
+    </message>
+    <message>
+        <source>Z global</source>
+        <translation>Z ankapobeny</translation>
+    </message>
+    <message>
+        <source>x local</source>
+        <translation>x eo an-toerana</translation>
+    </message>
+    <message>
+        <source>y local</source>
+        <translation>y eo an-toerana</translation>
+    </message>
+    <message>
+        <source>z local</source>
+        <translation>z eo an-toerana</translation>
+    </message>
+</context>
+<context>
     <name>TSA::UI::LoadCaseDialog</name>
     <message>
         <source>Cas de Charges, Combinaisons et Solveur OpenSees</source>
@@ -20838,36 +20861,8 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
         <translation>Enta amin'ny singa tsipika</translation>
     </message>
     <message>
-        <source>Gravité (-Z)</source>
-        <translation>Herin'ny tany (-Z)</translation>
-    </message>
-    <message>
-        <source>Global X</source>
-        <translation>X ankapobeny</translation>
-    </message>
-    <message>
-        <source>Global Y</source>
-        <translation>Y ankapobeny</translation>
-    </message>
-    <message>
-        <source>Global Z</source>
-        <translation>Z ankapobeny</translation>
-    </message>
-    <message>
-        <source>Local x (axial)</source>
-        <translation>x eo an-toerana (manaraka ny tsipika fototra)</translation>
-    </message>
-    <message>
-        <source>Local y (transversal)</source>
-        <translation>y eo an-toerana (miampita)</translation>
-    </message>
-    <message>
-        <source>Local z (transversal)</source>
-        <translation>z eo an-toerana (miampita)</translation>
-    </message>
-    <message>
-        <source>Direction :</source>
-        <translation>Lalana:</translation>
+        <source>Axe :</source>
+        <translation>Famaky:</translation>
     </message>
     <message>
         <source>Intensité q1 :</source>
@@ -21180,32 +21175,12 @@ Mitazona ny fikirany ireo zavatra hafa.</translation>
         <translation>Ampiharo amin'ny tsorakazo %1 voafidy</translation>
     </message>
     <message>
-        <source>Un moment réparti n'a pas de sens « gravité » : choisir l'axe du vecteur moment (local x = torsion).</source>
-        <translation>Tsy manana lalana « herin'ny tany » ny momenta miparitaka: safidio ny tsipika fototry ny vektoran'ny momenta (x eo an-toerana = fiolonana).</translation>
-    </message>
-    <message>
         <source>Torsion : couple autour de l'axe de la barre (règle de la main droite, de i vers j).</source>
         <translation>Fiolonana: momenta manodidina ny tsipika fototry ny tsorakazo (fitsipiky ny tanana ankavanana, avy amin'ny i mankany amin'ny j).</translation>
     </message>
     <message>
         <source>Moment réparti autour de l'axe %1 (règle de la main droite).</source>
         <translation>Momenta miparitaka manodidina ny tsipika fototra %1 (fitsipiky ny tanana ankavanana).</translation>
-    </message>
-    <message>
-        <source>Repère global. Gravité : charge toujours dirigée vers le bas (−Z), le signe saisi est ignoré.</source>
-        <translation>Fanondroana ankapobeny. Herin'ny tany: mitodika midina foana ny enta (−Z), tsy raisina ny famantarana nampidirina.</translation>
-    </message>
-    <message>
-        <source>Repère %1. Valeur positive : sens de l'axe ; négative : sens opposé.</source>
-        <translation>Fanondroana %1. Sanda tsara: lalan'ny tsipika fototra; ratsy: lalana mifanohitra.</translation>
-    </message>
-    <message>
-        <source>local de la barre</source>
-        <translation>eo an-toeran'ny tsorakazo</translation>
-    </message>
-    <message>
-        <source>global</source>
-        <translation>ankapobeny</translation>
     </message>
     <message>
         <source>Application de charges réparties (uniformes, trapézoïdales, moments) ou ponctuelles sur les barres.</source>
@@ -21256,36 +21231,28 @@ Mitazona ny fikirany ireo zavatra hafa.</translation>
         <translation>Karazana enta:</translation>
     </message>
     <message>
-        <source>Gravité (-Z)</source>
-        <translation>Herin'ny tany (-Z)</translation>
+        <source>Repère local : la charge suit la barre. Valeur positive : sens de l'axe. Sélectionner la barre affiche son trièdre x, y, z.</source>
+        <translation>Fanondroana eo an-toerana: manaraka ny tsorakazo ny enta. Sanda miabo: lalan'ny famaky. Ny fisafidianana ny tsorakazo dia mampiseho ny famaky x, y, z.</translation>
     </message>
     <message>
-        <source>Global X</source>
-        <translation>X ankapobeny</translation>
+        <source>Repère global : la direction reste fixe, même si la barre tourne. Valeur positive : sens de l'axe (charge descendante : Z négatif).</source>
+        <translation>Fanondroana ankapobeny: tsy miova ny lalana, na dia mihodina aza ny tsorakazo. Sanda miabo: lalan'ny famaky (enta midina: Z miiba).</translation>
     </message>
     <message>
-        <source>Global Y</source>
-        <translation>Y ankapobeny</translation>
+        <source>Global (X, Y, Z)</source>
+        <translation>Ankapobeny (X, Y, Z)</translation>
     </message>
     <message>
-        <source>Global Z</source>
-        <translation>Z ankapobeny</translation>
+        <source>Local (x, y, z)</source>
+        <translation>Eo an-toerana (x, y, z)</translation>
     </message>
     <message>
-        <source>Local x (axial)</source>
-        <translation>x eo an-toerana (manaraka ny tsipika fototra)</translation>
+        <source>Repère :</source>
+        <translation>Fanondroana:</translation>
     </message>
     <message>
-        <source>Local y (transversal)</source>
-        <translation>y eo an-toerana (miampita)</translation>
-    </message>
-    <message>
-        <source>Local z (transversal)</source>
-        <translation>z eo an-toerana (miampita)</translation>
-    </message>
-    <message>
-        <source>Direction :</source>
-        <translation>Lalana:</translation>
+        <source>Axe :</source>
+        <translation>Famaky:</translation>
     </message>
     <message>
         <source>Intensités et Position</source>
@@ -21362,10 +21329,6 @@ Mitazona ny fikirany ireo zavatra hafa.</translation>
     <message>
         <source>Veuillez sélectionner un élément structural valide.</source>
         <translation>Azafady, fidio singa ara-drafitra mety.</translation>
-    </message>
-    <message>
-        <source>Choisir l'axe du moment réparti (local x pour une torsion).</source>
-        <translation>Safidio ny tsipika fototry ny momenta miparitaka (x eo an-toerana ho an'ny fiolonana).</translation>
     </message>
     <message>
         <source>Charge déjà présente</source>
@@ -22723,8 +22686,8 @@ Tianao ho fidiana ve izy toy izay hamorona dika mitovy?</translation>
         <translation>Ampidiro ny anaran'ny tetikasa.</translation>
     </message>
     <message>
-        <source>Le nom ne doit pas contenir les caractères &lt; &gt; : " / \ | ? *</source>
-        <translation>Tsy tokony hisy ireto litera ireto ny anarana: &lt; &gt; : " / \ | ? *</translation>
+        <source>Le nom ne doit pas contenir les caractères &lt; &gt; : &quot; / \ | ? *</source>
+        <translation>Tsy tokony hisy ireto litera ireto ny anarana: &lt; &gt; : &quot; / \ | ? *</translation>
     </message>
     <message>
         <source>Choisissez un emplacement (chemin absolu).</source>
@@ -24708,8 +24671,8 @@ Tsindrio indroa raha hanokatra</translation>
         <translation>Tehirizo</translation>
     </message>
     <message>
-        <source>Saisissez un nom (les caractères &lt; &gt; : " / \ | ? * sont remplacés).</source>
-        <translation>Ampidiro anarana (soloina ny litera &lt; &gt; : " / \ | ? *).</translation>
+        <source>Saisissez un nom (les caractères &lt; &gt; : &quot; / \ | ? * sont remplacés).</source>
+        <translation>Ampidiro anarana (soloina ny litera &lt; &gt; : &quot; / \ | ? *).</translation>
     </message>
     <message>
         <source>Un template « %1 » existe déjà : son remplacement vous sera demandé.</source>
@@ -26126,16 +26089,28 @@ Mamorona tetikasa vaovao na sokafy rakitra %1: eto no hiseho ny topimasony.</tra
         <translation>Fielezana:</translation>
     </message>
     <message>
-        <source>Direction :</source>
-        <translation>Fitodiana:</translation>
-    </message>
-    <message>
         <source>Valeur :</source>
         <translation>Sanda:</translation>
     </message>
     <message>
-        <source>Intensité rapportée à la surface projetée (direction globale ; toiture inclinée, neige)</source>
-        <translation>Hamafin'ny enta mifandraika amin'ny velarana projeksiona (fitodiana ankapobeny; tafo mitongilana, oram-panala)</translation>
+        <source>Global (X, Y, Z)</source>
+        <translation>Ankapobeny (X, Y, Z)</translation>
+    </message>
+    <message>
+        <source>Local (x, y, z de la surface)</source>
+        <translation>Eo an-toerana (x, y, z an'ny velarana)</translation>
+    </message>
+    <message>
+        <source>Repère :</source>
+        <translation>Fanondroana:</translation>
+    </message>
+    <message>
+        <source>Axe :</source>
+        <translation>Famaky:</translation>
+    </message>
+    <message>
+        <source>Intensité rapportée à la surface projetée (axe global ; toiture inclinée, neige)</source>
+        <translation>Hamafina isaky ny velarana taratra (famaky ankapobeny; tafo mitongilana, lanezy)</translation>
     </message>
     <message>
         <source>Position (u ; v), repère local :</source>

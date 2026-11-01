@@ -545,7 +545,7 @@ bool runSuite_Loads(int& passed)
         // 5. Poteau vertical (0,0,0) -> (0,0,4) avec charge de vent GlobalX
         int n3 = model.addNode(0.0, 0.0, 4.0);
         int colId = model.addColumn(n1, n3, 0.4, 0.4);
-        MemberLoad mlWind = MemberLoad::uniform(colId, 1, 8.0, LoadDirection::GlobalX, LoadCoordSystem::Global, "WindCol", MemberTargetType::Column);
+        MemberLoad mlWind = MemberLoad::uniform(colId, 1, 8.0, LoadDirection::GlobalX, "WindCol", MemberTargetType::Column);
         auto compWind = LoadResolver::resolveMemberLoadToLocal(mlWind, model);
         // Sur un poteau vertical, le vent selon GlobalX est transversal
         double transversalMag = std::sqrt(compWind.wy * compWind.wy + compWind.wz * compWind.wz);
@@ -584,7 +584,7 @@ bool runSuite_Loads(int& passed)
         auto down = [](const LoadArrow& r) { return r.direction.Z() < -0.999999; };
 
         // Uniforme positive (Gravité) : 21 flèches régulières, toutes égales et vers le bas.
-        const MemberLoad g1 = MemberLoad::uniform(1, 1, 1, 10.0);
+        const MemberLoad g1 = MemberLoad::uniform(1, 1, 1, -10.0, LoadDirection::GlobalZ);
         const MemberLoadGlyph u = buildMemberLoadGlyph(g1, a, b, 0.0, st);
         TEST_CHECK(u.kind == MemberLoadGlyphKind::Distributed && u.arrows.size() == 21, "Test 209: uniforme 6 m → 21 flèches (" << u.arrows.size() << ")");
         TEST_CHECK(regular(u), "Test 209: espacement régulier");
@@ -595,16 +595,14 @@ bool runSuite_Loads(int& passed)
         for (const auto& p : u.envelope) parallel &= std::abs(p.Z() - 3.6) < 1e-12;
         TEST_CHECK(parallel && u.envelope.size() == 21, "Test 209: enveloppe parallèle à la barre (charge uniforme)");
 
-        // Uniforme négative : Gravité reste vers le bas (module) ; selon Global Z, le signe donne le sens.
-        TEST_CHECK(down(buildMemberLoadGlyph(MemberLoad::uniform(1, 1, 1, -10.0), a, b, 0.0, st).arrows.front()),
-                   "Test 209: Gravité négative toujours vers le bas (convention des moteurs)");
+        // Selon Global Z, le signe donne le sens.
         const MemberLoadGlyph up = buildMemberLoadGlyph(MemberLoad::uniform(1, 1, 1, -10.0, TSA::Model::LoadDirection::GlobalZ), a, b, 0.0, st);
         TEST_CHECK(up.arrows.front().direction.Z() < -0.999999, "Test 209: Global Z négative → vers le bas");
         TEST_CHECK(buildMemberLoadGlyph(MemberLoad::uniform(1, 1, 1, 10.0, TSA::Model::LoadDirection::GlobalZ), a, b, 0.0, st)
                        .arrows.front().direction.Z() > 0.999999, "Test 209: Global Z positive → vers le haut");
 
         // Triangulaire 0 → 12 sur toute la barre : pas de flèche en a, longueur ∝ intensité, maximum en b.
-        const MemberLoadGlyph tri = buildMemberLoadGlyph(MemberLoad::trapezoidal(1, 1, 1, 0.0, 12.0, 0.0, 6.0), a, b, 0.0, st);
+        const MemberLoadGlyph tri = buildMemberLoadGlyph(MemberLoad::trapezoidal(1, 1, 1, 0.0, -12.0, 0.0, 6.0, LoadDirection::GlobalZ), a, b, 0.0, st);
         bool proportional = true;
         for (const auto& r : tri.arrows) proportional &= std::abs(r.length - 0.6 * std::abs(r.intensity) / 12.0) < 1e-9;
         TEST_CHECK(tri.arrows.size() == 20 && tri.envelope.size() == 21 && tri.envelope.front().Distance(a) < 1e-12,
@@ -612,7 +610,7 @@ bool runSuite_Loads(int& passed)
         TEST_CHECK(proportional && std::abs(tri.arrows.back().length - 0.6) < 1e-12, "Test 209: triangulaire : longueur ∝ intensité locale");
 
         // Trapézoïdale 4 → 12 sur [1, 4] m : intervalle respecté, longueurs de 0,2 à 0,6.
-        const MemberLoadGlyph trap = buildMemberLoadGlyph(MemberLoad::trapezoidal(1, 1, 1, 4.0, 12.0, 1.0, 4.0), a, b, 0.0, st);
+        const MemberLoadGlyph trap = buildMemberLoadGlyph(MemberLoad::trapezoidal(1, 1, 1, -4.0, -12.0, 1.0, 4.0, LoadDirection::GlobalZ), a, b, 0.0, st);
         TEST_CHECK(std::abs(trap.start - 1.0) < 1e-12 && std::abs(trap.end - 4.0) < 1e-12 && trap.arrows.size() == 11,
                    "Test 209: trapézoïdale partielle : [1, 4] m, 11 flèches");
         TEST_CHECK(std::abs(trap.arrows.front().length - 0.2) < 1e-9 && std::abs(trap.arrows.back().length - 0.6) < 1e-9
@@ -626,7 +624,7 @@ bool runSuite_Loads(int& passed)
 
         // Barre inclinée, repère local z : flèches perpendiculaires à la barre, sens = LoadResolver.
         const gp_Pnt c(0, 0, 0), d(4, 0, 3);
-        const MemberLoad loc = MemberLoad::uniform(1, 1, 1, -5.0, TSA::Model::LoadDirection::LocalZ, TSA::Model::LoadCoordSystem::Local);
+        const MemberLoad loc = MemberLoad::uniform(1, 1, 1, -5.0, TSA::Model::LoadDirection::LocalZ);
         const MemberLoadGlyph incl = buildMemberLoadGlyph(loc, c, d, 0.0, st);
         const gp_Vec ref = TSA::Analysis::LoadResolver::memberLoadVector(loc, -5.0, c, d, 0.0);
         TEST_CHECK(incl.arrows.size() == 18 && std::abs(gp_Vec(incl.arrows[3].direction).Dot(gp_Vec(c, d).Normalized())) < 1e-9
@@ -638,8 +636,8 @@ bool runSuite_Loads(int& passed)
         TEST_CHECK(ax.arrows.front().direction.X() > 0.999999, "Test 209: charge selon X");
 
         // Intensité nulle : aucune flèche ; segment très court : 2 flèches sans superposition ; barre très longue : plafond.
-        TEST_CHECK(buildMemberLoadGlyph(MemberLoad::uniform(1, 1, 1, 0.0), a, b, 0.0, st).arrows.empty(), "Test 209: intensité nulle → aucune flèche");
-        const MemberLoadGlyph shortSeg = buildMemberLoadGlyph(MemberLoad::trapezoidal(1, 1, 1, 5.0, 5.0, 2.0, 2.1), a, b, 0.0, st);
+        TEST_CHECK(buildMemberLoadGlyph(MemberLoad::uniform(1, 1, 1, 0.0, LoadDirection::GlobalZ), a, b, 0.0, st).arrows.empty(), "Test 209: intensité nulle → aucune flèche");
+        const MemberLoadGlyph shortSeg = buildMemberLoadGlyph(MemberLoad::trapezoidal(1, 1, 1, -5.0, -5.0, 2.0, 2.1, LoadDirection::GlobalZ), a, b, 0.0, st);
         TEST_CHECK(shortSeg.arrows.size() == 2 && shortSeg.arrows[0].tip.Distance(shortSeg.arrows[1].tip) > 0.099,
                    "Test 209: segment de 0,1 m : 2 flèches distinctes");
         const MemberLoadGlyph longBar = buildMemberLoadGlyph(g1, gp_Pnt(0, 0, 0), gp_Pnt(500, 0, 0), 0.0, st);
@@ -647,7 +645,7 @@ bool runSuite_Loads(int& passed)
         TEST_CHECK(distributedStationCount(6.0, st) == 21 && distributedStationCount(0.001, st) == 1, "Test 209: règle de densité");
 
         // Force ponctuelle et moment réparti.
-        const MemberLoadGlyph pt = buildMemberLoadGlyph(MemberLoad::pointOnMember(1, 1, 1, 20.0, 2.5), a, b, 0.0, st);
+        const MemberLoadGlyph pt = buildMemberLoadGlyph(MemberLoad::pointOnMember(1, 1, 1, -20.0, 2.5, LoadDirection::GlobalZ), a, b, 0.0, st);
         TEST_CHECK(pt.kind == MemberLoadGlyphKind::Point && pt.arrows.size() == 1 && std::abs(pt.arrows[0].tip.X() - 2.5) < 1e-12 && down(pt.arrows[0]),
                    "Test 209: force ponctuelle : une flèche à x = 2,5 m");
         MemberLoad mm = g1;
@@ -664,14 +662,14 @@ bool runSuite_Loads(int& passed)
         using TSA::Model::MemberLoad;
         using TSA::Model::LoadDirection;
         using TSA::Model::LoadCoordSystem;
-        const MemberLoad full = MemberLoad::uniform(1, 1, 1, 10.0);
+        const MemberLoad full = MemberLoad::uniform(1, 1, 1, -10.0, LoadDirection::GlobalZ);
         TEST_CHECK(full.coversFullLength(6.0) && full.appliedRange(6.0).second == 6.0, "Test 210: uniforme ancien format (x1 = x2 = 0) = toute la barre");
         MemberLoad part = full;
         part.setX1(1.0);
         part.setX2(3.0);
         TEST_CHECK(!part.coversFullLength(6.0) && part.appliedRange(6.0).first == 1.0, "Test 210: uniforme partielle [1, 3]");
-        const MemberLoad lin = MemberLoad::trapezoidal(1, 1, 1, 0.0, 12.0, 0.0, 0.0);
-        TEST_CHECK(std::abs(lin.intensityAt(3.0, 6.0) - 6.0) < 1e-12, "Test 210: x2 = 0 → jusqu'au nœud j, intensité interpolée");
+        const MemberLoad lin = MemberLoad::trapezoidal(1, 1, 1, 0.0, -12.0, 0.0, 0.0, LoadDirection::GlobalZ);
+        TEST_CHECK(std::abs(lin.intensityAt(3.0, 6.0) + 6.0) < 1e-12, "Test 210: x2 = 0 → jusqu'au nœud j, intensité interpolée");
 
         TEST_CHECK(full.validate(6.0).empty() && part.validate(6.0).empty(), "Test 210: charges valides");
         MemberLoad bad = part;
@@ -683,9 +681,9 @@ bool runSuite_Loads(int& passed)
         bad = full;
         bad.setQ1(std::numeric_limits<double>::quiet_NaN());
         TEST_CHECK(!bad.validate(6.0).empty(), "Test 210: valeur non finie refusée");
-        TEST_CHECK(!MemberLoad::uniform(1, 1, 1, 0.0).validate(6.0).empty(), "Test 210: intensité nulle refusée");
+        TEST_CHECK(!MemberLoad::uniform(1, 1, 1, 0.0, LoadDirection::GlobalZ).validate(6.0).empty(), "Test 210: intensité nulle refusée");
         TEST_CHECK(MemberLoad::coordSystemFor(LoadDirection::LocalY) == LoadCoordSystem::Local
-                       && MemberLoad::coordSystemFor(LoadDirection::Gravity) == LoadCoordSystem::Global,
+                       && MemberLoad::coordSystemFor(LoadDirection::GlobalZ) == LoadCoordSystem::Global,
                    "Test 210: repère déduit de la direction");
 
         // Sens unique : chemin modèle = chemin calcul (auparavant −q contre −|q| pour une direction non
@@ -693,7 +691,7 @@ bool runSuite_Loads(int& passed)
         Model m;
         const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(4, 0, 3);
         const int bar = m.addBar(n1, n2, Section::ipe(300), Material::steelS235(), BarRole::Beam);
-        MemberLoad odd(1, bar, 1, TSA::Model::LoadType::MemberUniform, -8.0, -8.0, LoadDirection::Gravity, LoadCoordSystem::Local);
+        MemberLoad odd(1, bar, 1, TSA::Model::LoadType::MemberUniform, -8.0, -8.0, LoadDirection::LocalZ);
         const auto viaModel = TSA::Analysis::LoadResolver::resolveMemberLoadToLocal(odd, m);
         const auto viaSnapshot = TSA::Analysis::LoadResolver::resolveMemberLoadToLocal(odd, TSA::Analysis::CalculationSnapshot::capture(m));
         TEST_CHECK(viaModel.wz == viaSnapshot.wz && viaModel.wz == -8.0, "Test 210: modèle et calcul lisent le même sens");
@@ -717,7 +715,7 @@ bool runSuite_Loads(int& passed)
         const int b1 = m.addBar(n1, n2, Section::ipe(300), Material::steelS235(), BarRole::Beam);
         const int b2 = m.addBar(n2, n3, Section::ipe(300), Material::steelS235(), BarRole::Beam);
         const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
-        MemberLoad proto = MemberLoad::trapezoidal(0, 0, lc, 2.0, 8.0, 1.0, 4.0);
+        MemberLoad proto = MemberLoad::trapezoidal(0, 0, lc, -2.0, -8.0, 1.0, 4.0, LoadDirection::GlobalZ);
         std::string err;
 
         // Tout ou rien : x2 = 4 m dépasse la barre de 3 m → aucune charge ajoutée.
@@ -751,8 +749,8 @@ bool runSuite_Loads(int& passed)
         Model back;
         TEST_CHECK(TSA::IO::TSAProjectIO::loadFromFile(file, back, nullptr, &err), "Test 211: réouverture");
         const MemberLoad* r = back.loadManager().getMemberLoad(ids[0]);
-        TEST_CHECK(r && r->type() == LoadType::MemberLinear && r->q1() == 2.0 && r->q2() == 10.0 && r->x1() == 1.0 && r->x2() == 2.5
-                       && r->direction() == LoadDirection::Gravity && r->coordSystem() == LoadCoordSystem::Global,
+        TEST_CHECK(r && r->type() == LoadType::MemberLinear && r->q1() == -2.0 && r->q2() == 10.0 && r->x1() == 1.0 && r->x2() == 2.5
+                       && r->direction() == LoadDirection::GlobalZ && r->coordSystem() == LoadCoordSystem::Global,
                    "Test 211: charge relue à l'identique");
         QFile::remove(file);
         std::cout << "[PASS] Test 211: Application, modification et sauvegarde des charges sur barre" << std::endl;
@@ -777,8 +775,8 @@ bool runSuite_Loads(int& passed)
         const int n2 = model.addNode(6, 0, 0);
         const int b1 = model.addBar(n1, n2, Section::ipe(300), Material::steelS235(), BarRole::Beam);
         const int nl = model.loadManager().addNodalLoad(NodalLoad(0, n2, 1, 0, 0, -20.0, 0, 0, 0, LoadCoordSystem::Global, "NL"));
-        const int ml = model.loadManager().addMemberLoad(MemberLoad::uniform(b1, 1, -5.0, LoadDirection::Gravity, "ML", MemberTargetType::Beam));
-        const int keep = model.loadManager().addMemberLoad(MemberLoad::uniform(b1, 1, -2.0, LoadDirection::Gravity, "Keep", MemberTargetType::Beam));
+        const int ml = model.loadManager().addMemberLoad(MemberLoad::uniform(b1, 1, -5.0, LoadDirection::GlobalZ, "ML", MemberTargetType::Beam));
+        const int keep = model.loadManager().addMemberLoad(MemberLoad::uniform(b1, 1, -2.0, LoadDirection::GlobalZ, "Keep", MemberTargetType::Beam));
         const bool couldUndo = model.canUndo();
 
         TEST_CHECK(removeLoads(model, {}, {}, "rien") == 0 && model.canUndo() == couldUndo,

@@ -157,8 +157,9 @@ SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& 
     case SurfacePressure::Direction::GlobalX: dir = { 1, 0, 0 }; break;
     case SurfacePressure::Direction::GlobalY: dir = { 0, 1, 0 }; break;
     case SurfacePressure::Direction::GlobalZ: dir = { 0, 0, 1 }; break;
-    case SurfacePressure::Direction::Gravity: dir = { 0, 0, -1 }; break;
-    case SurfacePressure::Direction::LocalNormal: dir = s->frame.N * -1.0, normal = true; break;
+    case SurfacePressure::Direction::LocalX: dir = s->frame.U, normal = true; break;
+    case SurfacePressure::Direction::LocalY: dir = s->frame.V, normal = true; break;
+    case SurfacePressure::Direction::LocalZ: dir = s->frame.N, normal = true; break;
     }
     if (normal && load.projected) r.warnings.push_back(QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "surface projetée sans objet pour une pression normale : surface réelle utilisée").toStdString());
     const double projFactor = (!normal && load.projected) ? std::abs(s->frame.N.dot(dir)) : 1.0;
@@ -371,8 +372,9 @@ SurfaceLoadResult distributeSurfacePointLoad(const FeMesh& mesh, const MeshGeome
     case SurfacePressure::Direction::GlobalX: dir = { 1, 0, 0 }; break;
     case SurfacePressure::Direction::GlobalY: dir = { 0, 1, 0 }; break;
     case SurfacePressure::Direction::GlobalZ: dir = { 0, 0, 1 }; break;
-    case SurfacePressure::Direction::Gravity: dir = { 0, 0, -1 }; break;
-    case SurfacePressure::Direction::LocalNormal: dir = s->frame.N * -1.0; break;
+    case SurfacePressure::Direction::LocalX: dir = s->frame.U; break;
+    case SurfacePressure::Direction::LocalY: dir = s->frame.V; break;
+    case SurfacePressure::Direction::LocalZ: dir = s->frame.N; break;
     }
     const P3 P = s->frame.toGlobal(load.u, load.v);
     std::vector<double> N, dr, ds;

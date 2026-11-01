@@ -46,9 +46,9 @@ Model& richModel(Model& m)
     const int g1 = lm.addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead, true, 1.0));
     const int q1 = lm.addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
     lm.addNodalLoad(NodalLoad(0, b, q1, 10.0, 0.0, -5.0, 0.0, 2.0, 0.0));
-    lm.addMemberLoad(TSA::Model::MemberLoad::uniform(0, bm, g1, -8.0));
-    lm.addMemberLoad(TSA::Model::MemberLoad::trapezoidal(0, bm, q1, -2.0, -6.0, 0.5, 4.5));
-    lm.addMemberLoad(TSA::Model::MemberLoad::pointOnMember(0, bm, q1, -12.0, 3.0));
+    lm.addMemberLoad(TSA::Model::MemberLoad::uniform(0, bm, g1, -8.0, LoadDirection::GlobalZ));
+    lm.addMemberLoad(TSA::Model::MemberLoad::trapezoidal(0, bm, q1, -2.0, -6.0, 0.5, 4.5, LoadDirection::GlobalZ));
+    lm.addMemberLoad(TSA::Model::MemberLoad::pointOnMember(0, bm, q1, -12.0, 3.0, LoadDirection::GlobalZ));
     lm.addCombination(LoadCombination(0, "ELU", LoadCombinationType::ULS_Fundamental, { { g1, 1.35 }, { q1, 1.5 } }));
     return m;
 }

@@ -159,7 +159,7 @@ bool runSuite_Surfaces(int& passed)
             TSA::Model::SurfaceLoad sl;
             sl.surfaceId = s;
             sl.loadCaseId = lc;
-            sl.value = q;
+            sl.value = -q;
             m.loadManager().addSurfaceLoad(sl);
             const auto r = runSurfaces(m, settings2D(step, pass != 2), false, lc);
             TEST_CHECK(!r.compat.blocking() && r.prepared.canRun() && r.run.success,
@@ -228,13 +228,13 @@ bool runSuite_Surfaces(int& passed)
         TSA::Model::SurfaceLoad sl;
         sl.surfaceId = s;
         sl.loadCaseId = lc;
-        sl.value = 2.0;
+        sl.value = -2.0;
         m.loadManager().addSurfaceLoad(sl);
         TSA::Model::SurfaceLoad pl;
         pl.surfaceId = s;
         pl.loadCaseId = lc;
         pl.distribution = TSA::Model::SurfaceLoadDistribution::Point;
-        pl.value = 15.0;
+        pl.value = -15.0;
         pl.u = 1.0;
         pl.v = 1.0;
         m.loadManager().addSurfaceLoad(pl);
@@ -322,7 +322,7 @@ bool runSuite_Surfaces(int& passed)
         TSA::Model::SurfaceLoad sl;
         sl.surfaceId = s;
         sl.loadCaseId = lc;
-        sl.value = 5.0;
+        sl.value = -5.0;
         m.loadManager().addSurfaceLoad(sl);
         const auto r = runSurfaces(m, settings2D(0.5, true), true, lc);
         TEST_CHECK(!r.compat.blocking() && r.run.success, "Test 356: dalle sur poutres calculée (" << blockingText(r.compat) << errorsOf(r.prepared) << ")");
@@ -444,7 +444,7 @@ bool runSuite_Surfaces(int& passed)
         TSA::Model::SurfaceLoad sl;
         sl.surfaceId = s;
         sl.loadCaseId = lc;
-        sl.value = 3.0;
+        sl.value = -3.0;
         m.loadManager().addSurfaceLoad(sl);
         r = runSurfaces(m, settings2D(0.5, true));
         TEST_CHECK(r.compat.blocking() && blockingText(r.compat).find("non transmise") != std::string::npos, "Test 357: charge sur une surface non transmise refusée");
@@ -494,14 +494,14 @@ bool runSuite_Surfaces(int& passed)
         sl.surfaceId = w;
         sl.loadCaseId = lc;
         sl.name = "Vent";
-        sl.direction = TSA::Model::SurfaceLoadDirection::LocalNormal;
-        sl.value = 0.8;
+        sl.direction = TSA::Model::SurfaceLoadDirection::LocalZ;
+        sl.value = -0.8;
         const int lid = m.loadManager().addSurfaceLoad(sl);
         TSA::Model::SurfaceLoad pt;
         pt.surfaceId = s;
         pt.loadCaseId = lc;
         pt.distribution = TSA::Model::SurfaceLoadDistribution::Point;
-        pt.value = 12;
+        pt.value = -12;
         pt.u = 2;
         pt.v = 1.5;
         pt.projected = true;
@@ -542,7 +542,7 @@ bool runSuite_Surfaces(int& passed)
         TSA::Model::SurfaceLoad sl;
         sl.surfaceId = s;
         sl.loadCaseId = lc;
-        sl.value = 10.0;   // kN/m²
+        sl.value = -10.0;   // kN/m²
         m.loadManager().addSurfaceLoad(sl);
         const double E = m.getSlab(s)->material().E * 1e-3;   // kPa
         const double EI = E * b * h * h * h / 12.0, mu = rho * b * h;
@@ -643,7 +643,7 @@ bool runSuite_Surfaces(int& passed)
         TSA::Model::SurfaceLoad sl;
         sl.surfaceId = s;
         sl.loadCaseId = lc;
-        sl.value = q;
+        sl.value = -q;
         m.loadManager().addSurfaceLoad(sl);
         const auto r = runSurfaces(m, settings2D(0.25, true), false, lc);
         TEST_CHECK(!r.compat.blocking() && r.prepared.canRun() && r.run.success,
@@ -774,7 +774,7 @@ bool runSuite_Surfaces(int& passed)
         TSA::Model::SurfaceLoad zl;
         zl.surfaceId = s;
         zl.loadCaseId = lc;
-        zl.value = 5.0;
+        zl.value = -5.0;
         zl.zone = true;
         zl.zoneU0 = 1.3, zl.zoneV0 = 0.7, zl.zoneU1 = 4.1, zl.zoneV1 = 2.6;
         const int zid = m.loadManager().addSurfaceLoad(zl);
@@ -883,7 +883,7 @@ bool runSuite_Surfaces(int& passed)
         TSA::Model::SurfaceLoad sl;
         sl.surfaceId = s;
         sl.loadCaseId = lc;
-        sl.value = 3.0;
+        sl.value = -3.0;
         m.loadManager().addSurfaceLoad(sl);
         auto run = [&](bool kN, bool modal) {
             return runSurfaces(m, settings2D(0.5, true), true, modal ? 0 : lc, [&](TSA::Analysis::AnalysisContext& c) {
@@ -957,7 +957,7 @@ bool runSuite_Surfaces(int& passed)
                 TSA::Model::SurfaceLoad sl;
                 sl.surfaceId = s;
                 sl.loadCaseId = lc;
-                sl.value = 3.0;
+                sl.value = -3.0;
                 m.loadManager().addSurfaceLoad(sl);
             }
         QElapsedTimer t;
@@ -983,7 +983,7 @@ bool runSuite_Surfaces(int& passed)
         TSA::Model::SurfaceLoad extra;
         extra.surfaceId = slabs.back();
         extra.loadCaseId = lc;
-        extra.value = 1.0;
+        extra.value = -1.0;
         extra.zone = true;
         extra.zoneU1 = extra.zoneV1 = 1.0;
         m.loadManager().addSurfaceLoad(extra);
@@ -1022,7 +1022,7 @@ bool runSuite_Surfaces(int& passed)
         l.loadCaseId = 999;
         TEST_CHECK(SurfaceApi::addLoad(m, l, &err) == 0, "Test 364: cas de charge inexistant refusé");
         l.loadCaseId = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
-        l.value = 2.0;
+        l.value = -2.0;
         TEST_CHECK(SurfaceApi::addLoad(m, l, &err) > 0, "Test 364: charge ajoutée (" << err << ")");
         TEST_CHECK(SurfaceApi::setFormulation(m, TSA::Model::SurfaceTargetKind::Wall, w, TSA::Model::SurfaceFormulation::Plate, &err), "Test 364: formulation");
 

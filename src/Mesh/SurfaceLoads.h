@@ -2,7 +2,7 @@
 
 // Répartition d'une charge surfacique sur les éléments 2D d'une surface maillée (docs/MESH.md §K) :
 // charges nodales équivalentes COHÉRENTES (∫ Nᵢ p dA, intégration de Gauss sur les fonctions de forme des
-// éléments tri3, tri6, quad4, quad8), direction globale (X, Y, Z, gravité) ou normale locale, surface
+// éléments tri3, tri6, quad4, quad8), axe global (X, Y, Z) ou local (U, V, N), surface
 // réelle ou projetée. La résultante et le moment par rapport à l'origine sont contrôlés contre la valeur
 // analytique (aire nette de la surface, ouvertures déduites, et son centre) ; un écart, une surface non
 // maillée ou des éléments non pris en charge sont signalés : la charge n'est alors pas convertie.
@@ -27,9 +27,10 @@ struct SurfacePressure
         GlobalX,
         GlobalY,
         GlobalZ,
-        Gravity,        ///< −Z global
-        LocalNormal     ///< −N (normale de la surface, sens de sa définition) : une pression positive appuie sur la face
-    } direction = Direction::Gravity;
+        LocalX,         ///< U de la surface
+        LocalY,         ///< V de la surface
+        LocalZ          ///< N, normale de la surface
+    } direction = Direction::GlobalZ;
     bool projected = false;         ///< direction globale : intensité rapportée à la surface projetée perpendiculairement à la direction
     /// Variation linéaire dans le repère local de la surface : p(u, v) = value + gradU · u + gradV · v (kN/m³) ; ex. pression
     /// hydrostatique sur un voile : value = γ·h, gradV = −γ, zone limitée à v ≤ h.
@@ -61,7 +62,7 @@ struct SurfacePointLoad
     std::string surface;            ///< SL2, W5
     double u = 0, v = 0;            ///< position dans le repère local de la surface (m)
     double value = 0;               ///< kN
-    SurfacePressure::Direction direction = SurfacePressure::Direction::Gravity;
+    SurfacePressure::Direction direction = SurfacePressure::Direction::GlobalZ;
 };
 
 /// Force ponctuelle sur une surface maillée : répartie sur les nœuds de l'élément qui contient le point par ses fonctions

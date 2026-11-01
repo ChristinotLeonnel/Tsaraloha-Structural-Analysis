@@ -525,16 +525,6 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
         for (const auto& [loadId, ml] : lm.memberLoads())
         {
             if (ml.type() != TSA::Model::LoadType::MemberMoment) continue;
-            if (TSA::Analysis::LoadResolver::usesMagnitudeOnly(ml))
-            {
-                report.addError(loadsCat,
-                    QCoreApplication::translate("TSA::Standards::ModelValidator",
-                        "Le moment réparti « %1 » n'a pas d'axe défini (direction « gravité » ou axe incompatible avec le "
-                        "repère) : indiquer l'axe du vecteur moment (local x pour une torsion, ou un axe global).")
-                        .arg(QString::fromStdString(ml.name())).toStdString(),
-                    loadId, "RDM");
-                continue;
-            }
             const auto* el = snap.findElementForLoad(ml);
             if (el && (el->type == TSA::Analysis::SnapshotElement::ElementType::Truss
                        || el->type == TSA::Analysis::SnapshotElement::ElementType::Cable))

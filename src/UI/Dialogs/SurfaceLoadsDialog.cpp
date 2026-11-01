@@ -1,3 +1,4 @@
+#include "../Common/LoadAxisCombo.h"
 #include "SurfaceLoadsDialog.h"
 
 #include "../../Model/Load/LoadManager.h"
@@ -31,6 +32,9 @@ using TSA::Model::SurfaceTargetKind;
 
 namespace
 {
+const std::array<int, 3> kGlobalAxes { int(SurfaceLoadDirection::GlobalX), int(SurfaceLoadDirection::GlobalY), int(SurfaceLoadDirection::GlobalZ) };
+const std::array<int, 3> kLocalAxes { int(SurfaceLoadDirection::LocalX), int(SurfaceLoadDirection::LocalY), int(SurfaceLoadDirection::LocalZ) };
+
 QString directionName(SurfaceLoadDirection d)
 {
     switch (d)
@@ -38,8 +42,9 @@ QString directionName(SurfaceLoadDirection d)
     case SurfaceLoadDirection::GlobalX: return QObject::tr("X global");
     case SurfaceLoadDirection::GlobalY: return QObject::tr("Y global");
     case SurfaceLoadDirection::GlobalZ: return QObject::tr("Z global");
-    case SurfaceLoadDirection::LocalNormal: return QObject::tr("normale locale (−N)");
-    default: return QObject::tr("gravité (−Z)");
+    case SurfaceLoadDirection::LocalX: return QObject::tr("x local (U)");
+    case SurfaceLoadDirection::LocalY: return QObject::tr("y local (V)");
+    default: return QObject::tr("z local (N)");
     }
 }
 } // namespace
@@ -106,18 +111,22 @@ SurfaceLoadsDialog::SurfaceLoadsDialog(const TSA::Model::Model& model, const std
     m_distribution->addItem(tr("Uniforme sur la surface nette (kN/m²)"), int(SurfaceLoadDistribution::Uniform));
     m_distribution->addItem(tr("Ponctuelle en un point de la surface (kN)"), int(SurfaceLoadDistribution::Point));
     form->addRow(tr("Répartition :"), m_distribution);
+    auto* system = new QComboBox(this);
+    system->addItem(tr("Global (X, Y, Z)"));
+    system->addItem(tr("Local (x, y, z de la surface)"));
+    form->addRow(tr("Repère :"), system);
     m_direction = new QComboBox(this);
-    for (auto d : { SurfaceLoadDirection::Gravity, SurfaceLoadDirection::LocalNormal, SurfaceLoadDirection::GlobalX, SurfaceLoadDirection::GlobalY,
-                    SurfaceLoadDirection::GlobalZ })
-        m_direction->addItem(directionName(d), int(d));
-    form->addRow(tr("Direction :"), m_direction);
+    TSA::UI::fillLoadAxisCombo(m_direction, false, kGlobalAxes);
+    connect(system, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            [this](int index) { TSA::UI::fillLoadAxisCombo(m_direction, index == 1, index == 1 ? kLocalAxes : kGlobalAxes); });
+    form->addRow(tr("Axe :"), m_direction);
     m_value = new QDoubleSpinBox(this);
     m_value->setRange(-1e6, 1e6);
     m_value->setDecimals(3);
-    m_value->setValue(2.5);
+    m_value->setValue(-2.5);
     m_value->setSuffix(QStringLiteral(" kN/m²"));
     form->addRow(tr("Valeur :"), m_value);
-    m_projected = new QCheckBox(tr("Intensité rapportée à la surface projetée (direction globale ; toiture inclinée, neige)"), this);
+    m_projected = new QCheckBox(tr("Intensité rapportée à la surface projetée (axe global ; toiture inclinée, neige)"), this);
     form->addRow(QString(), m_projected);
     auto* pos = new QHBoxLayout;
     m_u = new QDoubleSpinBox(this);

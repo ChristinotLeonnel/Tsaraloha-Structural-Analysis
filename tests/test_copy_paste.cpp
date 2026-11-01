@@ -168,8 +168,8 @@ struct SlabCase
         p.surfaceId = slab;
         p.loadCaseId = loadCase;
         p.name = "pression";
-        p.value = 3.0;
-        p.gradU = 0.5;
+        p.value = -3.0;
+        p.gradU = -0.5;
         p.zone = true;
         p.zoneU0 = 0.5, p.zoneV0 = 0.25, p.zoneU1 = 4.0, p.zoneV1 = 3.0;
         pressure = m.loadManager().addSurfaceLoad(p);
@@ -225,12 +225,12 @@ bool runSuite_CopyPaste(int& passed)
         const int mixed = m.addBeam(m.addNode(0, 6, 3), m.addNode(6, 6, 3));
 
         auto& lm = m.loadManager();
-        lm.addMemberLoad(MemberLoad::pointOnMember(0, pointed, lcQ, 12.5, 1.75, LoadDirection::GlobalY, LoadCoordSystem::Global, false, "P1"));
-        lm.addMemberLoad(MemberLoad::uniform(0, spread, lcG, 4.25, LoadDirection::Gravity));
-        lm.addMemberLoad(MemberLoad::uniform(0, spread, lcQ, 2.5, LoadDirection::LocalZ, LoadCoordSystem::Local, "vent"));
-        lm.addMemberLoad(MemberLoad::trapezoidal(0, mixed, lcQ, 1.0, 3.0, 0.2, 0.8, LoadDirection::GlobalZ, LoadCoordSystem::Global, true, "triangle"));
-        lm.addMemberLoad(MemberLoad::pointOnMember(0, mixed, lcG, -8.0, 3.0, LoadDirection::LocalY, LoadCoordSystem::Local));
-        lm.addMemberLoad(MemberLoad::uniform(0, mixed, lcG, 1.5, LoadDirection::Gravity));
+        lm.addMemberLoad(MemberLoad::pointOnMember(0, pointed, lcQ, 12.5, 1.75, LoadDirection::GlobalY, false, "P1"));
+        lm.addMemberLoad(MemberLoad::uniform(0, spread, lcG, -4.25, LoadDirection::GlobalZ));
+        lm.addMemberLoad(MemberLoad::uniform(0, spread, lcQ, 2.5, LoadDirection::LocalZ, "vent"));
+        lm.addMemberLoad(MemberLoad::trapezoidal(0, mixed, lcQ, 1.0, 3.0, 0.2, 0.8, LoadDirection::GlobalZ, true, "triangle"));
+        lm.addMemberLoad(MemberLoad::pointOnMember(0, mixed, lcG, -8.0, 3.0, LoadDirection::LocalY));
+        lm.addMemberLoad(MemberLoad::uniform(0, mixed, lcG, -1.5, LoadDirection::GlobalZ));
 
         const std::size_t cases = lm.loadCases().size(), combinations = lm.combinations().size();
         StructuralClipboard clip;   // options par défaut : ce que fait Ctrl+C
@@ -288,8 +288,8 @@ bool runSuite_CopyPaste(int& passed)
         wallLoad.targetKind = SurfaceTargetKind::Wall;
         wallLoad.surfaceId = wall;
         wallLoad.loadCaseId = lc;
-        wallLoad.value = 1.5;
-        wallLoad.direction = SurfaceLoadDirection::LocalNormal;
+        wallLoad.value = -1.5;
+        wallLoad.direction = SurfaceLoadDirection::LocalZ;
         m.loadManager().addSurfaceLoad(wallLoad);
         const SlabCase slab(m, lc);
         const int footing = m.addFoundation(a, 1.2, 1.8, 0.6);
@@ -339,7 +339,7 @@ bool runSuite_CopyPaste(int& passed)
         Model m;
         const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
         const int beam = m.addBeam(m.addNode(0, 0, 0), m.addNode(5, 0, 0));
-        m.loadManager().addMemberLoad(MemberLoad::pointOnMember(0, beam, lc, 10.0, 2.0));
+        m.loadManager().addMemberLoad(MemberLoad::pointOnMember(0, beam, lc, -10.0, 2.0, LoadDirection::GlobalZ));
         StructuralClipboard clip;
         clip.copyFrom(m, beamsSelection({ beam }));
 
@@ -366,7 +366,7 @@ bool runSuite_CopyPaste(int& passed)
         const int n1 = m.addNode(0, 0, 3), n2 = m.addNode(6, 0, 3);
         m.getNode(n1)->setSupport(SupportDefinition::pinned());
         const int beam = m.addBeam(n1, n2);
-        m.loadManager().addMemberLoad(MemberLoad::pointOnMember(0, beam, lc, 12.0, 1.5));
+        m.loadManager().addMemberLoad(MemberLoad::pointOnMember(0, beam, lc, -12.0, 1.5, LoadDirection::GlobalZ));
         m.loadManager().addNodalLoad(NodalLoad(0, n2, lc, 0.0, 5.0, 0.0));
         const int wall = m.addWall(m.addNode(0, 10, 0), m.addNode(4, 10, 0), 3.0, 0.2);
         const int footing = m.addFoundation(m.addNode(10, 10, 0));
@@ -424,8 +424,8 @@ bool runSuite_CopyPaste(int& passed)
             nodal.setMx(1.0), nodal.setMy(2.0), nodal.setMz(3.0);
             lm.addNodalLoad(nodal);
             lm.addMemberLoad(MemberLoad::uniform(0, beam, lc, 6.0, LoadDirection::GlobalX));
-            lm.addMemberLoad(MemberLoad::uniform(0, beam, lc, 2.0, LoadDirection::Gravity));
-            MemberLoad local = MemberLoad::uniform(0, column, lc, 5.0, LoadDirection::LocalY, LoadCoordSystem::Local, "", MemberTargetType::Column);
+            lm.addMemberLoad(MemberLoad::uniform(0, beam, lc, -2.0, LoadDirection::GlobalZ));
+            MemberLoad local = MemberLoad::uniform(0, column, lc, 5.0, LoadDirection::LocalY, "", MemberTargetType::Column);
             lm.addMemberLoad(local);
 
             const auto sourceBeam = loadsOnBeam(m, beam);
@@ -450,33 +450,28 @@ bool runSuite_CopyPaste(int& passed)
             const gp_Pnt qa = pointOf(m, nb->startNodeId()), qb = pointOf(m, nb->endNodeId());
             TEST_CHECK(qa.Distance(pa.Transformed(t)) < kTol && qb.Distance(pb.Transformed(t)) < kTol, "Test 553: nœuds à leur image");
 
-            // Hors gravité, l'action résultante de la copie est l'image de l'action d'origine, au sens du calcul.
-            auto without = [](std::vector<MemberLoad> v, bool gravity) {
-                v.erase(std::remove_if(v.begin(), v.end(), [&](const MemberLoad& l) { return (l.direction() == LoadDirection::Gravity) != gravity; }), v.end());
-                return v;
-            };
-            const gp_Vec image = linear(resolved(without(sourceBeam, false), pa, pb, 20.0), t);
-            TEST_CHECK(sameVec(resolved(without(loadsOnBeam(m, copyBeam), false), qa, qb, 20.0), image), "Test 553: charge globale, image de la charge");
-            TEST_CHECK(without(loadsOnBeam(m, copyBeam), true).size() == 1 && without(loadsOnBeam(m, copyBeam), true)[0].q1() == 2.0, "Test 553: gravité inchangée");
+            // Charges globales : enregistrements recopiés, direction globale conservée (comme Robot)
+            const auto copied = loadsOnBeam(m, copyBeam);
+            TEST_CHECK(copied.size() == sourceBeam.size(), "Test 553: autant de charges sur la copie");
+            for (std::size_t i = 0; i < copied.size(); ++i) TEST_CHECK(sameMemberLoad(copied[i], sourceBeam[i]), "Test 553: charge globale recopiée à l'identique");
+            TEST_CHECK(sameVec(resolved(copied, qa, qb, nb->rotation()), resolved(sourceBeam, pa, pb, 20.0)), "Test 553: direction globale fixe");
 
             const Column* nc = m.getColumn(copyColumn);
             const gp_Pnt qc = pointOf(m, nc->startNodeId()), qd = pointOf(m, nc->endNodeId());
             TEST_CHECK(sameVec(resolved(loadsOnColumn(m, copyColumn), qc, qd, nc->rotation()), linear(resolved(sourceColumn, pc, pa, 10.0), t)),
-                       "Test 553: charge locale, image de la charge");
+                       "Test 553: charge locale, suit l'élément (image de la charge)");
 
             const NodalLoad* moved = nullptr;
             for (const auto& [id, l] : lm.nodalLoads()) moved = l.nodeId() == nb->endNodeId() ? &l : moved;
             TEST_CHECK(moved, "Test 553: charge nodale copiée");
-            TEST_CHECK(sameVec(gp_Vec(moved->fx(), moved->fy(), moved->fz()), linear(gp_Vec(3, 4, -5), t)), "Test 553: force nodale tournée");
-            TEST_CHECK(sameVec(gp_Vec(moved->mx(), moved->my(), moved->mz()), linear(gp_Vec(1, 2, 3), t)), "Test 553: moment nodal tourné");
-            if (degrees == 90.0)
-                TEST_CHECK(loadsOnBeam(m, copyBeam).size() == 2, "Test 553: axe aligné après rotation, une seule charge par charge d'origine");
+            TEST_CHECK(sameVec(gp_Vec(moved->fx(), moved->fy(), moved->fz()), gp_Vec(3, 4, -5)), "Test 553: force nodale globale, recopiée");
+            TEST_CHECK(sameVec(gp_Vec(moved->mx(), moved->my(), moved->mz()), gp_Vec(1, 2, 3)), "Test 553: moment nodal global, recopié");
         }
 
         Model tilted;
         const int lc = tilted.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
         const int beam = tilted.addBeam(tilted.addNode(0, 0, 0), tilted.addNode(5, 0, 0));
-        tilted.loadManager().addMemberLoad(MemberLoad::uniform(0, beam, lc, 2.0, LoadDirection::Gravity));
+        tilted.loadManager().addMemberLoad(MemberLoad::uniform(0, beam, lc, -2.0, LoadDirection::GlobalZ));
         const int wall = tilted.addWall(tilted.addNode(0, 5, 0), tilted.addNode(4, 5, 0));
         ElementSet s;
         s.beams = { beam };
@@ -484,8 +479,8 @@ bool runSuite_CopyPaste(int& passed)
         std::vector<std::string> warnings;
         tilted.copyAndRotateElements(s, gp_Pnt(0, 0, 0), gp_Dir(1, 0, 0), M_PI / 4, 1, ClipboardOptions {}, &warnings);
         TEST_CHECK(tilted.walls().size() == 1 && tilted.beams().size() == 2, "Test 553: voile non incliné, poutre copiée");
-        TEST_CHECK(warnings.size() == 2, "Test 553: voile non copié et gravité conservée sont signalés");
-        std::cout << "[PASS] Test 553: Copie par rotation, image des charges" << std::endl;
+        TEST_CHECK(warnings.size() == 1, "Test 553: voile non copié signalé");
+        std::cout << "[PASS] Test 553: Copie par rotation, charges globales fixes et locales suivant l'élément" << std::endl;
         ++passed;
     }
 
@@ -508,7 +503,7 @@ bool runSuite_CopyPaste(int& passed)
         NodalLoad nodal(0, b, lc, 1.0, 2.0, 3.0);
         nodal.setMx(4.0), nodal.setMy(5.0), nodal.setMz(6.0);
         lm.addNodalLoad(nodal);
-        lm.addMemberLoad(MemberLoad::uniform(0, beam, lc, 3.0, LoadDirection::LocalY, LoadCoordSystem::Local));
+        lm.addMemberLoad(MemberLoad::uniform(0, beam, lc, 3.0, LoadDirection::LocalY));
         MemberLoad moment(0, beam, lc, LoadType::MemberMoment, 2.0, 2.0, LoadDirection::GlobalY);
         lm.addMemberLoad(moment);
         const SlabCase slab(m, lc);
@@ -519,8 +514,8 @@ bool runSuite_CopyPaste(int& passed)
         wallLoad.targetKind = SurfaceTargetKind::Wall;
         wallLoad.surfaceId = wall;
         wallLoad.loadCaseId = lc;
-        wallLoad.value = 2.0;
-        wallLoad.direction = SurfaceLoadDirection::LocalNormal;
+        wallLoad.value = -2.0;
+        wallLoad.direction = SurfaceLoadDirection::LocalZ;
         lm.addSurfaceLoad(wallLoad);
 
         const Slab sourceSlab = *m.getSlab(slab.slab);
@@ -551,14 +546,15 @@ bool runSuite_CopyPaste(int& passed)
 
         const NodalLoad* nodalCopy = nullptr;
         for (const auto& [id, l] : lm.nodalLoads()) nodalCopy = l.nodeId() == nb->endNodeId() ? &l : nodalCopy;
-        TEST_CHECK(nodalCopy && sameVec(gp_Vec(nodalCopy->fx(), nodalCopy->fy(), nodalCopy->fz()), gp_Vec(-1, 2, 3)), "Test 554: force nodale, image");
-        TEST_CHECK(sameVec(gp_Vec(nodalCopy->mx(), nodalCopy->my(), nodalCopy->mz()), gp_Vec(4, -5, -6)), "Test 554: moment nodal, vecteur axial");
+        TEST_CHECK(nodalCopy && sameVec(gp_Vec(nodalCopy->fx(), nodalCopy->fy(), nodalCopy->fz()), gp_Vec(1, 2, 3)), "Test 554: force nodale globale, recopiée");
+        TEST_CHECK(sameVec(gp_Vec(nodalCopy->mx(), nodalCopy->my(), nodalCopy->mz()), gp_Vec(4, 5, 6)), "Test 554: moment nodal global, recopié");
 
         std::vector<MemberLoad> forces, moments, copyForces, copyMoments;
         for (const auto& l : sourceBeam) (l.type() == LoadType::MemberMoment ? moments : forces).push_back(l);
         for (const auto& l : loadsOnBeam(m, copyBeam)) (l.type() == LoadType::MemberMoment ? copyMoments : copyForces).push_back(l);
-        TEST_CHECK(sameVec(resolved(copyForces, qa, qb, nb->rotation()), linear(resolved(forces, pa, pb, 0.0), t)), "Test 554: charge locale, image de la charge");
-        TEST_CHECK(sameVec(resolved(copyMoments, qa, qb, nb->rotation()), linear(resolved(moments, pa, pb, 0.0), t) * -1.0), "Test 554: moment réparti, vecteur axial");
+        // Repère de la copie selon Robot : x et z images, y opposé à l'image ; la charge locale y garde sa valeur
+        TEST_CHECK(sameVec(resolved(copyForces, qa, qb, nb->rotation()), linear(resolved(forces, pa, pb, 0.0), t) * -1.0), "Test 554: charge locale y, suit le repère de la copie");
+        TEST_CHECK(sameVec(resolved(copyMoments, qa, qb, nb->rotation()), resolved(moments, pa, pb, 0.0)), "Test 554: moment réparti global, recopié");
 
         const Slab& mirrored = *m.getSlab(copySlab);
         const TSA::Mesh::PlaneFrame frame = TSA::Mesh::slabFrame(cornersOf(m, mirrored));
@@ -589,7 +585,7 @@ bool runSuite_CopyPaste(int& passed)
         }
         TEST_CHECK(pressure && point && wallCopy, "Test 554: charges surfaciques copiées");
         TEST_CHECK(surfacePoint(frame, point->u, point->v).Distance(surfacePoint(sourceFrame, sourcePoint.u, sourcePoint.v).Transformed(t)) < 1e-8, "Test 554: charge ponctuelle à son image");
-        TEST_CHECK(point->direction == SurfaceLoadDirection::GlobalX && same(point->value, -7.0), "Test 554: force globale inversée par le plan X");
+        TEST_CHECK(point->direction == SurfaceLoadDirection::GlobalX && same(point->value, 7.0), "Test 554: force globale recopiée, direction fixe");
         for (const auto& [u, v] : std::vector<std::pair<double, double>> { { 1.0, 1.0 }, { 3.5, 2.0 } })
         {
             const gp_Pnt image = surfacePoint(sourceFrame, u, v).Transformed(t);
@@ -598,7 +594,7 @@ bool runSuite_CopyPaste(int& passed)
             TEST_CHECK(same(pressure->value + pressure->gradU * cu + pressure->gradV * cv, sourcePressure.value + sourcePressure.gradU * u, 1e-8), "Test 554: pression variable conservée à l'image");
             TEST_CHECK(cu >= pressure->zoneU0 - 1e-9 && cu <= pressure->zoneU1 + 1e-9 && cv >= pressure->zoneV0 - 1e-9 && cv <= pressure->zoneV1 + 1e-9, "Test 554: zone chargée, image de la zone");
         }
-        TEST_CHECK(same(wallCopy->value, -2.0) && same(m.getWall(copyWall)->offset(), -0.04), "Test 554: voile, normale opposée à son image");
+        TEST_CHECK(same(wallCopy->value, -2.0) && same(m.getWall(copyWall)->offset(), -0.04), "Test 554: voile, charge recopiée, excentrement suivant la normale");
 
         // Nœud sur le plan : partagé, sa charge n'est pas doublée
         Model shared;
@@ -618,7 +614,7 @@ bool runSuite_CopyPaste(int& passed)
         mirror->addPick(at(50, -1, 0), ctx);
         mirror->addPick(at(50, 1, 0), ctx);
         TEST_CHECK(mirror->ready() && mirror->apply(m, ctx).success && m.trussMembers().size() == 3, "Test 554: outil Symétrie sur un treillis");
-        std::cout << "[PASS] Test 554: Copie miroir, image des charges et des surfaces" << std::endl;
+        std::cout << "[PASS] Test 554: Copie miroir, charges recopiées et surfaces converties" << std::endl;
         ++passed;
     }
 
@@ -663,7 +659,7 @@ bool runSuite_CopyPaste(int& passed)
         Model m;
         const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
         const int beam = m.addBeam(m.addNode(0, 0, 0), m.addNode(6, 0, 0));
-        m.loadManager().addMemberLoad(MemberLoad::pointOnMember(0, beam, lc, 10.0, 2.0));
+        m.loadManager().addMemberLoad(MemberLoad::pointOnMember(0, beam, lc, -10.0, 2.0, LoadDirection::GlobalZ));
         OccView view;
         view.resize(640, 480);
         view.show();
@@ -726,7 +722,7 @@ bool runSuite_CopyPaste(int& passed)
         const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(5, 0, 0);
         m.getNode(n1)->setSupport(SupportDefinition::fixed());
         const int beam = m.addBeam(n1, n2);
-        lm.addMemberLoad(MemberLoad::uniform(0, beam, second, 3.0));
+        lm.addMemberLoad(MemberLoad::uniform(0, beam, second, -3.0, LoadDirection::GlobalZ));
 
         StructuralClipboard clip;
         ClipboardOptions none;

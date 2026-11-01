@@ -2,7 +2,17 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
-## 2026-10-31 — Copier / Coller complet (branche fix/copy-paste-complete, non commitée)
+## 2026-10-31 — repères locaux, rotation de section et axes des charges (branche refactor/load-axes-section-rotation, fusionnée le 2026-11-01)
+
+- Repère local et γ alignés sur Robot Structural Analysis 2024 (mesures figées dans `tests/data/robot_rsa2024_reference.json`).
+- Direction « gravité » retirée des charges sur barre et surfaciques ; `UI/Common/LoadAxisCombo` ; `loads.add_uniform` suivant Z global.
+- Migration à la lecture : `Model/Load/LegacyLoads`, `Model/LegacyBarFrames` ; `.tsa` 3.0, `.tsa3d` 1.1.
+- Reprise : surcharges « nom » de `MemberLoad::pointOnMember` / `trapezoidal` rétablies (un littéral devenait `isRelative = true`),
+  charges surfaciques du banc converties, 6 tests adaptés, traductions en / mg. Tests 558-565 (suite `loadaxes`).
+- TSALab : `AnalyticalReference`, `ExampleModels` adaptés (branche du même nom).
+- 2026-11-01 : Release reconstruite à neuf (dossiers de build disparus), 60/60 suites, 572 tests, banc 2 097/2 097 ; commit, fusion, push.
+
+## 2026-10-31 — Copier / Coller complet (branche fix/copy-paste-complete, commit 295c920, fusionné le 2026-11-01)
 
 - `StructuralClipboard` devient le seul moteur de copie (`pasteImage`) ; `copyTransformed` et la branche de copie de `mirrorElements` retirés.
 - Charges copiées par défaut ; outils de copie : charges, voiles, fondations, dalles complètes, treillis et appuis en miroir.

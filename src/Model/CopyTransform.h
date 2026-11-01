@@ -1,17 +1,18 @@
 #pragma once
 
-// Image des données d'un élément par une transformation rigide (copie par rotation, copie miroir) : une charge copiée
-// suit la structure, sa direction est celle de l'image de la charge d'origine. Une translation ne change rien : ces
-// fonctions ne servent pas pour elle. Fonctions pures, sans modèle ; utilisées par StructuralClipboard.
+// Ce qu'une transformation rigide change sur une copie ou un élément transformé, selon le comportement mesuré dans Autodesk Robot
+// Structural Analysis 2024 (docs/audit/2026-10-31/COORDINATE_SYSTEM_AND_SECTION_ROTATION_REPORT.md).
+//   - Section : rotation, le repère local suit l'image rigide (y' = image de y) ; symétrie, x' et z' sont les images de x et z, et
+//     y' est opposé à l'image de y (le repère reste direct). L'angle de section est recalculé en conséquence.
+//   - Charges : enregistrements recopiés à l'identique. Une charge globale garde sa direction globale ; une charge locale garde ses
+//     valeurs dans le repère local de la copie. Seule la position en (u, v) d'une dalle miroir change, avec son repère.
 
 #include "../Mesh/MeshGeometry.h"
 #include "Load/MemberLoad.h"
-#include "Load/NodalLoad.h"
 #include "Load/SurfaceLoad.h"
-#include "SurfaceSupport.h"
 
 #include <gp_Ax3.hxx>
-#include <gp_Dir.hxx>
+#include <gp_Pnt.hxx>
 #include <gp_Trsf.hxx>
 
 #include <utility>
@@ -26,12 +27,12 @@ bool reflects(const gp_Trsf& trsf);
 /// Vrai si l'axe Z global reste l'axe Z global, dans le même sens (une verticale reste une verticale).
 bool keepsVertical(const gp_Trsf& trsf);
 
-NodalLoad nodalLoadImage(const NodalLoad& load, const gp_Trsf& trsf);
+/// Angle de section (degrés) de la barre [copyStart, copyEnd], image de [start, end] d'angle rotationDeg.
+double barRotationImage(const gp_Trsf& trsf, const gp_Pnt& start, const gp_Pnt& end, double rotationDeg, const gp_Pnt& copyStart, const gp_Pnt& copyEnd);
 
-/// Image d'une charge sur barre : une charge par composante non nulle dans le repère de la charge (global, ou repère local
-/// de la barre copiée). Un axe qui reste aligné sur un axe du repère donne une seule charge. La gravité reste la gravité.
-/// source et copy : repères locaux des barres (computeElementLocalFrame).
-std::vector<MemberLoad> memberLoadImage(const MemberLoad& load, const gp_Trsf& trsf, const gp_Ax3& source, const gp_Ax3& copy);
+/// Même action physique exprimée dans un autre repère local de barre (from → to) : une charge par composante non nulle.
+/// Une charge globale, ou un repère inchangé, est rendue telle quelle.
+std::vector<MemberLoad> memberLoadInFrame(const MemberLoad& load, const gp_Ax3& from, const gp_Ax3& to);
 
 /// Passage de (u, v) dans le repère de la surface source à (u', v') dans celui de sa copie.
 struct SurfacePointMap
@@ -44,10 +45,8 @@ struct SurfacePointMap
 };
 SurfacePointMap surfacePointMap(const TSA::Mesh::PlaneFrame& source, const TSA::Mesh::PlaneFrame& copy, const gp_Trsf& trsf);
 
-/// Image d'une charge surfacique : position, zone et gradient convertis par map ; une direction globale qui n'est plus alignée
-/// sur un axe donne une charge par composante. normalReversed : la normale de la copie est opposée à l'image de la normale.
-std::vector<SurfaceLoad> surfaceLoadImage(const SurfaceLoad& load, const gp_Trsf& trsf, const SurfacePointMap& map, const gp_Dir& sourceNormal,
-                                          bool normalReversed);
+/// Charge surfacique sur la copie miroir d'une dalle : position, zone et gradient convertis, direction et valeur inchangées.
+SurfaceLoad surfaceLoadAt(const SurfaceLoad& load, const SurfacePointMap& map);
 
 /// Contour d'une dalle copiée en miroir : parcours inversé (la normale reste l'image de la normale), en commençant par
 /// l'image du 2e sommet pour que le repère local de la copie reste aligné sur l'image de celui de la source.

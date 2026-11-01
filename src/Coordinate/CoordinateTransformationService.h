@@ -33,6 +33,10 @@ public:
     gp_Vec ucsVectorToWcs(const gp_Vec& ucsVec) const;
 
     // WCS <-> Local Element System (axe X = longitudinal de start à end, Y/Z = axes d'inertie section avec angle beta)
+    /// Seuil de verticalité d'une barre : sinus de son inclinaison sur Z, mesuré dans Robot Structural Analysis.
+    static constexpr double kVerticalTolerance = 1e-3;
+    static bool isVertical(const gp_Dir& direction);
+
     static gp_Ax3 computeElementLocalFrame(const gp_Pnt& startPt, const gp_Pnt& endPt, double betaAngleDeg = 0.0);
 
     static gp_Pnt wcsToElementLocal(const gp_Pnt& worldPoint, const gp_Pnt& startPt, const gp_Pnt& endPt, double betaAngleDeg = 0.0);

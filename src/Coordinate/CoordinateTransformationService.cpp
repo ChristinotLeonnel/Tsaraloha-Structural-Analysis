@@ -56,6 +56,11 @@ gp_Vec CoordinateTransformationService::ucsVectorToWcs(const gp_Vec& ucsVec) con
     return Vu + Vv + Vw;
 }
 
+bool CoordinateTransformationService::isVertical(const gp_Dir& direction)
+{
+    return std::hypot(direction.X(), direction.Y()) < kVerticalTolerance;
+}
+
 gp_Ax3 CoordinateTransformationService::computeElementLocalFrame(const gp_Pnt& startPt, const gp_Pnt& endPt, double betaAngleDeg)
 {
     gp_Vec vX(startPt, endPt);
@@ -67,29 +72,31 @@ gp_Ax3 CoordinateTransformationService::computeElementLocalFrame(const gp_Pnt& s
 
     gp_Dir dirX(vX);
 
-    // Détermination de l'axe vertical de référence selon Eurocode / Robot SA
-    // Si l'élément est presque vertical (parallèle à l'axe Z global), utiliser l'axe Y global comme référence
-    gp_Dir globalZ(0.0, 0.0, 1.0);
-    gp_Dir refDir = (std::abs(dirX.Dot(globalZ)) > 0.999) ? gp_Dir(0.0, 1.0, 0.0) : globalZ;
-
-    gp_Vec vY = gp_Vec(refDir).Crossed(gp_Vec(dirX));
-    if (vY.SquareMagnitude() < 1e-8)
+    // Convention de Robot Structural Analysis, mesurée (docs/audit/2026-10-31/COORDINATE_SYSTEM_AND_SECTION_ROTATION_REPORT.md) :
+    // barre verticale, y = +Y global, quel que soit le sens de x ; sinon y = Z global × x. z = x × y.
+    gp_Vec vY;
+    if (isVertical(dirX))
     {
-        vY = gp_Vec(1.0, 0.0, 0.0).Crossed(gp_Vec(dirX));
+        vY = gp_Vec(0.0, 1.0, 0.0) - gp_Vec(dirX) * dirX.Y();
+    }
+    else
+    {
+        vY = gp_Vec(0.0, 0.0, 1.0).Crossed(gp_Vec(dirX));
     }
     vY.Normalize();
 
     gp_Vec vZ = gp_Vec(dirX).Crossed(vY);
     vZ.Normalize();
 
-    // Application de la rotation d'angle beta autour de l'axe longitudinal dirX
+    // Rotation d'angle beta autour de x ; composantes exactes aux multiples de 90°
     if (std::abs(betaAngleDeg) > 1e-4)
     {
-        double rad = betaAngleDeg * M_PI / 180.0;
-        gp_Trsf rot;
-        rot.SetRotation(gp_Ax1(startPt, dirX), rad);
-        vY.Transform(rot);
-        vZ.Transform(rot);
+        const double rad = betaAngleDeg * M_PI / 180.0;
+        const double raw = std::cos(rad), ras = std::sin(rad);
+        const double c = std::abs(raw) < 1e-14 ? 0.0 : raw, s = std::abs(ras) < 1e-14 ? 0.0 : ras;
+        const gp_Vec y = vY * c + vZ * s;
+        vZ = vZ * c - vY * s;
+        vY = y;
     }
 
     return gp_Ax3(startPt, gp_Dir(vZ), gp_Dir(dirX));

@@ -61,11 +61,6 @@ gp_Vec memberLoadDirection(const TSA::Model::MemberLoad& load, const gp_Pnt& p1,
 {
     return LoadResolver::memberLoadVector(load, 1.0, p1, p2, rotation);
 }
-
-bool usesAbsoluteIntensity(const TSA::Model::MemberLoad& load)
-{
-    return LoadResolver::usesMagnitudeOnly(load);
-}
 } // namespace
 
 Input buildInput(const AnalysisContext& context, const AnalysisModel& model, ValidationResult* diag)
@@ -182,9 +177,7 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
         const gp_Pnt p1(n1->x, n1->y, n1->z), p2(n2->x, n2->y, n2->z);
         const double L = el->length;
         const gp_Vec d = memberLoadDirection(ml, p1, p2, el->rotation);
-        const bool grav = usesAbsoluteIntensity(ml);
-        const double q1 = grav ? std::abs(ml.q1()) : ml.q1();
-        const double q2 = grav ? std::abs(ml.q2()) : ml.q2();
+        const double q1 = ml.q1(), q2 = ml.q2();
 
         // Repère local 2D : x' de i vers j dans le plan, y' = x' tourné de +90°.
         const auto a = pl.toPlane(n1->x, n1->y, n1->z), b = pl.toPlane(n2->x, n2->y, n2->z);

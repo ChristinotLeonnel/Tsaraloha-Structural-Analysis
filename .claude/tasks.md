@@ -2,12 +2,22 @@
 
 Last Updated: 2026-10-31. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
+## Repères locaux, rotation de section, axes des charges (2026-10-31, branche refactor/load-axes-section-rotation)
+- [x] Mesures Robot (tests/data/robot_rsa2024_reference.json), repère et γ, axes des charges, migration, fenêtres, tests 558-565.
+- [x] Reprise : tests 101, 210, 350, 374, 375, 506 et banc (surfaces) adaptés ; surcharges « nom » de MemberLoad rétablies ; traductions.
+- [x] Release : 60/60 suites, 572 tests ; banc 2 097/2 097 ; TSALab 27/27 (AnalyticalReference, ExampleModels).
+- [ ] Empreinte des 104 fichiers d'exemples et bancs au bit près contre main (scripts dump_all / harnais à retrouver).
+- [ ] Contrôle à l'œil dans TSA.exe des fenêtres de charge (barre, propriétés, surfaces) ; Debug ; Linux.
+- [ ] Repère local des coques et voiles comparé aux panneaux de Robot ; écart de 2,3 % sur les déplacements (effort tranchant ?) à confirmer.
+- [ ] Exemples examples/TSA_Projet_Batiment_Complexe_L.tsa et Pont_Haubans modifiés le 30/10 (hors de cette tâche) : à décider.
+- [x] Validation à neuf (2026-11-01, Release reconstruite), commit, fusion dans main et push (TSA et TSALab).
+
 ## Copier / Coller (2026-10-31, branche fix/copy-paste-complete)
 - [x] Audit, moteur unique, image des charges, tests 549-557, traductions, documentation, rapport.
-- [ ] Décision : rotation de section β en symétrie et en copie par rotation de poteau (conservée, test 101) ; gravité sur structure inclinée.
+- [x] Décision : rotation de section en symétrie et en rotation : règle de Robot, γ recalculé (refactor/load-axes-section-rotation) ; « gravité » retirée.
 - [ ] BUG-171 : symétrie sans copie d'une dalle avec ouvertures ou charges en (u, v).
 - [ ] Contrôle à l'œil dans TSA.exe (Ctrl+C / V, message sur une charge seule), Debug, Linux, fuites mémoire.
-- [ ] Commit, fusion et push : à la demande de l'utilisateur.
+- [x] Commit (295c920), fusion dans main et push (2026-11-01, avec refactor/load-axes-section-rotation).
 
 ## Repères de la vue 3D (2026-10-31, branche feature/coordinate-axis-gizmos)
 - [x] Calcul des repères, trièdre partagé, vue, menu, tests 541-548, traductions en / mg, documentation.

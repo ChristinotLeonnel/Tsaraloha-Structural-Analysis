@@ -1,3 +1,4 @@
+#include "../Model/Load/LegacyLoads.h"
 #include "TSAFile.h"
 #include "TSAFile_BinaryUtils.h"
 
@@ -688,9 +689,8 @@ bool TSAFileReader::readLoadChunk(const uint8_t* data, size_t size, TSA::Model::
         if (type > static_cast<uint8_t>(LoadType::SelfWeight) || dir > static_cast<uint8_t>(LoadDirection::LocalZ) ||
             cs > static_cast<uint8_t>(LoadCoordSystem::Local) || target > static_cast<uint8_t>(MemberTargetType::Cable))
             return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "énumération de charge sur barre inconnue"));
-        snap.memberLoads[id] = MemberLoad(id, elemId, caseId, static_cast<LoadType>(type), q1, q2,
-                                          static_cast<LoadDirection>(dir), static_cast<LoadCoordSystem>(cs),
-                                          x1, x2, rel != 0, name, static_cast<MemberTargetType>(target));
+        snap.memberLoads[id] = memberLoadFromStored(id, elemId, caseId, static_cast<LoadType>(type), q1, q2, dir, static_cast<LoadCoordSystem>(cs),
+                                                    x1, x2, rel != 0, name, static_cast<MemberTargetType>(target));
     }
 
     // Compteurs : jamais inférieurs au plus grand identifiant lu (protection contre les collisions)

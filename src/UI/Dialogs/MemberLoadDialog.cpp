@@ -1,3 +1,4 @@
+#include "../Common/LoadAxisCombo.h"
 #include "MemberLoadDialog.h"
 #include "../HelpLauncher.h"
 #include "../../Model/Model.h"
@@ -14,6 +15,14 @@
 
 #include "DialogStandardHelper.h"
 #include "../Widgets/StandardDialogHeader.h"
+
+namespace
+{
+const std::array<int, 3> kGlobalAxes { static_cast<int>(TSA::Model::LoadDirection::GlobalX), static_cast<int>(TSA::Model::LoadDirection::GlobalY),
+                                       static_cast<int>(TSA::Model::LoadDirection::GlobalZ) };
+const std::array<int, 3> kLocalAxes { static_cast<int>(TSA::Model::LoadDirection::LocalX), static_cast<int>(TSA::Model::LoadDirection::LocalY),
+                                      static_cast<int>(TSA::Model::LoadDirection::LocalZ) };
+} // namespace
 
 namespace TSA::UI
 {
@@ -89,17 +98,12 @@ void MemberLoadDialog::onDirectionChanged(int /*index*/)
     const bool local = TSA::Model::MemberLoad::coordSystemFor(dir) == TSA::Model::LoadCoordSystem::Local;
     const bool moment = static_cast<TSA::Model::LoadType>(m_comboType->currentData().toInt()) == TSA::Model::LoadType::MemberMoment;
     if (moment)
-        m_lblDirectionHint->setText(dir == TSA::Model::LoadDirection::Gravity
-                                        ? tr("Un moment réparti n'a pas de sens « gravité » : choisir l'axe du vecteur moment (local x = torsion).")
-                                        : dir == TSA::Model::LoadDirection::LocalX
-                                              ? tr("Torsion : couple autour de l'axe de la barre (règle de la main droite, de i vers j).")
-                                              : tr("Moment réparti autour de l'axe %1 (règle de la main droite).")
-                                                    .arg(m_comboDirection->currentText()));
-    else if (dir == TSA::Model::LoadDirection::Gravity)
-        m_lblDirectionHint->setText(tr("Repère global. Gravité : charge toujours dirigée vers le bas (−Z), le signe saisi est ignoré."));
+        m_lblDirectionHint->setText(dir == TSA::Model::LoadDirection::LocalX
+                                        ? tr("Torsion : couple autour de l'axe de la barre (règle de la main droite, de i vers j).")
+                                        : tr("Moment réparti autour de l'axe %1 (règle de la main droite).").arg(m_comboDirection->currentText()));
     else
-        m_lblDirectionHint->setText(tr("Repère %1. Valeur positive : sens de l'axe ; négative : sens opposé.")
-                                        .arg(local ? tr("local de la barre") : tr("global")));
+        m_lblDirectionHint->setText(local ? tr("Repère local : la charge suit la barre. Valeur positive : sens de l'axe. Sélectionner la barre affiche son trièdre x, y, z.")
+                                          : tr("Repère global : la direction reste fixe, même si la barre tourne. Valeur positive : sens de l'axe (charge descendante : Z négatif)."));
 }
 
 void MemberLoadDialog::setupUI()
@@ -149,15 +153,14 @@ void MemberLoadDialog::setupUI()
                                "non disponibles."));
     paramForm->addRow(tr("Type de charge :"), m_comboType);
 
+    m_comboSystem = new QComboBox(this);
+    m_comboSystem->addItem(tr("Global (X, Y, Z)"), static_cast<int>(TSA::Model::LoadCoordSystem::Global));
+    m_comboSystem->addItem(tr("Local (x, y, z)"), static_cast<int>(TSA::Model::LoadCoordSystem::Local));
+    paramForm->addRow(tr("Repère :"), m_comboSystem);
+
     m_comboDirection = new QComboBox(this);
-    m_comboDirection->addItem(tr("Gravité (-Z)"), static_cast<int>(TSA::Model::LoadDirection::Gravity));
-    m_comboDirection->addItem(tr("Global X"), static_cast<int>(TSA::Model::LoadDirection::GlobalX));
-    m_comboDirection->addItem(tr("Global Y"), static_cast<int>(TSA::Model::LoadDirection::GlobalY));
-    m_comboDirection->addItem(tr("Global Z"), static_cast<int>(TSA::Model::LoadDirection::GlobalZ));
-    m_comboDirection->addItem(tr("Local x (axial)"), static_cast<int>(TSA::Model::LoadDirection::LocalX));
-    m_comboDirection->addItem(tr("Local y (transversal)"), static_cast<int>(TSA::Model::LoadDirection::LocalY));
-    m_comboDirection->addItem(tr("Local z (transversal)"), static_cast<int>(TSA::Model::LoadDirection::LocalZ));
-    paramForm->addRow(tr("Direction :"), m_comboDirection);
+    TSA::UI::fillLoadAxisCombo(m_comboDirection, false, kGlobalAxes);
+    paramForm->addRow(tr("Axe :"), m_comboDirection);
 
     m_lblDirectionHint = new QLabel(this);
     m_lblDirectionHint->setWordWrap(true);
@@ -232,6 +235,10 @@ void MemberLoadDialog::setupUI()
     // Connexions
     connect(m_comboElement, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MemberLoadDialog::onElementSelectionChanged);
     connect(m_comboType, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MemberLoadDialog::onLoadTypeChanged);
+    connect(m_comboSystem, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
+        TSA::UI::fillLoadAxisCombo(m_comboDirection, index == 1, index == 1 ? kLocalAxes : kGlobalAxes);
+        onDirectionChanged(m_comboDirection->currentIndex());
+    });
     connect(m_comboDirection, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MemberLoadDialog::onDirectionChanged);
     onLoadTypeChanged(m_comboType->currentIndex());
     onDirectionChanged(m_comboDirection->currentIndex());
@@ -362,9 +369,6 @@ void MemberLoadDialog::onLoadTypeChanged(int index)
     const bool isMoment = type == TSA::Model::LoadType::MemberMoment;
     bool isLinear = (type == TSA::Model::LoadType::MemberLinear) || isMoment; // moment réparti : m1 → m2
     bool isPoint = (type == TSA::Model::LoadType::MemberPoint);
-    if (isMoment && m_comboDirection->currentData().toInt() == static_cast<int>(TSA::Model::LoadDirection::Gravity))
-        m_comboDirection->setCurrentIndex(m_comboDirection->findData(static_cast<int>(TSA::Model::LoadDirection::LocalX)));
-
     m_lblQ2->setVisible(isLinear);
     m_spinQ2->setVisible(isLinear);
 
@@ -405,16 +409,10 @@ void MemberLoadDialog::onApplyClicked()
     const double q1 = m_spinQ1->value();
     const bool variable = type == TSA::Model::LoadType::MemberLinear || type == TSA::Model::LoadType::MemberMoment;
     const double q2 = variable ? m_spinQ2->value() : q1;
-    if (type == TSA::Model::LoadType::MemberMoment && dir == TSA::Model::LoadDirection::Gravity)
-    {
-        QMessageBox::warning(this, tr("Charge sur barre"), tr("Choisir l'axe du moment réparti (local x pour une torsion)."));
-        return;
-    }
     const double x1 = m_spinX1->value();
     const double x2 = isPoint ? x1 : m_spinX2->value();
 
-    TSA::Model::MemberLoad prototype(0, targets.front().elementId, m_comboLoadCase->currentData().toInt(), type, q1, q2, dir,
-                                     TSA::Model::MemberLoad::coordSystemFor(dir), x1, x2, false,
+    TSA::Model::MemberLoad prototype(0, targets.front().elementId, m_comboLoadCase->currentData().toInt(), type, q1, q2, dir, x1, x2, false,
                                      m_editName->text().trimmed().toStdString(), targets.front().type);
 
     // Double application involontaire (double clic sur « Appliquer ») : confirmation.

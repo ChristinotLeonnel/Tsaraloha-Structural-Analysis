@@ -58,7 +58,7 @@ bool runSuite_NDCReport(int& passed)
         int lcId = lm.addLoadCase(LoadCase(1, "Charge_Concentree_50kN", LoadCaseCategory::Live, false, 1.0));
 
         // Charge ponctuelle 50 kN au milieu de la travée (relatif 0.5 -> x = 3.0 m)
-        MemberLoad ml = MemberLoad::pointOnMember(b1, lcId, 50.0, 0.5, LoadDirection::Gravity, LoadCoordSystem::Global, true, "P_50kN");
+        MemberLoad ml = MemberLoad::pointOnMember(b1, lcId, -50.0, 0.5, LoadDirection::GlobalZ, true, "P_50kN");
         lm.addMemberLoad(ml);
 
         OpenSeesSolver solver;

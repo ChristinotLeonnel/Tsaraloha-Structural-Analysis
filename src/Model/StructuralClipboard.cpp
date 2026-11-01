@@ -378,11 +378,6 @@ TSA::Mesh::PlaneFrame frameThrough(const std::vector<gp_Pnt>& points)
     for (const gp_Pnt& p : points) corners.push_back({ p.X(), p.Y(), p.Z() });
     return TSA::Mesh::slabFrame(corners);
 }
-
-gp_Dir normalOf(const TSA::Mesh::PlaneFrame& frame)
-{
-    return frame.N.norm() > 0.5 ? gp_Dir(frame.N.x, frame.N.y, frame.N.z) : gp_Dir(0.0, 0.0, 1.0);
-}
 } // namespace
 
 gp_Pnt StructuralClipboard::sourcePoint(int nodeId) const
@@ -594,6 +589,12 @@ PasteResult StructuralClipboard::paste(Model& model, const Placement& place, con
         result.complete = false;
         if (result.error.empty()) result.error = what;
     };
+    // Angle de section de la copie d'une barre : translation, inchangé ; rotation et symétrie, image du repère local
+    auto copiedRotation = [&](int startNode, int endNode, double rotation) {
+        if (!image) return rotation;
+        const std::vector<gp_Pnt> ends = nodePoints(model, { nodeMap.at(startNode), nodeMap.at(endNode) });
+        return barRotationImage(*image, sourcePoint(startNode), sourcePoint(endNode), rotation, ends[0], ends[1]);
+    };
 
     for (const auto& cn : m_nodes)
     {
@@ -640,6 +641,7 @@ PasteResult StructuralClipboard::paste(Model& model, const Placement& place, con
         if (itS != nodeMap.end() && itE != nodeMap.end())
         {
             BarProperties p = cb.props;
+            p.rotation = copiedRotation(cb.originalStartNodeId, cb.originalEndNodeId, p.rotation);
             int bId = model.addBar(p, itS->second, itE->second);
             if (bId <= 0)
             {
@@ -659,6 +661,7 @@ PasteResult StructuralClipboard::paste(Model& model, const Placement& place, con
         if (itS != nodeMap.end() && itE != nodeMap.end())
         {
             BarProperties p = cc.props;
+            p.rotation = copiedRotation(cc.originalStartNodeId, cc.originalEndNodeId, p.rotation);
             int cId = model.addColumn(itS->second, itE->second, p.section, p.material, p.rotation, p.name);
             if (cId <= 0)
             {
@@ -902,16 +905,6 @@ void StructuralClipboard::pasteLoads(Model& model, const gp_Trsf* image, const P
         result.complete = false;
         if (result.error.empty()) result.error = what;
     };
-    if (image && !keepsVertical(*image) && (!m_memberLoads.empty() || !m_surfaceLoads.empty()))
-    {
-        const bool gravity = std::any_of(m_memberLoads.begin(), m_memberLoads.end(), [](const MemberLoad& l) { return l.direction() == LoadDirection::Gravity; }) ||
-                             std::any_of(m_surfaceLoads.begin(), m_surfaceLoads.end(), [](const SurfaceLoad& l) { return l.direction == SurfaceLoadDirection::Gravity; });
-        if (gravity)
-            result.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
-                                                                  "les charges de gravité restent verticales sur la copie, contrairement à la structure copiée")
-                                          .toStdString());
-    }
-
     // Charges : cas de charge rapprochés par nom et catégorie dans le projet cible, créés s'ils n'existent pas
     if (!m_nodalLoads.empty() || !m_memberLoads.empty() || !m_surfaceLoads.empty() || !m_combinations.empty())
     {
@@ -981,7 +974,6 @@ void StructuralClipboard::pasteLoads(Model& model, const gp_Trsf* image, const P
                 fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "charge nodale"), nl.id()));
                 continue;
             }
-            if (image) nl = nodalLoadImage(nl, *image);
             nl.setId(0);
             nl.setNodeId(it->second);
             nl.setLoadCaseId(caseOf(nl.loadCaseId()));
@@ -997,35 +989,6 @@ void StructuralClipboard::pasteLoads(Model& model, const gp_Trsf* image, const P
             case MemberTargetType::Cable: return ElementKind::Cable;
             default: return ElementKind::Beam;
             }
-        };
-        // Barre source d'une charge : ses extrémités, sa rotation (les barres sans orientation de section : 0)
-        struct SourceBar
-        {
-            int start = 0, end = 0;
-            double rotation = 0.0;
-        };
-        auto findBar = [](const auto& bars, int id, auto rotationOf) {
-            for (const auto& b : bars)
-                if (b.originalId == id) return SourceBar { b.originalStartNodeId, b.originalEndNodeId, rotationOf(b) };
-            return SourceBar {};
-        };
-        auto sourceBar = [&](const MemberLoad& ml) {
-            auto barRotation = [](const auto& b) { return b.props.rotation; };
-            auto noRotation = [](const auto&) { return 0.0; };
-            switch (ml.targetType())
-            {
-            case MemberTargetType::Column: return findBar(m_columns, ml.elementId(), barRotation);
-            case MemberTargetType::Truss: return findBar(m_trusses, ml.elementId(), noRotation);
-            case MemberTargetType::Cable: return findBar(m_cables, ml.elementId(), noRotation);
-            default: return findBar(m_beams, ml.elementId(), barRotation);
-            }
-        };
-        auto memberImages = [&](const MemberLoad& ml, const SourceBar& bar) {
-            using TSA::Coordinate::CoordinateTransformationService;
-            const std::vector<gp_Pnt> ends = nodePoints(model, { nodeMap.at(bar.start), nodeMap.at(bar.end) });
-            const gp_Ax3 from = CoordinateTransformationService::computeElementLocalFrame(sourcePoint(bar.start), sourcePoint(bar.end), bar.rotation);
-            const gp_Ax3 to = CoordinateTransformationService::computeElementLocalFrame(ends[0], ends[1], bar.rotation);
-            return memberLoadImage(ml, *image, from, to);
         };
         for (MemberLoad ml : m_memberLoads)
         {
@@ -1043,40 +1006,19 @@ void StructuralClipboard::pasteLoads(Model& model, const gp_Trsf* image, const P
                 fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "charge sur barre"), ml.id()));
                 continue;
             }
-            const SourceBar bar = sourceBar(ml);
             ml.setId(0);
             ml.setElementId(it->second.id);
             ml.setLoadCaseId(caseOf(ml.loadCaseId()));
-            for (const MemberLoad& part : image ? memberImages(ml, bar) : std::vector<MemberLoad> { ml })
-            {
-                const int id = lm.addMemberLoad(part);
-                result.memberLoadIds.push_back(id);
-                model.notifyMemberLoadAdded(id);
-            }
+            const int id = lm.addMemberLoad(ml);
+            result.memberLoadIds.push_back(id);
+            model.notifyMemberLoadAdded(id);
         }
-        auto surfaceImages = [&](const SurfaceLoad& sl, ElementKind kind, int sourceSurface) {
-            const bool mirrored = reflects(*image);
-            if (kind == ElementKind::Wall)
-            {
-                // Repère d'un voile : U le long de la base, V = +Z. Son image garde (u, v) ; une symétrie oppose sa normale.
-                gp_Dir normal(0.0, 0.0, 1.0);
-                for (const auto& w : m_walls)
-                    if (w.originalId == sourceSurface)
-                    {
-                        const gp_Vec along(sourcePoint(w.originalStartNodeId), sourcePoint(w.originalEndNodeId));
-                        normal = gp_Dir(along.Y(), -along.X(), 0.0);
-                    }
-                return surfaceLoadImage(sl, *image, SurfacePointMap {}, normal, mirrored);
-            }
+        // Dalle miroir : son repère local a changé, la position en (u, v) de la charge suit
+        auto onMirroredSlab = [&](const SurfaceLoad& sl, int sourceSurface) {
             for (const auto& cs : m_slabs)
-                if (cs.originalId == sourceSurface)
-                {
-                    const TSA::Mesh::PlaneFrame from = frameThrough(sourcePoints(cs.originalNodeIds));
-                    const Slab* copy = model.getSlab(sl.surfaceId);
-                    const SurfacePointMap map = mirrored && copy ? surfacePointMap(from, frameThrough(nodePoints(model, copy->nodeIds())), *image) : SurfacePointMap {};
-                    return surfaceLoadImage(sl, *image, map, normalOf(from), false);
-                }
-            return std::vector<SurfaceLoad> { sl };
+                if (const Slab* copy = model.getSlab(sl.surfaceId); copy && cs.originalId == sourceSurface)
+                    return surfaceLoadAt(sl, surfacePointMap(frameThrough(sourcePoints(cs.originalNodeIds)), frameThrough(nodePoints(model, copy->nodeIds())), *image));
+            return sl;
         };
         for (SurfaceLoad sl : m_surfaceLoads)
         {
@@ -1099,8 +1041,8 @@ void StructuralClipboard::pasteLoads(Model& model, const gp_Trsf* image, const P
             sl.id = 0;
             sl.surfaceId = it->second.id;
             sl.loadCaseId = caseOf(sl.loadCaseId);
-            for (const SurfaceLoad& part : image ? surfaceImages(sl, kind, sourceSurface) : std::vector<SurfaceLoad> { sl })
-                result.surfaceLoadIds.push_back(lm.addSurfaceLoad(part));
+            const bool mirrored = image && reflects(*image) && kind == ElementKind::Slab;
+            result.surfaceLoadIds.push_back(lm.addSurfaceLoad(mirrored ? onMirroredSlab(sl, sourceSurface) : sl));
         }
         if (!m_surfaceLoads.empty()) model.notifySurfaceLoadsChanged();
         // Combinaisons : facteurs reportés sur les cas cibles. Une combinaison identique (même nom, même type, mêmes

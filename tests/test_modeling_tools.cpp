@@ -194,13 +194,13 @@ bool runSuite_ModelingTools(int& passed)
         Model ml;
         const int lb = beamBetween(ml, 0, 0, 0, 6, 0, 0);
         const int lc = ml.loadManager().addLoadCase(LoadCase(0, "Q"));
-        ml.loadManager().addMemberLoad(MemberLoad::pointOnMember(lb, lc, 10.0, 2.0));
+        ml.loadManager().addMemberLoad(MemberLoad::pointOnMember(lb, lc, -10.0, 2.0, LoadDirection::GlobalZ));
         TEST_CHECK(ml.splitBarAt(ElementKind::Beam, lb, 0.5) == 0 && ml.beams().size() == 1,
                    "Test 144: charge ponctuelle → division refusée");
         Model mu;
         const int ub = beamBetween(mu, 0, 0, 0, 6, 0, 0);
         const int uc = mu.loadManager().addLoadCase(LoadCase(0, "G"));
-        mu.loadManager().addMemberLoad(MemberLoad::uniform(ub, uc, 5.0));
+        mu.loadManager().addMemberLoad(MemberLoad::uniform(ub, uc, -5.0, LoadDirection::GlobalZ));
         TEST_CHECK(mu.splitBarAt(ElementKind::Beam, ub, 0.5) > 0 && mu.loadManager().memberLoads().size() == 2,
                    "Test 144: charge uniforme recopiée sur le nouveau tronçon");
         std::cout << "[PASS] Test 144: Diviser" << std::endl;

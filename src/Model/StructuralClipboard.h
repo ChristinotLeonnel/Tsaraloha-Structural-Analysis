@@ -280,7 +280,8 @@ public:
     /// Collage avec le coin minimal (x, y, z) de la sélection copiée placé au point cible. Ne gère pas l'historique.
     PasteResult pasteTo(Model& model, double targetX, double targetY, double targetZ, const PasteOptions& options = {}) const;
     /// Collage de l'image de la sélection par une transformation rigide, appliquée aux coordonnées du projet source (Copier,
-    /// réseaux, copie par rotation, copie miroir). Les charges suivent la structure (CopyTransform.h). Ne gère pas l'historique.
+    /// réseaux, copie par rotation, copie miroir). L'angle de section suit le repère, les charges sont recopiées (CopyTransform.h).
+    /// Ne gère pas l'historique.
     PasteResult pasteImage(Model& model, const gp_Trsf& trsf, const PasteOptions& options = {}) const;
     /// Collage à la position d'origine (mêmes coordonnées que dans le projet source).
     PasteResult pasteAtOrigin(Model& model, const PasteOptions& options = {}) const { return pasteTo(model, m_refOriginX, m_refOriginY, m_refOriginZ, options); }

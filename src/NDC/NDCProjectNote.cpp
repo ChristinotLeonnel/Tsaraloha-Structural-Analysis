@@ -183,10 +183,10 @@ std::map<int, CaseLoads> loadsByCase(const TSA::Model::Model& m)
     {
         auto& c = out[l.loadCaseId()];
         const auto* b = m.getBeam(l.elementId());
-        if (b && l.type() == TSA::Model::LoadType::MemberUniform && l.direction() == TSA::Model::LoadDirection::Gravity)
+        if (b && l.type() == TSA::Model::LoadType::MemberUniform && l.direction() == TSA::Model::LoadDirection::GlobalZ)
         {
             ++c.memberLoads;
-            c.lineSum += l.q1() * b->length(m);
+            c.lineSum += -l.q1() * b->length(m);   // positive vers le bas
         }
         else
             ++c.otherLoads;
@@ -601,8 +601,9 @@ void chapterActions(Ctx& x, NDCDocument& doc)
             case TSA::Model::SurfaceLoadDirection::GlobalX: return QStringLiteral("X global");
             case TSA::Model::SurfaceLoadDirection::GlobalY: return QStringLiteral("Y global");
             case TSA::Model::SurfaceLoadDirection::GlobalZ: return QStringLiteral("Z global");
-            case TSA::Model::SurfaceLoadDirection::LocalNormal: return QStringLiteral("normale locale");
-            default: return QStringLiteral("gravité");
+            case TSA::Model::SurfaceLoadDirection::LocalX: return QStringLiteral("x local");
+            case TSA::Model::SurfaceLoadDirection::LocalY: return QStringLiteral("y local");
+            default: return QStringLiteral("z local");
             }
         };
         auto extra = [](const TSA::Model::SurfaceLoad& l) {
@@ -774,7 +775,7 @@ void chapterChecks(Ctx& x, NDCDocument& doc, int& issues)
             double v = 0.0;
             // Zone ou variation linéaire : résultante non sommée ici (calculée exactement sur le maillage au calcul)
             const bool simple = l.distribution == TSA::Model::SurfaceLoadDistribution::Point || (!l.zone && l.gradU == 0.0 && l.gradV == 0.0);
-            if (l.direction == TSA::Model::SurfaceLoadDirection::Gravity && simple)
+            if (l.direction == TSA::Model::SurfaceLoadDirection::GlobalZ && simple)
             {
                 double area = 0.0;
                 if (l.targetKind == TSA::Model::SurfaceTargetKind::Slab)
@@ -783,7 +784,7 @@ void chapterChecks(Ctx& x, NDCDocument& doc, int& issues)
                 }
                 else if (const auto* w = x.model.getWall(l.surfaceId))
                     area = w->area(x.model);
-                v = l.distribution == TSA::Model::SurfaceLoadDistribution::Point ? l.value : l.value * area;
+                v = l.distribution == TSA::Model::SurfaceLoadDistribution::Point ? -l.value : -l.value * area;   // positive vers le bas
             }
             else
                 surfaceLoads += 1.0;   // charge non verticale ou normale : composante verticale non sommée ici

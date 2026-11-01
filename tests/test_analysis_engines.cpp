@@ -779,7 +779,7 @@ bool runSuite_Engines(int& passed)
         beam.getNode(s)->setSupport(SupportDefinition::fixed());
         beam.getNode(e)->setSupport(SupportDefinition::pinned());   // rotations libres (OpenSees refuse un système sans DDL)
         const int bm = beam.addBar(s, e, Section::ipe(300), Material::steelS235(), BarRole::Beam);
-        TSA::Model::MemberLoad partial = TSA::Model::MemberLoad::uniform(0, bm, 1, 10.0);
+        TSA::Model::MemberLoad partial = TSA::Model::MemberLoad::uniform(0, bm, 1, -10.0, LoadDirection::GlobalZ);
         partial.setX1(1.0);
         partial.setX2(3.0);
         beam.loadManager().addMemberLoad(partial);
@@ -1201,10 +1201,8 @@ bool runSuite_Engines(int& passed)
         m.loadManager().addNodalLoad(NodalLoad(0, f.nodes['C'][2], lc, 0.0, 8.0, -20.0));
         for (char axis : { 'A', 'B', 'C' })
             m.loadManager().addMemberLoad(MemberLoad::uniform(f.members[axis][1], lc, -6.0, LoadDirection::GlobalZ, "q"));
-        m.loadManager().addMemberLoad(MemberLoad::trapezoidal(f.members['B'][1], lc, -4.0, -14.0, 0.0, 1.0, LoadDirection::GlobalZ,
-                                                              LoadCoordSystem::Global, true, "trapèze"));
-        m.loadManager().addMemberLoad(MemberLoad::uniform(f.members['A'][0], lc, 3.0, LoadDirection::GlobalY, LoadCoordSystem::Global, "vent",
-                                                          MemberTargetType::Column));
+        m.loadManager().addMemberLoad(MemberLoad::trapezoidal(f.members['B'][1], lc, -4.0, -14.0, 0.0, 1.0, LoadDirection::GlobalZ, true, "trapèze"));
+        m.loadManager().addMemberLoad(MemberLoad::uniform(f.members['A'][0], lc, 3.0, LoadDirection::GlobalY, "vent", MemberTargetType::Column));
 
         AnalysisEngineRegistry reg;
         registerBuiltInEngines(reg);
@@ -1346,16 +1344,13 @@ bool runSuite_Engines(int& passed)
         const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
         auto& lm = m.loadManager();
         lm.addMemberLoad(MemberLoad::pointOnMember(f.members['A'][1], lc, -25.0, 2.0, LoadDirection::GlobalZ, "P"));
-        lm.addMemberLoad(MemberLoad::pointOnMember(f.members['B'][1], lc, 8.0, 0.35, LoadDirection::LocalY, LoadCoordSystem::Local, true, "P local"));
-        lm.addMemberLoad(MemberLoad(0, f.members['C'][0], lc, LoadType::MemberPoint, 6.0, 0.0, LoadDirection::GlobalX, LoadCoordSystem::Global, 1.2, 0.0,
+        lm.addMemberLoad(MemberLoad::pointOnMember(f.members['B'][1], lc, 8.0, 0.35, LoadDirection::LocalY, true, "P local"));
+        lm.addMemberLoad(MemberLoad(0, f.members['C'][0], lc, LoadType::MemberPoint, 6.0, 0.0, LoadDirection::GlobalX, 1.2, 0.0,
                                     false, "choc", MemberTargetType::Column));
         lm.addMemberLoad(MemberLoad::trapezoidal(f.members['A'][1], lc, -9.0, -9.0, 1.0, 4.5, LoadDirection::GlobalZ, "uniforme partielle"));
-        lm.addMemberLoad(MemberLoad::trapezoidal(f.members['C'][1], lc, -3.0, -12.0, 0.2, 0.7, LoadDirection::GlobalZ, LoadCoordSystem::Global, true,
-                                                 "trapèze partiel"));
-        lm.addMemberLoad(MemberLoad(0, f.transverse[0], lc, LoadType::MemberMoment, 2.0, 2.0, LoadDirection::LocalX,
-                                    MemberLoad::coordSystemFor(LoadDirection::LocalX), 0.0, 0.0));   // torsion répartie
-        lm.addMemberLoad(MemberLoad(0, f.members['B'][1], lc, LoadType::MemberMoment, 1.5, 4.0, LoadDirection::LocalZ,
-                                    MemberLoad::coordSystemFor(LoadDirection::LocalZ), 1.0, 5.0));   // couple de flexion partiel
+        lm.addMemberLoad(MemberLoad::trapezoidal(f.members['C'][1], lc, -3.0, -12.0, 0.2, 0.7, LoadDirection::GlobalZ, true, "trapèze partiel"));
+        lm.addMemberLoad(MemberLoad(0, f.transverse[0], lc, LoadType::MemberMoment, 2.0, 2.0, LoadDirection::LocalX, 0.0, 0.0));   // torsion répartie
+        lm.addMemberLoad(MemberLoad(0, f.members['B'][1], lc, LoadType::MemberMoment, 1.5, 4.0, LoadDirection::LocalZ, 1.0, 5.0));   // couple de flexion partiel
 
         AnalysisEngineRegistry reg;
         registerBuiltInEngines(reg);
@@ -1416,17 +1411,13 @@ bool runSuite_Engines(int& passed)
         const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
         auto& lm = m.loadManager();
         lm.addMemberLoad(MemberLoad::pointOnMember(f.members['A'][1], lc, -25.0, 2.0, LoadDirection::GlobalZ, "P"));
-        lm.addMemberLoad(MemberLoad::pointOnMember(f.members['B'][1], lc, 8.0, 0.35, LoadDirection::LocalY, LoadCoordSystem::Local, true, "P local"));
+        lm.addMemberLoad(MemberLoad::pointOnMember(f.members['B'][1], lc, 8.0, 0.35, LoadDirection::LocalY, true, "P local"));
         lm.addMemberLoad(MemberLoad::trapezoidal(f.members['A'][1], lc, -9.0, -9.0, 1.0, 4.5, LoadDirection::GlobalZ, "uniforme partielle"));
-        lm.addMemberLoad(MemberLoad::trapezoidal(f.members['C'][1], lc, -3.0, -12.0, 0.2, 0.7, LoadDirection::GlobalZ, LoadCoordSystem::Global, true,
-                                                 "trapèze partiel"));
-        lm.addMemberLoad(MemberLoad::uniform(0, f.transverse[0], lc, 6.0));
-        lm.addMemberLoad(MemberLoad(0, f.transverse[0], lc, LoadType::MemberMoment, 2.0, 2.0, LoadDirection::LocalX,
-                                    MemberLoad::coordSystemFor(LoadDirection::LocalX), 0.0, 0.0));   // torsion répartie
-        lm.addMemberLoad(MemberLoad(0, f.members['B'][1], lc, LoadType::MemberMoment, 1.5, 4.0, LoadDirection::LocalZ,
-                                    MemberLoad::coordSystemFor(LoadDirection::LocalZ), 1.0, 5.0));   // couple de flexion partiel, plan de la rotule
-        lm.addMemberLoad(MemberLoad(0, f.members['A'][1], lc, LoadType::MemberMoment, 2.5, 1.0, LoadDirection::LocalY,
-                                    MemberLoad::coordSystemFor(LoadDirection::LocalY), 0.5, 3.5));   // couple de flexion partiel, plan de la rotule
+        lm.addMemberLoad(MemberLoad::trapezoidal(f.members['C'][1], lc, -3.0, -12.0, 0.2, 0.7, LoadDirection::GlobalZ, true, "trapèze partiel"));
+        lm.addMemberLoad(MemberLoad::uniform(0, f.transverse[0], lc, -6.0, LoadDirection::GlobalZ));
+        lm.addMemberLoad(MemberLoad(0, f.transverse[0], lc, LoadType::MemberMoment, 2.0, 2.0, LoadDirection::LocalX, 0.0, 0.0));   // torsion répartie
+        lm.addMemberLoad(MemberLoad(0, f.members['B'][1], lc, LoadType::MemberMoment, 1.5, 4.0, LoadDirection::LocalZ, 1.0, 5.0));   // couple de flexion partiel, plan de la rotule
+        lm.addMemberLoad(MemberLoad(0, f.members['A'][1], lc, LoadType::MemberMoment, 2.5, 1.0, LoadDirection::LocalY, 0.5, 3.5));   // couple de flexion partiel, plan de la rotule
 
         AnalysisEngineRegistry reg;
         registerBuiltInEngines(reg);

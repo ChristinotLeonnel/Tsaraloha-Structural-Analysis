@@ -72,6 +72,7 @@ private:
 
     QComboBox* m_comboLoadCase = nullptr;
     QComboBox* m_comboType = nullptr;
+    QComboBox* m_comboSystem = nullptr;
     QComboBox* m_comboDirection = nullptr;
 
     QLabel* m_lblQ1 = nullptr;

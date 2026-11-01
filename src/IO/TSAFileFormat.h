@@ -29,7 +29,7 @@ constexpr bool isReadableFileMagic(uint32_t magic)
 // 2.0 (BUG-110) : propriétés des sections enregistrées (chunk SECP, rayon de congé, version des formules, empreinte) et
 // fonctionnalités obligatoires dans l'en-tête (requiredFeatures). Version majeure : tout lecteur 1.x refuse le fichier au
 // lieu de recalculer les sections d'après leur nom. Les fichiers 1.x sont migrés à la lecture (algorithme historique).
-constexpr uint16_t TSA_FORMAT_VERSION_MAJOR = 2;
+constexpr uint16_t TSA_FORMAT_VERSION_MAJOR = 3;   // 3 : repère local des barres verticales selon Robot (y = +Y), migration à la lecture
 constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 0; // 1.12 : chunk VIEW (vues nommées) ; 1.11 : chunk BGEO (géométries physiques importées) ; 1.10 : chunk SURF, ouvertures des voiles (OPNG) ; 1.9 : chunk MVIS ; 1.8 : chunks MESH et OPNG ; 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT ; 1.5 : chunk TOPO ; 1.6 : chunk DIMS ; 1.7 : chunk XTND
 
 // Fonctionnalités obligatoires (TSAFileHeader::requiredFeatures, format ≥ 2.0) : un lecteur refuse un fichier qui en

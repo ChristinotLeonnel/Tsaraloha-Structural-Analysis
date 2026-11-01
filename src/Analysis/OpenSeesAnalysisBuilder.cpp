@@ -659,8 +659,6 @@ std::map<int, std::vector<BeamElementLoad>> OpenSeesAnalysisBuilder::beamElement
         if (pattern.caseId > 0 && ml.loadCaseId() != pattern.caseId) continue;
         const auto* el = snapshot.findElementForLoad(ml);
         if (!el || el->type == SnapshotElement::ElementType::Truss || el->type == SnapshotElement::ElementType::Cable) continue;
-        // Moment réparti sans axe défini (gravité) : refusé par ModelValidator, jamais deviné.
-        if (ml.type() == TSA::Model::LoadType::MemberMoment && LoadResolver::usesMagnitudeOnly(ml)) continue;
 
         const double scale = pattern.factor * forceScale;
         const LocalMemberLoadComponents comp = LoadResolver::resolveMemberLoadToLocal(ml, snapshot);

@@ -956,7 +956,8 @@ bool runSuite_Model(int& passed)
         TEST_CHECK(mb && mb->endNodeId() == b, "Test 101: la copie rejoint le nœud partagé");
         const Node* na = mb ? m.getNode(mb->startNodeId()) : nullptr;
         TEST_CHECK(na && approxEqual(na->x(), 8.0) && approxEqual(na->z(), 0.0), "Test 101: image de (0,0,0) en (8,0,0)");
-        TEST_CHECK(mb && approxEqual(mb->rotation(), 15.0), "Test 101: propriétés recopiées");
+        // Repère image (y' opposé à l'image de y, comme Robot) : poutre horizontale, γ → −γ
+        TEST_CHECK(mb && approxEqual(mb->rotation(), -15.0), "Test 101: rotation de section de l'image (" << (mb ? mb->rotation() : 0.0) << ")");
         TEST_CHECK(created.size() == 2, "Test 101: ids créés = 1 nœud + 1 poutre");
 
         // Retournement (sans copie) par rapport au plan X = 0 : seul b, c bougent.
@@ -985,7 +986,7 @@ bool runSuite_Model(int& passed)
         EndRelease pinned; pinned.my = true; pinned.mz = true;
         m.getBeam(beam)->setStartRelease(pinned);
         m.getBeam(beam)->setEndRelease(pinned);
-        m.loadManager().addMemberLoad(MemberLoad::uniform(beam, 1, -10.0));
+        m.loadManager().addMemberLoad(MemberLoad::uniform(beam, 1, -10.0, LoadDirection::GlobalZ));
 
         auto parts = m.splitBeam(beam, 3);
         TEST_CHECK(parts.size() == 3 && parts.front() == beam, "Test 102: 3 tronçons, l'original en tête");
@@ -1006,7 +1007,7 @@ bool runSuite_Model(int& passed)
         // Refus : charge ponctuelle (non redistribuable sans ambiguïté), aucun changement.
         int c = m.addNode(0.0, 5.0, 0.0), d = m.addNode(6.0, 5.0, 0.0);
         int beam2 = m.addBeam(c, d);
-        m.loadManager().addMemberLoad(MemberLoad::pointOnMember(beam2, 1, -5.0, 2.0));
+        m.loadManager().addMemberLoad(MemberLoad::pointOnMember(beam2, 1, -5.0, 2.0, LoadDirection::GlobalZ));
         const size_t beamsBefore = m.beams().size();
         TEST_CHECK(m.splitBeam(beam2, 2).empty() && m.beams().size() == beamsBefore, "Test 102: refus avec charge ponctuelle");
         TEST_CHECK(m.splitBeam(beam2, 1).empty(), "Test 102: refus pour moins de 2 tronçons");

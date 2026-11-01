@@ -6833,12 +6833,16 @@ See Help &gt; Modules.</translation>
         <translation>Global Z</translation>
     </message>
     <message>
-        <source>normale locale</source>
-        <translation>local normal</translation>
+        <source>x local</source>
+        <translation>Local x</translation>
     </message>
     <message>
-        <source>gravité</source>
-        <translation>gravity</translation>
+        <source>y local</source>
+        <translation>Local y</translation>
+    </message>
+    <message>
+        <source>z local</source>
+        <translation>Local z</translation>
     </message>
     <message>
         <source>DIAGNOSTIC D'AFFICHAGE
@@ -7168,12 +7172,16 @@ Source not present on this computer (distributed package): see the repository.</
         <translation>Global Z</translation>
     </message>
     <message>
-        <source>normale locale (−N)</source>
-        <translation>local normal (−N)</translation>
+        <source>x local (U)</source>
+        <translation>Local x (U)</translation>
     </message>
     <message>
-        <source>gravité (−Z)</source>
-        <translation>gravity (−Z)</translation>
+        <source>y local (V)</source>
+        <translation>Local y (V)</translation>
+    </message>
+    <message>
+        <source>z local (N)</source>
+        <translation>Local z (N)</translation>
     </message>
     <message>
         <source>P =</source>
@@ -8927,8 +8935,8 @@ Run the analysis?</translation>
         <translation>Add a distributed load</translation>
     </message>
     <message>
-        <source>Charge uniforme (kN/m) sur une poutre, sens de la pesanteur pour q &gt; 0.</source>
-        <translation>Uniform load (kN/m) on a beam, in the direction of gravity for q &gt; 0.</translation>
+        <source>Charge uniforme (kN/m) sur une poutre, suivant Z global : q &lt; 0 vers le bas.</source>
+        <translation>Uniform load (kN/m) on a beam, along global Z: q &lt; 0 downwards.</translation>
     </message>
     <message>
         <source>Intensité</source>
@@ -12915,10 +12923,6 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
         <translation>Global Z</translation>
     </message>
     <message>
-        <source>Gravité (-Z)</source>
-        <translation>Gravity (-Z)</translation>
-    </message>
-    <message>
         <source>Local x</source>
         <translation>Local x</translation>
     </message>
@@ -13148,10 +13152,6 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
     <message>
         <source>élément sans ses nœuds</source>
         <translation>element without its nodes</translation>
-    </message>
-    <message>
-        <source>les charges de gravité restent verticales sur la copie, contrairement à la structure copiée</source>
-        <translation>gravity loads stay vertical on the copy, unlike the copied structure</translation>
     </message>
     <message>
         <source>cas de charge « %1 » : un cas de même nom et d'autre catégorie existe ; créé sous le nom « %2 »</source>
@@ -13955,10 +13955,6 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
     <message>
         <source>%1 charge(s) sur barre de type « poids propre » explicite : OpenSees l'applique comme une charge uniforme vers le bas d'intensité q1, le moteur 2D l'ignore. Le poids propre se règle par l'option « Inclure le poids propre » (double comptage possible).</source>
         <translation>%1 member load(s) of explicit “self-weight” type: OpenSees applies it as a uniform downward load of intensity q1, the 2D engine ignores it. Self-weight is set by the “Include self-weight” option (possible double counting).</translation>
-    </message>
-    <message>
-        <source>Le moment réparti « %1 » n'a pas d'axe défini (direction « gravité » ou axe incompatible avec le repère) : indiquer l'axe du vecteur moment (local x pour une torsion, ou un axe global).</source>
-        <translation>Distributed moment “%1” has no defined axis (“gravity” direction or axis incompatible with the axes): specify the axis of the moment vector (local x for torsion, or a global axis).</translation>
     </message>
     <message>
         <source>Le moment réparti « %1 » s'applique à une barre articulée (treillis ou câble), sans rigidité en rotation : il n'est pas transmis au calcul.</source>
@@ -20535,6 +20531,33 @@ Unchecked: waits for a click on 'Apply'.</translation>
     </message>
 </context>
 <context>
+    <name>TSA::UI::LoadAxisCombo</name>
+    <message>
+        <source>X global</source>
+        <translation>Global X</translation>
+    </message>
+    <message>
+        <source>Y global</source>
+        <translation>Global Y</translation>
+    </message>
+    <message>
+        <source>Z global</source>
+        <translation>Global Z</translation>
+    </message>
+    <message>
+        <source>x local</source>
+        <translation>Local x</translation>
+    </message>
+    <message>
+        <source>y local</source>
+        <translation>Local y</translation>
+    </message>
+    <message>
+        <source>z local</source>
+        <translation>Local z</translation>
+    </message>
+</context>
+<context>
     <name>TSA::UI::LoadCaseDialog</name>
     <message>
         <source>Cas de Charges, Combinaisons et Solveur OpenSees</source>
@@ -20842,36 +20865,8 @@ Unchecked: waits for a click on 'Apply'.</translation>
         <translation>Loads on line element</translation>
     </message>
     <message>
-        <source>Gravité (-Z)</source>
-        <translation>Gravity (-Z)</translation>
-    </message>
-    <message>
-        <source>Global X</source>
-        <translation>Global X</translation>
-    </message>
-    <message>
-        <source>Global Y</source>
-        <translation>Global Y</translation>
-    </message>
-    <message>
-        <source>Global Z</source>
-        <translation>Global Z</translation>
-    </message>
-    <message>
-        <source>Local x (axial)</source>
-        <translation>Local x (axial)</translation>
-    </message>
-    <message>
-        <source>Local y (transversal)</source>
-        <translation>Local y (transverse)</translation>
-    </message>
-    <message>
-        <source>Local z (transversal)</source>
-        <translation>Local z (transverse)</translation>
-    </message>
-    <message>
-        <source>Direction :</source>
-        <translation>Direction:</translation>
+        <source>Axe :</source>
+        <translation>Axis:</translation>
     </message>
     <message>
         <source>Intensité q1 :</source>
@@ -21184,32 +21179,12 @@ The other objects keep their settings.</translation>
         <translation>Apply to the %1 selected members</translation>
     </message>
     <message>
-        <source>Un moment réparti n'a pas de sens « gravité » : choisir l'axe du vecteur moment (local x = torsion).</source>
-        <translation>A distributed moment has no “gravity” direction: choose the axis of the moment vector (local x = torsion).</translation>
-    </message>
-    <message>
         <source>Torsion : couple autour de l'axe de la barre (règle de la main droite, de i vers j).</source>
         <translation>Torsion: moment about the member axis (right-hand rule, from i to j).</translation>
     </message>
     <message>
         <source>Moment réparti autour de l'axe %1 (règle de la main droite).</source>
         <translation>Distributed moment about the %1 axis (right-hand rule).</translation>
-    </message>
-    <message>
-        <source>Repère global. Gravité : charge toujours dirigée vers le bas (−Z), le signe saisi est ignoré.</source>
-        <translation>Global axes. Gravity: load always pointing downwards (−Z), the sign entered is ignored.</translation>
-    </message>
-    <message>
-        <source>Repère %1. Valeur positive : sens de l'axe ; négative : sens opposé.</source>
-        <translation>%1 axes. Positive value: axis direction; negative: opposite direction.</translation>
-    </message>
-    <message>
-        <source>local de la barre</source>
-        <translation>member local</translation>
-    </message>
-    <message>
-        <source>global</source>
-        <translation>global</translation>
     </message>
     <message>
         <source>Application de charges réparties (uniformes, trapézoïdales, moments) ou ponctuelles sur les barres.</source>
@@ -21260,36 +21235,28 @@ The other objects keep their settings.</translation>
         <translation>Load type:</translation>
     </message>
     <message>
-        <source>Gravité (-Z)</source>
-        <translation>Gravity (-Z)</translation>
+        <source>Repère local : la charge suit la barre. Valeur positive : sens de l'axe. Sélectionner la barre affiche son trièdre x, y, z.</source>
+        <translation>Local axes: the load follows the member. Positive value: axis direction. Selecting the member shows its x, y, z triad.</translation>
     </message>
     <message>
-        <source>Global X</source>
-        <translation>Global X</translation>
+        <source>Repère global : la direction reste fixe, même si la barre tourne. Valeur positive : sens de l'axe (charge descendante : Z négatif).</source>
+        <translation>Global axes: the direction stays fixed, even if the member rotates. Positive value: axis direction (downward load: negative Z).</translation>
     </message>
     <message>
-        <source>Global Y</source>
-        <translation>Global Y</translation>
+        <source>Global (X, Y, Z)</source>
+        <translation>Global (X, Y, Z)</translation>
     </message>
     <message>
-        <source>Global Z</source>
-        <translation>Global Z</translation>
+        <source>Local (x, y, z)</source>
+        <translation>Local (x, y, z)</translation>
     </message>
     <message>
-        <source>Local x (axial)</source>
-        <translation>Local x (axial)</translation>
+        <source>Repère :</source>
+        <translation>Axes:</translation>
     </message>
     <message>
-        <source>Local y (transversal)</source>
-        <translation>Local y (transverse)</translation>
-    </message>
-    <message>
-        <source>Local z (transversal)</source>
-        <translation>Local z (transverse)</translation>
-    </message>
-    <message>
-        <source>Direction :</source>
-        <translation>Direction:</translation>
+        <source>Axe :</source>
+        <translation>Axis:</translation>
     </message>
     <message>
         <source>Intensités et Position</source>
@@ -21366,10 +21333,6 @@ The other objects keep their settings.</translation>
     <message>
         <source>Veuillez sélectionner un élément structural valide.</source>
         <translation>Please select a valid structural element.</translation>
-    </message>
-    <message>
-        <source>Choisir l'axe du moment réparti (local x pour une torsion).</source>
-        <translation>Choose the axis of the distributed moment (local x for torsion).</translation>
     </message>
     <message>
         <source>Charge déjà présente</source>
@@ -22727,8 +22690,8 @@ Do you want to select it rather than create a duplicate?</translation>
         <translation>Enter a project name.</translation>
     </message>
     <message>
-        <source>Le nom ne doit pas contenir les caractères &lt; &gt; : " / \ | ? *</source>
-        <translation>The name must not contain the characters &lt; &gt; : " / \ | ? *</translation>
+        <source>Le nom ne doit pas contenir les caractères &lt; &gt; : &quot; / \ | ? *</source>
+        <translation>The name must not contain the characters &lt; &gt; : &quot; / \ | ? *</translation>
     </message>
     <message>
         <source>Choisissez un emplacement (chemin absolu).</source>
@@ -24712,8 +24675,8 @@ Double-click to open</translation>
         <translation>Save</translation>
     </message>
     <message>
-        <source>Saisissez un nom (les caractères &lt; &gt; : " / \ | ? * sont remplacés).</source>
-        <translation>Enter a name (the characters &lt; &gt; : " / \ | ? * are replaced).</translation>
+        <source>Saisissez un nom (les caractères &lt; &gt; : &quot; / \ | ? * sont remplacés).</source>
+        <translation>Enter a name (the characters &lt; &gt; : &quot; / \ | ? * are replaced).</translation>
     </message>
     <message>
         <source>Un template « %1 » existe déjà : son remplacement vous sera demandé.</source>
@@ -26130,16 +26093,28 @@ Create a new project or open a %1 file: its preview will appear here.</translati
         <translation>Distribution:</translation>
     </message>
     <message>
-        <source>Direction :</source>
-        <translation>Direction:</translation>
-    </message>
-    <message>
         <source>Valeur :</source>
         <translation>Value:</translation>
     </message>
     <message>
-        <source>Intensité rapportée à la surface projetée (direction globale ; toiture inclinée, neige)</source>
-        <translation>Intensity related to the projected surface (global direction; sloping roof, snow)</translation>
+        <source>Global (X, Y, Z)</source>
+        <translation>Global (X, Y, Z)</translation>
+    </message>
+    <message>
+        <source>Local (x, y, z de la surface)</source>
+        <translation>Local (surface x, y, z)</translation>
+    </message>
+    <message>
+        <source>Repère :</source>
+        <translation>Axes:</translation>
+    </message>
+    <message>
+        <source>Axe :</source>
+        <translation>Axis:</translation>
+    </message>
+    <message>
+        <source>Intensité rapportée à la surface projetée (axe global ; toiture inclinée, neige)</source>
+        <translation>Intensity per projected area (global axis; sloping roof, snow)</translation>
     </message>
     <message>
         <source>Position (u ; v), repère local :</source>

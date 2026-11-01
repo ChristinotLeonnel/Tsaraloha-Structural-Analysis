@@ -74,21 +74,12 @@ public:
         return resolveMemberLoadToLocal(load, model);
     }
 
-    /**
-     * @brief SEULE définition du sens physique d'une charge sur barre (calcul, rendu, rapports).
-     *
-     * Convention : la direction n'est retenue que si elle appartient au repère de la charge
-     * (axe global en repère global, axe local en repère local) ; q signé donne alors le sens.
-     * Sinon (Gravité, ou axe de l'autre repère) la charge est « descendante » de module |q| :
-     * −Z global en repère global, −z local en repère local. Ainsi Gravité est toujours vers le bas,
-     * quel que soit le signe saisi.
-     */
-    static bool usesMagnitudeOnly(const TSA::Model::MemberLoad& load);
 
     /**
      * @brief Vecteur global d'intensité q (kN/m, ou kN pour une charge ponctuelle) appliqué par la
      * charge à une barre p1 → p2 de rotation beta. q = intensité locale (MemberLoad::intensityAt).
      */
+    /// SEULE définition du sens physique d'une charge sur barre (calcul, rendu, rapports) : axe de la charge, q signé.
     static gp_Vec memberLoadVector(const TSA::Model::MemberLoad& load, double q,
                                    const gp_Pnt& p1, const gp_Pnt& p2, double betaAngleDeg = 0.0);
 

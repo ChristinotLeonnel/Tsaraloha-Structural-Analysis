@@ -1,4 +1,5 @@
 #include "Model.h"
+#include "CopyTransform.h"
 #include "ModelElementCopy.h"
 #include "SelectionQuery.h"
 #include "StructuralClipboard.h"
@@ -53,6 +54,45 @@ bool collectSplittableLoads(const LoadManager& lm, int elementId, MemberTargetTy
     return true;
 }
 
+/// Angle de section, après une transformation rigide, des barres dont les deux extrémités sont transformées (id, angle).
+struct BarRotations
+{
+    std::vector<std::pair<int, double>> beams, columns;
+};
+
+BarRotations imageRotations(const Model& m, const std::set<int>& nodeIds, const gp_Trsf& trsf)
+{
+    BarRotations out;
+    if (std::abs(std::abs(trsf.ScaleFactor()) - 1.0) > 1e-12 || isTranslation(trsf)) return out;   // rigide seulement (une symétrie vaut -1)
+    auto image = [&](const auto& bar) {
+        const Node* a = m.getNode(bar.startNodeId());
+        const Node* b = m.getNode(bar.endNodeId());
+        const gp_Pnt pa(a->x(), a->y(), a->z()), pb(b->x(), b->y(), b->z());
+        return barRotationImage(trsf, pa, pb, bar.rotation(), pa.Transformed(trsf), pb.Transformed(trsf));
+    };
+    auto moved = [&](const auto& bar) {
+        return nodeIds.count(bar.startNodeId()) && nodeIds.count(bar.endNodeId()) && m.getNode(bar.startNodeId()) && m.getNode(bar.endNodeId());
+    };
+    for (const auto& [id, b] : m.beams())
+        if (moved(b)) out.beams.push_back({ id, image(b) });
+    for (const auto& [id, c] : m.columns())
+        if (moved(c)) out.columns.push_back({ id, image(c) });
+    return out;
+}
+
+void applyRotations(Model& m, const BarRotations& rotations)
+{
+    for (const auto& [id, angle] : rotations.beams)
+    {
+        m.getBeam(id)->setRotation(angle);
+        m.notifyBeamModified(id);
+    }
+    for (const auto& [id, angle] : rotations.columns)
+    {
+        m.getColumn(id)->setRotation(angle);
+        m.notifyColumnModified(id);
+    }
+}
 } // namespace
 
 // -----------------------------------------------------------------------------
@@ -105,6 +145,7 @@ std::vector<int> Model::mirrorElements(const std::set<int>& nodeIds,
         return q;
     };
 
+    const BarRotations rotations = imageRotations(*this, allNodeIds, trsf);
     for (int nid : allNodeIds)
     {
         auto* n = getNode(nid);
@@ -127,6 +168,7 @@ std::vector<int> Model::mirrorElements(const std::set<int>& nodeIds,
             notifySlabModified(sId);
         }
     }
+    applyRotations(*this, rotations);
     return result;
 }
 
@@ -327,6 +369,7 @@ int Model::splitBarAt(ElementKind kind, int id, double t, int nodeId, int* newBa
 
 bool Model::transformNodes(const std::set<int>& nodeIds, const gp_Trsf& trsf)
 {
+    const BarRotations rotations = imageRotations(*this, nodeIds, trsf);
     bool any = false;
     for (int nid : nodeIds)
     {
@@ -337,6 +380,7 @@ bool Model::transformNodes(const std::set<int>& nodeIds, const gp_Trsf& trsf)
         notifyNodeModified(nid);
         any = true;
     }
+    applyRotations(*this, rotations);
     return any;
 }
 
