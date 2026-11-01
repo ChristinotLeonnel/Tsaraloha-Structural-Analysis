@@ -540,6 +540,14 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
                                 }
                             }
                         }
+                        else if (!multi && obj == m_workPlaneShape && isWorkPlaneManipulatorShown() && m_selectionManager &&
+                                 m_selectionManager->isWorkPlaneSelected())
+                        {
+                            // Nouveau clic sur le panneau du plan déjà sélectionné : fin de la modification (gizmo retiré).
+                            // Auparavant le plan était resélectionné à chaque clic sur sa surface, qui couvre une grande
+                            // partie de la vue : le gizmo ne pouvait être quitté qu'en masquant le plan.
+                            cancelWorkPlaneManipulation();
+                        }
                         else if (multi)
                         {
                             // Ctrl + clic : bascule de l'élément dans la sélection (ajout ou retrait), les
@@ -1072,6 +1080,10 @@ void OccView::keyPressEvent(QKeyEvent* event)
         if (!m_drawingPoints.empty())
         {
             cancelCurrentDrawing();
+        }
+        else if (interactionMode() == InteractionMode::Select && cancelWorkPlaneManipulation())
+        {
+            // gizmo du plan de travail : glisser annulé, ou gizmo retiré et plan désélectionné
         }
         else
         {

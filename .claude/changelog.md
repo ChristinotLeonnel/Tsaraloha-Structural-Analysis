@@ -2,6 +2,24 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — gizmo du plan de travail quitté par Échap ; croix X, Y, Z de la grille retirée ; bouton « Repères »
+(branche fix/workplane-gizmo-axes)
+
+- Cause : en 3D, chaque clic sur le panneau du plan de travail (grande surface) le resélectionnait, et le gizmo
+  (AIS_Manipulator) ne pouvait être quitté qu'en masquant le plan ; Échap (raccourci « Mode sélection ») ne désélectionnait
+  pas le plan. `OccView::cancelWorkPlaneManipulation` : glisser en cours annulé (plan rétabli), sinon gizmo retiré et plan
+  désélectionné ; appelé par MainWindow::onModeSelect (Échap de la fenêtre) et par la touche reçue par la vue ; nouveau clic
+  sur le panneau du plan déjà sélectionné : même effet (le premier clic sélectionne toujours, test 448). Test 580 (views).
+- GridRenderer : plus de croix X, Y, Z jaune à l'origine des grilles cartésiennes (repère global 3D) ; centre des grilles
+  cylindriques conservé (sphère, `centerShape`, ex-originShape partagé).
+- `AxisDisplayStyle::setFramesVisible` / `framesVisible` ; `DisplayMenus::axesToggleAction` (bouton « Repères », partagé
+  avec TSALab, synchronisé dans les deux sens) ; ruban Affichage › Visibilité : « Repères » + menu « Réglages des repères ».
+  Test 581 (multidoc). docs/AXIS_DISPLAY.md à jour.
+- Vérifié (Release) : views 20/20, multidoc 12/12, grids, axes, window, undo ; suite complète 59/60, 569 tests (test 367 :
+  BUG-173) ; TSALab 27/27.
+- Reste : `OccView::m_workPlaneOriginShape` jamais créé (code mort, retrait = recompilation quasi complète). Non vérifié dans
+  TSA.exe : Échap de la fenêtre (onModeSelect) et bouton du ruban (couche app non liée aux tests).
+
 ## 2026-11-01 — état du projet, étapes 6 et 7 : manifeste (bloc PMAN) et documentation
 
 - `Project/ProjectManifest` (couche modèle) : fichiers liés (`registerLink` : taille, SHA-256, date ; chemin relatif au .tsa,

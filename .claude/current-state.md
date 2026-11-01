@@ -32,6 +32,8 @@ Status: IMPLEMENTED — trièdre global X, Y, Z à l'origine, indicateur d'angle
 à la sélection (poutres, poteaux ; treillis et câbles : x seul ; dalles, voiles : repère de surface ; fondations, nœuds : rien),
 jusqu'à 32 éléments. Directions lues dans les fonctions du calcul (ElementAxisFrames), égales à OpenSees à 1e-9 sur 45 barres (test 541).
 Menu Affichage > Repères, réglages QSettings Display/Axes. Remplace l'ancien repère jaune sans lettres (updateSelectedElementLocalAxes).
+Bouton ruban Affichage › Visibilité › Repères (global + locaux, 2026-11-01) ; croix X, Y, Z de la grille retirée ; gizmo du plan de
+travail quitté par Échap ou nouveau clic sur le panneau (tests 580, 581).
 Aucun fichier du solveur touché. Vérifié (Release) : 58/58 suites, 555 tests, TSALab 27/27, 104 fichiers d'empreinte identiques, banc 2 097/2 097.
 Non vérifié : vrai TSA.exe, Debug, Linux (docs/AXIS_DISPLAY.md § 6). BUG-170 : blocage isolé de la suite surfaces à la sortie.
 

@@ -213,6 +213,8 @@ struct RibbonActions
     QAction* actionNodeLabelsVisible = nullptr;
     QAction* actionSupportsVisible = nullptr;
     QAction* actionSupportLabelsVisible = nullptr;
+    QAction* actionAxesVisible = nullptr;   ///< « Repères » : repère global et repères locaux (DisplayMenus)
+    QMenu* axisMenu = nullptr;              ///< « Réglages des repères » (menu Affichage › Repères)
     QAction* actionFullScreen = nullptr;
     QAction* actionToggleModelTree = nullptr;
     QAction* actionToggleProperties = nullptr;

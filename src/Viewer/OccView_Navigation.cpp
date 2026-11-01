@@ -1002,6 +1002,30 @@ void OccView::attachManipulatorToWorkPlane()
         m_view->Redraw();
 }
 
+bool OccView::isWorkPlaneManipulatorShown() const
+{
+    return !m_manipulator.IsNull() && m_manipulator->IsAttached();
+}
+
+bool OccView::cancelWorkPlaneManipulation()
+{
+    if (m_isManipulatingWorkPlane)
+    {
+        cancelCurrentDrawing();   // plan rétabli à sa position de départ (m_manipulatorStartWp), gizmo conservé
+        if (!m_view.IsNull()) m_view->Redraw();
+        return true;
+    }
+    if (!isWorkPlaneManipulatorShown())
+        return false;
+    detachManipulator();
+    // Le gizmo suit la sélection du plan : la vider le retire durablement (sinon la sélection suivante le rattacherait).
+    if (!m_context.IsNull()) m_context->ClearSelected(false);
+    if (m_selectionManager && m_selectionManager->isWorkPlaneSelected()) m_selectionManager->clearSelection();
+    emit drawingPromptChanged(tr("Modification du plan de travail terminée"));
+    if (!m_view.IsNull()) m_view->Redraw();
+    return true;
+}
+
 void OccView::detachManipulator()
 {
     m_isManipulatingWorkPlane = false;

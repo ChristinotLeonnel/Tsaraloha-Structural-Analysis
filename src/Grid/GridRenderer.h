@@ -19,7 +19,7 @@ struct PerGridRenderObjects
     Handle(AIS_Shape) activeLevelPlaneShape;
     Handle(AIS_Shape) circlesShape;
     Handle(AIS_Shape) intersectionsShape;
-    Handle(AIS_Shape) originShape;
+    Handle(AIS_Shape) centerShape;   ///< centre d'une grille cylindrique (sphère) ; aucune croix X, Y, Z à l'origine
     Handle(AIS_Shape) levelAxisShape;
     Handle(AIS_Shape) levelPlanesShape;
 };

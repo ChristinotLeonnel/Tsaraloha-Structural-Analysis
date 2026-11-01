@@ -346,6 +346,13 @@ void MainWindow::onModeSelect()
 {
     if (m_occView)
     {
+        // Échap en mode Sélection avec le gizmo du plan de travail : fin de la modification du plan (glisser annulé, ou
+        // gizmo retiré et plan désélectionné) ; sinon retour au mode Sélection, outil en cours annulé.
+        if (m_occView->interactionMode() == OccView::InteractionMode::Select && m_occView->cancelWorkPlaneManipulation())
+        {
+            if (m_actionSelectMode) m_actionSelectMode->setChecked(true);
+            return;
+        }
         m_occView->setInteractionMode(OccView::InteractionMode::Select);
     }
 }

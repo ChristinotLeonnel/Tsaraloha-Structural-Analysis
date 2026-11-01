@@ -20,6 +20,17 @@ Le menu **Affichage → Repères** règle : repère global, indicateur d'angle, 
 local, taille des axes (30 à 200 pixels), taille des lettres (8 à 32 pixels). Ces réglages appartiennent à l'application
 (`QSettings`, `Display/Axes/*`). Ils ne font pas partie des profils d'affichage ni du projet.
 
+Le bouton **Affichage › Visibilité › Repères** (ruban) masque ou affiche ensemble le repère global et les repères locaux
+(`AxisDisplayStyle::setFramesVisible`) ; il reste coché tant que l'un des deux est affiché. Le menu **Réglages des repères**
+du même groupe est le menu Repères ci-dessus. Les deux viennent de `UI/Display/DisplayMenus`, partagé avec TSALab.
+
+La grille n'a plus sa propre croix X, Y, Z à son origine (2026-11-01) : le repère global la remplace. Le centre d'une grille
+cylindrique reste marqué d'une sphère.
+
+**Plan de travail sélectionné** : son gizmo (déplacement, rotation) s'affiche. Échap annule un glisser en cours (plan
+rétabli), sinon retire le gizmo et désélectionne le plan ; un nouveau clic sur le panneau du plan fait de même
+(`OccView::cancelWorkPlaneManipulation`, test 580).
+
 ## 2. Origine des directions
 
 Aucune direction n'est recalculée pour l'affichage : `ElementAxisFrames` appelle les fonctions du calcul.

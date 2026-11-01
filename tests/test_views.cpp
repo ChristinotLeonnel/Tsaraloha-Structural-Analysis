@@ -27,6 +27,7 @@
 #include <QComboBox>
 #include <QGuiApplication>
 #include <QKeyEvent>
+#include <cmath>
 #include <QMouseEvent>
 #include <QThread>
 
@@ -1209,6 +1210,54 @@ bool runSuite_Views(int& passed)
                    "Test 448: clic sur le panneau du plan après reconstruction des formes : plan sélectionné (id " << selectedPlane << ")");
         view.setSelectionManager(nullptr);
         std::cout << "[PASS] Test 448: Panneau du plan sélectionnable après reconstruction des formes (manipulateur accessible)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 580 : sortie du mode de modification 3D du plan de travail (gizmo) — Échap le retire et désélectionne le plan,
+    // un nouveau clic sur le panneau aussi ; auparavant chaque clic sur le panneau le resélectionnait et le gizmo ne
+    // pouvait être quitté qu'en masquant le plan
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        ViewHarness h(m);
+        OccView& view = h.view;
+        TSA::Viewer::SelectionManager sm;
+        int planeSignals = 0, cleared = 0;
+        QObject::connect(&sm, &TSA::Viewer::SelectionManager::workPlaneSelected, [&](int) { ++planeSignals; });
+        QObject::connect(&sm, &TSA::Viewer::SelectionManager::selectionCleared, [&] { ++cleared; });
+        // Comme SelectionSynchronizer : le gizmo suit la sélection du plan
+        QObject::connect(&sm, &TSA::Viewer::SelectionManager::workPlaneSelected, [&](int) { view.attachManipulatorToWorkPlane(); });
+        QObject::connect(&sm, &TSA::Viewer::SelectionManager::selectionCleared, [&] { view.detachManipulator(); });
+        view.setSelectionManager(&sm);
+        view.setActiveWorkPlane(TSA::Coordinate::WorkPlane(TSA::Coordinate::WorkPlaneType::GlobalXY, "RDC", 0.0));
+        view.rebuildAllShapes();
+        pump();
+        TEST_CHECK(!view.cancelWorkPlaneManipulation(), "Test 580: sans gizmo, Échap garde son rôle (rien à annuler)");
+
+        view.setGizmoSize(30.0);   // clic du panneau loin des poignées du gizmo (centré sur l'origine du plan)
+        const QPointF onPanel = h.toMouse(gp_Pnt(3.0, 2.0, 0.0)), origin = h.toMouse(gp_Pnt(0.0, 0.0, 0.0));
+        TEST_CHECK(std::hypot(onPanel.x() - origin.x(), onPanel.y() - origin.y()) > 60.0,
+                   "Test 580: point cliqué hors des poignées du gizmo (pré-condition)");
+        h.click(onPanel);
+        TEST_CHECK(sm.isWorkPlaneSelected() && view.isWorkPlaneManipulatorShown(), "Test 580: clic sur le panneau — plan sélectionné, gizmo affiché");
+        QKeyEvent esc(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+        QApplication::sendEvent(&view, &esc);
+        pump();
+        TEST_CHECK(!view.isWorkPlaneManipulatorShown() && !sm.isWorkPlaneSelected() && cleared >= 1,
+                   "Test 580: Échap — gizmo retiré, plan désélectionné");
+        TEST_CHECK(view.interactionMode() == OccView::InteractionMode::Select, "Test 580: mode Sélection conservé");
+
+        h.click(onPanel);
+        TEST_CHECK(view.isWorkPlaneManipulatorShown() && planeSignals == 2, "Test 580: nouveau clic — gizmo de nouveau affiché");
+        h.click(onPanel);
+        TEST_CHECK(!view.isWorkPlaneManipulatorShown() && !sm.isWorkPlaneSelected(),
+                   "Test 580: clic sur le panneau du plan déjà sélectionné — fin de la modification (gizmo retiré)");
+        h.click(onPanel);
+        TEST_CHECK(view.isWorkPlaneManipulatorShown() && view.cancelWorkPlaneManipulation() && !view.isWorkPlaneManipulatorShown(),
+                   "Test 580: Échap par la fenêtre (cancelWorkPlaneManipulation) — gizmo retiré");
+        view.setSelectionManager(nullptr);
+        std::cout << "[PASS] Test 580: Gizmo du plan de travail quitté par Échap ou par un nouveau clic sur le panneau" << std::endl;
         ++passed;
     }
 

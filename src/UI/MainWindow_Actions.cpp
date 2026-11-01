@@ -1708,6 +1708,8 @@ void MainWindow::createRibbon()
     acts.actionRotateRight = m_actionRotateRight;
     acts.actionSupportsVisible = m_actionSupportsVisible;
     acts.actionSupportLabelsVisible = m_actionSupportLabelsVisible;
+    acts.actionAxesVisible = m_displayMenus ? m_displayMenus->axesToggleAction() : nullptr;
+    acts.axisMenu = m_displayMenus ? m_displayMenus->axisMenu() : nullptr;
     acts.actionSurfaceLoadsVisible = m_actionSurfaceLoadsVisible;
     acts.actionModules = m_actionModules;
     acts.actionReportProblem = m_actionReportProblem;
