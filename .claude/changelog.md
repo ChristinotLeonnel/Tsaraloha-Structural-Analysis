@@ -2,6 +2,15 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — bugs corrigés retirés de known-issues.md (branche docs/remove-fixed-bugs, demandé par l'utilisateur)
+
+- Retirés : 23 entrées FIXED complètes (BUG-095, 110, 112-114, 116, 119, 120, 122, 125-129, 131, 132, 134, 136, 142, 145, 146, 148,
+  172) et la section « Corrigés (historique) » (16 entrées) ; 962 → 485 lignes, 52 entrées restantes.
+- Conservés : corrigés en partie (BUG-124 validation Windows en attente, BUG-130 point cosmétique, BUG-133 downloadAndInstall,
+  BUG-137 Linux non testé, BUG-013, 117, 121, 135), contournement (BUG-036), clos par retrait (BUG-149, 150).
+- Règle d'en-tête changée : un bug entièrement corrigé est retiré (historique : Git, changelog). Rapports datés (audit du
+  2026-10-31, validation Windows) inchangés.
+
 ## 2026-11-01 — compilation et version distribuable en une commande (branche feature/install-deps-build)
 
 - `install_dependencies.py --build [PRESET]` : configuration puis `cmake --build --preset` sous vcvars64.bat (-j 4 par défaut,
