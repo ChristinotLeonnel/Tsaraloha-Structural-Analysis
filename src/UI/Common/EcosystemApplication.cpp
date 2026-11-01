@@ -1,4 +1,5 @@
 #include "EcosystemApplication.h"
+#include "WheelGuard.h"
 #include "../../Core/AppPaths.h"
 
 #include "../../Modules/ModuleRegistry.h"
@@ -54,6 +55,9 @@ TSA::Modules::ModuleHostServices EcosystemApplication::moduleHostServices()
 EcosystemApplication::EcosystemApplication(int& argc, char** argv)
     : QApplication(argc, argv)
 {
+    // Molette : jamais de modification d'un champ numérique ou d'une liste déroulante survolés en faisant défiler
+    // (toutes les fenêtres et boîtes de dialogue des deux produits).
+    WheelGuard::install();
     // 0. Identité d'abord : elle fixe les dossiers QStandardPaths (journaux, configuration, données).
     setApplicationName(TSA::Product::name());
     setOrganizationName(QString::fromLatin1(TSA::Product::kOrganizationName));

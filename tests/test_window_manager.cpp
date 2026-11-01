@@ -1,6 +1,16 @@
 #include "test_common.h"
 #include "UI/WindowManager/WindowManager.h"
 #include "UI/WindowManager/ProjectLayoutState.h"
+#include "UI/Common/WheelGuard.h"
+#include <QAbstractItemView>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QDoubleSpinBox>
+#include <QScrollArea>
+#include <QScrollBar>
+#include <QSpinBox>
+#include <QVBoxLayout>
+#include <QWheelEvent>
 #include <QTabBar>
 #include <QTabWidget>
 #include "UI/Workspace/WorkspaceView.h"
@@ -302,6 +312,64 @@ bool runSuite_WindowManager(int& passed)
         QCoreApplication::setApplicationName(savedApp);
         TEST_CHECK(byDefault && off, "Test 576: préférence « Restaurer la disposition enregistrée dans le projet » — vraie par défaut, désactivable");
         std::cout << "[PASS] Test 576: Disposition propre au projet (bloc UIST) — panneaux, espace de travail, ruban, repli" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 582 : la molette ne modifie jamais un champ numérique ni une liste déroulante survolés (UI/Common/WheelGuard) ;
+    // auparavant, faire défiler un panneau dont un champ passait sous le curseur changeait sa valeur (modification non
+    // demandée). Le défilement passe à la zone qui contient le champ.
+    // -------------------------------------------------------------------------
+    {
+        TSA::UI::WheelGuard::install();
+        TSA::UI::WheelGuard::install();   // idempotent
+        QScrollArea area;
+        area.resize(300, 200);
+        auto* content = new QWidget;
+        auto* layout = new QVBoxLayout(content);
+        auto* spin = new QSpinBox;
+        spin->setRange(0, 100);
+        spin->setValue(50);
+        auto* dspin = new QDoubleSpinBox;
+        dspin->setValue(2.5);
+        auto* combo = new QComboBox;
+        combo->addItems({ "IPE 200", "IPE 300", "HEA 200" });
+        combo->setCurrentIndex(1);
+        layout->addWidget(spin);
+        layout->addWidget(dspin);
+        layout->addWidget(combo);
+        layout->addSpacing(1500);   // contenu plus haut que la zone : défilement possible
+        area.setWidget(content);
+        area.show();
+        QCoreApplication::processEvents();
+        spin->setFocus();   // même un champ en cours d'édition (focus au clic) ne change plus à la molette
+        QCoreApplication::processEvents();
+
+        auto wheelOn = [](QWidget* w) {
+            const QPointF local(w->width() / 2.0, w->height() / 2.0);
+            QWheelEvent ev(local, w->mapToGlobal(local), QPoint(), QPoint(0, -120), Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+            QApplication::sendEvent(w, &ev);
+            QCoreApplication::processEvents();
+        };
+        const int scroll0 = area.verticalScrollBar()->value();
+        wheelOn(spin);
+        wheelOn(spin->findChild<QLineEdit*>());   // champ texte interne du QSpinBox
+        wheelOn(dspin);
+        wheelOn(combo);
+        TEST_CHECK(spin->value() == 50 && dspin->value() == 2.5 && combo->currentIndex() == 1,
+                   "Test 582: molette sur les champs — aucune valeur modifiée (" << spin->value() << ", " << dspin->value() << ", "
+                                                                                 << combo->currentIndex() << ")");
+        TEST_CHECK(area.verticalScrollBar()->value() > scroll0, "Test 582: la zone qui contient les champs défile (" << scroll0 << " → "
+                                                                                                                   << area.verticalScrollBar()->value() << ")");
+        TEST_CHECK(spin->focusPolicy() == Qt::StrongFocus && combo->focusPolicy() != Qt::WheelFocus,
+                   "Test 582: les champs ne prennent plus le focus à la molette");
+        combo->showPopup();
+        QCoreApplication::processEvents();
+        QAbstractItemView* list = combo->view();
+        TEST_CHECK(list && TSA::UI::WheelGuard::protectedField(list->viewport()) == nullptr,
+                   "Test 582: liste d'une liste déroulante ouverte — défilement normal");
+        combo->hidePopup();
+        std::cout << "[PASS] Test 582: La molette ne modifie plus les champs survolés (défilement de la zone)" << std::endl;
         passed++;
     }
     return true;

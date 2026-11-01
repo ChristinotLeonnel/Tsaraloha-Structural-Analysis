@@ -239,7 +239,8 @@ Cause probable (non prouvée, la condition ne dit pas quel terme échoue) : writ
 nouvelle tentative) refusé quand l'antivirus ou l'indexeur tient shortcut.txt — phénomène documenté dans
 ShortcutManager::writeFile, qui, lui, réessaie (12 × 50 ms).
 Impact: LOW — test seulement ; aucune modification de code proposée sans accord.
-Status: OPEN.
+Status: OPEN. 2026-11-01 : test 262 (« fichier remplacé une deuxième fois : toujours surveillé ») échoué une fois en suite
+complète (Release, branche fix/no-wheel-on-fields), 5/5 réussi en suite seule : même famille (écriture de shortcut.txt).
 
 ## BUG-121
 Area: Panneaux Propriétés (essais d'interface du 2026-10-26)

@@ -2,6 +2,19 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — la molette ne modifie plus les champs survolés (branche fix/no-wheel-on-fields)
+
+- Cause : faire défiler un panneau ou une boîte de dialogue changeait la valeur du champ numérique ou de la liste déroulante
+  passant sous le curseur. Le seul garde (PropertyPanel::eventFilter) laissait la molette à un champ qui a le focus, or Qt
+  donne le focus à un champ WheelFocus (QAbstractSpinBox) AVANT les filtres d'événements : garde inopérant ; boîtes de
+  dialogue et autres panneaux non couverts.
+- `UI/Common/WheelGuard` (couche widgets), installé par EcosystemApplication (TSA et TSALab) et par PropertyPanel (tests) :
+  molette jamais transmise à un QAbstractSpinBox ou un QComboBox fermé (même avec le focus), mais à la barre de défilement de
+  la première QAbstractScrollArea parente ; liste d'une liste déroulante ouverte (fenêtre Popup) inchangée ; politique
+  WheelFocus remplacée par StrongFocus au Polish. PropertyPanel::eventFilter retiré. Test 582 (window).
+- Vérifié (Release) : window ; suite complète 58/60, 562 tests : test 367 (BUG-173), test 262 intermittent (BUG-123, 5/5
+  seul) ; TSALab 27/27. Non vérifié dans TSA.exe (molette réelle sur le panneau Propriétés et les boîtes de dialogue).
+
 ## 2026-11-01 — gizmo du plan de travail quitté par Échap ; croix X, Y, Z de la grille retirée ; bouton « Repères »
 (branche fix/workplane-gizmo-axes)
 
