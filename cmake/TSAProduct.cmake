@@ -846,6 +846,8 @@ set(CABLE_GEOMETRY_SOURCES
 set(PROJECT_SOURCES
     ${TSA_ROOT}/src/Project/ProjectSession.h
     ${TSA_ROOT}/src/Project/ProjectSession.cpp
+    ${TSA_ROOT}/src/Project/ProjectDiagnostics.h
+    ${TSA_ROOT}/src/Project/ProjectDiagnostics.cpp
     ${TSA_ROOT}/src/Project/ProjectManager.h
     ${TSA_ROOT}/src/Project/ProjectManager.cpp
     ${TSA_ROOT}/src/Project/ProjectTemplates.h

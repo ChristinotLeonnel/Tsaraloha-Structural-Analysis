@@ -57,6 +57,8 @@
 #include "../Library/LibraryManager.h"
 #include "../Project/ProjectManager.h"
 #include "../Project/ProjectSession.h"
+#include "../Project/ProjectDiagnostics.h"
+#include "../Standards/ModelValidator.h"
 #include "../IO/TSAFile.h"
 #include "../UndoRedo/CommandManager.h"
 #include "../UndoRedo/EditTransaction.h"
@@ -81,6 +83,7 @@
 #include <QFileDialog>
 #include <QDir>
 #include <QFileInfo>
+#include <QDateTime>
 #include <QElapsedTimer>
 #include <QTimer>
 #include <QSignalBlocker>
@@ -122,6 +125,15 @@ MainWindow::MainWindow(QWidget* parent)
     m_analysis = &m_session->analysis();
     connect(m_analysis, &TSA::Analysis::AnalysisController::resultsChanged, this, &MainWindow::onAnalysisResultsChanged);
     connect(m_analysis, &TSA::Analysis::AnalysisController::resultsBecameStale, this, &MainWindow::onResultsBecameStale);
+    // Historique et messages de chaque calcul (bloc DIAG du .tsa) : tous les calculs, interactifs ou non (console, Blueprint, MCP).
+    m_diagnostics = std::make_unique<TSA::Project::ProjectDiagnostics>();
+    connect(m_analysis, &TSA::Analysis::AnalysisController::started, this, [this](const QString&) {
+        m_runLog.clear();
+        m_runTimer.start();
+    });
+    connect(m_analysis, &TSA::Analysis::AnalysisController::logMessage, this,
+            [this](const QString& line) { m_runLog += line.toStdString() + '\n'; });
+    connect(m_analysis, &TSA::Analysis::AnalysisController::runCompleted, this, &MainWindow::onAnalysisRunCompleted);
 
     // Grilles rattachées au modèle : leurs définitions entrent dans l'historique Annuler (BUG-003).
     m_model->setGridManager(m_gridManager);
@@ -1559,6 +1571,7 @@ void MainWindow::resetWorkspace(TSA::UI::ProjectTemplate projectTemplate)
     if (m_projectManager && m_model)
     {
         m_projectManager->newProject(*m_model, m_gridManager);
+        if (m_diagnostics) m_diagnostics->clear();   // historique des calculs propre au projet
     }
     else if (m_model)
     {
@@ -1881,6 +1894,28 @@ bool MainWindow::loadFile(const QString& path)
     return true;
 }
 
+void MainWindow::onAnalysisRunCompleted(const TSA::Analysis::AnalysisContext& context, bool success, const QString& message)
+{
+    if (!m_diagnostics || !m_model || !m_analysis)
+        return;
+    const TSA::Analysis::ResultsModel* results = success ? m_analysis->results().get() : nullptr;
+    std::string log = results ? results->journalLog() : m_analysis->lastRun().results.journalLog();
+    if (log.empty()) log = m_runLog;   // calcul sans journal du moteur : lignes reçues pendant le calcul
+    const double ms = results && results->executionMetadata().executionDurationMs > 0.0
+                          ? results->executionMetadata().executionDurationMs
+                          : (m_runTimer.isValid() ? static_cast<double>(m_runTimer.elapsed()) : 0.0);
+    m_diagnostics->recordCalculation(context, success, message.toStdString(), results, log, ms,
+                                     TSA::IO::TSAProjectIO::modelFingerprint(*m_model),
+                                     QDateTime::currentDateTimeUtc().toString(Qt::ISODate).toStdString());
+    m_runTimer.invalidate();
+    if (!success)
+    {
+        // Un calcul réussi marque déjà le document (résultats) ; un échec aussi : son diagnostic est enregistré avec le projet.
+        m_model->setUnsavedFlag(true);
+        updateWindowTitle();
+    }
+}
+
 void MainWindow::captureProjectState()
 {
     if (!m_model || !m_occView)
@@ -1894,6 +1929,12 @@ void MainWindow::captureProjectState()
     if (m_analysis && m_analysis->results() && m_analysis->results()->hasResults() && m_analysis->resultsUpToDate())
         results = TSA::Analysis::encodeStoredResults(*m_analysis->results(), TSA::IO::TSAProjectIO::modelFingerprint(*m_model));
     m_model->setProjectStateBlock(Block::Results, std::move(results));
+    // Messages, erreurs, historique des calculs et rapport de validation à l'enregistrement (bloc DIAG).
+    if (m_diagnostics)
+    {
+        m_diagnostics->setValidation(TSA::Standards::ModelValidator::validate(*m_model));
+        m_model->setProjectStateBlock(Block::Diagnostics, m_diagnostics->empty() ? std::string() : m_diagnostics->toJson());
+    }
     if (m_windowManager)
     {
         // Panneaux masqués par le mode Blueprint ou le mode focus : enregistrés comme ouverts, sans être réaffichés.
@@ -1910,6 +1951,29 @@ void MainWindow::applyProjectState()
     if (!m_model || !m_occView)
         return;
     using Block = TSA::Model::Model::ProjectStateBlock;
+    // 0. Messages, erreurs et historique des calculs (bloc DIAG) : propres au projet ouvert, résumés dans la console.
+    if (m_diagnostics)
+    {
+        m_diagnostics->clear();
+        std::string error;
+        if (const std::string& diag = m_model->projectStateBlock(Block::Diagnostics); !diag.empty() && !m_diagnostics->fromJson(diag, &error))
+            TSA_LOG_WARN("MainWindow", "ProjectDiagnostics", "diagnostics enregistrés ignorés : " + error);
+        if (m_consoleDock && !m_diagnostics->history().empty())
+        {
+            const auto& last = m_diagnostics->history().back();
+            m_consoleDock->appendLog(tr("Dernier calcul enregistré avec le projet : %1, %2 — %3%4")
+                                         .arg(QString::fromStdString(last.timestamp), QString::fromStdString(last.engine.empty() ? last.engineId : last.engine),
+                                              last.success ? tr("réussi") : tr("en échec"),
+                                              last.message.empty() ? QString() : QStringLiteral(" (%1)").arg(QString::fromStdString(last.message))),
+                                     last.success ? "SYS" : "WARN");
+            for (const auto& m : m_diagnostics->lastMessages())
+                m_consoleDock->appendLog(QString::fromStdString(m), "WARN");
+        }
+        std::size_t problems = 0;
+        for (const auto& v : m_diagnostics->validation()) problems += v.severity != "info";
+        if (m_consoleDock && problems > 0)
+            m_consoleDock->appendLog(tr("%n anomalie(s) de validation relevée(s) au dernier enregistrement.", nullptr, static_cast<int>(problems)), "WARN");
+    }
     // 1. Résultats du dernier calcul (bloc RSLT) : publiés comme après un calcul ; empreinte différente du modèle relu
     //    (modèle modifié hors de TSA, migration) → périmés, comme après une modification (décision D3).
     if (const std::string& block = m_model->projectStateBlock(Block::Results); !block.empty() && m_analysis)

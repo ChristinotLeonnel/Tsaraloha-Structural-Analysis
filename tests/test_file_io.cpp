@@ -2,6 +2,9 @@
 #include "App/ProductInfo.h"
 #include "IO/Tsa3d/Tsa3d.h"
 #include "Analysis/Engine/AnalysisContext.h"
+#include "Analysis/ResultsModel.h"
+#include "Project/ProjectDiagnostics.h"
+#include "Standards/ModelValidator.h"
 #include <QJsonDocument>
 #include <cstring>
 #include <functional>
@@ -1226,6 +1229,60 @@ bool runSuite_FileIO(int& passed)
         for (int i = 0; i < 5; ++i) cleared = cleared && m.projectStateBlock(static_cast<Block>(i)).empty();
         TEST_CHECK(cleared, "Test 574: Model::clear vide les blocs d'état");
         std::cout << "[PASS] Test 574: Blocs d'état du projet (UIST, VSTA, RSLT, DIAG, PMAN) — format 3.1, aller-retour exact" << std::endl;
+        ++passed;
+    }
+
+    // TEST 578 : messages, erreurs et historique des calculs (bloc DIAG, docs/PROJECT_STATE_PLAN.md étape 5)
+    {
+        using TSA::Project::ProjectDiagnostics;
+        ProjectDiagnostics d;
+        TSA::Analysis::AnalysisContext ctx;
+        ctx.engineId = "opensees";
+        ctx.loadCaseIds = { 1, 2 };
+        TSA::Analysis::ResultsModel ok;
+        ok.executionMetadata().solverEngine = "OpenSees";
+        ok.executionMetadata().solverVersion = "3.8.0";
+        ok.executionMetadata().warnings = { "élément court" };
+        ok.executionMetadata().preparationMessages = { "voile exclu" };
+        ok.setCaseOrComboName("ELU 1");
+        for (int i = 0; i < 25; ++i)
+            d.recordCalculation(ctx, true, "ok", &ok, "", 120.0 + i, "empreinte" + std::to_string(i), "2026-11-01T10:" + std::to_string(10 + i));
+        TEST_CHECK(d.history().size() == ProjectDiagnostics::kMaxRecords && d.history().front().modelFingerprint == "empreinte5" &&
+                       d.history().back().engine == "OpenSees 3.8.0" && d.history().back().loadSelection == "ELU 1",
+                   "Test 578: historique borné aux 20 derniers calculs (moteur, version, cas)");
+        TEST_CHECK(d.lastMessages().size() == 2 && d.history().back().warnings == 2, "Test 578: messages du dernier calcul réussi (préparation, avertissements)");
+
+        // Échec : message d'erreur, journal du moteur limité à ses 500 dernières lignes
+        std::string log;
+        for (int i = 1; i <= 800; ++i) log += "ligne " + std::to_string(i) + "\n";
+        d.recordCalculation(ctx, false, "matrice singulière", nullptr, log, 35.0, "empreinte-x", "2026-11-01T11:00:00Z");
+        const std::string& kept = d.lastEngineLog();
+        TEST_CHECK(!d.history().back().success && d.lastMessages() == std::vector<std::string>{ "erreur : matrice singulière" } &&
+                       kept.rfind("ligne 301\n", 0) == 0 && kept.find("ligne 800") != std::string::npos && kept.find("ligne 300\n") == std::string::npos,
+                   "Test 578: échec — message d'erreur, 500 dernières lignes du journal (" << kept.substr(0, 12) << "…)");
+
+        Model v;
+        v.addNode(0, 0, 0);
+        const auto report = TSA::Standards::ModelValidator::validate(v);
+        d.setValidation(report);
+        TEST_CHECK(d.validation().size() == report.issues().size(), "Test 578: rapport de validation relevé (" << report.issues().size() << " anomalie(s))");
+
+        ProjectDiagnostics back;
+        std::string err;
+        TEST_CHECK(back.fromJson(d.toJson(), &err) && back == d, "Test 578: aller-retour JSON identique (" << err << ")");
+        ProjectDiagnostics untouched = back;
+        TEST_CHECK(!untouched.fromJson(R"({"schema":2,"calculations":[]})", &err) && untouched == back, "Test 578: version inconnue refusée, contenu inchangé");
+
+        // Dans le .tsa (bloc DIAG)
+        const QString file = QString::fromStdString(std::string("./build/test_tsa_data/test_diagnostics.tsa"));
+        std::filesystem::create_directories("./build/test_tsa_data/");
+        v.setProjectStateBlock(Model::ProjectStateBlock::Diagnostics, d.toJson());
+        Model r;
+        ProjectDiagnostics reread;
+        TEST_CHECK(TSAProjectIO::saveToFile(file, v, nullptr, &err) && TSAProjectIO::loadFromFile(file, r, nullptr, &err) &&
+                       reread.fromJson(r.projectStateBlock(Model::ProjectStateBlock::Diagnostics), &err) && reread == d,
+                   "Test 578: historique et messages relus du .tsa à l'identique (" << err << ")");
+        std::cout << "[PASS] Test 578: Messages, erreurs et historique des calculs (bloc DIAG)" << std::endl;
         ++passed;
     }
 

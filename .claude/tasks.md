@@ -7,7 +7,8 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
 - [x] Étape 2 VSTA (test 575).
 - [x] Étape 3 UIST (test 576).
 - [x] Étape 4 RSLT (test 577) ; mesure taille / durée sur un grand modèle à faire.
-- [ ] Étape 5 DIAG ; 6 PMAN ; 7 documentation.
+- [x] Étape 5 DIAG (test 578).
+- [ ] Étape 6 PMAN ; 7 documentation.
 - [x] TSALab 27/27 après étape 2 et correctif des noms de dépôts (branche fix/tests-repo-name). Fusion et push non demandés.
 
 ## Mise en place en un seul fichier (2026-11-01, branche fix/setup-build-mingw-path)

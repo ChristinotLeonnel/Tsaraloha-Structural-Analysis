@@ -2,6 +2,17 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — état du projet, étape 5 : messages, erreurs et historique des calculs (bloc DIAG)
+
+- `Project/ProjectDiagnostics` (couche modèle) : historique des 20 derniers calculs (`CalculationRecord` : date UTC, moteur choisi,
+  moteur et version réels, type, cas ou combinaison, portée, succès, message, durée, avertissements, empreinte du modèle),
+  messages du dernier calcul (préparation, avertissements ou erreur), journal du moteur (500 dernières lignes), rapport de
+  validation à l'enregistrement ; JSON schema 1 (version inconnue refusée, objet inchangé). Pas de journal général (chemins).
+- MainWindow : signaux started / logMessage / runCompleted du contrôleur (tous les calculs : interface, console, Blueprint, MCP) ;
+  un échec marque aussi le document à enregistrer ; DIAG écrit à l'enregistrement (avec ModelValidator::validate) ; à
+  l'ouverture, résumé dans la console (dernier calcul, messages, anomalies) ; nouveau projet : historique vidé. Test 578 (io).
+- Vérifié : io 11/11, surfaces, window, multidoc, undo ; suite complète 59/60, 566 tests (test 367 : BUG-173) ; TSALab 27/27.
+
 ## 2026-11-01 — état du projet, étape 4 : résultats de calcul dans le .tsa (bloc RSLT, BUG-013 corrigé)
 
 - `Analysis/ResultsSerialization.cpp` : `ResultsModel::toBinary` / `fromBinary` (magic TSAR, sections étiquetées et dimensionnées,
