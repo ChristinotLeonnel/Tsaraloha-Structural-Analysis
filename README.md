@@ -70,12 +70,18 @@ cd TSA
 
 ### <ins>2. Configuration Automatique des Dépendances</ins>
 
-Le projet intègre un orchestrateur intelligent en PowerShell (`scripts/setup_build.ps1`) qui inspecte votre environnement, configure les toolchains, télécharge les SDKs nécessaires et prépare CMake sans aucune action manuelle complexe :
+Un seul fichier, `install_dependencies.py` (racine, Python ≥ 3.8), met tout en place puis configure CMake : dépôt voisin TSALab (trouvé ou cloné), Qt 6.12.0, OpenCASCADE 8.0.1, Gmsh, Eigen, OpenSees (archives vérifiées par SHA-256, installées dans `thirdparty/`), contrôle de Visual Studio (C++ x64) :
 
 ```powershell
-# Détection automatique de la toolchain et configuration du build
-powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1
+# Dépendances manquantes + cmake --preset ninja-debug (environnement MSVC chargé automatiquement)
+py -3 install_dependencies.py --configure
+# Autre preset, sans IfcOpenShell (facultatif, compilation d'environ une heure)
+py -3 install_dependencies.py --configure ninja-release --skip ifcopenshell
+# État des dépendances, sans rien modifier
+py -3 install_dependencies.py --list
 ```
+
+Prérequis non installés par le script : Visual Studio 2026 (charge « Développement Desktop en C++ »), CMake ≥ 3.20, Git, Python 3. Détails : `docs/DEPENDENCIES.md`.
 
 ---
 
@@ -104,12 +110,6 @@ cmake --build --preset ninja-release
 # Configuration & compilation Release
 cmake --preset windows-x64-release
 cmake --build --preset windows-x64-release
-```
-
-#### Option C : Script Tout-en-Un
-```powershell
-# Configure et compile automatiquement en mode Release
-powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1 -Build
 ```
 
 ---

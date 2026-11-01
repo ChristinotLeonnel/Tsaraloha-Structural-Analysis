@@ -5,6 +5,11 @@
     "Une archive dont l'empreinte diffère n'est jamais extraite. Mise à jour : docs/DEPENDENCIES.md § 6."
   ],
   "schema": 1,
+  "tsalab": {
+    "_comment": "Dépôt voisin obligatoire (cœur scientifique TSALab/science). Cherché à côté de TSA sous chacun des noms de dirs (le premier est celui d'un clone par install_dependencies.py) ; sinon -DTSALAB_ROOT_DIR=<chemin>.",
+    "git_url": "https://github.com/ChristinotLeonnel/Tsaraloha-Structural-Analysis-Virtual-Laboratory.git",
+    "dirs": ["TSALab", "Tsaraloha-Structural-Analysis-Virtual-Laboratory"]
+  },
   "qt": {
     "version": "6.12.0",
     "package_version": "6.12.0-0-202609280346",

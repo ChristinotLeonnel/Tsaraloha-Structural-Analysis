@@ -22,8 +22,27 @@ add_custom_target(tsa-dependency-report
     COMMAND ${CMAKE_COMMAND} "-DREPORT=${CMAKE_BINARY_DIR}/tsa-dependencies.txt" "-DSOURCE_DIR=${TSA_ROOT}"
             -P "${CMAKE_CURRENT_LIST_DIR}/DependencyReport.cmake"
     COMMENT "Rapport des dépendances" VERBATIM)
-# Cœur scientifique : dépôt TSALab voisin (TSALab/science).
-set(TSALAB_ROOT_DIR "${TSA_ROOT}/../TSALab" CACHE PATH "Racine du dépôt TSALab (cœur scientifique tsalab_science)")
+# Cœur scientifique : dépôt TSALab voisin (TSALab/science), cherché sous chacun des noms du manifeste
+# (tsalab.dirs : ../TSALab, ../Tsaraloha-Structural-Analysis-Virtual-Laboratory = nom du dépôt GitHub). Une valeur en
+# cache qui ne désigne plus un dépôt valide (dossier renommé, cache d'un autre poste) est remplacée par le candidat trouvé.
+if(NOT (DEFINED TSALAB_ROOT_DIR AND EXISTS "${TSALAB_ROOT_DIR}/science/CMakeLists.txt"))
+    set(_tsalab_found "")
+    string(JSON _tsalab_n ERROR_VARIABLE _tsalab_err LENGTH "${TSA_DEPS_MANIFEST}" tsalab dirs)
+    if(NOT _tsalab_err AND _tsalab_n GREATER 0)
+        math(EXPR _tsalab_last "${_tsalab_n} - 1")
+        foreach(_i RANGE ${_tsalab_last})
+            string(JSON _d GET "${TSA_DEPS_MANIFEST}" tsalab dirs ${_i})
+            if(NOT _tsalab_found AND EXISTS "${TSA_ROOT}/../${_d}/science/CMakeLists.txt")
+                set(_tsalab_found "${TSA_ROOT}/../${_d}")
+            endif()
+        endforeach()
+    endif()
+    if(_tsalab_found)
+        set(TSALAB_ROOT_DIR "${_tsalab_found}" CACHE PATH "Racine du dépôt TSALab (cœur scientifique tsalab_science)" FORCE)
+    elseif(NOT DEFINED TSALAB_ROOT_DIR)
+        set(TSALAB_ROOT_DIR "${TSA_ROOT}/../TSALab" CACHE PATH "Racine du dépôt TSALab (cœur scientifique tsalab_science)")
+    endif()
+endif()
 get_filename_component(TSALAB_ROOT_DIR "${TSALAB_ROOT_DIR}" ABSOLUTE)
 # Outils et tests du cœur scientifique : compilés par TSALab, pas par défaut dans le build de TSA.
 if(NOT DEFINED TSALAB_SCIENCE_TOOLS)
@@ -1403,7 +1422,8 @@ function(tsaraloha_add_shared_libraries)
         if(NOT EXISTS "${TSALAB_ROOT_DIR}/science/CMakeLists.txt")
             message(FATAL_ERROR "Cœur scientifique TSALab introuvable dans « ${TSALAB_ROOT_DIR} ».
 "
-                                "Cloner le dépôt TSALab à côté de TSA (../TSALab) ou indiquer -DTSALAB_ROOT_DIR=<chemin>.")
+                                "« python install_dependencies.py » le clone à côté de TSA (../TSALab), ou indiquer "
+                                "-DTSALAB_ROOT_DIR=<chemin>.")
         endif()
         add_subdirectory(${TSALAB_ROOT_DIR}/science ${CMAKE_BINARY_DIR}/tsalab_science)
     endif()

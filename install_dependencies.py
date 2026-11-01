@@ -4,6 +4,8 @@
 
 Usage (depuis n'importe quel dossier) :
     python3 install_dependencies.py                  # tout ce qui manque
+    python3 install_dependencies.py --configure      # tout ce qui manque, puis cmake --preset (prêt à compiler)
+    python3 install_dependencies.py --configure ninja-release   # idem avec un autre preset (CMakePresets.json)
     python3 install_dependencies.py --list           # état de chaque dépendance, rien n'est modifié
     python3 install_dependencies.py --only qt,occt   # seulement ces composants
     python3 install_dependencies.py --skip ifcopenshell
@@ -12,6 +14,8 @@ Usage (depuis n'importe quel dossier) :
 
 Composants, dans l'ordre d'installation :
     system        Linux (Debian/Ubuntu) : compilateur, CMake, Ninja, en-têtes d'OCCT, bibliothèques X11 de Qt (apt)
+    tsalab        dépôt voisin TSALab (cœur scientifique, obligatoire) : ../TSALab ou
+                  ../Tsaraloha-Structural-Analysis-Virtual-Laboratory, sinon cloné (git) dans ../TSALab
     qt            Qt 6.12.0 (dépôt officiel download.qt.io)          -> thirdparty/Qt/6.12.0/<kit>
     occt          OpenCASCADE 8.0.1 : SDK officiel + 3rdparty (Windows), compilé depuis les sources (Linux)
     gmsh          SDK Gmsh 4.15.2 (gmsh.info)                         -> thirdparty/gmsh-4.15.2-<plateforme>64-sdk
@@ -24,6 +28,8 @@ Versions, adresses et empreintes SHA-256 : cmake/dependencies.json (lu aussi par
 Toute archive est vérifiée avant extraction ; une empreinte différente arrête l'installation de ce composant.
 Un composant déjà présent (dans thirdparty/ ou à un emplacement que CMake trouve) n'est pas réinstallé.
 Ancienne disposition (opencascade-*-vc14-64 et 3rdparty-vc14-64 à la racine) : déplacée dans thirdparty/.
+Windows : Visual Studio 2026 (C++ x64) est contrôlé, et --configure lance un preset Ninja dans l'environnement de
+vcvars64.bat (inutile d'ouvrir l'invite « x64 Native Tools »).
 Python 3.8 ou plus récent, bibliothèque standard seule ; CMake est utilisé pour extraire les archives 7z et zstd.
 Documentation : docs/DEPENDENCIES.md, docs/LINUX_BUILD.md.
 """
@@ -56,7 +62,7 @@ for _stream in (sys.stdout, sys.stderr):   # sortie redirigée sous Windows (pag
 
 ROOT = Path(__file__).resolve().parent
 MANIFEST_PATH = ROOT / "cmake" / "dependencies.json"
-COMPONENTS = ["system", "qt", "occt", "gmsh", "eigen", "opensees", "ifcopenshell"]
+COMPONENTS = ["system", "tsalab", "qt", "occt", "gmsh", "eigen", "opensees", "ifcopenshell"]
 OPTIONAL = {"gmsh", "eigen", "opensees", "ifcopenshell"}   # TSA se construit sans eux (fonction signalée absente)
 
 # Commande de contrôle envoyée à OpenSees (même principe qu'OpenSeesManager::checkExecutable).
@@ -352,6 +358,40 @@ def _qt_version_of(prefix):
 
 def _vtuple(v):
     return tuple(int(x) for x in re.findall(r"\d+", v)[:3])
+
+
+class TSALab(Component):
+    """Dépôt voisin obligatoire (cœur scientifique TSALab/science) : cherché sous chacun des noms du manifeste,
+    comme le fait cmake/TSAProduct.cmake, sinon cloné depuis GitHub sous le premier nom (../TSALab)."""
+    name, title = "tsalab", "TSALab (cœur scientifique)"
+
+    @property
+    def spec(self):
+        return self.m["tsalab"]
+
+    def existing(self):
+        for d in self.spec["dirs"]:
+            p = ROOT.parent / d
+            if (p / "science" / "CMakeLists.txt").exists():
+                return p.resolve()
+        return None
+
+    def status(self):
+        e = self.existing()
+        if e:
+            return True, str(e)
+        return False, f"dépôt à cloner dans {ROOT.parent / self.spec['dirs'][0]}"
+
+    def install(self):
+        target = ROOT.parent / self.spec["dirs"][0]
+        if target.exists() and any(target.iterdir()):
+            raise InstallError(f"{target} existe mais ne contient pas science/CMakeLists.txt : le vérifier (dépôt "
+                               "incomplet ?), ou indiquer -DTSALAB_ROOT_DIR=<chemin> à CMake.")
+        git = shutil.which("git")
+        if not git:
+            raise InstallError(f"Git introuvable : installer Git (https://git-scm.com) puis relancer, ou cloner "
+                               f"{self.spec['git_url']} dans {target}.")
+        run([git, "clone", self.spec["git_url"], target])
 
 
 class Qt(Component):
@@ -819,7 +859,78 @@ class IfcOpenShell(Component):
             raise InstallError(f"IfcOpenShell non installé dans {self.target}")
 
 
-CLASSES = [SystemPackages, Qt, Occt, Gmsh, Eigen, OpenSees, IfcOpenShell]
+CLASSES = [SystemPackages, TSALab, Qt, Occt, Gmsh, Eigen, OpenSees, IfcOpenShell]
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# Configuration CMake (--configure) et compilateur Windows
+# --------------------------------------------------------------------------------------------------------------------
+def find_vcvars64():
+    """vcvars64.bat de la dernière Visual Studio dotée des outils C++ x64 (vswhere), ou None."""
+    vswhere = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / \
+        "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
+    if not vswhere.exists():
+        return None
+    r = subprocess.run([str(vswhere), "-latest", "-products", "*", "-requires",
+                        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath"],
+                       capture_output=True, text=True, errors="replace")
+    for line in r.stdout.splitlines():
+        p = Path(line.strip()) / "VC" / "Auxiliary" / "Build" / "vcvars64.bat"
+        if line.strip() and p.exists():
+            return p
+    return None
+
+
+def preset_generator(preset):
+    """Générateur du preset de configuration (héritage suivi) ; InstallError si le preset n'existe pas."""
+    presets = {p["name"]: p for p in
+               json.loads((ROOT / "CMakePresets.json").read_text(encoding="utf-8"))["configurePresets"]}
+    if preset not in presets or presets[preset].get("hidden"):
+        visible = [n for n, p in presets.items() if not p.get("hidden")]
+        raise InstallError(f"preset CMake inconnu « {preset} » (disponibles : {', '.join(visible)})")
+    p, seen = presets[preset], set()
+    while p and p["name"] not in seen:
+        seen.add(p["name"])
+        if p.get("generator"):
+            return p["generator"]
+        inh = p.get("inherits")
+        inh = inh[0] if isinstance(inh, list) and inh else inh
+        p = presets.get(inh) if isinstance(inh, str) else None
+    return ""
+
+
+def configure(ctx, preset):
+    """cmake --preset <preset> ; sous Windows, un preset Ninja est lancé dans l'environnement de vcvars64.bat."""
+    if preset == "auto":
+        preset = "ninja-debug" if ctx.windows else "linux-debug"
+    generator = preset_generator(preset)
+    cmake = ctx.cmake
+    if not cmake:
+        raise InstallError("CMake introuvable : l'installer (https://cmake.org, 3.20 ou plus) ou indiquer --cmake.")
+    info(f"Configuration CMake : preset {preset} ({generator or 'générateur par défaut'})")
+    if ctx.windows:
+        vcvars = find_vcvars64()
+        if not vcvars:
+            raise InstallError("Visual Studio avec les outils C++ introuvable : installer Visual Studio 2026 Community, "
+                               "charge de travail « Développement Desktop en C++ » (MSVC x64 + Windows SDK), puis "
+                               "relancer. Qt et OCCT de TSA sont des builds MSVC : MinGW ne convient pas.")
+        if "Visual Studio" not in generator and not shutil.which("cl"):
+            line = f'"{vcvars}" >nul && "{cmake}" --preset {preset}'
+            info(f"  $ {line}")
+            env = dict(os.environ)   # vcvars64.bat appelle vswhere sans chemin : dossier de l'installateur dans le PATH
+            env["PATH"] = str(Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) /
+                              "Microsoft Visual Studio" / "Installer") + os.pathsep + env.get("PATH", "")
+            rc = subprocess.call(f'cmd /d /s /c "{line}"', cwd=str(ROOT), env=env)
+            build = f'"{vcvars}" puis cmake --build --preset {preset}  (ou invite « x64 Native Tools »)'
+        else:
+            rc = subprocess.call([cmake, "--preset", preset], cwd=str(ROOT))
+            build = f"cmake --build --preset {preset}"
+    else:
+        rc = subprocess.call([cmake, "--preset", preset], cwd=str(ROOT))
+        build = f"cmake --build --preset {preset}"
+    if rc != 0:
+        raise InstallError(f"échec de la configuration CMake (code {rc}) : voir les messages ci-dessus.")
+    ok(f"Projet configuré. Compilation : {build}")
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -884,6 +995,9 @@ def parse_args(argv):
     p.add_argument("--platform", choices=("linux", "windows"), help=argparse.SUPPRESS)   # essais
     p.add_argument("--thirdparty-dir", default="", help=argparse.SUPPRESS)               # essais
     p.add_argument("--work-dir", default="", help="dossier de travail des compilations (défaut : thirdparty/_build)")
+    p.add_argument("--configure", nargs="?", const="auto", default="", metavar="PRESET",
+                   help="ensuite, configurer CMake avec ce preset (défaut : ninja-debug sous Windows, linux-debug "
+                        "sous Linux)")
     a = p.parse_args(argv)
     for opt in ("only", "skip", "force"):
         vals = [v.strip() for v in getattr(a, opt).split(",") if v.strip()]
@@ -956,17 +1070,30 @@ def main(argv=None):
     for c, good, detail in results:
         tag = _c("32", "OK      ") if good else (_c("33", "ABSENT  ") if c.name in OPTIONAL else _c("31", "ÉCHEC   "))
         print(f"  {tag}  {c.title:<28} {detail}")
+    if ctx.windows and not args.from_cmake:
+        vcvars = find_vcvars64()
+        tag = _c("32", "OK      ") if vcvars else _c("31", "ABSENT  ")
+        print(f"  {tag}  {'Visual Studio (MSVC x64)':<28} "
+              f"{vcvars or 'obligatoire : Visual Studio 2026, « Développement Desktop en C++ »'}")
     failed = [c for c, good, _ in results if not good]
+    required_ok = all(c.name in OPTIONAL for c in failed)
     if not failed:
-        ok("Toutes les dépendances demandées sont en place. Suite : cmake --preset "
-           + ("ninja-release (invite x64 Native Tools)" if ctx.windows else "linux-release") + ".")
+        ok("Toutes les dépendances demandées sont en place.")
     else:
         warn("Composants facultatifs absents : TSA se construit sans eux (fonction correspondante indisponible)."
-             if all(c.name in OPTIONAL for c in failed) else "Dépendances obligatoires manquantes : voir ci-dessus.")
-    sibling = ROOT.parent / "TSALab" / "science" / "CMakeLists.txt"
-    if not sibling.exists():
-        warn(f"dépôt voisin {ROOT.parent / 'TSALab'} introuvable : obligatoire pour compiler TSA (cœur scientifique).")
-    return 0 if all(c.name in OPTIONAL for c in failed) else 1
+             if required_ok else "Dépendances obligatoires manquantes : voir ci-dessus.")
+    if not required_ok:
+        return 1
+    if args.configure:
+        try:
+            configure(ctx, args.configure)
+        except InstallError as e:
+            fail(str(e))
+            return 1
+    elif not args.from_cmake:
+        info("Suite : python install_dependencies.py --configure, ou cmake --preset "
+             + ("ninja-debug (invite x64 Native Tools)" if ctx.windows else "linux-debug") + ".")
+    return 0
 
 
 if __name__ == "__main__":

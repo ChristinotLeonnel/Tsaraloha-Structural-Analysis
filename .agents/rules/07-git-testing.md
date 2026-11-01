@@ -93,7 +93,7 @@ Cette règle complète les règles existantes de TSA. En cas de conflit, privil�
 - Cible de tests : `TSA_Tests` (exécutable `TSA_TestSuite.exe`).
 - Cible de benchmarks : `TSA_Benchmark` (exécutable `TSA_Benchmark.exe`).
 - Outils de compilation recommandés : CMake avec presets Ninja (`ninja-debug` pour le développement quotidien, `ninja-release` pour la release).
-- Utiliser les scripts existants (`scripts/setup_build.ps1`, `CMakePresets.json`) plutôt que des configurations manuelles ad-hoc.
+- Utiliser les scripts existants (`install_dependencies.py --configure`, `CMakePresets.json`) plutôt que des configurations manuelles ad-hoc.
 
 ## Stratégie de Test & Validation Proportionnée
 
