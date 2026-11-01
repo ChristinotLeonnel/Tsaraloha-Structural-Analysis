@@ -1,6 +1,7 @@
 #include "ElementBimPanel.h"
 #include "ElementResultsPanel.h"
 #include "PropertyPanel.h"
+#include "../Common/WheelGuard.h"
 #include <QAbstractSpinBox>
 #include "NodePropertiesView.h"
 #include "BeamPropertiesView.h"
@@ -112,8 +113,8 @@ void PropertyPanel::setupUi()
     m_titleLabel->setProperty("panelHeader", true);
     mainLayout->addWidget(m_titleLabel);
 
-    // Zone avec défilement pour les vues de propriétés
-    qApp->installEventFilter(this);
+    // Zone avec défilement pour les vues de propriétés (molette sur les champs : UI/Common/WheelGuard, application)
+    WheelGuard::install();
     auto* scrollArea = new QScrollArea(this);
     scrollArea->setWidgetResizable(true);
     scrollArea->setFrameShape(QFrame::NoFrame);
@@ -645,37 +646,6 @@ void PropertyPanel::onViewModified()
         if (!diff.isEmpty()) m_model->notifyModelDiffApplied(diff);
     }
     emit elementModified();
-}
-
-bool PropertyPanel::eventFilter(QObject* watched, QEvent* event)
-{
-    if (event->type() != QEvent::Wheel) return QWidget::eventFilter(watched, event);
-    auto* w = qobject_cast<QWidget*>(watched);
-    if (!w || !isAncestorOf(w)) return QWidget::eventFilter(watched, event);
-
-    // Liste déroulante ou champ numérique visé (le champ texte interne d'un QSpinBox compte aussi).
-    QWidget* field = nullptr;
-    for (QWidget* p = w; p && p != this; p = p->parentWidget())
-    {
-        if (qobject_cast<QComboBox*>(p) || qobject_cast<QAbstractSpinBox*>(p))
-        {
-            field = p;
-            break;
-        }
-    }
-    // Une liste ouverte (vue déroulante) ou un champ en cours d'édition garde la molette.
-    if (!field || field->hasFocus()) return QWidget::eventFilter(watched, event);
-
-    for (QWidget* p = field->parentWidget(); p && p != this->parentWidget(); p = p->parentWidget())
-    {
-        if (auto* area = qobject_cast<QScrollArea*>(p))
-        {
-            QApplication::sendEvent(area->verticalScrollBar(), event);
-            return true;
-        }
-    }
-    event->ignore();
-    return true;
 }
 
 } // namespace TSA::UI

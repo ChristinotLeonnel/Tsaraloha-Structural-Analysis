@@ -346,6 +346,8 @@ set(UI_WIDGETS_SOURCES
     ${TSA_ROOT}/src/UI/Common/EcosystemApplication.cpp
     ${TSA_ROOT}/src/UI/Common/LoadAxisCombo.h
     ${TSA_ROOT}/src/UI/Common/LoadAxisCombo.cpp
+    ${TSA_ROOT}/src/UI/Common/WheelGuard.h
+    ${TSA_ROOT}/src/UI/Common/WheelGuard.cpp
     ${TSA_ROOT}/src/UI/Common/SelectionSynchronizer.h
     ${TSA_ROOT}/src/UI/Common/SelectionSynchronizer.cpp
     ${TSA_ROOT}/src/UI/Widgets/SectionPreviewWidget.h
