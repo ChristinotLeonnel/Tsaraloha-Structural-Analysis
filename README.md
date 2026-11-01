@@ -120,7 +120,18 @@ Détails (versions acceptées, détection, rapport `tsa-dependencies.txt`) : [do
 
 #### Option A : Ninja *(recommandé)*
 
-Les presets Ninja demandent l'environnement MSVC. Depuis PowerShell :
+Le plus simple : le script configure puis compile, dans l'environnement de Visual Studio qu'il charge lui-même :
+
+```powershell
+py -3 install_dependencies.py --build                  # Debug   -> build-ninja-debug
+py -3 install_dependencies.py --build ninja-release    # Release -> build-ninja-release
+```
+
+> ⚠️ Un simple `cmake --build --preset ninja-…` lancé dans un PowerShell ordinaire échoue
+> (`Impossible d'ouvrir le fichier include : 'array'`, `'utility'` ou `'windows.h'`) : sans l'environnement MSVC,
+> `cl.exe` ne trouve ni la bibliothèque standard ni le SDK Windows. Utiliser `--build`, ou l'une des formes ci-dessous.
+
+Depuis PowerShell, en chargeant `vcvars64.bat` :
 
 ```powershell
 $vcvars = "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat"
@@ -148,7 +159,31 @@ Ces presets n'ont pas besoin de l'environnement MSVC.
 
 ---
 
-### 4. Lancement de TSA
+### 4. Version distribuable (postes clients)
+
+Pour livrer TSA à des postes qui n'ont ni Qt, ni Visual Studio, ni les sources :
+
+```powershell
+py -3 install_dependencies.py --package
+```
+
+| Résultat (`build-ninja-release/dist/`) | Usage sur le poste client |
+| :--- | :--- |
+| `TSA/` | dossier autonome : DLL réellement importées, runtime MSVC, plugins Qt, ressources OCCT, `MANIFEST.json` (SHA-256) |
+| `TSA-<version>-windows-x64-portable.zip` | décompresser, lancer `TSA\TSA.exe` |
+| `TSA-<version>-windows-x64-setup.exe` | installateur sans droits administrateur (association `.tsa`, aperçu Explorateur) ; construit seulement si Inno Setup 6 est installé (`winget install JRSoftware.InnoSetup`) |
+
+- Le paquet est vérifié avant l'archivage (`tools/verify_package.py` : dépendances, fichiers obligatoires, empreintes).
+- **OpenSees n'est pas inclus par défaut** : sa licence (Université de Californie) réserve l'usage à l'enseignement, à
+  la recherche et au non lucratif. `--with-opensees` l'inclut ; vérifier la licence avant toute diffusion. Sans lui,
+  TSA démarre et signale son absence.
+- Gmsh (GPL) est inclus : le paquet indique où obtenir le code source correspondant (`licenses/Gmsh/SOURCE.txt`).
+
+Détails : [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), licences : [docs/THIRD_PARTY_LICENSES.md](docs/THIRD_PARTY_LICENSES.md).
+
+---
+
+### 5. Lancement de TSA
 
 ```cmd
 run.bat                      :: TSA.exe le plus récemment compilé

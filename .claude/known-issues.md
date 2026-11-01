@@ -6,6 +6,13 @@ Last Updated: 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR
 
 Audit technique du 2026-10-31 : détail, reproduction et correction de BUG-148 à BUG-168 dans docs/audit/2026-10-31/TSA_BUG_REGISTER.md.
 
+## BUG-172
+Status: FIXED (contournement par outil, 2026-11-01) — `cmake --build --preset ninja-*` lancé dans un PowerShell ordinaire : C1083
+« Impossible d'ouvrir le fichier include : 'array' / 'utility' / 'windows.h' ». Cause : pas d'environnement MSVC (INCLUDE, LIB) ; la
+configuration réussissait car `install_dependencies.py --configure` charge vcvars64.bat, la compilation manuelle non. Correction :
+`install_dependencies.py --build [PRESET]` (configure puis compile sous vcvars64.bat, -j 4) ; README § 3 et DEPENDENCIES § 6 avertissent.
+Les presets `windows-x64-*` (générateur Visual Studio) n'en ont pas besoin.
+
 ## BUG-171
 Status: OPEN (MEDIUM, relu dans le code le 2026-10-31, non reproduit par un test) — symétrie sans copie (Model::mirrorElements, keepOriginal = false) :
 le contour de la dalle est inversé, mais ses ouvertures, appuis de bord et charges surfaciques en (u, v) ne sont pas convertis ; ils se retrouvent

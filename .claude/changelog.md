@@ -2,6 +2,17 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — compilation et version distribuable en une commande (branche feature/install-deps-build)
+
+- `install_dependencies.py --build [PRESET]` : configuration puis `cmake --build --preset` sous vcvars64.bat (-j 4 par défaut,
+  `--jobs` / `TSA_JOBS`) ; corrige l'usage qui donnait C1083 `<array>` / `windows.h` (BUG-172).
+- `--package [PRESET]` (défaut ninja-release, Debug refusé) : `-DTSA_PACKAGE_OPENSEES=OFF|ON` (`--with-opensees`), compilation,
+  `package_TSA`, `tools/verify_package.py`, ZIP `dist/TSA-<version>-windows-x64-portable.zip` (nouveau), `installer_TSA` si ISCC.
+- README § 3-4, DEPLOYMENT § 3, DEPENDENCIES § 6, DOCUMENTATION § 10.5.
+- Vérifié : `--build ninja-release` 536/536 (32 avertissements) ; `--package` : 324 fichiers, 220 Mo, verify_package OK, ZIP 88,9 Mo ;
+  ZIP décompressé hors du dépôt, PATH réduit à Windows : Start Center affiché, 132 modules (49 paquet, 83 Windows, 0 Qt/VS/sources).
+  Non vérifié : poste Windows neuf (runtime MSVC présent dans System32 ici), installateur (Inno Setup absent), tests en Release.
+
 ## 2026-11-01 — mise en place en un seul fichier, TSALab sous son nom GitHub (branche fix/setup-build-mingw-path, fusionnée dans main ; TSALab : fix/tsa-root-discovery)
 
 - `install_dependencies.py` : composant `tsalab` (dépôt voisin trouvé sous `tsalab.dirs` du manifeste, sinon `git clone` dans
