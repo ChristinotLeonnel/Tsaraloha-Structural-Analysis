@@ -122,6 +122,7 @@ bool UndoManager::undo(TSA::Model::Model& model)
     redoEntry.approxBytes = estimateSnapshotBytes(redoEntry.snapshot);
 
     restore(model, redoEntry.snapshot, target.snapshot);
+    model.setUnsavedFlag(!matchesClean(model, target.snapshot));   // BUG-074 : état enregistré retrouvé ou non
     m_redoStack.push_back(std::move(redoEntry));
     return true;
 }
@@ -141,6 +142,7 @@ bool UndoManager::redo(TSA::Model::Model& model)
     undoEntry.approxBytes = estimateSnapshotBytes(undoEntry.snapshot);
 
     restore(model, undoEntry.snapshot, target.snapshot);
+    model.setUnsavedFlag(!matchesClean(model, target.snapshot));   // BUG-074 : état enregistré retrouvé ou non
     m_undoStack.push_back(std::move(undoEntry));
     return true;
 }
@@ -151,6 +153,22 @@ void UndoManager::clear() noexcept
     m_redoStack.clear();
     m_transactionDepth = 0;
     m_transaction = HistoryEntry{};
+    // Le point d'enregistrement est conservé : la comparaison porte sur le contenu, pas sur la position dans
+    // l'historique (MainWindow::loadFile vide l'historique juste après l'ouverture, qui vient de le fixer).
+}
+
+void UndoManager::markClean(const TSA::Model::Model& model)
+{
+    m_cleanSnapshot = model.createSnapshot();
+    m_cleanOutside = outOfSnapshotState(model);
+}
+
+bool UndoManager::matchesClean(const TSA::Model::Model& model,
+                               const TSA::Model::Model::ModelStateSnapshot& current) const
+{
+    // Comparaison exacte (sameContent) : une modification faite hors historique (import, réglages) après
+    // l'enregistrement rend l'état différent, même si l'on revient à la même position dans l'historique.
+    return m_cleanSnapshot && outOfSnapshotState(model) == m_cleanOutside && sameContent(current, *m_cleanSnapshot);
 }
 
 std::string UndoManager::lastUndoActionName() const

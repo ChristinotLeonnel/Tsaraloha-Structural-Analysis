@@ -2,6 +2,17 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — BUG-074 corrigé ; état du projet dans le .tsa, étape 1 (branche fix/save-dirty-state)
+
+- BUG-074 : `ProjectSession::hasUnsavedChanges` = `isModified()` (sans `|| canUndo()`). Point d'enregistrement exact dans
+  `UndoManager` (`markClean`, `matchesClean` : instantané + données hors instantané, `sameContent`) ; Annuler / Rétablir marquent le
+  document modifié ou non (`Model::setUnsavedFlag`, révision inchangée) ; `Model::markSaved` appelé par `ProjectManager` (nouveau,
+  ouvrir, enregistrer) ; `clear()` garde le point d'enregistrement (loadFile vide l'historique après l'ouverture). Test 573.
+- Plan docs/PROJECT_STATE_PLAN.md (validé, décisions D1-D6). Étape 1 : `Model::ProjectStateBlock` (WindowLayout, ViewState, Results,
+  Diagnostics, Manifest), blocs opaques hors historique ; chunks facultatifs UIST, VSTA, RSLT, DIAG, PMAN ; format 3.1 ; lecteur :
+  tous les blocs affectés (aucun héritage). Test 574. docs/TSA_FILE_FORMAT.md à jour.
+- Vérifié (Release) : 59/60 suites, 562 tests ; seul échec test 367 (Fem3D absent du poste, BUG-173, sans lien). TSALab : compilation lancée.
+
 ## 2026-11-01 — bugs corrigés retirés de known-issues.md (branche docs/remove-fixed-bugs, demandé par l'utilisateur)
 
 - Retirés : 23 entrées FIXED complètes (BUG-095, 110, 112-114, 116, 119, 120, 122, 125-129, 131, 132, 134, 136, 142, 145, 146, 148,

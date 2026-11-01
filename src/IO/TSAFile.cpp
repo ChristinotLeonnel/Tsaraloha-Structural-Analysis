@@ -25,6 +25,9 @@
 #include <QJsonObject>
 #include <cstring>
 #include <algorithm>
+#include <array>
+#include <limits>
+#include <utility>
 #include <fstream>
 #include <sstream>
 
@@ -167,6 +170,16 @@ void applyElementVisuals(const QJsonObject& visuals, Map& elements)
         mat.visual = visualFromJson(it.value().toObject(), mat.visual);
     }
 }
+
+// Blocs d'état du projet (Model::ProjectStateBlock) et leur chunk facultatif (format ≥ 3.1, docs/PROJECT_STATE_PLAN.md).
+using StateBlock = TSA::Model::Model::ProjectStateBlock;
+constexpr std::array<std::pair<StateBlock, uint32_t>, static_cast<size_t>(StateBlock::Count)> kProjectStateChunks{ {
+    { StateBlock::WindowLayout, CHUNK_UIST },
+    { StateBlock::ViewState, CHUNK_VSTA },
+    { StateBlock::Results, CHUNK_RSLT },
+    { StateBlock::Diagnostics, CHUNK_DIAG },
+    { StateBlock::Manifest, CHUNK_PMAN },
+} };
 } // namespace TSA::IO::Detail
 
 namespace TSA::IO
@@ -426,6 +439,18 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     {
         // Facultatif (format ≥ 1.12) : vues nommées ; une version antérieure ignore ce chunk inconnu.
         writeJsonChunk(payload, CHUNK_VIEW, model.namedViews().toJson());
+    }
+    // Facultatifs (format ≥ 3.1) : état du projet hors modèle de calcul, contenu opaque ; absent si vide.
+    for (const auto& [block, chunkId] : Detail::kProjectStateChunks)
+    {
+        const std::string& data = model.projectStateBlock(block);
+        if (data.empty()) continue;
+        if (data.size() > std::numeric_limits<uint32_t>::max())
+        {
+            TSA_LOG_WARN("TSAFileWriter", "ProjectStateTooLarge", "bloc d'état du projet de plus de 4 Gio non enregistré");
+            continue;
+        }
+        writeJsonChunk(payload, chunkId, data);
     }
     {
         // Facultatif (format ≥ 1.9) : finitions d'aspect propres à certains éléments.
@@ -947,6 +972,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     std::string loadedExtensions;
     std::string loadedDimensions;
     std::string loadedViews;
+    std::array<std::string, static_cast<size_t>(TSA::Model::Model::ProjectStateBlock::Count)> loadedState; // UIST…PMAN
     std::string loadedMesh;
     std::string loadedOpenings;
     std::string loadedSurfaces;
@@ -1074,6 +1100,16 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         case CHUNK_VIEW:
             // Facultatif (format ≥ 1.12) : sans lui (anciens projets), aucune vue nommée.
             loadedViews.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
+            break;
+        case CHUNK_UIST:
+        case CHUNK_VSTA:
+        case CHUNK_RSLT:
+        case CHUNK_DIAG:
+        case CHUNK_PMAN:
+            // Facultatifs (format ≥ 3.1) : état du projet, rendu tel quel au modèle (contenu interprété par l'interface).
+            for (const auto& [block, id] : Detail::kProjectStateChunks)
+                if (id == ch.chunkId && chunkBytes && chunkLen > 0)
+                    loadedState[static_cast<size_t>(block)].assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
             break;
         case CHUNK_SECP:
             // Obligatoire en format 2.0 (FEATURE_SECTION_PROPERTIES), appliqué après la lecture des éléments.
@@ -1272,6 +1308,9 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         if (!viewWarnings.empty())
             TSA_LOG_WARN("TSAFileReader", "NamedViews", viewWarnings);
     }
+    // Tous les blocs, vides compris : un fichier sans bloc n'hérite jamais de l'état du projet précédent.
+    for (const auto& [block, id] : Detail::kProjectStateChunks)
+        model.setProjectStateBlock(block, std::move(loadedState[static_cast<size_t>(block)]));
 
     // Validation normative post-chargement (ISO/IEC 25010 - Intégrité et robustesse)
     auto report = TSA::Standards::ModelValidator::validate(model);

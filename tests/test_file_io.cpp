@@ -1170,5 +1170,64 @@ bool runSuite_FileIO(int& passed)
         ++passed;
     }
 
+    // TEST 574 : blocs d'état du projet (format 3.1, docs/PROJECT_STATE_PLAN.md étape 1) — chunks facultatifs UIST, VSTA,
+    // RSLT, DIAG, PMAN : aller-retour exact (binaire compris), sans effet sur l'historique ni sur « modifié », aucun
+    // héritage d'un projet précédent, fichier sans bloc identique à avant.
+    {
+        using Block = Model::ProjectStateBlock;
+        const std::string tmpDir = "./build/test_tsa_data/";
+        std::filesystem::create_directories(tmpDir);
+        const QString file = QString::fromStdString(tmpDir + "test_project_state.tsa");
+        const QString bare = QString::fromStdString(tmpDir + "test_project_state_none.tsa");
+
+        Model m;
+        m.addNode(0, 0, 0);
+        m.markSaved();
+        const auto rev = m.revision();
+        const size_t undo0 = m.undoManager()->undoCount();
+        std::string binary("RSLT\0\x01\xFF\x00 fin", 12);   // octets nuls et non UTF-8 : bloc binaire (résultats)
+        const std::array<std::string, 5> data{ R"({"schema":1,"ribbonTab":2})", R"({"schema":1,"render":"materials"})",
+                                               binary, R"({"schema":1,"warnings":["é"]})", R"({"schema":1,"libraries":[]})" };
+        for (int i = 0; i < 5; ++i) m.setProjectStateBlock(static_cast<Block>(i), data[i]);
+        TEST_CHECK(!m.isModified() && m.revision() == rev && m.undoManager()->undoCount() == undo0,
+                   "Test 574: blocs d'état sans marque « modifié », révision ni entrée Annuler (D1)");
+
+        std::string err;
+        TEST_CHECK(TSAProjectIO::saveToFile(file, m, nullptr, &err), "Test 574: enregistrement avec les 5 blocs (" << err << ")");
+        TSA::IO::TSAFileHeader header;
+        TEST_CHECK(TSA::IO::TSAFileReader::readHeader(file.toStdString(), header) && header.versionMajor == 3 && header.versionMinor >= 1,
+                   "Test 574: format 3.1 au moins (" << header.versionMajor << "." << header.versionMinor << ")");
+
+        Model r;
+        TEST_CHECK(TSAProjectIO::loadFromFile(file, r, nullptr, &err), "Test 574: relecture (" << err << ")");
+        bool same = true;
+        for (int i = 0; i < 5; ++i) same = same && r.projectStateBlock(static_cast<Block>(i)) == data[i];
+        TEST_CHECK(same && r.projectStateBlock(Block::Results).size() == binary.size(), "Test 574: 5 blocs relus à l'identique (binaire compris)");
+
+        // Undo après modification : les blocs ne sont pas restaurés par l'historique (ils ne lui appartiennent pas)
+        r.pushUndoState("Nœud");
+        r.addNode(1, 0, 0);
+        r.setProjectStateBlock(Block::ViewState, "{\"schema\":1,\"render\":\"wire\"}");
+        TEST_CHECK(r.undo() && r.projectStateBlock(Block::ViewState) == "{\"schema\":1,\"render\":\"wire\"}",
+                   "Test 574: Annuler ne touche pas aux blocs d'état");
+
+        // Fichier sans bloc : rien d'écrit, et la relecture vide les blocs d'un projet précédent
+        Model plain;
+        plain.addNode(0, 0, 0);
+        TEST_CHECK(TSAProjectIO::saveToFile(bare, plain, nullptr, &err), "Test 574: enregistrement sans bloc");
+        TEST_CHECK(TSAProjectIO::loadFromFile(bare, r, nullptr, &err), "Test 574: relecture sans bloc dans un modèle déjà rempli");
+        bool empty = true;
+        for (int i = 0; i < 5; ++i) empty = empty && r.projectStateBlock(static_cast<Block>(i)).empty();
+        TEST_CHECK(empty, "Test 574: aucun bloc hérité du projet précédent");
+
+        // clear() (nouveau projet) vide aussi les blocs
+        m.clear();
+        bool cleared = true;
+        for (int i = 0; i < 5; ++i) cleared = cleared && m.projectStateBlock(static_cast<Block>(i)).empty();
+        TEST_CHECK(cleared, "Test 574: Model::clear vide les blocs d'état");
+        std::cout << "[PASS] Test 574: Blocs d'état du projet (UIST, VSTA, RSLT, DIAG, PMAN) — format 3.1, aller-retour exact" << std::endl;
+        ++passed;
+    }
+
     return true;
 }

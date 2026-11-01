@@ -2,6 +2,11 @@
 
 Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
+## État du projet dans le .tsa (2026-11-01, branche fix/save-dirty-state, plan docs/PROJECT_STATE_PLAN.md validé)
+- [x] Étape 0 : BUG-074 (test 573). [x] Étape 1 : socle, blocs d'état, format 3.1 (test 574).
+- [ ] Étape 2 VSTA (vue et affichage) ; 3 UIST (disposition) ; 4 RSLT (résultats) ; 5 DIAG ; 6 PMAN ; 7 documentation.
+- [ ] TSALab : compilation après l'étape 1 (en cours) ; fusion et push non demandés.
+
 ## Mise en place en un seul fichier (2026-11-01, branche fix/setup-build-mingw-path)
 - [x] install_dependencies.py : composant tsalab, --configure ; TSAProduct.cmake : noms du dépôt TSALab ; correctifs scripts/*.ps1.
 - [x] Côté TSALab : TSA_ROOT_DIR cherché sous ../TSA et ../Tsaraloha-Structural-Analysis (branche fix/tsa-root-discovery).

@@ -30,7 +30,7 @@ constexpr bool isReadableFileMagic(uint32_t magic)
 // fonctionnalités obligatoires dans l'en-tête (requiredFeatures). Version majeure : tout lecteur 1.x refuse le fichier au
 // lieu de recalculer les sections d'après leur nom. Les fichiers 1.x sont migrés à la lecture (algorithme historique).
 constexpr uint16_t TSA_FORMAT_VERSION_MAJOR = 3;   // 3 : repère local des barres verticales selon Robot (y = +Y), migration à la lecture
-constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 0; // 1.12 : chunk VIEW (vues nommées) ; 1.11 : chunk BGEO (géométries physiques importées) ; 1.10 : chunk SURF, ouvertures des voiles (OPNG) ; 1.9 : chunk MVIS ; 1.8 : chunks MESH et OPNG ; 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT ; 1.5 : chunk TOPO ; 1.6 : chunk DIMS ; 1.7 : chunk XTND
+constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 1; // 3.1 : chunks facultatifs d'état du projet UIST, VSTA, RSLT, DIAG, PMAN (docs/PROJECT_STATE_PLAN.md) ; 1.12 : chunk VIEW (vues nommées) ; 1.11 : chunk BGEO (géométries physiques importées) ; 1.10 : chunk SURF, ouvertures des voiles (OPNG) ; 1.9 : chunk MVIS ; 1.8 : chunks MESH et OPNG ; 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT ; 1.5 : chunk TOPO ; 1.6 : chunk DIMS ; 1.7 : chunk XTND
 
 // Fonctionnalités obligatoires (TSAFileHeader::requiredFeatures, format ≥ 2.0) : un lecteur refuse un fichier qui en
 // exige une qu'il ne connaît pas, au lieu de l'interpréter autrement. Ajouter un bit pour toute donnée qui change le calcul.
@@ -100,6 +100,12 @@ constexpr uint32_t CHUNK_BIMM = 0x4D4D4942; // 'BIMM' : Couche BIM (produits phy
 constexpr uint32_t CHUNK_BGEO = 0x4F454742; // 'BGEO' : géométries physiques des produits importés (maillages, BimGeometry.h) — binaire versionné, après BIMM (1.11)
 constexpr uint32_t CHUNK_SECP = 0x50434553; // 'SECP' : propriétés des sections des éléments linéaires (rayon de congé, version des formules, empreinte A/Iy/Iz/It) — JSON UTF-8, OBLIGATOIRE (2.0)
 constexpr uint32_t CHUNK_VIEW = 0x57454956; // 'VIEW' : vues nommées (caméra, mode 2D, plan de travail ; NamedViews.h) — JSON UTF-8 versionné (1.12)
+// État du projet hors modèle de calcul (3.1, docs/PROJECT_STATE_PLAN.md) : facultatifs, contenu opaque pour l'IO
+// (Model::ProjectStateBlock), ignorés par un lecteur antérieur ; CHUNK_RSLT ci-dessus porte les résultats.
+constexpr uint32_t CHUNK_UIST = 0x54534955; // 'UIST' : disposition de la fenêtre — JSON UTF-8 versionné
+constexpr uint32_t CHUNK_VSTA = 0x41545356; // 'VSTA' : vue 3D et affichage — JSON UTF-8 versionné
+constexpr uint32_t CHUNK_DIAG = 0x47414944; // 'DIAG' : messages, erreurs, historique des calculs — JSON UTF-8 versionné
+constexpr uint32_t CHUNK_PMAN = 0x4E414D50; // 'PMAN' : manifeste (bibliothèques, fichiers liés, enregistrements) — JSON UTF-8
 
 #pragma pack(push, 1)
 
