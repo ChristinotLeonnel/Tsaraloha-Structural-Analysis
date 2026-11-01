@@ -2,6 +2,18 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — état du projet, étape 2 : vue 3D et affichage (bloc VSTA) ; tests TSALab indépendants du nom des dépôts
+
+- `Viewer/DisplayProfile` : `captureDocumentViewState` / `applyDocumentViewState` (JSON schema 1 : caméra exacte par vue nommée,
+  réglages d'affichage sans les clés `annotation*` communes à l'application, niveau actif) ; réutilise captureDisplaySettings,
+  applyDisplaySettings, captureNamedView, restoreNamedView.
+- `MainWindow::captureProjectState` (avant l'enregistrement) / `applyProjectState` (fin de loadFile, après fitModel et le profil
+  d'affichage du fichier ; resynchronise les actions). Projet sans VSTA : comportement inchangé. Test 575 (suite multidoc).
+- TSALab (branche fix/tests-repo-name) : `repoFile()` et `TSALAB_SOURCE_DIR` ; L15, L23, L29, L30 supposaient <parent>/TSA et
+  <parent>/TSALab → 11/27 sur un poste aux noms GitHub ; 27/27 après correctif.
+- Vérifié : multidoc 11/11, io 10/10, undo 12/12 ; suite complète 58/60 (557 tests) : test 367 (BUG-173), test 371 intermittent
+  (BUG-174, 5/5 seul). Non vérifié : branchement MainWindow dans l'application réelle (couche app non liée aux tests).
+
 ## 2026-11-01 — BUG-074 corrigé ; état du projet dans le .tsa, étape 1 (branche fix/save-dirty-state)
 
 - BUG-074 : `ProjectSession::hasUnsavedChanges` = `isModified()` (sans `|| canUndo()`). Point d'enregistrement exact dans

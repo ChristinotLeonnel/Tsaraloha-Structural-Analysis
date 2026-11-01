@@ -36,6 +36,14 @@ QJsonObject captureDisplaySettings(const OccView& view);
 /// Les clés « annotation* » agissent sur le style d'annotation de l'application (commun à tous les documents).
 QStringList applyDisplaySettings(OccView& view, const QJsonObject& settings);
 
+/// État de vue du document au moment de l'enregistrement (bloc VSTA du .tsa, docs/PROJECT_STATE_PLAN.md §3.2) :
+/// caméra exacte (vue nommée : projection, mode 2D, face, plan de travail), réglages d'affichage du document (sans
+/// les clés « annotation* », communes à l'application) et niveau actif. JSON « schema » 1.
+QJsonObject captureDocumentViewState(const OccView& view);
+/// Applique un état relevé par captureDocumentViewState (affichage, niveau, puis caméra) ; renvoie les avertissements
+/// (version inconnue, clés ignorées, caméra invalide). Aucune donnée du modèle n'est modifiée.
+QStringList applyDocumentViewState(OccView& view, const QJsonObject& state);
+
 /// Profils fournis : Modélisation, Charges, Maillage, Résultats, Déformées, Analyse modale, Présentation.
 QList<DisplayProfile> defaultDisplayProfiles();
 

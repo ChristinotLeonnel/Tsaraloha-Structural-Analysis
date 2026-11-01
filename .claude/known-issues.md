@@ -1,10 +1,17 @@
 # Known Issues
 
-Last Updated: 2026-11-01 (BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert.
+Last Updated: 2026-11-01 (BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert.
 
 ## Ouverts
 
 Audit technique du 2026-10-31 : détail, reproduction et correction de BUG-148 à BUG-168 dans docs/audit/2026-10-31/TSA_BUG_REGISTER.md.
+
+## BUG-174
+Status: OPEN (LOW, intermittent, vu une fois le 2026-11-01) — suite `display`, test 371 (« aucun objet de résultat orphelin ») :
+36 objets affichés pour 35 attendus (`shown == withModel + d1.total()`, tests/test_display*.cpp:251), suite terminée en 1,6 s au lieu
+de 7 s, pendant une suite complète (Release, branche fix/save-dirty-state, étape 2). Relancée seule : 5/5 réussie ; suite complète
+précédente : réussie. Aucun lien établi avec l'étape 2 (fonctions ajoutées dans DisplayProfile.cpp, appelées seulement par MainWindow,
+non lié aux tests). À surveiller : capturer la sortie complète si cela se reproduit.
 
 ## BUG-173
 Status: OPEN (LOW, environnement, constaté le 2026-11-01) — suite `benchmarks`, test 367 en échec sur un poste sans le moteur Fem3D

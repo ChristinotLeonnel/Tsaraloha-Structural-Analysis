@@ -67,6 +67,8 @@
 #include "../Project/ProjectTemplates.h"
 
 #include <QMetaMethod>
+#include <QJsonDocument>
+#include <QJsonParseError>
 #include <QMenuBar>
 #include <QToolBar>
 #include <QStatusBar>
@@ -1711,6 +1713,8 @@ bool MainWindow::saveFile(const QString& path)
     if (!m_model)
         return false;
 
+    captureProjectState();   // vue, affichage… au moment de l'enregistrement (bloc VSTA)
+
     // Capture de la vue 3D pour la miniature Windows Explorer
     QImage thumbnail;
     if (m_occView)
@@ -1864,6 +1868,7 @@ bool MainWindow::loadFile(const QString& path)
             .arg(fileName));
     }
 
+    applyProjectState();   // état du dernier enregistrement (après le cadrage et le profil d'affichage du fichier)
     onProjectFileOpened(path);
 
     TSA_LOG_INFO("MainWindow", "ProjectLoadTiming",
@@ -1873,6 +1878,38 @@ bool MainWindow::loadFile(const QString& path)
                  std::to_string(m_model->beams().size() + m_model->columns().size()) + " barres)");
     TSA::Diagnostics::Logger::instance().flush(); // événement ponctuel : rendre la mesure lisible immédiatement
     return true;
+}
+
+void MainWindow::captureProjectState()
+{
+    if (!m_model || !m_occView)
+        return;
+    using Block = TSA::Model::Model::ProjectStateBlock;
+    const QJsonObject view = TSA::Viewer::captureDocumentViewState(*m_occView);
+    m_model->setProjectStateBlock(Block::ViewState, QJsonDocument(view).toJson(QJsonDocument::Compact).toStdString());
+}
+
+void MainWindow::applyProjectState()
+{
+    if (!m_model || !m_occView)
+        return;
+    using Block = TSA::Model::Model::ProjectStateBlock;
+    const std::string& viewState = m_model->projectStateBlock(Block::ViewState);
+    if (viewState.empty())
+        return;   // projet antérieur au format 3.1 : cadrage et profil d'affichage habituels
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(viewState), &parseError);
+    if (!doc.isObject())
+    {
+        TSA_LOG_WARN("MainWindow", "ProjectViewState", "état de vue illisible : " + parseError.errorString().toStdString());
+        return;
+    }
+    const QStringList warnings = TSA::Viewer::applyDocumentViewState(*m_occView, doc.object());
+    for (const QString& w : warnings)
+        TSA_LOG_WARN("MainWindow", "ProjectViewState", w.toStdString());
+    syncDisplayActionsFromView();   // boutons, menus et panneau des résultats alignés sur l'affichage restauré
+    if (m_statusView)
+        m_statusView->setText(tr("Vue enregistrée"));
 }
 
 void MainWindow::onToggleTheme()

@@ -711,6 +711,10 @@ public:
     /// résultats ; associé au document s'il a un fichier. Faux si le profil n'existe pas.
     bool applyDisplayProfile(const QString& name);
 private:
+    /// État du projet hors modèle de calcul (docs/PROJECT_STATE_PLAN.md) : relevé dans les blocs du modèle juste avant
+    /// l'enregistrement, appliqué à la fin de l'ouverture. Sans effet sur « modifié » (décision D1).
+    void captureProjectState();
+    void applyProjectState();
     void syncDisplayActionsFromView();
     void populateMeshViewMenu(QMenu* menu);
     void setupMeshView();
