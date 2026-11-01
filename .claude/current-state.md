@@ -5,7 +5,7 @@ revues depuis le 2026-10-07 : voir l'audit du 2026-10-31 (TSA_CODE_QUALITY_AUDIT
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
-## Dépendances installées en une fois, disposition thirdparty/ (2026-11-01, branche build/auto-dependencies, non commitée)
+## Dépendances installées en une fois, disposition thirdparty/ (2026-11-01, branche build/auto-dependencies, fusionnée dans main et poussée)
 Status: IMPLEMENTED (Windows vérifié) / UNKNOWN (Linux, jamais exécuté) — `install_dependencies.py` (racine) installe toutes les
 dépendances dans thirdparty/ d'après `cmake/dependencies.json` (SHA-256) ; sous Linux, CMake l'appelle pour ce qui manque
 (tsa_provision_unix_dependencies). OCCT et 3rdparty attendus dans thirdparty/ (déplacement automatique de l'ancien emplacement,

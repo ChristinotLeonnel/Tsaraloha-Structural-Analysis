@@ -2,7 +2,7 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
-## 2026-11-01 — dépendances installées en une fois, disposition thirdparty/ (branche build/auto-dependencies, non commitée)
+## 2026-11-01 — dépendances installées en une fois, disposition thirdparty/ (branche build/auto-dependencies, fusionnée dans main : TSA 321f870, TSALab 02cf02c)
 
 - `install_dependencies.py` (racine) : Qt 6.12.0, OCCT 8.0.1 (SDK Windows ; compilé sous Linux), Gmsh 4.15.2, Eigen 3.4.1, OpenSees 3.8.0
   (conda-forge win-64 et linux-64), IfcOpenShell (scripts existants), paquets apt (Linux) ; `--list`, `--only`, `--skip`, `--force`.

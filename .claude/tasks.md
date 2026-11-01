@@ -9,7 +9,7 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
       `python install_dependencies.py` ou CMake après fermeture du programme qui les tient (au besoin après redémarrage).
 - [ ] Linux : exécuter le script de bout en bout (apt, compilation OCCT et IfcOpenShell, OpenSees linux-64 et sa commande de contrôle),
       puis compiler et tester TSA ; chemin avec espaces, volume NTFS.
-- [ ] Commit, fusion, push : sur demande de l'utilisateur.
+- [x] Commit (TSA 38e7142, TSALab 938c9eb), fusion dans main (TSA 321f870, TSALab 02cf02c) et push, demandés le 2026-11-01.
 
 ## Repères locaux, rotation de section, axes des charges (2026-10-31, branche refactor/load-axes-section-rotation)
 - [x] Mesures Robot (tests/data/robot_rsa2024_reference.json), repère et γ, axes des charges, migration, fenêtres, tests 558-565.
