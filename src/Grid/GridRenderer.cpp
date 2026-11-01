@@ -46,7 +46,7 @@ void GridRenderer::clearGridObjects(PerGridRenderObjects& objs, const Handle(AIS
     removeShape(objs.activeLevelPlaneShape);
     removeShape(objs.circlesShape);
     removeShape(objs.intersectionsShape);
-    removeShape(objs.originShape);
+    removeShape(objs.centerShape);
     removeShape(objs.levelAxisShape);
     removeShape(objs.levelPlanesShape);
 }
@@ -97,7 +97,7 @@ void GridRenderer::setGridVisible(const std::string& gridId, bool visible, const
     updateVis(objs.activeLevelPlaneShape, true);
     updateVis(objs.circlesShape, true);
     updateVis(objs.intersectionsShape, m_intersectionsVisible);
-    updateVis(objs.originShape, true);
+    updateVis(objs.centerShape, true);
     updateVis(objs.levelAxisShape, m_levelsVisible);
     updateVis(objs.levelPlanesShape, m_levelsVisible);
 
@@ -311,20 +311,7 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, PerGridRenderOb
         context->Display(objs.intersectionsShape, false);
     }
 
-    // 3. Origine de la grille (trièdre local / croix tridimensionnelle)
-    const gp_Pnt& orig = gridSystem.definition().origin();
-    TopoDS_Compound origCompound;
-    builder.MakeCompound(origCompound);
-
-    double armLen = 1.0;
-    builder.Add(origCompound, BRepBuilderAPI_MakeEdge(orig, gp_Pnt(orig.X() + armLen, orig.Y(), orig.Z())).Edge());
-    builder.Add(origCompound, BRepBuilderAPI_MakeEdge(orig, gp_Pnt(orig.X(), orig.Y() + armLen, orig.Z())).Edge());
-    builder.Add(origCompound, BRepBuilderAPI_MakeEdge(orig, gp_Pnt(orig.X(), orig.Y(), orig.Z() + armLen)).Edge());
-
-    objs.originShape = new AIS_Shape(origCompound);
-    objs.originShape->SetColor(gridSystem.isActive() ? Quantity_NOC_YELLOW : Quantity_NOC_GRAY60);
-    objs.originShape->SetWidth(3.0);
-    context->Display(objs.originShape, false);
+    // 3. Origine de la grille : plus de croix X, Y, Z (doublon du repère global 3D, AxisTriad) — demandé le 2026-11-01.
 
     // 4. Colonne verticale Z reliant tous les étages
     if (gridSystem.showLevels() && m_levelsVisible && !cartesian->verticalLevelLines().empty())
@@ -546,10 +533,10 @@ void GridRenderer::renderCylindrical(const GridSystem& gridSystem, PerGridRender
         builder.Add(centerCompound, sphereMaker.Shape());
     }
 
-    objs.originShape = new AIS_Shape(centerCompound);
-    objs.originShape->SetColor(Quantity_NOC_YELLOW);
-    objs.originShape->SetDisplayMode(AIS_Shaded);
-    context->Display(objs.originShape, false);
+    objs.centerShape = new AIS_Shape(centerCompound);
+    objs.centerShape->SetColor(Quantity_NOC_YELLOW);
+    objs.centerShape->SetDisplayMode(AIS_Shaded);
+    context->Display(objs.centerShape, false);
 }
 
 void GridRenderer::renderArbitrary(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context)

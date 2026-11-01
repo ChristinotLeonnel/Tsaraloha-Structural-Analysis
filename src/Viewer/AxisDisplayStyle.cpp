@@ -62,6 +62,14 @@ void AxisDisplayStyle::setLocalAxes(bool on)
     setSettings(s);
 }
 
+void AxisDisplayStyle::setFramesVisible(bool on)
+{
+    auto s = m_settings;
+    s.globalAxes = on;
+    s.localAxes = on;
+    setSettings(s);
+}
+
 void AxisDisplayStyle::setLetters(bool on)
 {
     auto s = m_settings;

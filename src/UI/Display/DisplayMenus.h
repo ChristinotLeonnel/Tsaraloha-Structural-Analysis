@@ -41,6 +41,8 @@ public:
 
     QMenu* annotationMenu() const { return m_annotationMenu; }
     QMenu* axisMenu() const { return m_axisMenu; }
+    /// Bouton « Repères » (ruban) : affiche ou masque le repère global et les repères locaux, synchronisé avec le menu.
+    QAction* axesToggleAction() const { return m_axesToggle; }
     QMenu* loadScaleMenu() const { return m_loadMenu; }
     QMenu* profilesMenu() const { return m_profilesMenu; }
     QAction* diagnosticAction() const { return m_diagnostic; }
@@ -69,6 +71,7 @@ private:
     Context m_context;
     QMenu* m_annotationMenu = nullptr;
     QMenu* m_axisMenu = nullptr;
+    QAction* m_axesToggle = nullptr;
     QMenu* m_loadMenu = nullptr;
     QMenu* m_profilesMenu = nullptr;
     QAction* m_diagnostic = nullptr;

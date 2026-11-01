@@ -311,6 +311,11 @@ public:
     void attachManipulatorToWorkPlane();
     void detachManipulator();
     bool isManipulatingWorkPlane() const { return m_isManipulatingWorkPlane; }
+    /// Gizmo du plan de travail affiché (plan sélectionné en mode Sélection).
+    bool isWorkPlaneManipulatorShown() const;
+    /// Échap avec le gizmo affiché : un glisser en cours est annulé (plan rétabli à sa position de départ) ; sinon le
+    /// gizmo est retiré et le plan désélectionné. Faux s'il n'y avait ni glisser ni gizmo (Échap garde alors son rôle).
+    bool cancelWorkPlaneManipulation();
     void applyWorkPlaneTransformation();
     void setWorkPlaneIsolation(bool isolated, double distance = 1.0);
     void updateElementIsolation();

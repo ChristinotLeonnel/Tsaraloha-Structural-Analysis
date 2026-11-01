@@ -6,6 +6,7 @@
 #include "../../Viewer/AxisDisplayStyle.h"
 #include "../../Viewer/DisplayProfile.h"
 #include "../../Viewer/OccView.h"
+#include "../Theme/ThemedIcon.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -176,6 +177,19 @@ void DisplayMenus::buildAxisMenu()
     };
     sync();
     connect(&style, &AxisDisplayStyle::changed, this, sync);
+
+    // Bouton « Repères » : repère global et repères locaux ensemble ; réglages détaillés dans le menu Repères.
+    m_axesToggle = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/view/coord_system.svg")), tr("Repères"), this);
+    m_axesToggle->setCheckable(true);
+    m_axesToggle->setToolTip(tr("Afficher ou masquer le repère global X, Y, Z et les repères locaux x, y, z des éléments "
+                                "sélectionnés (réglages : Affichage › Repères)"));
+    connect(m_axesToggle, &QAction::toggled, &style, &AxisDisplayStyle::setFramesVisible);
+    auto syncToggle = [this, &style] {
+        const QSignalBlocker block(m_axesToggle);
+        m_axesToggle->setChecked(style.framesVisible());
+    };
+    syncToggle();
+    connect(&style, &AxisDisplayStyle::changed, this, syncToggle);
 }
 
 void DisplayMenus::buildLoadMenu()

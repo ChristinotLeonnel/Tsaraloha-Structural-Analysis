@@ -270,7 +270,8 @@ void RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& a)
         p.small(a.renderModes).small({ a.renderEdges, a.renderLightweight });
     }
     PanelBuilder(tab, tr("Visibilité")).small({ a.actionNodesVisible, a.actionNodeLabelsVisible, a.actionSupportsVisible })
-        .small({ a.actionSupportLabelsVisible, a.actionFullScreen });
+        .small({ a.actionSupportLabelsVisible, a.actionAxesVisible, a.actionFullScreen })
+        .menu(tr("Réglages des repères"), QStringLiteral(":/icons/view/coord_system.svg"), a.axisMenu);
     PanelBuilder(tab, tr("Espace de travail")).large({ a.actionWorkspace3D, a.actionWorkspaceBlueprint, a.actionWorkspaceSplit })
         .small({ a.actionWorkspaceVertical, a.actionFocusMode, a.actionResetLayout });
     PanelBuilder(tab, tr("Fenêtres")).small({ a.actionToggleModelTree, a.actionToggleProperties })

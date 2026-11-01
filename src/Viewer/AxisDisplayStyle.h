@@ -41,6 +41,10 @@ public:
     void setGlobalAxes(bool on);
     void setCornerIndicator(bool on);
     void setLocalAxes(bool on);
+    /// Bouton « Repères » : repère global ET repères locaux, en un seul changement (un seul signal changed()).
+    void setFramesVisible(bool on);
+    /// Vrai si l'un des deux repères (global, locaux) est affiché.
+    bool framesVisible() const noexcept { return m_settings.globalAxes || m_settings.localAxes; }
     void setLetters(bool on);
     void setAxisPixels(double px);     ///< borné à [30, 200]
     void setLabelPixels(double px);    ///< borné à [8, 32]

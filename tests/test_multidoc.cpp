@@ -739,6 +739,39 @@ bool runSuite_MultiDoc(int& passed)
     }
 
     // -------------------------------------------------------------------------
+    // TEST 581 : bouton « Repères » (ruban, UI/Display/DisplayMenus) — repère global et repères locaux ensemble,
+    // synchronisé dans les deux sens avec les réglages (menu Affichage › Repères)
+    // -------------------------------------------------------------------------
+    {
+        using TSA::Viewer::AxisDisplayStyle;
+        const QString savedOrg = QCoreApplication::organizationName(), savedApp = QCoreApplication::applicationName();
+        QCoreApplication::setOrganizationName(QStringLiteral("TSA_TestSuite_Isolated"));
+        QCoreApplication::setApplicationName(QStringLiteral("axes%1").arg(QCoreApplication::applicationPid()));
+        auto& style = AxisDisplayStyle::instance();
+        const TSA::Viewer::AxisDisplaySettings saved = style.settings();
+        style.reset();
+        QWidget host;
+        TSA::UI::DisplayMenus menus(&host, { [] { return static_cast<OccView*>(nullptr); }, []() -> const Model* { return nullptr; }, [] { return QString(); } });
+        QAction* toggle = menus.axesToggleAction();
+        TEST_CHECK(toggle && toggle->isCheckable() && toggle->isChecked() && style.framesVisible(), "Test 581: bouton « Repères » coché (repères affichés par défaut)");
+        toggle->setChecked(false);
+        TEST_CHECK(!style.settings().globalAxes && !style.settings().localAxes && style.settings().cornerIndicator,
+                   "Test 581: décoché — repère global et repères locaux masqués, indicateur d'angle inchangé");
+        style.setLocalAxes(true);
+        TEST_CHECK(toggle->isChecked(), "Test 581: un repère réaffiché par le menu recoche le bouton");
+        style.setFramesVisible(false);
+        TEST_CHECK(!toggle->isChecked(), "Test 581: les deux masqués par les réglages — bouton décoché");
+        toggle->setChecked(true);
+        TEST_CHECK(style.settings().globalAxes && style.settings().localAxes, "Test 581: recoché — les deux réaffichés");
+        style.setSettings(saved);
+        QSettings().clear();
+        QCoreApplication::setOrganizationName(savedOrg);
+        QCoreApplication::setApplicationName(savedApp);
+        std::cout << "[PASS] Test 581: Bouton « Repères » — repère global et repères locaux, synchronisé avec les réglages" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
     // TEST 575 : état de vue du document dans le .tsa (bloc VSTA, docs/PROJECT_STATE_PLAN.md étape 2) — affichage,
     // niveau actif et caméra exacte relevés, enregistrés, relus et rendus à une autre vue à l'identique.
     // -------------------------------------------------------------------------
