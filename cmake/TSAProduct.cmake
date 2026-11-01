@@ -686,6 +686,7 @@ set(LOAD_CORE_SOURCES
     ${TSA_ROOT}/src/Analysis/CalculationSnapshot.cpp
     ${TSA_ROOT}/src/Analysis/ResultsModel.h
     ${TSA_ROOT}/src/Analysis/ResultsModel.cpp
+    ${TSA_ROOT}/src/Analysis/ResultsSerialization.cpp
     ${TSA_ROOT}/src/Analysis/SolverMesh.h
     ${TSA_ROOT}/src/Analysis/SolverMesh.cpp
     ${TSA_ROOT}/src/Analysis/AnalysisTypes.h

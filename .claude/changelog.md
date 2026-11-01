@@ -2,6 +2,23 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — état du projet, étape 4 : résultats de calcul dans le .tsa (bloc RSLT, BUG-013 corrigé)
+
+- `Analysis/ResultsSerialization.cpp` : `ResultsModel::toBinary` / `fromBinary` (magic TSAR, sections étiquetées et dimensionnées,
+  section inconnue sautée, comptes bornés par les octets restants, *this inchangé en cas d'échec) ; tous les membres sauf
+  AdvancedResults (D4) ; résumé recalculé. `encodeStoredResults` / `decodeStoredResults` : empreinte + résultats.
+- `TSAProjectIO::modelFingerprint` : SHA-256 de snapshotContentBytes + OPNG + SURF + SECP + réglages d'analyse + maillage.
+  Corrigés en route (test 577) : (1) `Detail::completeCalculationSnapshots` partagé par l'enregistrement et snapshotContentBytes
+  (instantanés implicites des matériaux et câbles : contenu identique avant / après relecture) ; (2) `Detail::openingsChunkJson`,
+  `Detail::surfacesChunkJson` extraits de saveToFile (même JSON qu'avant) et inclus dans l'empreinte.
+- MainWindow : RSLT écrit seulement si les résultats sont à jour ; à l'ouverture, résultats publiés avant la disposition et la
+  vue ; empreinte différente → invalidés + onResultsBecameStale (D3). Un calcul marque le document « à enregistrer »
+  (setUnsavedFlag, révision inchangée), pas des résultats relus (m_restoringProjectState).
+- known-issues : BUG-013 retiré (corrigé) ; BUG-175 (contenu comparé par Annuler sans surfaces, à vérifier), BUG-176 (limite :
+  Annuler après un calcul jusqu'à l'état enregistré lève « * »).
+- Vérifié : surfaces 13/13 (test 577 : coques statiques et modal, octet pour octet, empreinte), window, multidoc, io, undo ;
+  suite complète 59/60, 565 tests (test 367 : BUG-173) ; TSALab 27/27.
+
 ## 2026-11-01 — état du projet, étape 3 : disposition de la fenêtre propre au fichier (bloc UIST)
 
 - `UI/WindowManager/ProjectLayoutState` (couche widgets) : `captureProjectLayout` / `applyProjectLayout`, JSON schema 1 : état

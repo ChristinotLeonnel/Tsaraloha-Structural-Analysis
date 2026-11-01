@@ -1094,5 +1094,91 @@ bool runSuite_Surfaces(int& passed)
         ++passed;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 577 : résultats enregistrés dans le .tsa (bloc RSLT, docs/PROJECT_STATE_PLAN.md étape 4, BUG-013) — vrais
+    // calculs OpenSees (coque statique, modal), aller-retour octet pour octet, empreinte du modèle, refus des blocs abîmés.
+    // -------------------------------------------------------------------------
+    {
+        using Block = Model::ProjectStateBlock;
+        using TSA::Analysis::ResultsModel;
+        Model m;
+        const int s = cantilever(m, 4.0, 1.0, 0.20, 0.125);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        TSA::Model::SurfaceLoad sl;
+        sl.surfaceId = s;
+        sl.loadCaseId = lc;
+        sl.value = -10.0;
+        m.loadManager().addSurfaceLoad(sl);
+        const auto staticRun = runSurfaces(m, settings2D(0.25, true), false, lc);
+        const auto modalRun = runSurfaces(m, settings2D(0.25, true), false, 0, [](TSA::Analysis::AnalysisContext& c) {
+            c.type = TSA::Analysis::AnalysisType::Modal;
+            c.common.modeCount = 3;
+        });
+        TEST_CHECK(staticRun.run.success && staticRun.run.results.hasResults() && !staticRun.run.results.shellResults().empty(),
+                   "Test 577: calcul statique de coques (pré-condition : " << staticRun.run.message << ")");
+        TEST_CHECK(modalRun.run.success && modalRun.run.results.modal().modes.size() == 3, "Test 577: calcul modal (pré-condition)");
+
+        for (const AnalysisRunResult* run : { &staticRun.run, &modalRun.run })
+        {
+            const ResultsModel& original = run->results;
+            const std::string bytes = original.toBinary();
+            ResultsModel back;
+            std::string err;
+            TEST_CHECK(back.fromBinary(bytes, &err), "Test 577: relecture des résultats (" << err << ")");
+            TEST_CHECK(back.toBinary() == bytes, "Test 577: aller-retour octet pour octet (" << bytes.size() << " octets)");
+            TEST_CHECK(back.hasResults() && back.analysisType() == original.analysisType() &&
+                           back.allDisplacements().size() == original.allDisplacements().size() &&
+                           back.shellResults().size() == original.shellResults().size() &&
+                           back.modal().modes.size() == original.modal().modes.size() && back.stepCount() == original.stepCount() &&
+                           back.executionMetadata().solverVersion == original.executionMetadata().solverVersion &&
+                           back.summary().maxDisplacement == original.summary().maxDisplacement,
+                       "Test 577: contenu relu (déplacements, coques, modes, pas, métadonnées, résumé recalculé identique)");
+            const std::string cut = bytes.substr(0, bytes.size() / 2);
+            ResultsModel untouched = back;
+            TEST_CHECK(!untouched.fromBinary(cut, &err) && untouched.toBinary() == bytes, "Test 577: octets tronqués refusés, résultats inchangés");
+        }
+
+        // Bloc complet dans le .tsa : empreinte du modèle relu identique → résultats à jour ; modèle modifié → différente
+        const std::string fingerprint = TSA::IO::TSAProjectIO::modelFingerprint(m);
+        m.setProjectStateBlock(Block::Results, TSA::Analysis::encodeStoredResults(staticRun.run.results, fingerprint));
+        QTemporaryDir tmp;
+        const QString file = tmp.filePath(QStringLiteral("test577.tsa"));
+        std::string err;
+        Model reread;
+        TEST_CHECK(TSA::IO::TSAProjectIO::saveToFile(file, m, nullptr, &err) && TSA::IO::TSAProjectIO::loadFromFile(file, reread, nullptr, &err),
+                   "Test 577: aller-retour .tsa (" << err << ")");
+        ResultsModel stored;
+        std::string storedPrint;
+        TEST_CHECK(TSA::Analysis::decodeStoredResults(reread.projectStateBlock(Block::Results), stored, storedPrint, &err) &&
+                       stored.toBinary() == staticRun.run.results.toBinary(),
+                   "Test 577: résultats relus du .tsa à l'identique (" << err << ")");
+        {
+            // Diagnostic : premier octet différent du contenu persistant (original / relu)
+            TSA::IO::TSAFileWriter wa, wb;
+            const auto a = wa.snapshotContentBytes(m.createSnapshot()), b = wb.snapshotContentBytes(reread.createSnapshot());
+            std::size_t at = 0;
+            while (at < a.size() && at < b.size() && a[at] == b[at]) ++at;
+            std::string around;
+            for (std::size_t i = (at > 24 ? at - 24 : 0); i < std::min(a.size(), at + 24); ++i)
+                around += (a[i] >= 32 && a[i] < 127) ? char(a[i]) : '.';
+            TEST_CHECK(storedPrint == fingerprint && TSA::IO::TSAProjectIO::modelFingerprint(reread) == fingerprint,
+                       "Test 577: empreinte du modèle relu identique — résultats à jour (D3) ; contenu " << a.size() << " / " << b.size()
+                           << " octets, premier écart à " << at << " [" << around << "]");
+        }
+        reread.pushUndoState("Charge");
+        reread.loadManager().addSurfaceLoad(sl);
+        TEST_CHECK(TSA::IO::TSAProjectIO::modelFingerprint(reread) != fingerprint, "Test 577: modèle modifié — empreinte différente (résultats périmés)");
+
+        // Bloc abîmé ou d'une version future : refusé, sorties inchangées
+        std::string future = m.projectStateBlock(Block::Results);
+        future[4] = char(9);   // version de l'encadrement
+        ResultsModel keep;
+        std::string keepPrint = "inchangé";
+        TEST_CHECK(!TSA::Analysis::decodeStoredResults(future, keep, keepPrint, &err) && keepPrint == "inchangé" && !keep.hasResults(),
+                   "Test 577: version future refusée (" << err << ")");
+        std::cout << "[PASS] Test 577: Résultats enregistrés dans le .tsa (bloc RSLT) — statique de coques et modal, à l'octet près" << std::endl;
+        ++passed;
+    }
+
     return true;
 }

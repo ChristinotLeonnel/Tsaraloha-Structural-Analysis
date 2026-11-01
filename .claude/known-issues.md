@@ -1,10 +1,28 @@
 # Known Issues
 
-Last Updated: 2026-11-01 (BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert.
+Last Updated: 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert.
 
 ## Ouverts
 
 Audit technique du 2026-10-31 : détail, reproduction et correction de BUG-148 à BUG-168 dans docs/audit/2026-10-31/TSA_BUG_REGISTER.md.
+
+## BUG-175
+Status: OPEN (MEDIUM, à vérifier, relu dans le code le 2026-11-01, non reproduit) — contenu comparé par Annuler incomplet :
+`TSAFileWriter::snapshotContentBytes` n'écrit pas les charges surfaciques (dans `loadSnapshot` mais écrites par le chunk SURF), ni
+les ouvertures, formulations et appuis de bord des surfaces, ni les propriétés des sections (chunks OPNG, SURF, SECP construits à
+part). `UndoManager::sameContent` pourrait donc juger identiques deux états qui ne diffèrent que par ces données, et une
+transaction ne changeant qu'elles ne créerait aucune entrée Annuler — sauf si `ModelDiff` (accélérateur) les détecte : non vérifié.
+L'empreinte des résultats enregistrés (TSAProjectIO::modelFingerprint) les inclut déjà (étape 4). Piste : écrire ces données dans
+snapshotContentBytes depuis l'instantané (fonctions Detail::openingsChunkJson / surfacesChunkJson à rendre utilisables sur un
+instantané). Test à écrire : transaction qui ne change qu'une charge surfacique.
+Related files: src/IO/TSAFile.cpp (snapshotContentBytes), src/UndoRedo/UndoManager.cpp (sameContent)
+
+## BUG-176
+Status: OPEN (LOW, limite connue de l'étape 4, 2026-11-01) — après un calcul, le document est marqué « à enregistrer » (résultats du
+bloc RSLT) ; mais Annuler jusqu'à l'état enregistré le rend « non modifié » (UndoManager::matchesClean ne compare que le modèle) alors
+que les nouveaux résultats ne sont pas dans le fichier. Fermer sans enregistrer perd alors ces résultats (recalculables), jamais une
+donnée du modèle. Piste : mémoriser au point d'enregistrement une marque des résultats enregistrés et la comparer aussi.
+Related files: src/UndoRedo/UndoManager.cpp, src/UI/MainWindow_Tools.cpp (onAnalysisResultsChanged)
 
 ## BUG-174
 Status: OPEN (LOW, intermittent, vu une fois le 2026-11-01) — suite `display`, test 371 (« aucun objet de résultat orphelin ») :
@@ -469,13 +487,6 @@ est corrigé (voir FIX-2026-10-06-RESIZE).
 Impact: LOW
 Status: OPEN (à vérifier sur Windows 11 / multi-écrans)
 Related files: src/UI/Shell/AppShell.cpp
-
-## BUG-013
-Area: .tsa
-Problem: les résultats de calcul (chunk `RSLT`) ne sont pas enregistrés : un projet rouvert doit être recalculé.
-Les paramètres d'analyse, eux, sont persistés depuis le 2026-10-07 (chunk `SETT`, format 1.4, test 189).
-Impact: LOW
-Status: PARTIAL (paramètres FIXED, résultats OPEN)
 
 ## BUG-036
 Area: Build (cache CMake local)

@@ -1,6 +1,6 @@
 # Plan — un `.tsa` qui conserve tout l'état du projet
 
-Statut : **VALIDÉ** le 2026-11-01 (décisions D1 à D6 acceptées). Étapes 0 à 3 faites.
+Statut : **VALIDÉ** le 2026-11-01 (décisions D1 à D6 acceptées). Étapes 0 à 4 faites.
 Demande : chaque fichier garde sa propre disposition de fenêtre, sa vue, ses résultats de calcul, ses messages et
 erreurs, ses fichiers liés et ses bibliothèques. Il rouvre dans l'état de son dernier enregistrement.
 
@@ -115,7 +115,7 @@ JSON UTF-8 (`schema` 1) :
 | 1 | Socle : emplacements opaques dans `Model` (hors historique, sans marque « modifié »), écriture et lecture de chunks JSON génériques, format 3.1 | test 574 — **fait** |
 | 2 | `VSTA` : relevé et application de la vue et de l'affichage | test 575 — **fait** |
 | 3 | `UIST` : disposition par fichier, préférence de restauration | test 576 — **fait** (géométrie de la fenêtre exclue : fenêtre partagée par les onglets) |
-| 4 | `RSLT` : sérialisation binaire de `ResultsModel`, empreinte, résultats périmés | aller-retour bit à bit, modèle modifié → périmés, gros modèle (taille, durée) |
+| 4 | `RSLT` : sérialisation binaire de `ResultsModel`, empreinte, résultats périmés | test 577 — **fait** (gros modèle : taille et durée non mesurées) |
 | 5 | `DIAG` : messages, validation, historique des calculs | aller-retour, calcul en échec |
 | 6 | `PMAN` : bibliothèques, fichiers liés, historique, panneau « Fichiers liés » | bibliothèque absente, fichier déplacé ou modifié |
 | 7 | Documentation : `TSA_FILE_FORMAT.md`, `MODEL.md`, mémoire du projet | — |

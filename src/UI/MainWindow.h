@@ -359,6 +359,7 @@ private:
     std::map<std::string, QAction*> m_toolActions;
     QAction* m_toolLauncher = nullptr;     // bouton de la commande d'outil en cours
     bool m_toolDialogRunning = false;      // outil piloté par sa fenêtre de paramètres (modale)
+    bool m_restoringProjectState = false;  // résultats relus du .tsa : ne rendent pas le document « à enregistrer »
     QAction* m_actionToolInputViewport = nullptr;
     bool m_toolInputInViewport = true;
     void createModelingToolActions();

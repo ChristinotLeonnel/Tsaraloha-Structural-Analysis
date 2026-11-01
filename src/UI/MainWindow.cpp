@@ -1888,6 +1888,12 @@ void MainWindow::captureProjectState()
     using Block = TSA::Model::Model::ProjectStateBlock;
     const QJsonObject view = TSA::Viewer::captureDocumentViewState(*m_occView);
     m_model->setProjectStateBlock(Block::ViewState, QJsonDocument(view).toJson(QJsonDocument::Compact).toStdString());
+    // Résultats (bloc RSLT) : seulement s'ils sont à jour du modèle enregistré ; des résultats obsolètes ne sont pas
+    // enregistrés (aucun bloc : le projet rouvert est à recalculer, comme avant le format 3.1).
+    std::string results;
+    if (m_analysis && m_analysis->results() && m_analysis->results()->hasResults() && m_analysis->resultsUpToDate())
+        results = TSA::Analysis::encodeStoredResults(*m_analysis->results(), TSA::IO::TSAProjectIO::modelFingerprint(*m_model));
+    m_model->setProjectStateBlock(Block::Results, std::move(results));
     if (m_windowManager)
     {
         // Panneaux masqués par le mode Blueprint ou le mode focus : enregistrés comme ouverts, sans être réaffichés.
@@ -1904,7 +1910,31 @@ void MainWindow::applyProjectState()
     if (!m_model || !m_occView)
         return;
     using Block = TSA::Model::Model::ProjectStateBlock;
-    // Disposition d'abord (panneaux, espace de travail, ruban), si l'utilisateur ne l'a pas désactivée (décision D2).
+    // 1. Résultats du dernier calcul (bloc RSLT) : publiés comme après un calcul ; empreinte différente du modèle relu
+    //    (modèle modifié hors de TSA, migration) → périmés, comme après une modification (décision D3).
+    if (const std::string& block = m_model->projectStateBlock(Block::Results); !block.empty() && m_analysis)
+    {
+        auto results = std::make_shared<TSA::Analysis::ResultsModel>();
+        std::string fingerprint, error;
+        if (TSA::Analysis::decodeStoredResults(block, *results, fingerprint, &error))
+        {
+            const bool current = fingerprint == TSA::IO::TSAProjectIO::modelFingerprint(*m_model);
+            m_restoringProjectState = true;
+            m_analysis->publishResults(results);
+            m_restoringProjectState = false;
+            if (!current)
+            {
+                results->invalidate();
+                onResultsBecameStale();
+                TSA_LOG_WARN("MainWindow", "ProjectResults", "résultats enregistrés d'un autre état du modèle : marqués obsolètes");
+            }
+            else if (m_consoleDock)
+                m_consoleDock->appendLog(tr("Résultats du dernier calcul rétablis (enregistrés avec le projet)."), "SYS");
+        }
+        else
+            TSA_LOG_WARN("MainWindow", "ProjectResults", "résultats enregistrés illisibles, ignorés : " + error);
+    }
+    // 2. Disposition (panneaux, espace de travail, ruban), si l'utilisateur ne l'a pas désactivée (décision D2).
     const std::string& layoutState = m_model->projectStateBlock(Block::WindowLayout);
     if (!layoutState.empty() && m_windowManager && TSA::UI::WindowManager::restoresProjectLayout())
     {

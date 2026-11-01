@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <QByteArray>
 #include <QBuffer>
+#include <QCryptographicHash>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QFile>
@@ -180,6 +181,149 @@ constexpr std::array<std::pair<StateBlock, uint32_t>, static_cast<size_t>(StateB
     { StateBlock::Diagnostics, CHUNK_DIAG },
     { StateBlock::Manifest, CHUNK_PMAN },
 } };
+
+// Instantanés mécaniques et références à enregistrer : ceux du modèle, complétés pour chaque matériau et câble utilisé qui
+// n'en a pas encore. Appelée par l'enregistrement ET par snapshotContentBytes : le contenu comparé (Annuler, empreinte des
+// résultats enregistrés) est celui qui sera relu, jamais celui d'un modèle auquel il manque ces entrées implicites.
+void completeCalculationSnapshots(const std::map<int, TSA::Model::Beam>& beams, const std::map<int, TSA::Model::Column>& columns,
+                                  const std::map<int, TSA::Model::Slab>& slabs, const std::map<int, TSA::Model::Wall>& walls,
+                                  const std::map<int, TSA::Model::Foundation>& foundations,
+                                  const std::map<int, TSA::Model::TrussMember>& trussMembers,
+                                  const std::map<int, TSA::Model::Cable>& cables,
+                                  std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot>& snaps,
+                                  std::map<std::string, TSA::ExtensionSystem::DefinitionReference>& refs)
+{
+    auto captureMat = [&](const TSA::Model::Material& mat) {
+        std::string key = "material:" + mat.name;
+        if (snaps.find(key) == snaps.end())
+        {
+            TSA::ExtensionSystem::MechanicalSnapshot snap;
+            snap.youngModulus = mat.E;
+            snap.poissonRatio = mat.nu;
+            snap.density = mat.density;
+            snap.characteristicStrength = mat.fk;
+            snap.yieldStrength = mat.fk;
+            snap.thermalCoeff = mat.thermalCoeff;
+            snaps[key] = snap;
+
+            TSA::ExtensionSystem::DefinitionReference ref;
+            ref.libraryId = "org.tsaraloha.tsalib";
+            ref.libraryVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+            ref.definitionId = mat.name;
+            ref.definitionVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+            refs[key] = ref;
+        }
+    };
+
+    for (const auto& [id, b] : beams) captureMat(b.material());
+    for (const auto& [id, c] : columns) captureMat(c.material());
+    for (const auto& [id, s] : slabs) captureMat(s.material());
+    for (const auto& [id, w] : walls) captureMat(w.material());
+    for (const auto& [id, f] : foundations) captureMat(f.material());
+    for (const auto& [id, t] : trussMembers) captureMat(t.material());
+
+    for (const auto& [id, cable] : cables)
+    {
+        const auto& def = cable.definition();
+        std::string key = "cable:" + (def.id().empty() ? def.name() : def.id());
+        if (snaps.find(key) == snaps.end())
+        {
+            TSA::ExtensionSystem::MechanicalSnapshot snap;
+            snap.youngModulus = def.elasticModulus();
+            snap.poissonRatio = 0.30;
+            snap.density = def.density();
+            snap.characteristicStrength = def.characteristicStrength();
+            snap.yieldStrength = def.ultimateStrength();
+            snap.thermalCoeff = 1.2e-5;
+            snaps[key] = snap;
+
+            TSA::ExtensionSystem::DefinitionReference ref;
+            ref.libraryId = "org.tsaraloha.tsalib";
+            ref.libraryVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+            ref.definitionId = def.id().empty() ? def.name() : def.id();
+            ref.definitionVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+            refs[key] = ref;
+        }
+    }
+
+}
+
+// Chunks OPNG et SURF : enregistrement ET empreinte du modèle (TSAProjectIO::modelFingerprint) ; chaîne vide : rien à écrire.
+std::string openingsChunkJson(const TSA::Model::Model& model)
+{
+    // Facultatif (format ≥ 1.8) : ouvertures des dalles (1.10 : et des voiles), dans le repère local de chaque surface.
+    auto openingsJson = [](const std::vector<TSA::Model::SlabOpening>& openings) {
+        QJsonArray list;
+        for (const auto& o : openings)
+        {
+            QJsonArray poly;
+            for (const auto& [u, v] : o.polygon) poly.append(QJsonArray { u, v });
+            list.append(QJsonObject { { "name", QString::fromStdString(o.name) }, { "shape", QString::fromStdString(o.shape) }, { "polygon", poly } });
+        }
+        return list;
+    };
+    QJsonObject slabs, walls;
+    for (const auto& [id, slab] : model.slabs())
+        if (!slab.openings().empty()) slabs.insert(QString::number(id), openingsJson(slab.openings()));
+    for (const auto& [id, wall] : model.walls())
+        if (!wall.openings().empty()) walls.insert(QString::number(id), openingsJson(wall.openings()));
+    if (!slabs.isEmpty() || !walls.isEmpty())
+    {
+        QJsonObject root { { "schema", 1 }, { "slabs", slabs } };
+        if (!walls.isEmpty()) root.insert("walls", walls);
+        return QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString();
+    }
+    return {};
+}
+
+std::string surfacesChunkJson(const TSA::Model::Model& model)
+{
+    // Facultatif (format ≥ 1.10) : formulation des surfaces (si différente de « coque ») et charges surfaciques.
+    QJsonObject slabs, walls;
+    for (const auto& [id, s] : model.slabs())
+        if (s.formulation() != TSA::Model::SurfaceFormulation::Shell) slabs.insert(QString::number(id), TSA::Model::surfaceFormulationKey(s.formulation()));
+    for (const auto& [id, w] : model.walls())
+        if (w.formulation() != TSA::Model::SurfaceFormulation::Shell) walls.insert(QString::number(id), TSA::Model::surfaceFormulationKey(w.formulation()));
+    QJsonArray loads;
+    for (const auto& [id, l] : model.loadManager().surfaceLoads())
+        loads.append(QJsonObject { { "id", id },
+                                   { "target", l.targetKind == TSA::Model::SurfaceTargetKind::Slab ? "slab" : "wall" },
+                                   { "surface", l.surfaceId },
+                                   { "case", l.loadCaseId },
+                                   { "name", QString::fromStdString(l.name) },
+                                   { "distribution", l.distribution == TSA::Model::SurfaceLoadDistribution::Point ? "point" : "uniform" },
+                                   { "direction", TSA::Model::surfaceLoadDirectionKey(l.direction) },
+                                   { "value", l.value },
+                                   { "projected", l.projected },
+                                   { "u", l.u },
+                                   { "v", l.v },
+                                   { "gradU", l.gradU },
+                                   { "gradV", l.gradV },
+                                   { "zone", l.zone ? QJsonValue(QJsonArray { l.zoneU0, l.zoneV0, l.zoneU1, l.zoneV1 }) : QJsonValue() } });
+    auto supportsJson = [](const std::vector<TSA::Model::SurfaceEdgeSupport>& list) {
+        QJsonArray a;
+        for (const auto& sp : list)
+        {
+            QJsonArray fx, k;
+            for (int d = 0; d < 6; ++d) fx.append(sp.fixed[d]), k.append(sp.stiffness[d]);
+            a.append(QJsonObject { { "edge", sp.edge }, { "fixed", fx }, { "stiffness", k }, { "name", QString::fromStdString(sp.name) } });
+        }
+        return a;
+    };
+    QJsonObject slabSupports, wallSupports;
+    for (const auto& [id, s] : model.slabs())
+        if (!s.edgeSupports().empty()) slabSupports.insert(QString::number(id), supportsJson(s.edgeSupports()));
+    for (const auto& [id, w] : model.walls())
+        if (!w.edgeSupports().empty()) wallSupports.insert(QString::number(id), supportsJson(w.edgeSupports()));
+    if (!slabs.isEmpty() || !walls.isEmpty() || !loads.isEmpty() || !slabSupports.isEmpty() || !wallSupports.isEmpty())
+    {
+        QJsonObject root { { "schema", 1 }, { "slabFormulations", slabs }, { "wallFormulations", walls }, { "surfaceLoads", loads } };
+        if (!slabSupports.isEmpty()) root.insert("slabEdgeSupports", slabSupports);
+        if (!wallSupports.isEmpty()) root.insert("wallEdgeSupports", wallSupports);
+        return QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString();
+    }
+    return {};
+}
 } // namespace TSA::IO::Detail
 
 namespace TSA::IO
@@ -269,7 +413,11 @@ std::vector<uint8_t> TSAFileWriter::snapshotContentBytes(const TSA::Model::Model
     writeCableChunk(payload, snapshot.cables);
     writeLoadChunk(payload, snapshot.loadSnapshot);
     writeBimChunk(payload, snapshot.bim);
-    writeSnapshotChunk(payload, snapshot.calculationSnapshots, snapshot.definitionReferences);
+    auto snaps = snapshot.calculationSnapshots;
+    auto refs = snapshot.definitionReferences;
+    Detail::completeCalculationSnapshots(snapshot.beams, snapshot.columns, snapshot.slabs, snapshot.walls, snapshot.foundations,
+                                         snapshot.trussMembers, snapshot.cables, snaps, refs);
+    writeSnapshotChunk(payload, snaps, refs);
     return payload;
 }
 
@@ -361,76 +509,10 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
         // Facultatif (format ≥ 1.8) : paramètres et dernier maillage généré (docs/MESH.md).
         writeJsonChunk(payload, CHUNK_MESH, model.meshProjectJson());
     }
-    {
-        // Facultatif (format ≥ 1.8) : ouvertures des dalles (1.10 : et des voiles), dans le repère local de chaque surface.
-        auto openingsJson = [](const std::vector<TSA::Model::SlabOpening>& openings) {
-            QJsonArray list;
-            for (const auto& o : openings)
-            {
-                QJsonArray poly;
-                for (const auto& [u, v] : o.polygon) poly.append(QJsonArray { u, v });
-                list.append(QJsonObject { { "name", QString::fromStdString(o.name) }, { "shape", QString::fromStdString(o.shape) }, { "polygon", poly } });
-            }
-            return list;
-        };
-        QJsonObject slabs, walls;
-        for (const auto& [id, slab] : model.slabs())
-            if (!slab.openings().empty()) slabs.insert(QString::number(id), openingsJson(slab.openings()));
-        for (const auto& [id, wall] : model.walls())
-            if (!wall.openings().empty()) walls.insert(QString::number(id), openingsJson(wall.openings()));
-        if (!slabs.isEmpty() || !walls.isEmpty())
-        {
-            QJsonObject root { { "schema", 1 }, { "slabs", slabs } };
-            if (!walls.isEmpty()) root.insert("walls", walls);
-            writeJsonChunk(payload, CHUNK_OPNG, QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString());
-        }
-    }
-    {
-        // Facultatif (format ≥ 1.10) : formulation des surfaces (si différente de « coque ») et charges surfaciques.
-        QJsonObject slabs, walls;
-        for (const auto& [id, s] : model.slabs())
-            if (s.formulation() != TSA::Model::SurfaceFormulation::Shell) slabs.insert(QString::number(id), TSA::Model::surfaceFormulationKey(s.formulation()));
-        for (const auto& [id, w] : model.walls())
-            if (w.formulation() != TSA::Model::SurfaceFormulation::Shell) walls.insert(QString::number(id), TSA::Model::surfaceFormulationKey(w.formulation()));
-        QJsonArray loads;
-        for (const auto& [id, l] : model.loadManager().surfaceLoads())
-            loads.append(QJsonObject { { "id", id },
-                                       { "target", l.targetKind == TSA::Model::SurfaceTargetKind::Slab ? "slab" : "wall" },
-                                       { "surface", l.surfaceId },
-                                       { "case", l.loadCaseId },
-                                       { "name", QString::fromStdString(l.name) },
-                                       { "distribution", l.distribution == TSA::Model::SurfaceLoadDistribution::Point ? "point" : "uniform" },
-                                       { "direction", TSA::Model::surfaceLoadDirectionKey(l.direction) },
-                                       { "value", l.value },
-                                       { "projected", l.projected },
-                                       { "u", l.u },
-                                       { "v", l.v },
-                                       { "gradU", l.gradU },
-                                       { "gradV", l.gradV },
-                                       { "zone", l.zone ? QJsonValue(QJsonArray { l.zoneU0, l.zoneV0, l.zoneU1, l.zoneV1 }) : QJsonValue() } });
-        auto supportsJson = [](const std::vector<TSA::Model::SurfaceEdgeSupport>& list) {
-            QJsonArray a;
-            for (const auto& sp : list)
-            {
-                QJsonArray fx, k;
-                for (int d = 0; d < 6; ++d) fx.append(sp.fixed[d]), k.append(sp.stiffness[d]);
-                a.append(QJsonObject { { "edge", sp.edge }, { "fixed", fx }, { "stiffness", k }, { "name", QString::fromStdString(sp.name) } });
-            }
-            return a;
-        };
-        QJsonObject slabSupports, wallSupports;
-        for (const auto& [id, s] : model.slabs())
-            if (!s.edgeSupports().empty()) slabSupports.insert(QString::number(id), supportsJson(s.edgeSupports()));
-        for (const auto& [id, w] : model.walls())
-            if (!w.edgeSupports().empty()) wallSupports.insert(QString::number(id), supportsJson(w.edgeSupports()));
-        if (!slabs.isEmpty() || !walls.isEmpty() || !loads.isEmpty() || !slabSupports.isEmpty() || !wallSupports.isEmpty())
-        {
-            QJsonObject root { { "schema", 1 }, { "slabFormulations", slabs }, { "wallFormulations", walls }, { "surfaceLoads", loads } };
-            if (!slabSupports.isEmpty()) root.insert("slabEdgeSupports", slabSupports);
-            if (!wallSupports.isEmpty()) root.insert("wallEdgeSupports", wallSupports);
-            writeJsonChunk(payload, CHUNK_SURF, QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString());
-        }
-    }
+    if (const std::string openings = Detail::openingsChunkJson(model); !openings.empty())
+        writeJsonChunk(payload, CHUNK_OPNG, openings);   // facultatif (≥ 1.8 ; 1.10 : voiles)
+    if (const std::string surfaces = Detail::surfacesChunkJson(model); !surfaces.empty())
+        writeJsonChunk(payload, CHUNK_SURF, surfaces);   // facultatif (≥ 1.10)
     if (!model.dimensions().items.empty() || !(model.dimensions().style == TSA::Annotation::DimensionStyle()))
     {
         writeJsonChunk(payload, CHUNK_DIMS, model.dimensions().toJson());
@@ -464,58 +546,10 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> snapshotsToSave = model.calculationSnapshots();
     std::map<std::string, TSA::ExtensionSystem::DefinitionReference> referencesToSave = model.definitionReferences();
 
-    auto captureMat = [&](const TSA::Model::Material& mat) {
-        std::string key = "material:" + mat.name;
-        if (snapshotsToSave.find(key) == snapshotsToSave.end())
-        {
-            TSA::ExtensionSystem::MechanicalSnapshot snap;
-            snap.youngModulus = mat.E;
-            snap.poissonRatio = mat.nu;
-            snap.density = mat.density;
-            snap.characteristicStrength = mat.fk;
-            snap.yieldStrength = mat.fk;
-            snap.thermalCoeff = mat.thermalCoeff;
-            snapshotsToSave[key] = snap;
-
-            TSA::ExtensionSystem::DefinitionReference ref;
-            ref.libraryId = "org.tsaraloha.tsalib";
-            ref.libraryVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
-            ref.definitionId = mat.name;
-            ref.definitionVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
-            referencesToSave[key] = ref;
-        }
-    };
-
-    for (const auto& [id, b] : model.beams()) captureMat(b.material());
-    for (const auto& [id, c] : model.columns()) captureMat(c.material());
-    for (const auto& [id, s] : model.slabs()) captureMat(s.material());
-    for (const auto& [id, w] : model.walls()) captureMat(w.material());
-    for (const auto& [id, f] : model.foundations()) captureMat(f.material());
-    for (const auto& [id, t] : model.trussMembers()) captureMat(t.material());
-
-    for (const auto& [id, cable] : model.cables())
-    {
-        const auto& def = cable.definition();
-        std::string key = "cable:" + (def.id().empty() ? def.name() : def.id());
-        if (snapshotsToSave.find(key) == snapshotsToSave.end())
-        {
-            TSA::ExtensionSystem::MechanicalSnapshot snap;
-            snap.youngModulus = def.elasticModulus();
-            snap.poissonRatio = 0.30;
-            snap.density = def.density();
-            snap.characteristicStrength = def.characteristicStrength();
-            snap.yieldStrength = def.ultimateStrength();
-            snap.thermalCoeff = 1.2e-5;
-            snapshotsToSave[key] = snap;
-
-            TSA::ExtensionSystem::DefinitionReference ref;
-            ref.libraryId = "org.tsaraloha.tsalib";
-            ref.libraryVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
-            ref.definitionId = def.id().empty() ? def.name() : def.id();
-            ref.definitionVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
-            referencesToSave[key] = ref;
-        }
-    }
+    // Instantanés implicites des matériaux et câbles utilisés : même normalisation que snapshotContentBytes (empreinte
+    // du modèle identique avant l'enregistrement et après la relecture, bloc RSLT).
+    Detail::completeCalculationSnapshots(model.beams(), model.columns(), model.slabs(), model.walls(), model.foundations(),
+                                         model.trussMembers(), model.cables(), snapshotsToSave, referencesToSave);
 
     if (!snapshotsToSave.empty())
     {
@@ -1334,6 +1368,27 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
 // =============================================================================
 // TSAProjectIO
 // =============================================================================
+std::string TSAProjectIO::modelFingerprint(const TSA::Model::Model& model)
+{
+    // Tout ce dont dépendent les résultats, sous la forme relue du fichier : contenu des éléments, charges, BIM et
+    // références de calcul (snapshotContentBytes), puis les chunks écrits à part — ouvertures, surfaces (formulations,
+    // charges surfaciques, appuis de bord), propriétés des sections, réglages d'analyse, maillage. Chaque partie est
+    // précédée de sa longueur (aucune ambiguïté de concaténation).
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    auto add = [&hash](const char* data, std::size_t size) {
+        const quint64 n = size;
+        hash.addData(QByteArrayView(reinterpret_cast<const char*>(&n), sizeof(n)));
+        hash.addData(QByteArrayView(data, static_cast<qsizetype>(size)));
+    };
+    TSAFileWriter writer;
+    const std::vector<uint8_t> bytes = writer.snapshotContentBytes(model.createSnapshot());
+    add(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+    for (const std::string& part : { Detail::openingsChunkJson(model), Detail::surfacesChunkJson(model),
+                                     Detail::sectionPropertiesJson(model), model.analysisSettingsJson(), model.meshProjectJson() })
+        add(part.data(), part.size());
+    return hash.result().toHex().toStdString();
+}
+
 bool TSAProjectIO::saveProject(const QString& filePath,
                               const TSA::Model::Model& model,
                               const TSA::Grid::GridManager* gridManager,
