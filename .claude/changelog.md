@@ -2,6 +2,20 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — état du projet, étapes 6 et 7 : manifeste (bloc PMAN) et documentation
+
+- `Project/ProjectManifest` (couche modèle) : fichiers liés (`registerLink` : taille, SHA-256, date ; chemin relatif au .tsa,
+  absolu facultatif D5 ; `updateLinkPaths` à l'enregistrement ; `checkLinks` : présent / modifié / introuvable),
+  bibliothèques requises (`collectLibraries` depuis les DefinitionReference ; `checkLibraries` : absente, autre version),
+  50 derniers enregistrements, propriétés (description, client, référence, phase : pas encore de boîte de saisie).
+- `UI/MainWindow_ProjectFiles.cpp` : `registerLinkedFile` (imports IFC — adoptImportedProject — et TSA3D, exports IFC et
+  TSA3D, textures à l'enregistrement), résumé à l'ouverture, Fichier › « Fichiers liés et bibliothèques… » (tableaux,
+  joindre un document, retirer un lien, case des chemins absolus). Export de la note de calcul non relié. Test 579 (io).
+- Étape 7 : docs/TSA_FILE_FORMAT.md § 5.w (contenu des cinq blocs, empreinte), README (section « Un projet qui rouvre… » ;
+  multi-vues 2×2 retirées : inexistantes dans le code), ADR-026, architecture.md (flux d'ouverture et d'enregistrement).
+- Vérifié : io 12/12 (test 579), surfaces, window, multidoc, undo ; suite complète 59/60, 567 tests (test 367 : BUG-173) ;
+  TSALab 27/27. Non vérifié : branchements MainWindow dans TSA.exe (essai manuel à faire).
+
 ## 2026-11-01 — état du projet, étape 5 : messages, erreurs et historique des calculs (bloc DIAG)
 
 - `Project/ProjectDiagnostics` (couche modèle) : historique des 20 derniers calculs (`CalculationRecord` : date UTC, moteur choisi,

@@ -72,6 +72,7 @@ void MainWindow::onActionExportTsa3d()
         for (const auto& l : check.lines())
             if (l.startsWith("ERREUR")) m_consoleDock->appendLog(l, "ERROR");
     }
+    registerLinkedFile(QStringLiteral("export-tsa3d"), path);
     if (m_statusInfo) m_statusInfo->setText(tr("TSA3D exporté"));
     QString msg = tr("Fichier TSA3D %1 enregistré :\n%2").arg(TSA::IO::Tsa3d::versionString(), path);
     if (!ex.report.issues.empty()) msg += "\n\n" + tr("Données non représentées :") + "\n" + firstLines(ex.report.lines());
@@ -189,6 +190,7 @@ void MainWindow::importTsa3dFile(const QString& path, const QString& sourceLabel
         m_consoleDock->appendLog(tr("TSA3D importé : %1 — %2").arg(sourceLabel, summary), "INFO");
         for (const auto& l : r.report.lines()) m_consoleDock->appendLog(l, l.startsWith("AVERT") ? "WARN" : "INFO");
     }
+    registerLinkedFile(QStringLiteral("import-tsa3d"), QFileInfo::exists(sourceLabel) ? sourceLabel : path);
     if (m_statusInfo) m_statusInfo->setText(tr("TSA3D importé : %1").arg(summary));
     QString msg = tr("%1\n\n%2").arg(path, summary);
     const int warnings = r.report.count(TSA::IO::Tsa3d::Severity::Warning);

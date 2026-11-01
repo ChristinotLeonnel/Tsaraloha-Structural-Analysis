@@ -4,6 +4,10 @@
 #include "Analysis/Engine/AnalysisContext.h"
 #include "Analysis/ResultsModel.h"
 #include "Project/ProjectDiagnostics.h"
+#include "Project/ProjectManifest.h"
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 #include "Standards/ModelValidator.h"
 #include <QJsonDocument>
 #include <cstring>
@@ -1283,6 +1287,85 @@ bool runSuite_FileIO(int& passed)
                        reread.fromJson(r.projectStateBlock(Model::ProjectStateBlock::Diagnostics), &err) && reread == d,
                    "Test 578: historique et messages relus du .tsa à l'identique (" << err << ")");
         std::cout << "[PASS] Test 578: Messages, erreurs et historique des calculs (bloc DIAG)" << std::endl;
+        ++passed;
+    }
+
+    // TEST 579 : manifeste du projet (bloc PMAN, docs/PROJECT_STATE_PLAN.md étape 6) — fichiers liés relatifs au .tsa,
+    // présents / modifiés / introuvables, projet déplacé sans chemins absolus (D5), bibliothèques, enregistrements.
+    {
+        using namespace TSA::Project;
+        QTemporaryDir tmp;
+        TEST_CHECK(tmp.isValid(), "Test 579: dossier temporaire");
+        QDir root(tmp.path());
+        root.mkpath("etude/sources");
+        auto write = [](const QString& path, const QByteArray& data) {
+            QFile f(path);
+            return f.open(QIODevice::WriteOnly) && f.write(data) == data.size();
+        };
+        const QString ifc = root.filePath("etude/sources/batiment.ifc"), note = root.filePath("etude/note.pdf");
+        const QString project = root.filePath("etude/projet.tsa");
+        TEST_CHECK(write(ifc, "ISO-10303-21; contenu"), "Test 579: fichier IFC (pré-condition)");
+        TEST_CHECK(write(note, "%PDF-1.7"), "Test 579: document (pré-condition)");
+
+        ProjectManifest m;
+        TEST_CHECK(m.registerLink("import-ifc", ifc.toStdString(), project.toStdString()) &&
+                       m.registerLink("attachment", note.toStdString(), project.toStdString()) &&
+                       m.registerLink("import-ifc", ifc.toStdString(), project.toStdString()) &&   // même lien : mis à jour
+                       !m.registerLink("texture", root.filePath("absente.png").toStdString(), project.toStdString()),
+                   "Test 579: liens enregistrés (doublon fusionné, fichier absent refusé)");
+        TEST_CHECK(m.links().size() == 2 && m.links()[0].relativePath == "sources/batiment.ifc" && !m.links()[0].sha256.empty(),
+                   "Test 579: chemin relatif au .tsa, empreinte relevée (" << m.links()[0].relativePath << ")");
+        auto statusOf = [&](const ProjectManifest& pm, const QString& tsa, std::size_t i) { return pm.checkLinks(tsa.toStdString())[i].status; };
+        TEST_CHECK(statusOf(m, project, 0) == LinkStatus::Present, "Test 579: fichier présent et inchangé");
+        TEST_CHECK(write(ifc, "ISO-10303-21; contenu modifié"), "Test 579: modification (pré-condition)");
+        TEST_CHECK(statusOf(m, project, 0) == LinkStatus::Modified, "Test 579: fichier modifié depuis son enregistrement détecté");
+
+        // Projet transmis sans chemins absolus (D5) et déplacé avec ses fichiers : retrouvés par les chemins relatifs
+        m.registerLink("import-ifc", ifc.toStdString(), project.toStdString());
+        m.updateLinkPaths(project.toStdString(), false);
+        TEST_CHECK(m.links()[0].absolutePath.empty() && m.links()[1].absolutePath.empty(), "Test 579: chemins absolus effacés (D5)");
+        TEST_CHECK(root.rename("etude", "etude_deplacee"), "Test 579: dossier du projet déplacé (pré-condition)");
+        const QString moved = root.filePath("etude_deplacee/projet.tsa");
+        TEST_CHECK(statusOf(m, moved, 0) == LinkStatus::Present && statusOf(m, moved, 1) == LinkStatus::Present,
+                   "Test 579: projet déplacé — fichiers liés retrouvés par leur chemin relatif");
+        QFile::remove(root.filePath("etude_deplacee/note.pdf"));
+        TEST_CHECK(statusOf(m, moved, 1) == LinkStatus::Missing, "Test 579: fichier supprimé — introuvable");
+
+        // Bibliothèques requises (références de définitions du modèle)
+        Model model;
+        TSA::ExtensionSystem::DefinitionReference ref;
+        ref.libraryId = "org.exemple.acier";
+        ref.libraryVersion = TSA::ExtensionSystem::SemanticVersion(1, 2, 0);
+        ref.definitionId = "steel.s355";
+        ref.definitionVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+        model.setCalculationSnapshot("material:S355", TSA::ExtensionSystem::MechanicalSnapshot {}, ref);
+        m.collectLibraries(model);
+        TEST_CHECK(m.libraries().size() == 1 && m.libraries()[0].id == "org.exemple.acier" && m.libraries()[0].version == "1.2.0" &&
+                       m.libraries()[0].definitions == std::vector<std::string> { "steel.s355" },
+                   "Test 579: bibliothèque requise relevée (" << (m.libraries().empty() ? std::string() : m.libraries()[0].version) << ")");
+        TEST_CHECK(m.checkLibraries({ { "org.exemple.acier", "1.2.0" } })[0].sameVersion() &&
+                       !m.checkLibraries({ { "org.exemple.acier", "2.0.0" } })[0].sameVersion() &&
+                       m.checkLibraries({ { "org.exemple.acier", "2.0.0" } })[0].installed && !m.checkLibraries({})[0].installed,
+                   "Test 579: bibliothèque installée, d'une autre version, absente");
+
+        for (int i = 0; i < 55; ++i) m.recordSave({ "2026-11-01T12:" + std::to_string(i), "Ingénieur", "TSA 0.1.0", "3.1" });
+        m.setProperties({ "Bâtiment R+4", "Commune", "AFF-2026-12", "APD" });
+        TEST_CHECK(m.saves().size() == ProjectManifest::kMaxSaves && m.saves().front().timestamp == "2026-11-01T12:5",
+                   "Test 579: historique borné aux 50 derniers enregistrements");
+
+        ProjectManifest back;
+        std::string err;
+        TEST_CHECK(back.fromJson(m.toJson(), &err) && back == m, "Test 579: aller-retour JSON identique (" << err << ")");
+        ProjectManifest untouched = back;
+        TEST_CHECK(!untouched.fromJson(R"({"schema":3})", &err) && untouched == back, "Test 579: version inconnue refusée, contenu inchangé");
+        model.setProjectStateBlock(Model::ProjectStateBlock::Manifest, m.toJson());
+        const QString tsa = root.filePath("manifeste.tsa");
+        Model reread;
+        ProjectManifest fromFile;
+        TEST_CHECK(TSAProjectIO::saveToFile(tsa, model, nullptr, &err) && TSAProjectIO::loadFromFile(tsa, reread, nullptr, &err) &&
+                       fromFile.fromJson(reread.projectStateBlock(Model::ProjectStateBlock::Manifest), &err) && fromFile == m,
+                   "Test 579: manifeste relu du .tsa à l'identique (" << err << ")");
+        std::cout << "[PASS] Test 579: Manifeste du projet (bloc PMAN) — fichiers liés, bibliothèques, enregistrements" << std::endl;
         ++passed;
     }
 

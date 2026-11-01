@@ -260,6 +260,27 @@ l'analyse non linéaire n'est pas disponible. Aucun changement de format :
   minimale) n'ont jamais été lus par un calcul : ils sont lus puis ignorés, et écrits avec leurs anciennes valeurs par
   défaut (1, 1, 10,0).
 
+### 5.w État du projet (chunks `UIST`, `VSTA`, `RSLT`, `DIAG`, `PMAN`, spécification 3.1)
+
+Cinq chunks facultatifs gardent l'état du projet au dernier enregistrement (docs/PROJECT_STATE_PLAN.md). Ils sont
+écrits seulement s'ils ne sont pas vides, et un lecteur antérieur les ignore. Le lecteur les rend tels quels au modèle
+(`Model::ProjectStateBlock`) ; l'interface les interprète. Ils ne passent ni par l'historique Annuler ni par la marque
+« modifié » : relever la disposition ou la vue ne rend pas le document modifié (décision D1). Bloc d'une version
+inconnue : ignoré et signalé dans le journal, le projet s'ouvre.
+
+| Chunk | Contenu | Producteur / lecteur |
+| :--- | :--- | :--- |
+| `UIST` | JSON `schema` 1 : `docks` (QMainWindow::saveState en base64), `openDocks` / `closedDocks` (identifiants : repli si Qt refuse l'état binaire ; un panneau absent des deux listes garde sa visibilité), `workspace` (mode, orientation, tailles, disposition de l'éditeur en base64), `ribbonTab` (titre, indice) | `UI/WindowManager/ProjectLayoutState` ; appliqué si `Layout/restoreFromProject` (vrai par défaut, D2) |
+| `VSTA` | JSON `schema` 1 : `camera` (une vue nommée « current », format du chunk `VIEW`), `display` (réglages des profils d'affichage, sans les clés `annotation*` communes à l'application), `activeLevelZ` | `Viewer/DisplayProfile` : captureDocumentViewState / applyDocumentViewState |
+| `RSLT` | Binaire : u32 `'TSRB'`, u32 version (1), chaîne empreinte du modèle (SHA-256, `TSAProjectIO::modelFingerprint`), puis `ResultsModel::toBinary` : u32 `'TSAR'`, u32 version (1), sections `{ u32 étiquette, u64 longueur, octets }` (META, CURR, FINL, STEP, SHEL, MODL, SURF, MESH, PLAN, TABL ; section inconnue sautée). Matrices de rigidité non enregistrées (D4) ; résumé recalculé à la lecture | `Analysis/ResultsSerialization.cpp` ; écrit seulement si les résultats sont à jour ; empreinte différente à l'ouverture → résultats obsolètes (D3) |
+| `DIAG` | JSON `schema` 1 : `calculations` (20 derniers : date UTC, moteur choisi, moteur et version réels, type, cas, portée, succès, message, durée, avertissements, empreinte), `lastMessages`, `lastEngineLog` (500 dernières lignes), `validation` (gravité, catégorie, message, entité) | `Project/ProjectDiagnostics` |
+| `PMAN` | JSON `schema` 1 : `properties` (description, client, référence, phase), `libraries` (identifiant, version, définitions utilisées), `links` (rôle, chemin relatif au `.tsa`, chemin absolu facultatif — D5, taille, SHA-256, date), `saves` (50 derniers : date, auteur, application, format) | `Project/ProjectManifest` ; fichiers liés contrôlés à l'ouverture, jamais ouverts |
+
+**Empreinte du modèle** (`RSLT`, `DIAG`) : SHA-256 de `snapshotContentBytes` (éléments, charges, BIM, références et
+instantanés mécaniques complétés comme à l'enregistrement), puis, chacun précédé de sa longueur, des JSON `OPNG`,
+`SURF`, `SECP`, des réglages d'analyse et du maillage. Elle est identique avant l'enregistrement et après la relecture
+(test 577).
+
 ---
 
 ## 6. Système d'Intégrité et Sécurité du Lecteur

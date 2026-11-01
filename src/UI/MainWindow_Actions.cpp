@@ -750,6 +750,11 @@ void MainWindow::createActions()
     m_actionAbout->setToolTip(tr("Informations sur l'application, OpenCASCADE et crédits"));
     connect(m_actionAbout, &QAction::triggered, this, &MainWindow::onActionAbout);
 
+    m_actionLinkedFiles = new QAction(tr("Fichiers &liés et bibliothèques..."), this);
+    m_actionLinkedFiles->setToolTip(tr("Fichiers reliés au projet (imports, exports, textures, documents joints) et bibliothèques "
+                                       "utilisées : présence et intégrité contrôlées à l'ouverture"));
+    connect(m_actionLinkedFiles, &QAction::triggered, this, &MainWindow::onActionLinkedFiles);
+
     m_actionExportDiagnostic = new QAction(tr("&Exporter Rapport de Diagnostic..."), this);
     m_actionExportDiagnostic->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/common/diagnostic.svg")));
     m_actionExportDiagnostic->setToolTip(tr("Générer un rapport de diagnostic complet (système, modèle, 100 derniers événements)"));
@@ -1040,6 +1045,7 @@ void MainWindow::createMenus()
     fileMenu->addAction(m_actionExportTsa3d);
     fileMenu->addAction(m_actionImportViaModule);
     fileMenu->addAction(m_actionExportIfc);
+    fileMenu->addAction(m_actionLinkedFiles);
     fileMenu->addSeparator();
     QMenu* projectSettingsMenu = fileMenu->addMenu(tr("&Paramètres du projet"));
     projectSettingsMenu->addAction(m_actionTopology);

@@ -58,6 +58,7 @@
 #include "../Project/ProjectManager.h"
 #include "../Project/ProjectSession.h"
 #include "../Project/ProjectDiagnostics.h"
+#include "../Project/ProjectManifest.h"
 #include "../Standards/ModelValidator.h"
 #include "../IO/TSAFile.h"
 #include "../UndoRedo/CommandManager.h"
@@ -127,6 +128,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_analysis, &TSA::Analysis::AnalysisController::resultsBecameStale, this, &MainWindow::onResultsBecameStale);
     // Historique et messages de chaque calcul (bloc DIAG du .tsa) : tous les calculs, interactifs ou non (console, Blueprint, MCP).
     m_diagnostics = std::make_unique<TSA::Project::ProjectDiagnostics>();
+    m_manifest = std::make_unique<TSA::Project::ProjectManifest>();
     connect(m_analysis, &TSA::Analysis::AnalysisController::started, this, [this](const QString&) {
         m_runLog.clear();
         m_runTimer.start();
@@ -1572,6 +1574,7 @@ void MainWindow::resetWorkspace(TSA::UI::ProjectTemplate projectTemplate)
     {
         m_projectManager->newProject(*m_model, m_gridManager);
         if (m_diagnostics) m_diagnostics->clear();   // historique des calculs propre au projet
+        if (m_manifest) m_manifest->clear();
     }
     else if (m_model)
     {
@@ -1727,7 +1730,7 @@ bool MainWindow::saveFile(const QString& path)
     if (!m_model)
         return false;
 
-    captureProjectState();   // vue, affichage… au moment de l'enregistrement (bloc VSTA)
+    captureProjectState(targetPath);   // vue, disposition, résultats, messages, manifeste au moment de l'enregistrement
 
     // Capture de la vue 3D pour la miniature Windows Explorer
     QImage thumbnail;
@@ -1916,7 +1919,7 @@ void MainWindow::onAnalysisRunCompleted(const TSA::Analysis::AnalysisContext& co
     }
 }
 
-void MainWindow::captureProjectState()
+void MainWindow::captureProjectState(const QString& targetPath)
 {
     if (!m_model || !m_occView)
         return;
@@ -1934,6 +1937,29 @@ void MainWindow::captureProjectState()
     {
         m_diagnostics->setValidation(TSA::Standards::ModelValidator::validate(*m_model));
         m_model->setProjectStateBlock(Block::Diagnostics, m_diagnostics->empty() ? std::string() : m_diagnostics->toJson());
+    }
+    // Manifeste (bloc PMAN) : textures des matériaux, bibliothèques requises, chemins des liens pour l'emplacement du
+    // .tsa (Enregistrer sous), entrée de l'historique des enregistrements.
+    if (m_manifest)
+    {
+        const std::string project = targetPath.toStdString();
+        auto addTexture = [&](const TSA::Model::Material& mat) {
+            if (!mat.visual.texturePath.empty()) m_manifest->registerLink("texture", mat.visual.texturePath, project);
+        };
+        for (const auto& [id, b] : m_model->beams()) addTexture(b.material());
+        for (const auto& [id, c] : m_model->columns()) addTexture(c.material());
+        for (const auto& [id, s] : m_model->slabs()) addTexture(s.material());
+        for (const auto& [id, w] : m_model->walls()) addTexture(w.material());
+        for (const auto& [id, f] : m_model->foundations()) addTexture(f.material());
+        m_manifest->collectLibraries(*m_model);
+        m_manifest->updateLinkPaths(project, storesAbsoluteLinkPaths());
+        TSA::Project::SaveRecord save;
+        save.timestamp = QDateTime::currentDateTimeUtc().toString(Qt::ISODate).toStdString();
+        save.author = m_projectManager ? m_projectManager->author().toStdString() : std::string();
+        save.application = (TSA::Product::name() + QLatin1Char(' ') + TSA::Product::version()).toStdString();
+        save.format = std::to_string(TSA::IO::TSA_FORMAT_VERSION_MAJOR) + "." + std::to_string(TSA::IO::TSA_FORMAT_VERSION_MINOR);
+        m_manifest->recordSave(save);
+        m_model->setProjectStateBlock(Block::Manifest, m_manifest->toJson());
     }
     if (m_windowManager)
     {
@@ -1973,6 +1999,15 @@ void MainWindow::applyProjectState()
         for (const auto& v : m_diagnostics->validation()) problems += v.severity != "info";
         if (m_consoleDock && problems > 0)
             m_consoleDock->appendLog(tr("%n anomalie(s) de validation relevée(s) au dernier enregistrement.", nullptr, static_cast<int>(problems)), "WARN");
+    }
+    // 0 bis. Manifeste (bloc PMAN) : fichiers liés et bibliothèques contrôlés, résumé dans la console.
+    if (m_manifest)
+    {
+        m_manifest->clear();
+        std::string error;
+        if (const std::string& pman = m_model->projectStateBlock(Block::Manifest); !pman.empty() && !m_manifest->fromJson(pman, &error))
+            TSA_LOG_WARN("MainWindow", "ProjectManifest", "manifeste enregistré ignoré : " + error);
+        reportManifestOnOpen(m_projectManager ? m_projectManager->currentFilePath() : QString());
     }
     // 1. Résultats du dernier calcul (bloc RSLT) : publiés comme après un calcul ; empreinte différente du modèle relu
     //    (modèle modifié hors de TSA, migration) → périmés, comme après une modification (décision D3).

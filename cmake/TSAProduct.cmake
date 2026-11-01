@@ -104,6 +104,7 @@ set(UI_MAINWINDOW_SOURCES
     ${TSA_ROOT}/src/UI/MainWindow_Workspace.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Shortcuts.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Tsa3d.cpp
+    ${TSA_ROOT}/src/UI/MainWindow_ProjectFiles.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Reports.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Mesh.cpp
     ${TSA_ROOT}/src/UI/MainWindow_MeshView.cpp
@@ -848,6 +849,8 @@ set(PROJECT_SOURCES
     ${TSA_ROOT}/src/Project/ProjectSession.cpp
     ${TSA_ROOT}/src/Project/ProjectDiagnostics.h
     ${TSA_ROOT}/src/Project/ProjectDiagnostics.cpp
+    ${TSA_ROOT}/src/Project/ProjectManifest.h
+    ${TSA_ROOT}/src/Project/ProjectManifest.cpp
     ${TSA_ROOT}/src/Project/ProjectManager.h
     ${TSA_ROOT}/src/Project/ProjectManager.cpp
     ${TSA_ROOT}/src/Project/ProjectTemplates.h

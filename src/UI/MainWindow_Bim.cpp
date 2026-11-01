@@ -151,6 +151,7 @@ void MainWindow::onActionExportIfc()
         m_consoleDock->appendLog(tr("IFC exporté : %1 — %2").arg(path, QString::fromStdString(r.summary())), "BIM");
         for (const auto& w : r.warnings) m_consoleDock->appendLog(QString::fromStdString(w), "WARN");
     }
+    registerLinkedFile(QStringLiteral("export-ifc"), path);
     if (m_statusInfo) m_statusInfo->setText(tr("IFC exporté"));
     QString msg = tr("Fichier IFC 4.3 enregistré :\n%1\n\n%2").arg(path, QString::fromStdString(r.summary()));
     if (r.verifiedElements < 0)
@@ -233,6 +234,7 @@ void MainWindow::adoptImportedProject(const TSA::Model::Model& imported, const Q
     m_model->restoreSnapshot(imported.createSnapshot("Import IFC"));
     m_model->clearUndoRedo();
     m_model->setModified(true);
+    registerLinkedFile(QStringLiteral("import-ifc"), path);   // source de l'import, contrôlée à chaque ouverture
 
     const QString name = QFileInfo(path).completeBaseName();
     if (m_projectManager) m_projectManager->setProjectName(name);
