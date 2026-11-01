@@ -21,6 +21,8 @@
 #include "Model/CreationPresets.h"
 #include "UndoRedo/CommandManager.h"
 #include "Model/Load/MemberLoadCommands.h"
+#include "Project/ProjectManager.h"
+#include "Project/ProjectSession.h"
 #include "UI/Dialogs/GridDialog.h"
 #include "UI/Dialogs/GridSettingsDialog.h"
 #include "UI/Dialogs/LoadCaseDialog.h"
@@ -50,6 +52,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QTableWidget>
+#include <QTemporaryDir>
 #include <QTimer>
 
 #include <limits>
@@ -1556,6 +1559,62 @@ bool runSuite_UndoCharacterization(int& passed)
                        "Test 523: dalle chargée supprimée — SurfaceLoadsChanged (" << watcher.specificSequence() << ")");
         }
         std::cout << "[PASS] Test 523: notifications Added / Removed, DimensionsChanged, ModelCleared, ModelDestroyed" << std::endl;
+        ++passed;
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // TEST 573 (BUG-074) : document « modifié » après enregistrement. Avant : hasUnsavedChanges = isModified() ||
+    // canUndo() → titre « * » et demande d'enregistrement à la fermeture tant que l'historique n'était pas vide ; et
+    // Annuler / Rétablir ne marquaient jamais le document modifié (le || canUndo() le masquait).
+    // -----------------------------------------------------------------------------------------------------------------
+    {
+        QTemporaryDir tmp;
+        TEST_CHECK(tmp.isValid(), "Test 573: dossier temporaire");
+        const QString file = tmp.filePath(QStringLiteral("bug074.tsa"));
+        TSA::Project::ProjectSession s;
+        Model& m = s.model();
+        UndoChar::prepareModel(m, &s.grids());
+        QString err;
+        TEST_CHECK(!s.hasUnsavedChanges(), "Test 573: session neuve non modifiée");
+
+        const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(6, 0, 0);
+        m.pushUndoState("Barre");
+        const int b = m.addBar(n1, n2, Section::ipe(300), Material::steelS355(), BarRole::Beam);
+        TEST_CHECK(s.hasUnsavedChanges() && m.canUndo(), "Test 573: modification → à enregistrer");
+
+        // a) Enregistrer : plus rien à enregistrer, historique conservé (Ctrl+Z reste possible)
+        TEST_CHECK(s.project().saveProject(file, m, &s.grids(), QImage(), &err), "Test 573: enregistrement (" << err.toStdString() << ")");
+        TEST_CHECK(!s.hasUnsavedChanges() && m.canUndo() && !s.project().windowTitle().endsWith(QStringLiteral(" *")),
+                   "Test 573: après enregistrement — non modifié, titre sans « * », Annuler disponible (" << s.project().windowTitle().toStdString() << ")");
+
+        // b) Annuler après l'enregistrement : modifié ; Rétablir ramène exactement l'état enregistré : non modifié
+        const auto rev = m.revision();
+        TEST_CHECK(s.undo() && !m.getBeam(b) && s.hasUnsavedChanges(), "Test 573: Annuler après enregistrement → à enregistrer");
+        TEST_CHECK(s.redo() && m.getBeam(b) && !s.hasUnsavedChanges(), "Test 573: Rétablir jusqu'à l'état enregistré → non modifié");
+        TEST_CHECK(m.revision() >= rev, "Test 573: révision jamais décrémentée");
+
+        // c) Nouvelle modification puis Annuler : retour exact à l'état enregistré → non modifié
+        m.pushUndoState("Déplacement");
+        TEST_CHECK(m.moveNodes({ n2 }, 1.0, 0.0, 0.0), "Test 573: déplacement du nœud");
+        TEST_CHECK(s.hasUnsavedChanges(), "Test 573: déplacement → à enregistrer");
+        TEST_CHECK(s.undo() && !s.hasUnsavedChanges(), "Test 573: Annuler jusqu'à l'état enregistré → non modifié");
+        TEST_CHECK(s.redo() && s.hasUnsavedChanges(), "Test 573: Rétablir après l'état enregistré → à enregistrer");
+        TEST_CHECK(s.undo() && !s.hasUnsavedChanges(), "Test 573: Annuler de nouveau → non modifié");
+
+        // d) Modification hors historique après l'enregistrement (import, réglages…) : revenir à la même position de
+        //    l'historique ne suffit pas, l'état diffère → reste à enregistrer (aucune perte de données à la fermeture)
+        m.pushUndoState("Nœud");
+        m.addNode(1, 1, 0);
+        m.setAnalysisSettingsJson(m.analysisSettingsJson() + " ");   // donnée persistée hors instantané
+        m.setModified(true);
+        TEST_CHECK(s.undo() && s.hasUnsavedChanges(), "Test 573: réglage changé hors historique → reste à enregistrer après Annuler");
+
+        // e) Ré-enregistrer puis ouvrir dans une autre session : non modifié, rien à annuler
+        TEST_CHECK(s.project().saveProject(file, m, &s.grids(), QImage(), &err) && !s.hasUnsavedChanges(), "Test 573: second enregistrement");
+        TSA::Project::ProjectSession o;
+        TEST_CHECK(o.project().openProject(file, o.model(), &o.grids(), &err) && !o.hasUnsavedChanges() && !o.model().canUndo(),
+                   "Test 573: projet ouvert — non modifié (" << err.toStdString() << ")");
+        std::cout << "[PASS] Test 573: « * » et demande d'enregistrement levés après Ctrl+S ; Annuler / Rétablir suivent l'état enregistré (BUG-074)" << std::endl;
         ++passed;
     }
     return true;

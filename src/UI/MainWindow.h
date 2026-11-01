@@ -5,6 +5,7 @@
 #include <QMainWindow>
 #include "../Model/SelectionQuery.h"
 #include "../Model/ModelCleanup.h"
+#include <QElapsedTimer>
 #include <QImage>
 #include <QPointer>
 #include <functional>
@@ -30,7 +31,7 @@ namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; struct New
 namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; class AnalysisController; class AnalysisEngine; }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Interaction { class ModelingTool; class ModelingToolRegistry; struct ToolContext; }
-namespace TSA::Project { class ProjectManager; class ProjectSession; }
+namespace TSA::Project { class ProjectManager; class ProjectSession; class ProjectDiagnostics; class ProjectManifest; }
 namespace TSA::Viewer { class SelectionManager; }
 namespace TSA::UndoRedo { class CommandManager; }
 namespace TSA::Grid
@@ -329,6 +330,8 @@ private:
     /// Résultats courants du contrôleur d'analyse (copie du pointeur pour les vues de la fenêtre).
     std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
     void onResultsBecameStale();
+    /// Fin de tout calcul (réussi, en échec, annulé) : historique et messages du projet (bloc DIAG).
+    void onAnalysisRunCompleted(const TSA::Analysis::AnalysisContext& context, bool success, const QString& message);
     std::unique_ptr<TSA::Analysis::OpenSeesSolver> m_openSeesSolver;
     TSA::UI::ModelTreeWidget* m_modelTree = nullptr;
     TSA::UI::PropertyPanel*   m_propertyPanel = nullptr;
@@ -359,6 +362,12 @@ private:
     std::map<std::string, QAction*> m_toolActions;
     QAction* m_toolLauncher = nullptr;     // bouton de la commande d'outil en cours
     bool m_toolDialogRunning = false;      // outil piloté par sa fenêtre de paramètres (modale)
+    bool m_restoringProjectState = false;  // résultats relus du .tsa : ne rendent pas le document « à enregistrer »
+    std::unique_ptr<TSA::Project::ProjectDiagnostics> m_diagnostics;   // messages, erreurs, historique des calculs (DIAG)
+    std::unique_ptr<TSA::Project::ProjectManifest> m_manifest;         // bibliothèques, fichiers liés, enregistrements (PMAN)
+    QAction* m_actionLinkedFiles = nullptr;
+    std::string m_runLog;                  // lignes du moteur du calcul en cours (journal de repli)
+    QElapsedTimer m_runTimer;              // durée du calcul en cours
     QAction* m_actionToolInputViewport = nullptr;
     bool m_toolInputInViewport = true;
     void createModelingToolActions();
@@ -711,6 +720,16 @@ public:
     /// résultats ; associé au document s'il a un fichier. Faux si le profil n'existe pas.
     bool applyDisplayProfile(const QString& name);
 private:
+    /// État du projet hors modèle de calcul (docs/PROJECT_STATE_PLAN.md) : relevé dans les blocs du modèle juste avant
+    /// l'enregistrement, appliqué à la fin de l'ouverture. Sans effet sur « modifié » (décision D1).
+    void captureProjectState(const QString& targetPath);
+    void applyProjectState();
+    /// Fichier relié au projet (source d'import, export, document joint) : enregistré dans le manifeste (PMAN).
+    void registerLinkedFile(const QString& role, const QString& path);
+    void reportManifestOnOpen(const QString& projectFile);
+    void onActionLinkedFiles();
+    /// Préférence D5 : chemins absolus des fichiers liés enregistrés (vrai par défaut).
+    static bool storesAbsoluteLinkPaths();
     void syncDisplayActionsFromView();
     void populateMeshViewMenu(QMenu* menu);
     void setupMeshView();

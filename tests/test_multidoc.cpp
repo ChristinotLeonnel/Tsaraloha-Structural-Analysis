@@ -47,6 +47,10 @@
 #include <QJsonDocument>
 #include <QLocalSocket>
 #include <QThread>
+
+#include <algorithm>
+#include <cmath>
+#include <filesystem>
 #include <QProcess>
 #include <QSettings>
 #include <QApplication>
@@ -731,6 +735,82 @@ bool runSuite_MultiDoc(int& passed)
         QCoreApplication::setOrganizationName(savedOrg);
         QCoreApplication::setApplicationName(savedApp);
         std::cout << "[PASS] Test 388: Menus d'affichage partagés (échelles, profils, diagnostic)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 575 : état de vue du document dans le .tsa (bloc VSTA, docs/PROJECT_STATE_PLAN.md étape 2) — affichage,
+    // niveau actif et caméra exacte relevés, enregistrés, relus et rendus à une autre vue à l'identique.
+    // -------------------------------------------------------------------------
+    {
+        using namespace TSA::Viewer;
+        using Block = Model::ProjectStateBlock;
+        QJsonObject charges;
+        for (const auto& p : defaultDisplayProfiles())
+            if (p.name == QStringLiteral("Charges")) charges = p.settings;
+        TEST_CHECK(!charges.isEmpty(), "Test 575: profil fourni « Charges » (pré-condition)");
+
+        Model m;
+        portal(m);
+        OccView view;
+        view.resize(640, 480);
+        view.show();
+        for (int k = 0; k < 20; ++k) QApplication::processEvents(), QThread::msleep(5);
+        view.setModel(&m);
+        view.rebuildAllShapes();
+        applyDisplaySettings(view, charges);
+        view.setActiveLevelElevation(3.0);
+        NamedView cam = view.captureNamedView("x");
+        cam.eye = { 14.0, -9.0, 7.5 };
+        cam.center = { 3.0, 0.0, 2.0 };
+        cam.up = { 0.0, 0.0, 1.0 };
+        cam.scale = 11.0;
+        cam.orthographic = false;
+        TEST_CHECK(view.restoreNamedView(cam), "Test 575: caméra particulière appliquée (pré-condition)");
+
+        const QJsonObject state = captureDocumentViewState(view);
+        bool noAnnotation = true;
+        for (const QString& k : state.value("display").toObject().keys()) noAnnotation = noAnnotation && !k.startsWith("annotation");
+        TEST_CHECK(state.value("schema").toInt() == 1 && noAnnotation && state.value("activeLevelZ").toDouble() == 3.0,
+                   "Test 575: état relevé — schema 1, niveau actif, sans style d'annotation (commun à l'application)");
+
+        // Enregistrement (bloc VSTA), relecture dans un autre modèle, application à une autre vue
+        m.markSaved();
+        m.setProjectStateBlock(Block::ViewState, QJsonDocument(state).toJson(QJsonDocument::Compact).toStdString());
+        TEST_CHECK(!m.isModified(), "Test 575: relever la vue ne rend pas le document modifié (D1)");
+        const auto path = std::filesystem::temp_directory_path() / "tsa_test575.tsa";
+        const QString file = QString::fromStdWString(path.wstring());
+        std::string err;
+        Model back;
+        TEST_CHECK(TSA::IO::TSAProjectIO::saveToFile(file, m, nullptr, &err) && TSA::IO::TSAProjectIO::loadFromFile(file, back, nullptr, &err),
+                   "Test 575: aller-retour .tsa (" << err << ")");
+        std::filesystem::remove(path);
+        OccView other;
+        other.resize(640, 480);
+        other.show();
+        for (int k = 0; k < 20; ++k) QApplication::processEvents(), QThread::msleep(5);
+        other.setModel(&back);
+        other.rebuildAllShapes();
+        other.fitModel();   // comme MainWindow::loadFile, avant l'application de l'état enregistré
+        const QJsonObject reread = QJsonDocument::fromJson(QByteArray::fromStdString(back.projectStateBlock(Block::ViewState))).object();
+        const QStringList warnings = applyDocumentViewState(other, reread);
+        TEST_CHECK(warnings.isEmpty(), "Test 575: application sans avertissement (" << warnings.join("; ").toStdString() << ")");
+        const QJsonObject restored = captureDocumentViewState(other);
+        TEST_CHECK(restored.value("display") == state.value("display"), "Test 575: réglages d'affichage identiques");
+        TEST_CHECK(restored.value("activeLevelZ") == state.value("activeLevelZ"), "Test 575: niveau actif identique");
+        const NamedView a = view.captureNamedView("c"), b = other.captureNamedView("c");
+        double gap = std::abs(a.scale - b.scale);
+        for (int i = 0; i < 3; ++i) gap = std::max({ gap, std::abs(a.eye[i] - b.eye[i]), std::abs(a.center[i] - b.center[i]), std::abs(a.up[i] - b.up[i]) });
+        TEST_CHECK(gap < 1e-9 && a.orthographic == b.orthographic && a.mode2D == b.mode2D,
+                   "Test 575: caméra identique (écart " << gap << ", projection, mode 2D)");
+
+        // Version inconnue : ignorée et signalée, vue inchangée
+        QJsonObject future = state;
+        future["schema"] = 99;
+        const QJsonObject before = captureDocumentViewState(other);
+        TEST_CHECK(applyDocumentViewState(other, future).size() == 1 && captureDocumentViewState(other) == before,
+                   "Test 575: version inconnue — signalée, rien appliqué");
+        std::cout << "[PASS] Test 575: État de vue du document (bloc VSTA) — affichage, niveau, caméra restaurés à l'identique" << std::endl;
         ++passed;
     }
 

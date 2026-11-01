@@ -61,6 +61,15 @@ void Model::clearUndoRedo()
     }
 }
 
+void Model::markSaved()
+{
+    m_isModified = false;
+    if (m_undoManager)
+    {
+        m_undoManager->markClean(*this);
+    }
+}
+
 std::string Model::lastUndoActionName() const
 {
     return m_undoManager ? m_undoManager->lastUndoActionName() : "";
@@ -299,6 +308,7 @@ void Model::clear()
     m_meshProjectJson.clear();
     m_dimensions = TSA::Annotation::DimensionSet();
     m_namedViews = NamedViewSet();
+    for (auto& block : m_projectState) block.clear();
     m_bim = TSA::BIM::BimModel();
     m_bimSignature = ~0ull;
     m_calculationSnapshots.clear();

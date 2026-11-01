@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 // ============================================================
@@ -428,6 +429,28 @@ public:
     }
     /// Chargement d'un projet : vues lues, projet non modifié.
     void loadNamedViews(const NamedViewSet& views) { m_namedViews = views; }
+
+    /// État du projet hors modèle de calcul (docs/PROJECT_STATE_PLAN.md) : un chunk facultatif du .tsa chacun.
+    enum class ProjectStateBlock : int
+    {
+        WindowLayout = 0, ///< UIST : disposition de la fenêtre (JSON)
+        ViewState,        ///< VSTA : vue 3D et affichage (JSON)
+        Results,          ///< RSLT : résultats de calcul (binaire versionné)
+        Diagnostics,      ///< DIAG : messages, erreurs, historique des calculs (JSON)
+        Manifest,         ///< PMAN : bibliothèques, fichiers liés, historique des enregistrements (JSON)
+        Count
+    };
+    /// Données opaques relevées par l'interface à l'enregistrement et rendues à l'ouverture. Ni historique, ni marque
+    /// « modifié », ni révision (décision D1) : l'appelant qui change une donnée persistée (résultats…) marque
+    /// lui-même le document. Vide : bloc absent du fichier.
+    const std::string& projectStateBlock(ProjectStateBlock block) const
+    {
+        return m_projectState[static_cast<size_t>(block)];
+    }
+    void setProjectStateBlock(ProjectStateBlock block, std::string data)
+    {
+        m_projectState[static_cast<size_t>(block)] = std::move(data);
+    }
     /// Notifie les vues (ids vides = toutes) ; document modifié, révision inchangée (résultats conservés).
     void notifyDimensionsChanged(const std::vector<int>& ids);
 
@@ -437,6 +460,12 @@ public:
         m_isModified = modified;
         if (modified) bumpRevision();
     }
+    /// Enregistrement, ouverture ou nouveau projet : non modifié, et l'état actuel devient le point d'enregistrement
+    /// de l'historique (un Annuler / Rétablir qui y ramène rend le document non modifié, BUG-074).
+    void markSaved();
+    /// Annuler / Rétablir : document modifié ou non selon l'état atteint, révision inchangée (le différentiel
+    /// appliqué par l'historique gère déjà la validité des résultats).
+    void setUnsavedFlag(bool modified) noexcept { m_isModified = modified; }
 
     /// Révision du modèle : augmente à chaque modification notifiée (jamais décrémentée, y compris
     /// par Undo). Permet de savoir si des résultats de calcul correspondent encore au modèle.
@@ -515,6 +544,7 @@ private:
     TSA::Grid::GridManager* m_gridManager = nullptr; ///< non possédé (voir setGridManager)
     bool m_isModified = false;
     NamedViewSet m_namedViews;
+    std::array<std::string, static_cast<size_t>(ProjectStateBlock::Count)> m_projectState; ///< blocs d'état (UIST…PMAN)
     std::string m_analysisSettingsJson;
     std::string m_topologySettingsJson;
     std::string m_exchangeExtensionsJson;

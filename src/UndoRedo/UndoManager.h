@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <optional>
 #include <vector>
 #include <string>
 #include <memory>
@@ -50,10 +51,21 @@ public:
     bool canUndo() const noexcept { return !m_undoStack.empty() && m_transactionDepth == 0; }
     bool canRedo() const noexcept { return !m_redoStack.empty() && m_transactionDepth == 0; }
 
+    /// Annuler / Rétablir : le modèle est marqué modifié, ou non modifié s'il revient EXACTEMENT à l'état du dernier
+    /// enregistrement (markClean), sans changer sa révision (BUG-074).
     bool undo(TSA::Model::Model& model);
     bool redo(TSA::Model::Model& model);
 
+    /// Vide l'historique ; le point d'enregistrement (comparaison de contenu) est conservé.
     void clear() noexcept;
+
+    // --- Point d'enregistrement (BUG-074) ------------------------------------
+    /// Mémorise l'état actuel comme celui du fichier (enregistrement, ouverture, nouveau projet) : un Annuler /
+    /// Rétablir qui y ramène rend le document « non modifié ». Coût : un instantané complet.
+    void markClean(const TSA::Model::Model& model);
+    /// L'état décrit par current (et les données hors instantané du modèle) est-il exactement celui du dernier
+    /// enregistrement ? Faux sans point d'enregistrement : comportement prudent (le document reste à enregistrer).
+    bool matchesClean(const TSA::Model::Model& model, const TSA::Model::Model::ModelStateSnapshot& current) const;
 
     std::string lastUndoActionName() const;
     std::string lastRedoActionName() const;
@@ -140,6 +152,9 @@ private:
     HistoryEntry m_transaction; ///< snapshot de début + enregistrements de la transaction ouverte
     OutOfSnapshotState m_transactionOutside; ///< données hors instantané au début de la transaction
     bool m_transactionWasModified = false;   ///< Model::isModified() au début de la transaction
+
+    std::optional<TSA::Model::Model::ModelStateSnapshot> m_cleanSnapshot; ///< état du dernier enregistrement
+    OutOfSnapshotState m_cleanOutside;                                     ///< données hors instantané à ce moment
 };
 
 } // namespace TSA::UndoRedo

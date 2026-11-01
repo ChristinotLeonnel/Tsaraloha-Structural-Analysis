@@ -299,3 +299,23 @@ linéaire » : tout type inconnu est désormais refusé avec un message. Réintr
 validation (banc), et lever les refus. Les vérifications réglementaires restent distinctes de l'analyse : elles ne sont
 pas validées du seul fait que l'analyse est linéaire. Tests 532-537.
 Status: ACTIVE (2026-10-31)
+
+## ADR-026
+Title: Le .tsa garde l'état complet du projet au dernier enregistrement (format 3.1)
+Decision: (2026-11-01, plan docs/PROJECT_STATE_PLAN.md validé par l'utilisateur, branche fix/save-dirty-state)
+- Cinq chunks facultatifs, contenu opaque pour l'IO : `Model::ProjectStateBlock` (UIST disposition, VSTA vue et affichage,
+  RSLT résultats, DIAG messages / erreurs / historique des calculs, PMAN bibliothèques / fichiers liés / enregistrements).
+  Le lecteur affecte tous les blocs (aucun héritage) ; un lecteur 3.0 les ignore. docs/TSA_FILE_FORMAT.md § 5.w.
+- D1 : disposition et vue relevées à l'enregistrement, sans marque « modifié » ni révision ; un calcul (réussi ou en
+  échec) et un fichier lié marquent le document à enregistrer (`Model::setUnsavedFlag`, révision inchangée).
+- D2 : disposition du fichier appliquée à l'ouverture, préférence `Layout/restoreFromProject` (vrai par défaut).
+- D3 : résultats liés au modèle par `TSAProjectIO::modelFingerprint` ; empreinte différente → obsolètes (chemin existant
+  onResultsBecameStale), refusés par la note de calcul. Seuls des résultats à jour sont enregistrés.
+- D4 : matrices de rigidité (AdvancedResults) non enregistrées. D5 : chemins des fichiers liés relatifs au .tsa, absolus
+  facultatifs (`Project/storeAbsoluteLinkPaths`). D6 : historique Annuler non enregistré.
+- Contenu comparé identique en mémoire et après relecture : `Detail::completeCalculationSnapshots`, `openingsChunkJson`,
+  `surfacesChunkJson` partagés par l'enregistrement et l'empreinte.
+Consequences: un projet rouvre sans recalcul, avec sa disposition, sa vue et ses messages. Limites : BUG-175 (contenu comparé
+par Annuler sans données de surfaces, à vérifier), BUG-176 (Annuler après un calcul jusqu'à l'état enregistré lève « * »),
+géométrie de la fenêtre non enregistrée (fenêtre partagée par les onglets de l'AppShell), export de la note de calcul
+non relié au manifeste.

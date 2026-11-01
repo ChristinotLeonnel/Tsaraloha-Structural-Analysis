@@ -246,9 +246,18 @@ Le temps de compilation de TSA est optimisé pour les développeurs C++ exigeant
 * **Détection Automatique des Nœuds Libres** : Signalement visuel proéminent des nœuds orphelins (sphères magenta) et filtrage contextuel (*Tous*, *Libres*, *Appuis*, *Sélectionnés*).
 * **Modes propres** : curseur pour parcourir les formes propres d'une analyse modale.
 
-### 4. 🖥️ Espace Multi-Vues (Multiport)
-* Découpage dynamique de la fenêtre 3D : Vue unique, Double vue horizontale (2H), Double vue verticale (2V), Grille $2 \times 2$ (4 vues simultanées indépendantes), Vue ongletisée.
-* Rendu graphique indépendant par port sans recalcul mécanique.
+### 4. 🖥️ Espace de travail
+* Modèle 3D, éditeur Blueprint, ou les deux côte à côte (partage horizontal ou vertical), sur la même session : un Blueprint exécuté modifie le modèle du document.
+
+### 5. 💾 Un projet qui rouvre dans l'état de son dernier enregistrement
+Le fichier `.tsa` (format 3.1) conserve, en plus du modèle, des charges et des réglages d'analyse :
+* **la disposition de la fenêtre** propre au projet : panneaux, espace de travail, onglet du ruban (désactivable : Fenêtres › Disposition › « Restaurer la disposition enregistrée dans le projet ») ;
+* **la vue 3D et l'affichage** : caméra exacte, mode 2D, plan de travail, calques, diagramme et déformée affichés, niveau actif ;
+* **les résultats du dernier calcul** : rouverts sans recalcul, et marqués obsolètes si le modèle a changé depuis ;
+* **les messages et erreurs** : historique des 20 derniers calculs, messages et journal du moteur du dernier calcul, rapport de validation ;
+* **le manifeste** : bibliothèques requises, fichiers liés (sources d'import, exports, textures, documents joints) contrôlés à chaque ouverture, historique des enregistrements (Fichier › Fichiers liés et bibliothèques…).
+
+Un TSA plus ancien ouvre ces fichiers en ignorant ces blocs. Détails : [docs/TSA_FILE_FORMAT.md](docs/TSA_FILE_FORMAT.md) § 5.w et [docs/PROJECT_STATE_PLAN.md](docs/PROJECT_STATE_PLAN.md).
 
 ---
 
@@ -262,7 +271,7 @@ L'interface graphique est conçue autour d'un **Ruban moderne à 8 onglets conte
 | **2. Modélisation** | **Éléments Filaires (1D)** (Poutre, Poteau, Câble, Barre générique, Treillis automatique), **Éléments Surfaciques (2D)** (Dalle/Plancher, Voile/Mur, Semelle), **Nœuds & Primitives** (Placer Nœud, Cube), **Trame & Niveaux** (Créer Grille, Gestionnaire de Grilles, Gestionnaire d'Étages/Niveaux), **Préréglages**. |
 | **3. Structure** | **Sections & Profilés** (Profilé I/H, Rectangulaire, Circulaire), **Matériaux** (Béton Armé EC2, Acier Structural EC3), **Conditions d'Appuis** (Encastrement, Articulation, Appui Simple), **Bibliothèques & TSALib** (Gestionnaire d'extensions TSALib, Catalogue de sections). |
 | **4. Calcul** | **Actions & Charges** (Force Ponctuelle, Charge Répartie, Moment, Cas & Combinaisons), **Discrétisation** (Générer Maillage EF), **Solveur** (Calcul Statique, Paramètres de Calcul & Solveurs OpenSees). |
-| **5. Résultats** | **Panneau** (Ouvrir le panneau Résultats 3D), **Déformée 3D** (Activer/Masquer déformée), **Diagrammes 3D** ($M_z, M_y, M_x$, $V_z, V_y, N$, Flèches $U_z/U_{res}$, Masquer), **Réactions** (Afficher réactions 3D), **Cadrage** (Cadrer Déformée, Cadrer Résultats, Cadrer Modèle, Cadrer Tout), **Note de Calcul** (Inspecteur NDC), **Espace Multi-Vues** (1 vue, 2H, 2V, 2x2, Onglets). |
+| **5. Résultats** | **Panneau** (Ouvrir le panneau Résultats 3D), **Déformée 3D** (Activer/Masquer déformée), **Diagrammes 3D** ($M_z, M_y, M_x$, $V_z, V_y, N$, Flèches $U_z/U_{res}$, Masquer), **Réactions** (Afficher réactions 3D), **Cadrage** (Cadrer Déformée, Cadrer Résultats, Cadrer Modèle, Cadrer Tout), **Note de Calcul** (Inspecteur NDC) |
 | **6. Édition** | **Sélection** (Mode sélection, Tout sélectionner), **Déplacement** (Déplacement 3D, Translation relative), **Copie & Duplication** (Copie 3D, Rotation 3D), **Repère** (Déplacer l'origine), **Presse-papier** (Copier, Coller), **Suppression** (Supprimer éléments sélectionnés). |
 | **7. Affichage** | **Projections** (Vue 3D, Dessus, Dessous, Face, Arrière, Gauche, Droite, Isométrique, Accueil), **Navigation** (Zoom étendu, Zoom sélection, Zoom fenêtre, Zoom +/-, Historique vue précédente/suivante), **Plans & Coupes** (Vue normale au plan, Plans XY, XZ, YZ, Plan d'étage, Plan personnalisé, Coupes 3D), **Aides Visuelles** (Grille, Niveaux, Règles, Nœuds, Étiquettes, Magnétisme grille/objets, Plein écran), **Fenêtres & Docks** (Arbre du Modèle, Propriétés, Résultats 3D, Visibilité, Console). |
 | **8. Outils** | **Inspection** (Mesurer distance spatiale 3D), **Environnement** (Basculer thème Sombre / Clair), **Documentation** (Aide intégrée, Guide des raccourcis clavier, À propos de TSA). |

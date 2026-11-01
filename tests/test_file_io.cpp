@@ -2,6 +2,13 @@
 #include "App/ProductInfo.h"
 #include "IO/Tsa3d/Tsa3d.h"
 #include "Analysis/Engine/AnalysisContext.h"
+#include "Analysis/ResultsModel.h"
+#include "Project/ProjectDiagnostics.h"
+#include "Project/ProjectManifest.h"
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
+#include "Standards/ModelValidator.h"
 #include <QJsonDocument>
 #include <cstring>
 #include <functional>
@@ -1167,6 +1174,198 @@ bool runSuite_FileIO(int& passed)
         TEST_CHECK(im.ok && !imported.beams().empty() && bits(imported.beams().begin()->second.section()) == ref,
                    "Test 506: TSA3D réimporté : rayon et propriétés identiques (section renommée)");
         std::cout << "[PASS] Test 506: Propriétés des sections enregistrées (format 2.0, migration, refus explicites, TSA3D)" << std::endl;
+        ++passed;
+    }
+
+    // TEST 574 : blocs d'état du projet (format 3.1, docs/PROJECT_STATE_PLAN.md étape 1) — chunks facultatifs UIST, VSTA,
+    // RSLT, DIAG, PMAN : aller-retour exact (binaire compris), sans effet sur l'historique ni sur « modifié », aucun
+    // héritage d'un projet précédent, fichier sans bloc identique à avant.
+    {
+        using Block = Model::ProjectStateBlock;
+        const std::string tmpDir = "./build/test_tsa_data/";
+        std::filesystem::create_directories(tmpDir);
+        const QString file = QString::fromStdString(tmpDir + "test_project_state.tsa");
+        const QString bare = QString::fromStdString(tmpDir + "test_project_state_none.tsa");
+
+        Model m;
+        m.addNode(0, 0, 0);
+        m.markSaved();
+        const auto rev = m.revision();
+        const size_t undo0 = m.undoManager()->undoCount();
+        std::string binary("RSLT\0\x01\xFF\x00 fin", 12);   // octets nuls et non UTF-8 : bloc binaire (résultats)
+        const std::array<std::string, 5> data{ R"({"schema":1,"ribbonTab":2})", R"({"schema":1,"render":"materials"})",
+                                               binary, R"({"schema":1,"warnings":["é"]})", R"({"schema":1,"libraries":[]})" };
+        for (int i = 0; i < 5; ++i) m.setProjectStateBlock(static_cast<Block>(i), data[i]);
+        TEST_CHECK(!m.isModified() && m.revision() == rev && m.undoManager()->undoCount() == undo0,
+                   "Test 574: blocs d'état sans marque « modifié », révision ni entrée Annuler (D1)");
+
+        std::string err;
+        TEST_CHECK(TSAProjectIO::saveToFile(file, m, nullptr, &err), "Test 574: enregistrement avec les 5 blocs (" << err << ")");
+        TSA::IO::TSAFileHeader header;
+        TEST_CHECK(TSA::IO::TSAFileReader::readHeader(file.toStdString(), header) && header.versionMajor == 3 && header.versionMinor >= 1,
+                   "Test 574: format 3.1 au moins (" << header.versionMajor << "." << header.versionMinor << ")");
+
+        Model r;
+        TEST_CHECK(TSAProjectIO::loadFromFile(file, r, nullptr, &err), "Test 574: relecture (" << err << ")");
+        bool same = true;
+        for (int i = 0; i < 5; ++i) same = same && r.projectStateBlock(static_cast<Block>(i)) == data[i];
+        TEST_CHECK(same && r.projectStateBlock(Block::Results).size() == binary.size(), "Test 574: 5 blocs relus à l'identique (binaire compris)");
+
+        // Undo après modification : les blocs ne sont pas restaurés par l'historique (ils ne lui appartiennent pas)
+        r.pushUndoState("Nœud");
+        r.addNode(1, 0, 0);
+        r.setProjectStateBlock(Block::ViewState, "{\"schema\":1,\"render\":\"wire\"}");
+        TEST_CHECK(r.undo() && r.projectStateBlock(Block::ViewState) == "{\"schema\":1,\"render\":\"wire\"}",
+                   "Test 574: Annuler ne touche pas aux blocs d'état");
+
+        // Fichier sans bloc : rien d'écrit, et la relecture vide les blocs d'un projet précédent
+        Model plain;
+        plain.addNode(0, 0, 0);
+        TEST_CHECK(TSAProjectIO::saveToFile(bare, plain, nullptr, &err), "Test 574: enregistrement sans bloc");
+        TEST_CHECK(TSAProjectIO::loadFromFile(bare, r, nullptr, &err), "Test 574: relecture sans bloc dans un modèle déjà rempli");
+        bool empty = true;
+        for (int i = 0; i < 5; ++i) empty = empty && r.projectStateBlock(static_cast<Block>(i)).empty();
+        TEST_CHECK(empty, "Test 574: aucun bloc hérité du projet précédent");
+
+        // clear() (nouveau projet) vide aussi les blocs
+        m.clear();
+        bool cleared = true;
+        for (int i = 0; i < 5; ++i) cleared = cleared && m.projectStateBlock(static_cast<Block>(i)).empty();
+        TEST_CHECK(cleared, "Test 574: Model::clear vide les blocs d'état");
+        std::cout << "[PASS] Test 574: Blocs d'état du projet (UIST, VSTA, RSLT, DIAG, PMAN) — format 3.1, aller-retour exact" << std::endl;
+        ++passed;
+    }
+
+    // TEST 578 : messages, erreurs et historique des calculs (bloc DIAG, docs/PROJECT_STATE_PLAN.md étape 5)
+    {
+        using TSA::Project::ProjectDiagnostics;
+        ProjectDiagnostics d;
+        TSA::Analysis::AnalysisContext ctx;
+        ctx.engineId = "opensees";
+        ctx.loadCaseIds = { 1, 2 };
+        TSA::Analysis::ResultsModel ok;
+        ok.executionMetadata().solverEngine = "OpenSees";
+        ok.executionMetadata().solverVersion = "3.8.0";
+        ok.executionMetadata().warnings = { "élément court" };
+        ok.executionMetadata().preparationMessages = { "voile exclu" };
+        ok.setCaseOrComboName("ELU 1");
+        for (int i = 0; i < 25; ++i)
+            d.recordCalculation(ctx, true, "ok", &ok, "", 120.0 + i, "empreinte" + std::to_string(i), "2026-11-01T10:" + std::to_string(10 + i));
+        TEST_CHECK(d.history().size() == ProjectDiagnostics::kMaxRecords && d.history().front().modelFingerprint == "empreinte5" &&
+                       d.history().back().engine == "OpenSees 3.8.0" && d.history().back().loadSelection == "ELU 1",
+                   "Test 578: historique borné aux 20 derniers calculs (moteur, version, cas)");
+        TEST_CHECK(d.lastMessages().size() == 2 && d.history().back().warnings == 2, "Test 578: messages du dernier calcul réussi (préparation, avertissements)");
+
+        // Échec : message d'erreur, journal du moteur limité à ses 500 dernières lignes
+        std::string log;
+        for (int i = 1; i <= 800; ++i) log += "ligne " + std::to_string(i) + "\n";
+        d.recordCalculation(ctx, false, "matrice singulière", nullptr, log, 35.0, "empreinte-x", "2026-11-01T11:00:00Z");
+        const std::string& kept = d.lastEngineLog();
+        TEST_CHECK(!d.history().back().success && d.lastMessages() == std::vector<std::string>{ "erreur : matrice singulière" } &&
+                       kept.rfind("ligne 301\n", 0) == 0 && kept.find("ligne 800") != std::string::npos && kept.find("ligne 300\n") == std::string::npos,
+                   "Test 578: échec — message d'erreur, 500 dernières lignes du journal (" << kept.substr(0, 12) << "…)");
+
+        Model v;
+        v.addNode(0, 0, 0);
+        const auto report = TSA::Standards::ModelValidator::validate(v);
+        d.setValidation(report);
+        TEST_CHECK(d.validation().size() == report.issues().size(), "Test 578: rapport de validation relevé (" << report.issues().size() << " anomalie(s))");
+
+        ProjectDiagnostics back;
+        std::string err;
+        TEST_CHECK(back.fromJson(d.toJson(), &err) && back == d, "Test 578: aller-retour JSON identique (" << err << ")");
+        ProjectDiagnostics untouched = back;
+        TEST_CHECK(!untouched.fromJson(R"({"schema":2,"calculations":[]})", &err) && untouched == back, "Test 578: version inconnue refusée, contenu inchangé");
+
+        // Dans le .tsa (bloc DIAG)
+        const QString file = QString::fromStdString(std::string("./build/test_tsa_data/test_diagnostics.tsa"));
+        std::filesystem::create_directories("./build/test_tsa_data/");
+        v.setProjectStateBlock(Model::ProjectStateBlock::Diagnostics, d.toJson());
+        Model r;
+        ProjectDiagnostics reread;
+        TEST_CHECK(TSAProjectIO::saveToFile(file, v, nullptr, &err) && TSAProjectIO::loadFromFile(file, r, nullptr, &err) &&
+                       reread.fromJson(r.projectStateBlock(Model::ProjectStateBlock::Diagnostics), &err) && reread == d,
+                   "Test 578: historique et messages relus du .tsa à l'identique (" << err << ")");
+        std::cout << "[PASS] Test 578: Messages, erreurs et historique des calculs (bloc DIAG)" << std::endl;
+        ++passed;
+    }
+
+    // TEST 579 : manifeste du projet (bloc PMAN, docs/PROJECT_STATE_PLAN.md étape 6) — fichiers liés relatifs au .tsa,
+    // présents / modifiés / introuvables, projet déplacé sans chemins absolus (D5), bibliothèques, enregistrements.
+    {
+        using namespace TSA::Project;
+        QTemporaryDir tmp;
+        TEST_CHECK(tmp.isValid(), "Test 579: dossier temporaire");
+        QDir root(tmp.path());
+        root.mkpath("etude/sources");
+        auto write = [](const QString& path, const QByteArray& data) {
+            QFile f(path);
+            return f.open(QIODevice::WriteOnly) && f.write(data) == data.size();
+        };
+        const QString ifc = root.filePath("etude/sources/batiment.ifc"), note = root.filePath("etude/note.pdf");
+        const QString project = root.filePath("etude/projet.tsa");
+        TEST_CHECK(write(ifc, "ISO-10303-21; contenu"), "Test 579: fichier IFC (pré-condition)");
+        TEST_CHECK(write(note, "%PDF-1.7"), "Test 579: document (pré-condition)");
+
+        ProjectManifest m;
+        TEST_CHECK(m.registerLink("import-ifc", ifc.toStdString(), project.toStdString()) &&
+                       m.registerLink("attachment", note.toStdString(), project.toStdString()) &&
+                       m.registerLink("import-ifc", ifc.toStdString(), project.toStdString()) &&   // même lien : mis à jour
+                       !m.registerLink("texture", root.filePath("absente.png").toStdString(), project.toStdString()),
+                   "Test 579: liens enregistrés (doublon fusionné, fichier absent refusé)");
+        TEST_CHECK(m.links().size() == 2 && m.links()[0].relativePath == "sources/batiment.ifc" && !m.links()[0].sha256.empty(),
+                   "Test 579: chemin relatif au .tsa, empreinte relevée (" << m.links()[0].relativePath << ")");
+        auto statusOf = [&](const ProjectManifest& pm, const QString& tsa, std::size_t i) { return pm.checkLinks(tsa.toStdString())[i].status; };
+        TEST_CHECK(statusOf(m, project, 0) == LinkStatus::Present, "Test 579: fichier présent et inchangé");
+        TEST_CHECK(write(ifc, "ISO-10303-21; contenu modifié"), "Test 579: modification (pré-condition)");
+        TEST_CHECK(statusOf(m, project, 0) == LinkStatus::Modified, "Test 579: fichier modifié depuis son enregistrement détecté");
+
+        // Projet transmis sans chemins absolus (D5) et déplacé avec ses fichiers : retrouvés par les chemins relatifs
+        m.registerLink("import-ifc", ifc.toStdString(), project.toStdString());
+        m.updateLinkPaths(project.toStdString(), false);
+        TEST_CHECK(m.links()[0].absolutePath.empty() && m.links()[1].absolutePath.empty(), "Test 579: chemins absolus effacés (D5)");
+        TEST_CHECK(root.rename("etude", "etude_deplacee"), "Test 579: dossier du projet déplacé (pré-condition)");
+        const QString moved = root.filePath("etude_deplacee/projet.tsa");
+        TEST_CHECK(statusOf(m, moved, 0) == LinkStatus::Present && statusOf(m, moved, 1) == LinkStatus::Present,
+                   "Test 579: projet déplacé — fichiers liés retrouvés par leur chemin relatif");
+        QFile::remove(root.filePath("etude_deplacee/note.pdf"));
+        TEST_CHECK(statusOf(m, moved, 1) == LinkStatus::Missing, "Test 579: fichier supprimé — introuvable");
+
+        // Bibliothèques requises (références de définitions du modèle)
+        Model model;
+        TSA::ExtensionSystem::DefinitionReference ref;
+        ref.libraryId = "org.exemple.acier";
+        ref.libraryVersion = TSA::ExtensionSystem::SemanticVersion(1, 2, 0);
+        ref.definitionId = "steel.s355";
+        ref.definitionVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+        model.setCalculationSnapshot("material:S355", TSA::ExtensionSystem::MechanicalSnapshot {}, ref);
+        m.collectLibraries(model);
+        TEST_CHECK(m.libraries().size() == 1 && m.libraries()[0].id == "org.exemple.acier" && m.libraries()[0].version == "1.2.0" &&
+                       m.libraries()[0].definitions == std::vector<std::string> { "steel.s355" },
+                   "Test 579: bibliothèque requise relevée (" << (m.libraries().empty() ? std::string() : m.libraries()[0].version) << ")");
+        TEST_CHECK(m.checkLibraries({ { "org.exemple.acier", "1.2.0" } })[0].sameVersion() &&
+                       !m.checkLibraries({ { "org.exemple.acier", "2.0.0" } })[0].sameVersion() &&
+                       m.checkLibraries({ { "org.exemple.acier", "2.0.0" } })[0].installed && !m.checkLibraries({})[0].installed,
+                   "Test 579: bibliothèque installée, d'une autre version, absente");
+
+        for (int i = 0; i < 55; ++i) m.recordSave({ "2026-11-01T12:" + std::to_string(i), "Ingénieur", "TSA 0.1.0", "3.1" });
+        m.setProperties({ "Bâtiment R+4", "Commune", "AFF-2026-12", "APD" });
+        TEST_CHECK(m.saves().size() == ProjectManifest::kMaxSaves && m.saves().front().timestamp == "2026-11-01T12:5",
+                   "Test 579: historique borné aux 50 derniers enregistrements");
+
+        ProjectManifest back;
+        std::string err;
+        TEST_CHECK(back.fromJson(m.toJson(), &err) && back == m, "Test 579: aller-retour JSON identique (" << err << ")");
+        ProjectManifest untouched = back;
+        TEST_CHECK(!untouched.fromJson(R"({"schema":3})", &err) && untouched == back, "Test 579: version inconnue refusée, contenu inchangé");
+        model.setProjectStateBlock(Model::ProjectStateBlock::Manifest, m.toJson());
+        const QString tsa = root.filePath("manifeste.tsa");
+        Model reread;
+        ProjectManifest fromFile;
+        TEST_CHECK(TSAProjectIO::saveToFile(tsa, model, nullptr, &err) && TSAProjectIO::loadFromFile(tsa, reread, nullptr, &err) &&
+                       fromFile.fromJson(reread.projectStateBlock(Model::ProjectStateBlock::Manifest), &err) && fromFile == m,
+                   "Test 579: manifeste relu du .tsa à l'identique (" << err << ")");
+        std::cout << "[PASS] Test 579: Manifeste du projet (bloc PMAN) — fichiers liés, bibliothèques, enregistrements" << std::endl;
         ++passed;
     }
 

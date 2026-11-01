@@ -227,6 +227,46 @@ QStringList applyDisplaySettings(OccView& view, const QJsonObject& s)
     return unknown;
 }
 
+QJsonObject captureDocumentViewState(const OccView& view)
+{
+    QJsonObject display = captureDisplaySettings(view);
+    for (const QString& key : display.keys())
+        if (key.startsWith(QLatin1String("annotation"))) display.remove(key);   // style commun à l'application
+
+    TSA::Model::NamedViewSet camera;
+    camera.views.push_back(view.captureNamedView("current"));
+    return { { "schema", 1 },
+             { "camera", QJsonDocument::fromJson(QByteArray::fromStdString(camera.toJson())).object() },
+             { "display", display },
+             { "activeLevelZ", view.activeLevelElevation() } };
+}
+
+QStringList applyDocumentViewState(OccView& view, const QJsonObject& state)
+{
+    QStringList warnings;
+    const int schema = state.value("schema").toInt(0);
+    if (schema != 1)
+    {
+        warnings << QStringLiteral("état de vue : version %1 inconnue, ignoré").arg(schema);
+        return warnings;
+    }
+    QJsonObject display = state.value("display").toObject();
+    for (const QString& key : display.keys())
+        if (key.startsWith(QLatin1String("annotation"))) display.remove(key);
+    for (const QString& unknown : applyDisplaySettings(view, display))
+        warnings << QStringLiteral("réglage d'affichage inconnu : %1").arg(unknown);
+    if (state.contains("activeLevelZ") && state.value("activeLevelZ").isDouble())
+        view.setActiveLevelElevation(state.value("activeLevelZ").toDouble());
+    // Caméra en dernier : la vue nommée rétablit aussi le mode 2D et le plan de travail.
+    std::string cameraWarnings;
+    const auto camera = TSA::Model::NamedViewSet::fromJson(
+        QJsonDocument(state.value("camera").toObject()).toJson(QJsonDocument::Compact).toStdString(), &cameraWarnings);
+    if (camera.views.empty() || !view.restoreNamedView(camera.views.front()))
+        warnings << QStringLiteral("caméra enregistrée invalide, vue par défaut conservée");
+    if (!cameraWarnings.empty()) warnings << QString::fromStdString(cameraWarnings);
+    return warnings;
+}
+
 QList<DisplayProfile> defaultDisplayProfiles()
 {
     const QJsonObject allCats { { "beams", true }, { "columns", true }, { "slabs", true }, { "walls", true },

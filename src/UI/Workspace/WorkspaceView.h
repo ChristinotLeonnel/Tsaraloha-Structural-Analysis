@@ -15,6 +15,7 @@
 #include <QList>
 
 class QSettings;
+class QJsonObject;
 class QSplitter;
 
 namespace TSA::Project
@@ -56,6 +57,11 @@ public:
 
     /// Disposition par défaut : Modèle 3D, partage horizontal à parts égales, panneaux de l'éditeur affichés.
     void resetLayout();
+    /// État JSON (mode, orientation, tailles du partage, disposition de l'éditeur en base64) : bloc UIST du .tsa et,
+    /// par saveState / restoreState, groupe « Workspace » des réglages de l'application (une seule logique).
+    QJsonObject stateJson() const;
+    /// Valeurs inconnues ou illisibles ignorées (disposition par défaut pour ce qu'elles décrivaient) ; jamais bloquant.
+    void applyStateJson(const QJsonObject& state);
     /// Groupe « Workspace » des réglages de l'application.
     void saveState(QSettings& settings) const;
     /// Valeurs inconnues ou illisibles ignorées (disposition par défaut pour ce qu'elles décrivaient) ; jamais bloquant.

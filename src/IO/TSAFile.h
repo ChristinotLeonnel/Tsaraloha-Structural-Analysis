@@ -182,6 +182,10 @@ private:
 class TSAProjectIO
 {
 public:
+    /// Empreinte du contenu persistant du modèle (SHA-256 hexadécimal de snapshotContentBytes, éléments, charges, BIM,
+    /// références de calcul) : relie des résultats enregistrés au modèle qu'ils décrivent (bloc RSLT, décision D3).
+    static std::string modelFingerprint(const TSA::Model::Model& model);
+
     static bool saveProject(const QString& filePath,
                             const TSA::Model::Model& model,
                             const TSA::Grid::GridManager* gridManager = nullptr,

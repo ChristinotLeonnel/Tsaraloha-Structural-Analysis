@@ -1,10 +1,42 @@
 # Known Issues
 
-Last Updated: 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert.
+Last Updated: 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert.
 
 ## Ouverts
 
 Audit technique du 2026-10-31 : détail, reproduction et correction de BUG-148 à BUG-168 dans docs/audit/2026-10-31/TSA_BUG_REGISTER.md.
+
+## BUG-175
+Status: OPEN (MEDIUM, à vérifier, relu dans le code le 2026-11-01, non reproduit) — contenu comparé par Annuler incomplet :
+`TSAFileWriter::snapshotContentBytes` n'écrit pas les charges surfaciques (dans `loadSnapshot` mais écrites par le chunk SURF), ni
+les ouvertures, formulations et appuis de bord des surfaces, ni les propriétés des sections (chunks OPNG, SURF, SECP construits à
+part). `UndoManager::sameContent` pourrait donc juger identiques deux états qui ne diffèrent que par ces données, et une
+transaction ne changeant qu'elles ne créerait aucune entrée Annuler — sauf si `ModelDiff` (accélérateur) les détecte : non vérifié.
+L'empreinte des résultats enregistrés (TSAProjectIO::modelFingerprint) les inclut déjà (étape 4). Piste : écrire ces données dans
+snapshotContentBytes depuis l'instantané (fonctions Detail::openingsChunkJson / surfacesChunkJson à rendre utilisables sur un
+instantané). Test à écrire : transaction qui ne change qu'une charge surfacique.
+Related files: src/IO/TSAFile.cpp (snapshotContentBytes), src/UndoRedo/UndoManager.cpp (sameContent)
+
+## BUG-176
+Status: OPEN (LOW, limite connue de l'étape 4, 2026-11-01) — après un calcul, le document est marqué « à enregistrer » (résultats du
+bloc RSLT) ; mais Annuler jusqu'à l'état enregistré le rend « non modifié » (UndoManager::matchesClean ne compare que le modèle) alors
+que les nouveaux résultats ne sont pas dans le fichier. Fermer sans enregistrer perd alors ces résultats (recalculables), jamais une
+donnée du modèle. Piste : mémoriser au point d'enregistrement une marque des résultats enregistrés et la comparer aussi.
+Related files: src/UndoRedo/UndoManager.cpp, src/UI/MainWindow_Tools.cpp (onAnalysisResultsChanged)
+
+## BUG-174
+Status: OPEN (LOW, intermittent, vu une fois le 2026-11-01) — suite `display`, test 371 (« aucun objet de résultat orphelin ») :
+36 objets affichés pour 35 attendus (`shown == withModel + d1.total()`, tests/test_display*.cpp:251), suite terminée en 1,6 s au lieu
+de 7 s, pendant une suite complète (Release, branche fix/save-dirty-state, étape 2). Relancée seule : 5/5 réussie ; suite complète
+précédente : réussie. Aucun lien établi avec l'étape 2 (fonctions ajoutées dans DisplayProfile.cpp, appelées seulement par MainWindow,
+non lié aux tests). À surveiller : capturer la sortie complète si cela se reproduit.
+
+## BUG-173
+Status: OPEN (LOW, environnement, constaté le 2026-11-01) — suite `benchmarks`, test 367 en échec sur un poste sans le moteur Fem3D
+(dépôt voisin `../3DDesplacement` absent) : 1 140 vérifications réussies, 0 en échec, mais 957 « non disponibles » (13 cas fem3d ignorés,
+« moteur indisponible ») et le test exige `checksUnavailable() == 0`. Sans lien avec le code testé. Pistes : déclarer `fem3d` dans
+`--available` du lanceur (run_test_suites.py) et ignorer ses cas quand il manque, ou cloner 3DDesplacement.
+Related files: tests/test_benchmarks.cpp:71, tools/ci/run_test_suites.py
 
 ## BUG-171
 Status: OPEN (MEDIUM, relu dans le code le 2026-10-31, non reproduit par un test) — symétrie sans copie (Model::mirrorElements, keepOriginal = false) :
@@ -367,17 +399,6 @@ Status: OPEN — constaté le 2026-10-10 pendant la vérification des cotations 
 `OccView::detectedPreferringModel` à tout objet détecté non enregistré.
 Related files: src/Viewer/OccView_Events.cpp, src/Viewer/OccView_Shapes.cpp
 
-## BUG-074
-Area: Document / état « modifié »
-Problem: après Ctrl+S, le titre garde « * » et la fermeture redemande d'enregistrer tant que l'historique Annuler
-n'est pas vide (`ProjectSession::hasUnsavedChanges` = `isModified() || canUndo()`).
-Reproduction: modifier le modèle, Ctrl+S → « Enregistré : … » dans la barre d'état, mais titre « * » ; fermer →
-« Enregistrer les modifications ? ».
-Impact: LOW (confusion, demande d'enregistrement superflue ; aucune perte de données)
-Status: OPEN — constaté le 2026-10-10 pendant la vérification de la topologie ; correction proposée : mémoriser la
-profondeur de l'historique au dernier enregistrement.
-Related files: src/Project/ProjectSession.cpp, src/UI/MainWindow.cpp
-
 ## BUG-002
 Area: Calculation
 Problem: Dalles et voiles ne sont pas transmis au calcul (`CalculationSnapshot` /
@@ -466,13 +487,6 @@ est corrigé (voir FIX-2026-10-06-RESIZE).
 Impact: LOW
 Status: OPEN (à vérifier sur Windows 11 / multi-écrans)
 Related files: src/UI/Shell/AppShell.cpp
-
-## BUG-013
-Area: .tsa
-Problem: les résultats de calcul (chunk `RSLT`) ne sont pas enregistrés : un projet rouvert doit être recalculé.
-Les paramètres d'analyse, eux, sont persistés depuis le 2026-10-07 (chunk `SETT`, format 1.4, test 189).
-Impact: LOW
-Status: PARTIAL (paramètres FIXED, résultats OPEN)
 
 ## BUG-036
 Area: Build (cache CMake local)

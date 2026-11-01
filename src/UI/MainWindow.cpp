@@ -4,6 +4,7 @@
 #include "Dock/AnalysisDataDock.h"
 #include "MainWindow.h"
 #include "../Viewer/DisplayProfile.h"
+#include "WindowManager/ProjectLayoutState.h"
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
 #include "../Model/Model.h"
@@ -56,6 +57,9 @@
 #include "../Library/LibraryManager.h"
 #include "../Project/ProjectManager.h"
 #include "../Project/ProjectSession.h"
+#include "../Project/ProjectDiagnostics.h"
+#include "../Project/ProjectManifest.h"
+#include "../Standards/ModelValidator.h"
 #include "../IO/TSAFile.h"
 #include "../UndoRedo/CommandManager.h"
 #include "../UndoRedo/EditTransaction.h"
@@ -67,6 +71,8 @@
 #include "../Project/ProjectTemplates.h"
 
 #include <QMetaMethod>
+#include <QJsonDocument>
+#include <QJsonParseError>
 #include <QMenuBar>
 #include <QToolBar>
 #include <QStatusBar>
@@ -78,6 +84,7 @@
 #include <QFileDialog>
 #include <QDir>
 #include <QFileInfo>
+#include <QDateTime>
 #include <QElapsedTimer>
 #include <QTimer>
 #include <QSignalBlocker>
@@ -119,6 +126,16 @@ MainWindow::MainWindow(QWidget* parent)
     m_analysis = &m_session->analysis();
     connect(m_analysis, &TSA::Analysis::AnalysisController::resultsChanged, this, &MainWindow::onAnalysisResultsChanged);
     connect(m_analysis, &TSA::Analysis::AnalysisController::resultsBecameStale, this, &MainWindow::onResultsBecameStale);
+    // Historique et messages de chaque calcul (bloc DIAG du .tsa) : tous les calculs, interactifs ou non (console, Blueprint, MCP).
+    m_diagnostics = std::make_unique<TSA::Project::ProjectDiagnostics>();
+    m_manifest = std::make_unique<TSA::Project::ProjectManifest>();
+    connect(m_analysis, &TSA::Analysis::AnalysisController::started, this, [this](const QString&) {
+        m_runLog.clear();
+        m_runTimer.start();
+    });
+    connect(m_analysis, &TSA::Analysis::AnalysisController::logMessage, this,
+            [this](const QString& line) { m_runLog += line.toStdString() + '\n'; });
+    connect(m_analysis, &TSA::Analysis::AnalysisController::runCompleted, this, &MainWindow::onAnalysisRunCompleted);
 
     // Grilles rattachées au modèle : leurs définitions entrent dans l'historique Annuler (BUG-003).
     m_model->setGridManager(m_gridManager);
@@ -1556,6 +1573,8 @@ void MainWindow::resetWorkspace(TSA::UI::ProjectTemplate projectTemplate)
     if (m_projectManager && m_model)
     {
         m_projectManager->newProject(*m_model, m_gridManager);
+        if (m_diagnostics) m_diagnostics->clear();   // historique des calculs propre au projet
+        if (m_manifest) m_manifest->clear();
     }
     else if (m_model)
     {
@@ -1711,6 +1730,8 @@ bool MainWindow::saveFile(const QString& path)
     if (!m_model)
         return false;
 
+    captureProjectState(targetPath);   // vue, disposition, résultats, messages, manifeste au moment de l'enregistrement
+
     // Capture de la vue 3D pour la miniature Windows Explorer
     QImage thumbnail;
     if (m_occView)
@@ -1864,6 +1885,7 @@ bool MainWindow::loadFile(const QString& path)
             .arg(fileName));
     }
 
+    applyProjectState();   // état du dernier enregistrement (après le cadrage et le profil d'affichage du fichier)
     onProjectFileOpened(path);
 
     TSA_LOG_INFO("MainWindow", "ProjectLoadTiming",
@@ -1873,6 +1895,180 @@ bool MainWindow::loadFile(const QString& path)
                  std::to_string(m_model->beams().size() + m_model->columns().size()) + " barres)");
     TSA::Diagnostics::Logger::instance().flush(); // événement ponctuel : rendre la mesure lisible immédiatement
     return true;
+}
+
+void MainWindow::onAnalysisRunCompleted(const TSA::Analysis::AnalysisContext& context, bool success, const QString& message)
+{
+    if (!m_diagnostics || !m_model || !m_analysis)
+        return;
+    const TSA::Analysis::ResultsModel* results = success ? m_analysis->results().get() : nullptr;
+    std::string log = results ? results->journalLog() : m_analysis->lastRun().results.journalLog();
+    if (log.empty()) log = m_runLog;   // calcul sans journal du moteur : lignes reçues pendant le calcul
+    const double ms = results && results->executionMetadata().executionDurationMs > 0.0
+                          ? results->executionMetadata().executionDurationMs
+                          : (m_runTimer.isValid() ? static_cast<double>(m_runTimer.elapsed()) : 0.0);
+    m_diagnostics->recordCalculation(context, success, message.toStdString(), results, log, ms,
+                                     TSA::IO::TSAProjectIO::modelFingerprint(*m_model),
+                                     QDateTime::currentDateTimeUtc().toString(Qt::ISODate).toStdString());
+    m_runTimer.invalidate();
+    if (!success)
+    {
+        // Un calcul réussi marque déjà le document (résultats) ; un échec aussi : son diagnostic est enregistré avec le projet.
+        m_model->setUnsavedFlag(true);
+        updateWindowTitle();
+    }
+}
+
+void MainWindow::captureProjectState(const QString& targetPath)
+{
+    if (!m_model || !m_occView)
+        return;
+    using Block = TSA::Model::Model::ProjectStateBlock;
+    const QJsonObject view = TSA::Viewer::captureDocumentViewState(*m_occView);
+    m_model->setProjectStateBlock(Block::ViewState, QJsonDocument(view).toJson(QJsonDocument::Compact).toStdString());
+    // Résultats (bloc RSLT) : seulement s'ils sont à jour du modèle enregistré ; des résultats obsolètes ne sont pas
+    // enregistrés (aucun bloc : le projet rouvert est à recalculer, comme avant le format 3.1).
+    std::string results;
+    if (m_analysis && m_analysis->results() && m_analysis->results()->hasResults() && m_analysis->resultsUpToDate())
+        results = TSA::Analysis::encodeStoredResults(*m_analysis->results(), TSA::IO::TSAProjectIO::modelFingerprint(*m_model));
+    m_model->setProjectStateBlock(Block::Results, std::move(results));
+    // Messages, erreurs, historique des calculs et rapport de validation à l'enregistrement (bloc DIAG).
+    if (m_diagnostics)
+    {
+        m_diagnostics->setValidation(TSA::Standards::ModelValidator::validate(*m_model));
+        m_model->setProjectStateBlock(Block::Diagnostics, m_diagnostics->empty() ? std::string() : m_diagnostics->toJson());
+    }
+    // Manifeste (bloc PMAN) : textures des matériaux, bibliothèques requises, chemins des liens pour l'emplacement du
+    // .tsa (Enregistrer sous), entrée de l'historique des enregistrements.
+    if (m_manifest)
+    {
+        const std::string project = targetPath.toStdString();
+        auto addTexture = [&](const TSA::Model::Material& mat) {
+            if (!mat.visual.texturePath.empty()) m_manifest->registerLink("texture", mat.visual.texturePath, project);
+        };
+        for (const auto& [id, b] : m_model->beams()) addTexture(b.material());
+        for (const auto& [id, c] : m_model->columns()) addTexture(c.material());
+        for (const auto& [id, s] : m_model->slabs()) addTexture(s.material());
+        for (const auto& [id, w] : m_model->walls()) addTexture(w.material());
+        for (const auto& [id, f] : m_model->foundations()) addTexture(f.material());
+        m_manifest->collectLibraries(*m_model);
+        m_manifest->updateLinkPaths(project, storesAbsoluteLinkPaths());
+        TSA::Project::SaveRecord save;
+        save.timestamp = QDateTime::currentDateTimeUtc().toString(Qt::ISODate).toStdString();
+        save.author = m_projectManager ? m_projectManager->author().toStdString() : std::string();
+        save.application = (TSA::Product::name() + QLatin1Char(' ') + TSA::Product::version()).toStdString();
+        save.format = std::to_string(TSA::IO::TSA_FORMAT_VERSION_MAJOR) + "." + std::to_string(TSA::IO::TSA_FORMAT_VERSION_MINOR);
+        m_manifest->recordSave(save);
+        m_model->setProjectStateBlock(Block::Manifest, m_manifest->toJson());
+    }
+    if (m_windowManager)
+    {
+        // Panneaux masqués par le mode Blueprint ou le mode focus : enregistrés comme ouverts, sans être réaffichés.
+        QList<const QDockWidget*> hidden;
+        for (const QPointer<QDockWidget>& dock : std::as_const(m_docksHiddenByWorkspace))
+            if (dock) hidden.append(dock.data());
+        const QJsonObject layout = TSA::UI::captureProjectLayout(*m_windowManager, m_workspace, m_ribbonBar ? m_ribbonBar->tabBar() : nullptr, hidden);
+        m_model->setProjectStateBlock(Block::WindowLayout, QJsonDocument(layout).toJson(QJsonDocument::Compact).toStdString());
+    }
+}
+
+void MainWindow::applyProjectState()
+{
+    if (!m_model || !m_occView)
+        return;
+    using Block = TSA::Model::Model::ProjectStateBlock;
+    // 0. Messages, erreurs et historique des calculs (bloc DIAG) : propres au projet ouvert, résumés dans la console.
+    if (m_diagnostics)
+    {
+        m_diagnostics->clear();
+        std::string error;
+        if (const std::string& diag = m_model->projectStateBlock(Block::Diagnostics); !diag.empty() && !m_diagnostics->fromJson(diag, &error))
+            TSA_LOG_WARN("MainWindow", "ProjectDiagnostics", "diagnostics enregistrés ignorés : " + error);
+        if (m_consoleDock && !m_diagnostics->history().empty())
+        {
+            const auto& last = m_diagnostics->history().back();
+            m_consoleDock->appendLog(tr("Dernier calcul enregistré avec le projet : %1, %2 — %3%4")
+                                         .arg(QString::fromStdString(last.timestamp), QString::fromStdString(last.engine.empty() ? last.engineId : last.engine),
+                                              last.success ? tr("réussi") : tr("en échec"),
+                                              last.message.empty() ? QString() : QStringLiteral(" (%1)").arg(QString::fromStdString(last.message))),
+                                     last.success ? "SYS" : "WARN");
+            for (const auto& m : m_diagnostics->lastMessages())
+                m_consoleDock->appendLog(QString::fromStdString(m), "WARN");
+        }
+        std::size_t problems = 0;
+        for (const auto& v : m_diagnostics->validation()) problems += v.severity != "info";
+        if (m_consoleDock && problems > 0)
+            m_consoleDock->appendLog(tr("%n anomalie(s) de validation relevée(s) au dernier enregistrement.", nullptr, static_cast<int>(problems)), "WARN");
+    }
+    // 0 bis. Manifeste (bloc PMAN) : fichiers liés et bibliothèques contrôlés, résumé dans la console.
+    if (m_manifest)
+    {
+        m_manifest->clear();
+        std::string error;
+        if (const std::string& pman = m_model->projectStateBlock(Block::Manifest); !pman.empty() && !m_manifest->fromJson(pman, &error))
+            TSA_LOG_WARN("MainWindow", "ProjectManifest", "manifeste enregistré ignoré : " + error);
+        reportManifestOnOpen(m_projectManager ? m_projectManager->currentFilePath() : QString());
+    }
+    // 1. Résultats du dernier calcul (bloc RSLT) : publiés comme après un calcul ; empreinte différente du modèle relu
+    //    (modèle modifié hors de TSA, migration) → périmés, comme après une modification (décision D3).
+    if (const std::string& block = m_model->projectStateBlock(Block::Results); !block.empty() && m_analysis)
+    {
+        auto results = std::make_shared<TSA::Analysis::ResultsModel>();
+        std::string fingerprint, error;
+        if (TSA::Analysis::decodeStoredResults(block, *results, fingerprint, &error))
+        {
+            const bool current = fingerprint == TSA::IO::TSAProjectIO::modelFingerprint(*m_model);
+            m_restoringProjectState = true;
+            m_analysis->publishResults(results);
+            m_restoringProjectState = false;
+            if (!current)
+            {
+                results->invalidate();
+                onResultsBecameStale();
+                TSA_LOG_WARN("MainWindow", "ProjectResults", "résultats enregistrés d'un autre état du modèle : marqués obsolètes");
+            }
+            else if (m_consoleDock)
+                m_consoleDock->appendLog(tr("Résultats du dernier calcul rétablis (enregistrés avec le projet)."), "SYS");
+        }
+        else
+            TSA_LOG_WARN("MainWindow", "ProjectResults", "résultats enregistrés illisibles, ignorés : " + error);
+    }
+    // 2. Disposition (panneaux, espace de travail, ruban), si l'utilisateur ne l'a pas désactivée (décision D2).
+    const std::string& layoutState = m_model->projectStateBlock(Block::WindowLayout);
+    if (!layoutState.empty() && m_windowManager && TSA::UI::WindowManager::restoresProjectLayout())
+    {
+        const QJsonDocument layoutDoc = QJsonDocument::fromJson(QByteArray::fromStdString(layoutState));
+        if (layoutDoc.isObject())
+        {
+            restoreContextualDocks();   // masquages temporaires du projet précédent levés avant d'appliquer
+            for (const QString& w : TSA::UI::applyProjectLayout(*m_windowManager, m_workspace, m_ribbonBar ? m_ribbonBar->tabBar() : nullptr, layoutDoc.object()))
+                TSA_LOG_WARN("MainWindow", "ProjectLayout", w.toStdString());
+            {
+                QSignalBlocker block(m_actionWorkspaceVertical);
+                m_actionWorkspaceVertical->setChecked(m_workspace && m_workspace->splitOrientation() == Qt::Vertical);
+            }
+            onWorkspaceModeChanged();   // comme restoreWorkspaceState : panneaux du mode Blueprint, actions
+        }
+        else
+            TSA_LOG_WARN("MainWindow", "ProjectLayout", "disposition enregistrée illisible, ignorée");
+    }
+
+    const std::string& viewState = m_model->projectStateBlock(Block::ViewState);
+    if (viewState.empty())
+        return;   // projet antérieur au format 3.1 : cadrage et profil d'affichage habituels
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(viewState), &parseError);
+    if (!doc.isObject())
+    {
+        TSA_LOG_WARN("MainWindow", "ProjectViewState", "état de vue illisible : " + parseError.errorString().toStdString());
+        return;
+    }
+    const QStringList warnings = TSA::Viewer::applyDocumentViewState(*m_occView, doc.object());
+    for (const QString& w : warnings)
+        TSA_LOG_WARN("MainWindow", "ProjectViewState", w.toStdString());
+    syncDisplayActionsFromView();   // boutons, menus et panneau des résultats alignés sur l'affichage restauré
+    if (m_statusView)
+        m_statusView->setText(tr("Vue enregistrée"));
 }
 
 void MainWindow::onToggleTheme()

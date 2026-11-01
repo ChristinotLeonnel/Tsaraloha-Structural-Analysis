@@ -110,7 +110,13 @@ struct ChunkHeader {
 | `OPNG` (`0x474E504F`) | `CHUNK_OPNG` | Ouvertures des dalles (`{"schema":1,"slabs":{"<id>":[{"name","shape","polygon":[[u,v]…]}]}}`, repère local de la dalle) — **spécification 1.8** ; 1.10 : clé `walls` (ouvertures des voiles, u le long du voile, v vers le haut), facultatif |
 | `MVIS` (`0x5349564D`) | `CHUNK_MVIS` | Finitions d'aspect des éléments différentes de celle du matériau de bibliothèque (`{"schema":1,"beams":{"<id>":{"color","texture",…}},…}`) — **spécification 1.9**, facultatif |
 | `SURF` (`0x46525553`) | `CHUNK_SURF` | Formulation des dalles et voiles si différente de « coque » (`slabFormulations`, `wallFormulations` : `plate`, `membrane`, `none`) et charges surfaciques (`surfaceLoads` : `id`, `target`, `surface`, `case`, `name`, `distribution`, `direction`, `value`, `projected`, `u`, `v`, puis, ajouts non cassants, `gradU`, `gradV`, `zone` [u₀, v₀, u₁, v₁]) et appuis linéiques de bord (`slabEdgeSupports`, `wallEdgeSupports` : `{"<id>":[{"edge","fixed":[6 booléens],"stiffness":[6 réels],"name"}]}`) — **spécification 1.10**, facultatif ; clés inconnues ignorées par les lecteurs antérieurs ; absent : coques, aucune charge surfacique (docs/SURFACES.md) |
-| `RSLT` (`0x544C5352`) | `CHUNK_RSLT` | Résultats de calcul (déplacements, efforts internes N, Vy, Vz, Mt, My, Mz) |
+| `RSLT` (`0x544C5352`) | `CHUNK_RSLT` | Résultats de calcul — **spécification 3.1**, facultatif : bloc opaque `Model::ProjectStateBlock::Results` (binaire versionné ; contenu défini à l'étape 4 de docs/PROJECT_STATE_PLAN.md) ; absent : projet à recalculer |
+| `UIST` (`0x54534955`) | `CHUNK_UIST` | Disposition de la fenêtre (`ProjectStateBlock::WindowLayout`, JSON UTF-8 `schema` 1) — **spécification 3.1**, facultatif ; absent : disposition de l'utilisateur |
+| `VSTA` (`0x41545356`) | `CHUNK_VSTA` | Vue 3D et affichage au dernier enregistrement (`ProjectStateBlock::ViewState`, JSON UTF-8 `schema` 1) — **spécification 3.1**, facultatif |
+| `DIAG` (`0x47414944`) | `CHUNK_DIAG` | Messages, erreurs et historique des calculs (`ProjectStateBlock::Diagnostics`, JSON UTF-8 `schema` 1) — **spécification 3.1**, facultatif |
+| `PMAN` (`0x4E414D50`) | `CHUNK_PMAN` | Manifeste : bibliothèques requises, fichiers liés, historique des enregistrements (`ProjectStateBlock::Manifest`, JSON UTF-8 `schema` 1) — **spécification 3.1**, facultatif |
+
+Blocs d'état du projet (3.1) : écrits seulement s'ils ne sont pas vides, rendus tels quels au modèle par le lecteur (tous, vides compris : aucun héritage d'un projet précédent), interprétés par l'interface. Ils ne passent ni par l'historique Annuler ni par la marque « modifié » (docs/PROJECT_STATE_PLAN.md, décision D1).
 
 **COOR / GRID** : un JSON UTF-8 préfixé de sa longueur (u16). Au-delà de 65 535 octets, préfixe `0` puis le JSON
 jusqu'à la fin du chunk (`writeChunkText` / `readChunkText`, 2026-10-09, BUG-041). Une version antérieure lit alors
@@ -253,6 +259,27 @@ l'analyse non linéaire n'est pas disponible. Aucun changement de format :
   Les trois derniers champs (anciens « grands déplacements », « non-linéarité géométrique » et seuil de tension
   minimale) n'ont jamais été lus par un calcul : ils sont lus puis ignorés, et écrits avec leurs anciennes valeurs par
   défaut (1, 1, 10,0).
+
+### 5.w État du projet (chunks `UIST`, `VSTA`, `RSLT`, `DIAG`, `PMAN`, spécification 3.1)
+
+Cinq chunks facultatifs gardent l'état du projet au dernier enregistrement (docs/PROJECT_STATE_PLAN.md). Ils sont
+écrits seulement s'ils ne sont pas vides, et un lecteur antérieur les ignore. Le lecteur les rend tels quels au modèle
+(`Model::ProjectStateBlock`) ; l'interface les interprète. Ils ne passent ni par l'historique Annuler ni par la marque
+« modifié » : relever la disposition ou la vue ne rend pas le document modifié (décision D1). Bloc d'une version
+inconnue : ignoré et signalé dans le journal, le projet s'ouvre.
+
+| Chunk | Contenu | Producteur / lecteur |
+| :--- | :--- | :--- |
+| `UIST` | JSON `schema` 1 : `docks` (QMainWindow::saveState en base64), `openDocks` / `closedDocks` (identifiants : repli si Qt refuse l'état binaire ; un panneau absent des deux listes garde sa visibilité), `workspace` (mode, orientation, tailles, disposition de l'éditeur en base64), `ribbonTab` (titre, indice) | `UI/WindowManager/ProjectLayoutState` ; appliqué si `Layout/restoreFromProject` (vrai par défaut, D2) |
+| `VSTA` | JSON `schema` 1 : `camera` (une vue nommée « current », format du chunk `VIEW`), `display` (réglages des profils d'affichage, sans les clés `annotation*` communes à l'application), `activeLevelZ` | `Viewer/DisplayProfile` : captureDocumentViewState / applyDocumentViewState |
+| `RSLT` | Binaire : u32 `'TSRB'`, u32 version (1), chaîne empreinte du modèle (SHA-256, `TSAProjectIO::modelFingerprint`), puis `ResultsModel::toBinary` : u32 `'TSAR'`, u32 version (1), sections `{ u32 étiquette, u64 longueur, octets }` (META, CURR, FINL, STEP, SHEL, MODL, SURF, MESH, PLAN, TABL ; section inconnue sautée). Matrices de rigidité non enregistrées (D4) ; résumé recalculé à la lecture | `Analysis/ResultsSerialization.cpp` ; écrit seulement si les résultats sont à jour ; empreinte différente à l'ouverture → résultats obsolètes (D3) |
+| `DIAG` | JSON `schema` 1 : `calculations` (20 derniers : date UTC, moteur choisi, moteur et version réels, type, cas, portée, succès, message, durée, avertissements, empreinte), `lastMessages`, `lastEngineLog` (500 dernières lignes), `validation` (gravité, catégorie, message, entité) | `Project/ProjectDiagnostics` |
+| `PMAN` | JSON `schema` 1 : `properties` (description, client, référence, phase), `libraries` (identifiant, version, définitions utilisées), `links` (rôle, chemin relatif au `.tsa`, chemin absolu facultatif — D5, taille, SHA-256, date), `saves` (50 derniers : date, auteur, application, format) | `Project/ProjectManifest` ; fichiers liés contrôlés à l'ouverture, jamais ouverts |
+
+**Empreinte du modèle** (`RSLT`, `DIAG`) : SHA-256 de `snapshotContentBytes` (éléments, charges, BIM, références et
+instantanés mécaniques complétés comme à l'enregistrement), puis, chacun précédé de sa longueur, des JSON `OPNG`,
+`SURF`, `SECP`, des réglages d'analyse et du maillage. Elle est identique avant l'enregistrement et après la relecture
+(test 577).
 
 ---
 

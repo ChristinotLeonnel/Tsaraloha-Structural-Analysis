@@ -77,7 +77,7 @@ void ProjectManager::newProject(TSA::Model::Model& model, TSA::Grid::GridManager
     m_projectName.clear();
     m_author.clear();
 
-    model.setModified(false);
+    model.markSaved();   // point d'enregistrement de l'historique (BUG-074)
     setModified(false);
 
     emit projectReset();
@@ -111,7 +111,7 @@ bool ProjectManager::openProject(const QString& filePath,
     }
 
     m_currentFilePath = filePath;
-    model.setModified(false);
+    model.markSaved();   // point d'enregistrement de l'historique (BUG-074)
     setModified(false);
 
     emit projectOpened(filePath);
@@ -140,7 +140,7 @@ bool ProjectManager::saveProject(const QString& filePath,
     }
 
     m_currentFilePath = filePath;
-    const_cast<TSA::Model::Model&>(model).setModified(false);
+    const_cast<TSA::Model::Model&>(model).markSaved();   // point d'enregistrement (BUG-074)
     setModified(false);
 
     emit projectSaved(filePath);

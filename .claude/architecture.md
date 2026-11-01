@@ -150,6 +150,10 @@ Status: partiel (barres/treillis/câbles/appuis, coques maillées ; statique lin
 Undo : UndoManager::undo → ModelDiff::compute → applySnapshotData → notifyModelDiffApplied (mise à jour ciblée)
 Ouverture .tsa : MainWindow::loadFile → ProjectManager::openProject → TSAFileReader → Model::restoreSnapshot
   → onModelCleared → OccView::rebuildAllShapes (une passe) ; log ProjectLoadTiming
+  → MainWindow::applyProjectState (ADR-026) : DIAG, PMAN (contrôles) → RSLT (publishResults ; empreinte ≠ → obsolètes)
+  → UIST (si Layout/restoreFromProject) → VSTA (affichage, niveau, caméra)
+Enregistrement : MainWindow::saveFile → captureProjectState (VSTA, RSLT si à jour, UIST, DIAG + validation, PMAN) →
+  ProjectManager::saveProject → TSAProjectIO → Model::markSaved (point d'enregistrement de l'historique, BUG-074)
 Calcul (F5 / fenêtre Analysis) : MainWindow::runAnalysis(AnalysisContext) → AnalysisManager::prepare (portée → AnalysisModel → validation)
   → AnalysisManager::run → AnalysisEngine::run (OpenSeesEngine → OpenSeesSolver::solveSnapshot) → ResultsModel → publishResults
 Calcul modal : même chemin, AnalysisContext::type = Modal (eigen + modalProperties). Aucun pushover ni non linéaire (ADR-022, ADR-025).

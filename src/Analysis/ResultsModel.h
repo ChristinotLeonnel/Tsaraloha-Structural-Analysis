@@ -509,6 +509,14 @@ public:
     // Journal d'analyse
     void appendLog(const std::string& line) { m_journalLog += line + "\n"; }
     const std::string& journalLog() const { return m_journalLog; }
+
+    // --- Enregistrement dans le .tsa (bloc RSLT, docs/PROJECT_STATE_PLAN.md §3.3, BUG-013 ; ResultsSerialization.cpp) ---
+    /// Octets versionnés de tous les résultats, sauf les données avancées (matrices, vecteurs K·U = F : recalculables,
+    /// décision D4) ; sections étiquetées, une section inconnue est sautée à la lecture.
+    std::string toBinary() const;
+    /// Relit toBinary ; faux (*this inchangé, *error renseigné) si les octets sont illisibles ou d'une version inconnue.
+    /// Le résumé est recalculé (computeSummary).
+    bool fromBinary(const std::string& bytes, std::string* error = nullptr);
     void clearLog() { m_journalLog.clear(); }
 
 private:
@@ -545,5 +553,13 @@ private:
     GlobalEquilibrium m_equilibrium;
     ResultsSummary m_summary;
 };
+
+/// Bloc RSLT du .tsa (docs/PROJECT_STATE_PLAN.md §3.3) : empreinte du modèle calculé (TSAProjectIO::modelFingerprint,
+/// SHA-256 du contenu persistant) suivie des résultats (ResultsModel::toBinary). À l'ouverture, une empreinte différente
+/// de celle du modèle relu rend les résultats périmés (décision D3).
+std::string encodeStoredResults(const ResultsModel& results, const std::string& modelFingerprint);
+/// Faux (sorties inchangées, *error renseigné) si le bloc est illisible ou d'une version inconnue.
+bool decodeStoredResults(const std::string& block, ResultsModel& results, std::string& modelFingerprint,
+                         std::string* error = nullptr);
 
 } // namespace TSA::Analysis

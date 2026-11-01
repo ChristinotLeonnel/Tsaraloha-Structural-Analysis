@@ -48,7 +48,9 @@ bool ProjectSession::redo(std::string* actionName)
 
 bool ProjectSession::hasUnsavedChanges() const
 {
-    return m_model->isModified() || m_model->canUndo();
+    // BUG-074 : « || canUndo() » gardait le document modifié après Ctrl+S tant que l'historique n'était pas vide.
+    // L'historique tient désormais le drapeau à jour lui-même (Annuler / Rétablir comparent au point d'enregistrement).
+    return m_model->isModified();
 }
 
 } // namespace TSA::Project

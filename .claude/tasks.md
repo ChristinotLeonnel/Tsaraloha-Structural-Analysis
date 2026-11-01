@@ -2,6 +2,16 @@
 
 Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
+## État du projet dans le .tsa (2026-11-01, branche fix/save-dirty-state, plan docs/PROJECT_STATE_PLAN.md validé)
+- [x] Étape 0 : BUG-074 (test 573). [x] Étape 1 : socle, blocs d'état, format 3.1 (test 574).
+- [x] Étape 2 VSTA (test 575).
+- [x] Étape 3 UIST (test 576).
+- [x] Étape 4 RSLT (test 577) ; mesure taille / durée sur un grand modèle à faire.
+- [x] Étape 5 DIAG (test 578).
+- [x] Étape 6 PMAN (test 579) ; [x] étape 7 documentation (TSA_FILE_FORMAT § 5.w, README, ADR-026).
+- [ ] Suites : BUG-175 (vérifier), BUG-176, boîte des propriétés du projet, export de la note de calcul relié au manifeste, mesure RSLT sur un grand modèle ; essai manuel dans TSA.exe (Ctrl+S, réouverture).
+- [x] TSALab 27/27 après étape 2 et correctif des noms de dépôts (branche fix/tests-repo-name). Fusion et push non demandés.
+
 ## Mise en place en un seul fichier (2026-11-01, branche fix/setup-build-mingw-path)
 - [x] install_dependencies.py : composant tsalab, --configure ; TSAProduct.cmake : noms du dépôt TSALab ; correctifs scripts/*.ps1.
 - [x] Côté TSALab : TSA_ROOT_DIR cherché sous ../TSA et ../Tsaraloha-Structural-Analysis (branche fix/tsa-root-discovery).

@@ -840,6 +840,13 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
 void MainWindow::onAnalysisResultsChanged()
 {
     m_resultsModel = m_analysis->results();
+    // Nouveaux résultats d'un calcul : enregistrés avec le projet (bloc RSLT), le document est donc à enregistrer ; révision
+    // inchangée (setUnsavedFlag : les résultats restent valides). Résultats relus du fichier : rien à enregistrer.
+    if (m_resultsModel && m_resultsModel->hasResults() && !m_restoringProjectState && m_model)
+    {
+        m_model->setUnsavedFlag(true);
+        updateWindowTitle();
+    }
     emit resultsChanged();
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
     if (m_occView && m_occView->modelDisplayMode() == TSA::Viewer::ModelDisplayMode::FiniteElement) reportModelDisplayMode();

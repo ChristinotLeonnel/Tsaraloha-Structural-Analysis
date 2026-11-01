@@ -124,6 +124,16 @@ public:
      */
     bool restoreLayout();
 
+    /// État binaire des panneaux (QMainWindow::saveState) sans passer par les paramètres système : disposition propre
+    /// à un projet (bloc UIST du .tsa, docs/PROJECT_STATE_PLAN.md §3.1). restoreState : faux si Qt le refuse.
+    [[nodiscard]] QByteArray saveState() const;
+    bool restoreState(const QByteArray& state);
+
+    /// Décision D2 : à l'ouverture, la disposition enregistrée dans le projet remplace celle de l'utilisateur
+    /// (paramètre « Layout/restoreFromProject », vrai par défaut ; case du sous-menu Disposition).
+    [[nodiscard]] static bool restoresProjectLayout();
+    static void setRestoresProjectLayout(bool enabled);
+
     /**
      * @brief Applique un profil de disposition spécifique.
      */

@@ -2,6 +2,84 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — état du projet, étapes 6 et 7 : manifeste (bloc PMAN) et documentation
+
+- `Project/ProjectManifest` (couche modèle) : fichiers liés (`registerLink` : taille, SHA-256, date ; chemin relatif au .tsa,
+  absolu facultatif D5 ; `updateLinkPaths` à l'enregistrement ; `checkLinks` : présent / modifié / introuvable),
+  bibliothèques requises (`collectLibraries` depuis les DefinitionReference ; `checkLibraries` : absente, autre version),
+  50 derniers enregistrements, propriétés (description, client, référence, phase : pas encore de boîte de saisie).
+- `UI/MainWindow_ProjectFiles.cpp` : `registerLinkedFile` (imports IFC — adoptImportedProject — et TSA3D, exports IFC et
+  TSA3D, textures à l'enregistrement), résumé à l'ouverture, Fichier › « Fichiers liés et bibliothèques… » (tableaux,
+  joindre un document, retirer un lien, case des chemins absolus). Export de la note de calcul non relié. Test 579 (io).
+- Étape 7 : docs/TSA_FILE_FORMAT.md § 5.w (contenu des cinq blocs, empreinte), README (section « Un projet qui rouvre… » ;
+  multi-vues 2×2 retirées : inexistantes dans le code), ADR-026, architecture.md (flux d'ouverture et d'enregistrement).
+- Vérifié : io 12/12 (test 579), surfaces, window, multidoc, undo ; suite complète 59/60, 567 tests (test 367 : BUG-173) ;
+  TSALab 27/27. Non vérifié : branchements MainWindow dans TSA.exe (essai manuel à faire).
+
+## 2026-11-01 — état du projet, étape 5 : messages, erreurs et historique des calculs (bloc DIAG)
+
+- `Project/ProjectDiagnostics` (couche modèle) : historique des 20 derniers calculs (`CalculationRecord` : date UTC, moteur choisi,
+  moteur et version réels, type, cas ou combinaison, portée, succès, message, durée, avertissements, empreinte du modèle),
+  messages du dernier calcul (préparation, avertissements ou erreur), journal du moteur (500 dernières lignes), rapport de
+  validation à l'enregistrement ; JSON schema 1 (version inconnue refusée, objet inchangé). Pas de journal général (chemins).
+- MainWindow : signaux started / logMessage / runCompleted du contrôleur (tous les calculs : interface, console, Blueprint, MCP) ;
+  un échec marque aussi le document à enregistrer ; DIAG écrit à l'enregistrement (avec ModelValidator::validate) ; à
+  l'ouverture, résumé dans la console (dernier calcul, messages, anomalies) ; nouveau projet : historique vidé. Test 578 (io).
+- Vérifié : io 11/11, surfaces, window, multidoc, undo ; suite complète 59/60, 566 tests (test 367 : BUG-173) ; TSALab 27/27.
+
+## 2026-11-01 — état du projet, étape 4 : résultats de calcul dans le .tsa (bloc RSLT, BUG-013 corrigé)
+
+- `Analysis/ResultsSerialization.cpp` : `ResultsModel::toBinary` / `fromBinary` (magic TSAR, sections étiquetées et dimensionnées,
+  section inconnue sautée, comptes bornés par les octets restants, *this inchangé en cas d'échec) ; tous les membres sauf
+  AdvancedResults (D4) ; résumé recalculé. `encodeStoredResults` / `decodeStoredResults` : empreinte + résultats.
+- `TSAProjectIO::modelFingerprint` : SHA-256 de snapshotContentBytes + OPNG + SURF + SECP + réglages d'analyse + maillage.
+  Corrigés en route (test 577) : (1) `Detail::completeCalculationSnapshots` partagé par l'enregistrement et snapshotContentBytes
+  (instantanés implicites des matériaux et câbles : contenu identique avant / après relecture) ; (2) `Detail::openingsChunkJson`,
+  `Detail::surfacesChunkJson` extraits de saveToFile (même JSON qu'avant) et inclus dans l'empreinte.
+- MainWindow : RSLT écrit seulement si les résultats sont à jour ; à l'ouverture, résultats publiés avant la disposition et la
+  vue ; empreinte différente → invalidés + onResultsBecameStale (D3). Un calcul marque le document « à enregistrer »
+  (setUnsavedFlag, révision inchangée), pas des résultats relus (m_restoringProjectState).
+- known-issues : BUG-013 retiré (corrigé) ; BUG-175 (contenu comparé par Annuler sans surfaces, à vérifier), BUG-176 (limite :
+  Annuler après un calcul jusqu'à l'état enregistré lève « * »).
+- Vérifié : surfaces 13/13 (test 577 : coques statiques et modal, octet pour octet, empreinte), window, multidoc, io, undo ;
+  suite complète 59/60, 565 tests (test 367 : BUG-173) ; TSALab 27/27.
+
+## 2026-11-01 — état du projet, étape 3 : disposition de la fenêtre propre au fichier (bloc UIST)
+
+- `UI/WindowManager/ProjectLayoutState` (couche widgets) : `captureProjectLayout` / `applyProjectLayout`, JSON schema 1 : état
+  binaire des panneaux (QMainWindow::saveState, base64), listes lisibles `openDocks` / `closedDocks` (repli si Qt refuse l'état ;
+  un panneau absent des listes garde sa visibilité), espace de travail, onglet du ruban (titre, sinon indice). Panneaux masqués
+  par le mode Blueprint ou focus enregistrés ouverts sans être réaffichés. Ruban passé par sa QTabBar (RibbonBar = couche app).
+- `WindowManager::saveState` / `restoreState` ; préférence D2 `Layout/restoreFromProject` (vrai par défaut), case du sous-menu
+  Disposition. `WorkspaceView::stateJson` / `applyStateJson` ; saveState / restoreState (QSettings) passent par eux, mêmes clés.
+- MainWindow : UIST relevé avec VSTA ; appliqué avant la vue si la préférence est active (masquages temporaires levés, puis
+  onWorkspaceModeChanged). Géométrie de la fenêtre non enregistrée par fichier (fenêtre partagée par les onglets de l'AppShell) ;
+  aucune multi-vue 2×2 dans le code (README à corriger). Test 576 (suite window).
+- Vérifié : window, blueprint (test 524), multidoc, io, undo ; suite complète 59/60, 564 tests (test 367 : BUG-173) ; TSALab 27/27.
+
+## 2026-11-01 — état du projet, étape 2 : vue 3D et affichage (bloc VSTA) ; tests TSALab indépendants du nom des dépôts
+
+- `Viewer/DisplayProfile` : `captureDocumentViewState` / `applyDocumentViewState` (JSON schema 1 : caméra exacte par vue nommée,
+  réglages d'affichage sans les clés `annotation*` communes à l'application, niveau actif) ; réutilise captureDisplaySettings,
+  applyDisplaySettings, captureNamedView, restoreNamedView.
+- `MainWindow::captureProjectState` (avant l'enregistrement) / `applyProjectState` (fin de loadFile, après fitModel et le profil
+  d'affichage du fichier ; resynchronise les actions). Projet sans VSTA : comportement inchangé. Test 575 (suite multidoc).
+- TSALab (branche fix/tests-repo-name) : `repoFile()` et `TSALAB_SOURCE_DIR` ; L15, L23, L29, L30 supposaient <parent>/TSA et
+  <parent>/TSALab → 11/27 sur un poste aux noms GitHub ; 27/27 après correctif.
+- Vérifié : multidoc 11/11, io 10/10, undo 12/12 ; suite complète 58/60 (557 tests) : test 367 (BUG-173), test 371 intermittent
+  (BUG-174, 5/5 seul). Non vérifié : branchement MainWindow dans l'application réelle (couche app non liée aux tests).
+
+## 2026-11-01 — BUG-074 corrigé ; état du projet dans le .tsa, étape 1 (branche fix/save-dirty-state)
+
+- BUG-074 : `ProjectSession::hasUnsavedChanges` = `isModified()` (sans `|| canUndo()`). Point d'enregistrement exact dans
+  `UndoManager` (`markClean`, `matchesClean` : instantané + données hors instantané, `sameContent`) ; Annuler / Rétablir marquent le
+  document modifié ou non (`Model::setUnsavedFlag`, révision inchangée) ; `Model::markSaved` appelé par `ProjectManager` (nouveau,
+  ouvrir, enregistrer) ; `clear()` garde le point d'enregistrement (loadFile vide l'historique après l'ouverture). Test 573.
+- Plan docs/PROJECT_STATE_PLAN.md (validé, décisions D1-D6). Étape 1 : `Model::ProjectStateBlock` (WindowLayout, ViewState, Results,
+  Diagnostics, Manifest), blocs opaques hors historique ; chunks facultatifs UIST, VSTA, RSLT, DIAG, PMAN ; format 3.1 ; lecteur :
+  tous les blocs affectés (aucun héritage). Test 574. docs/TSA_FILE_FORMAT.md à jour.
+- Vérifié (Release) : 59/60 suites, 562 tests ; seul échec test 367 (Fem3D absent du poste, BUG-173, sans lien). TSALab : compilation lancée.
+
 ## 2026-11-01 — bugs corrigés retirés de known-issues.md (branche docs/remove-fixed-bugs, demandé par l'utilisateur)
 
 - Retirés : 23 entrées FIXED complètes (BUG-095, 110, 112-114, 116, 119, 120, 122, 125-129, 131, 132, 134, 136, 142, 145, 146, 148,
