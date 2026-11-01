@@ -42,9 +42,8 @@ applies_to: ["src/**", "tests/**", "CMakeLists.txt", "cmake/**", "CMakePresets.j
 
 ## CMake
 
-- Le projet utilise `CMakeLists.txt` à la racine + `CMakePresets.json` + scripts
-  d'assistance (`scripts/setup_build.ps1`, `scripts/detect_compiler.ps1`,
-  `scripts/detect_qt.ps1`, `scripts/install_mingw.ps1`).
+- Le projet utilise `CMakeLists.txt` à la racine + `CMakePresets.json` ; dépendances et configuration en une
+  commande : `install_dependencies.py --configure` (racine, `docs/DEPENDENCIES.md` § 6).
 - Cible principale : `add_executable(${PROJECT_NAME} ${SOURCES})`.
 - Cible de tests : `TSA_Tests` (voir `enable_testing()`, `add_test(NAME
   CoordinatesAndLevelsTest COMMAND TSA_Tests)`).

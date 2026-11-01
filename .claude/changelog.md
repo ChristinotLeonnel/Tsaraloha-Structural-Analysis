@@ -2,6 +2,20 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — mise en place en un seul fichier, TSALab sous son nom GitHub (branche fix/setup-build-mingw-path, fusionnée dans main ; TSALab : fix/tsa-root-discovery)
+
+- `install_dependencies.py` : composant `tsalab` (dépôt voisin trouvé sous `tsalab.dirs` du manifeste, sinon `git clone` dans
+  `../TSALab`), option `--configure [PRESET]` (preset Ninja lancé sous `vcvars64.bat` trouvé par vswhere, vswhere ajouté au PATH),
+  contrôle de Visual Studio dans le bilan. `cmake/dependencies.json` : entrée `tsalab` (git_url, dirs).
+- `cmake/TSAProduct.cmake` : `TSALAB_ROOT_DIR` cherché sous ces noms ; valeur en cache invalide remplacée (vérifié sur build-msvc).
+- Retirés (redondants, repli MinGW inutilisable avec Qt msvc2022_64 / OCCT vc14) : `scripts/setup_build.ps1`, `detect_compiler.ps1`,
+  `detect_dependencies.ps1`, `detect_qt.ps1`, `install_mingw.ps1` ; références mises à jour (README, DOCUMENTATION § 10, DEPENDENCIES,
+  .agents/rules). Le rapport docs/reports/WINDOWS_VALIDATION_REPORT.md (historique) les cite encore.
+- TSALab : `TSA_ROOT_DIR` cherché sous ../TSA et ../Tsaraloha-Structural-Analysis, presets sans chemin d'OCCT, OpenSees par TSA_DEPS_ROOT,
+  run.bat (TSA, Qt 6.12.0). Configuration ninja-debug de TSALab vérifiée.
+- Vérifié : `py -3 install_dependencies.py --skip ifcopenshell --configure` → Gmsh, Eigen installés, ninja-debug configuré (Qt 6.12.0
+  C:/Qt, OCCT, OpenSees, Gmsh VALIDÉES). Compilation non lancée (modifications limitées à CMake, scripts et documentation).
+
 ## 2026-11-01 — dépendances installées en une fois, disposition thirdparty/ (branche build/auto-dependencies, fusionnée dans main : TSA 321f870, TSALab 02cf02c)
 
 - `install_dependencies.py` (racine) : Qt 6.12.0, OCCT 8.0.1 (SDK Windows ; compilé sous Linux), Gmsh 4.15.2, Eigen 3.4.1, OpenSees 3.8.0

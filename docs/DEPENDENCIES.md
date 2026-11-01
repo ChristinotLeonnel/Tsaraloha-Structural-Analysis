@@ -26,7 +26,7 @@ chaîne de compilation incompatible arrête la configuration avec la cause et la
 | Python 3 | bibliothèque d'importation Gmsh, contrôles CTest | non | `find_package(Python3)` | 3.x | — |
 
 **VTK n'est pas une dépendance de TSA** : il fait partie de l'archive 3rdparty du SDK OCCT, n'est ni lié ni déployé
-(`verify_package.py` le refuse dans le paquet). `scripts/detect_dependencies.ps1` l'affiche encore à titre indicatif.
+(`verify_package.py` le refuse dans le paquet).
 
 ## 2. Justification des versions
 
@@ -171,11 +171,17 @@ Statuts : VALIDÉE, NON VALIDÉE, TROUVÉE (outil sans plage de versions), ABSEN
   reste utilisé (`SetupDependencies.cmake`, `RuntimeDependencies.cmake`, `PackageTSA.cmake`, `run.bat`) et le
   déplacement est retenté à la configuration suivante.
 - **`install_dependencies.py`** (racine, Python ≥ 3.8, bibliothèque standard ; CMake extrait les archives 7z et zstd) :
-  `--list` (état, rien n'est modifié), `--only`, `--skip`, `--force`, `--no-system-packages`, `--jobs`. Composants :
-  `system` (Linux, `sudo apt-get install` des paquets du manifeste), `qt`, `occt`, `gmsh`, `eigen`, `opensees`,
+  `--list` (état, rien n'est modifié), `--only`, `--skip`, `--force`, `--no-system-packages`, `--jobs`,
+  `--configure [PRESET]` (ensuite `cmake --preset`, défaut `ninja-debug` / `linux-debug` ; sous Windows un preset
+  Ninja est lancé dans l'environnement de `vcvars64.bat`, trouvé par vswhere). Composants :
+  `system` (Linux, `sudo apt-get install` des paquets du manifeste), `tsalab` (dépôt voisin obligatoire, cherché sous
+  les noms `tsalab.dirs` du manifeste — `../TSALab`, `../Tsaraloha-Structural-Analysis-Virtual-Laboratory` —, sinon
+  `git clone` dans `../TSALab` ; `TSAProduct.cmake` cherche les mêmes noms et remplace un `TSALAB_ROOT_DIR` en cache
+  devenu invalide), `qt`, `occt`, `gmsh`, `eigen`, `opensees`,
   `ifcopenshell` (appelle `scripts/linux/build-ifcopenshell.sh` ou `scripts/build_ifcopenshell.ps1`). Un composant
   présent dans `thirdparty/` ou là où CMake le trouve (`C:/Qt`, `~/Qt`, `~/opt/occt-8.*`, variables `TSA_*`) n'est
-  pas réinstallé. Bilan final ; code de sortie 1 seulement si Qt ou OCCT manque.
+  pas réinstallé. Bilan final (Windows : présence de Visual Studio C++ x64) ; code de sortie 1 si TSALab, Qt ou OCCT
+  manque, ou si `--configure` échoue.
 - **Linux, CMake** : `tsa_find_qt()` appelle d'abord `tsa_provision_unix_dependencies()` : les dépendances absentes de
   leurs emplacements connus sont installées par `install_dependencies.py --from-cmake` (sans sudo : paquets système
   seulement signalés). Gmsh et IfcOpenShell désactivés (`-DTSA_WITH_GMSH=OFF`, `-DTSA_WITH_IFCOPENSHELL=OFF`) ne

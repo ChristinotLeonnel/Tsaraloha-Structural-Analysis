@@ -2,6 +2,12 @@
 
 Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
+## Mise en place en un seul fichier (2026-11-01, branche fix/setup-build-mingw-path)
+- [x] install_dependencies.py : composant tsalab, --configure ; TSAProduct.cmake : noms du dépôt TSALab ; correctifs scripts/*.ps1.
+- [x] Côté TSALab : TSA_ROOT_DIR cherché sous ../TSA et ../Tsaraloha-Structural-Analysis (branche fix/tsa-root-discovery).
+- [x] scripts/setup_build.ps1 + detect_*.ps1 + install_mingw.ps1 supprimés (demandé le 2026-11-01) ; commit, fusion, push demandés.
+- [ ] Compilation complète TSA / TSALab non relancée après ces changements (configuration seule vérifiée).
+
 ## Dépendances en une fois, disposition thirdparty/ (2026-11-01, branche build/auto-dependencies, TSA et TSALab)
 - [x] install_dependencies.py, cmake/dependencies.json, installation Linux depuis CMake, chemins thirdparty/ (TSA, TSALab), documentation.
 - [x] Essais Windows : --list ; installation Windows et logique Linux dans des dossiers d'essai ; configuration CMake (dossier neuf).
@@ -91,7 +97,7 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
 - [x] W-9 : presets sans Qt6_DIR, détection automatique (branche build/dependency-detection, non commitée).
 - [x] W-10 Logger non ASCII corrigé (test 37.8).
 - [x] TSALab : tsa_find_qt(), presets sans Qt figé, W-6 ; plancher Qt conservé à 6.2 (décision 2026-10-28).
-- [ ] Dépendances : Linux NON TESTÉ ; scripts PowerShell (setup_build/detect_*) à simplifier — rapport §11.8.
+- [ ] Dépendances : Linux NON TESTÉ (scripts PowerShell setup_build/detect_* retirés le 2026-11-01) — rapport §11.8.
 - [ ] Procédure PROCEDURE_WINDOWS_v2 (A1, A2 dumpbin, B, B sans IFC) : NON exécutée ; Debug non testé ; commit à autoriser.
 
 ## TSA Core — préparation de l'étape 2 (2026-10-26) ; état au 2026-10-29 : C fusionné dans main (f31ca9c, poussé), B repris

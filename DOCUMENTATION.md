@@ -322,9 +322,9 @@ La console inférieure dispose d'un interpréteur de commandes en langage nature
 - **Système** : Windows 10 ou Windows 11 (architecture **x64** obligatoire).
 - **Compilateur** :
   - **MSVC** (Visual Studio 2022 / 2026 x64) avec support complet standard **C++20** *(recommandé, sélectionné par défaut si installé)*.
-  - **MinGW-w64** : détecté par `scripts/setup_build.ps1`, mais **TSA ne se compile pas avec MinGW sous Windows** : le
-    SDK OpenCASCADE téléchargé est un SDK MSVC (`vc14`) et l'intégration Gmsh Windows est propre à MSVC. La configuration
-    refuse désormais cette combinaison avec explication (`docs/DEPENDENCIES.md` §2).
+  - **MinGW-w64 n'est pas pris en charge sous Windows** : le SDK OpenCASCADE téléchargé est un SDK MSVC (`vc14`), le
+    kit Qt retenu est `msvc2022_64` et l'intégration Gmsh Windows est propre à MSVC. La configuration refuse cette
+    combinaison avec explication (`docs/DEPENDENCIES.md` §2).
 - **Outils** : CMake 3.20+ et Ninja ou MSBuild.
 - **Bibliothèques** (versions acceptées et validées, détection, diagnostic : **[`docs/DEPENDENCIES.md`](docs/DEPENDENCIES.md)**) :
   - Qt 6 ≥ 6.2 (`Core`, `Gui`, `Widgets`, `Svg`, `Network`), kit MSVC x64 ; validées 6.11.2 et 6.12.0 ; traductions
@@ -338,36 +338,34 @@ La console inférieure dispose d'un interpréteur de commandes en langage nature
 
 ---
 
-### 10.1 Détection et Gestion Automatique des Compilateurs
+### 10.1 Mise en place en une commande
 
-Le projet intègre un ensemble de scripts PowerShell situés dans le dossier `scripts/` assurant une configuration 100% automatisée sans intervention manuelle :
+Un seul fichier, [`install_dependencies.py`](install_dependencies.py) (racine, Python ≥ 3.8, bibliothèque standard),
+installe tout ce qui manque puis configure CMake (`docs/DEPENDENCIES.md` § 6) :
+- dépôt voisin **TSALab** (cœur scientifique, obligatoire) : trouvé sous `../TSALab` ou
+  `../Tsaraloha-Structural-Analysis-Virtual-Laboratory`, sinon cloné par Git dans `../TSALab` ;
+- **Qt 6.12.0**, **OpenCASCADE 8.0.1** + 3rdparty, **Gmsh**, **Eigen**, **OpenSees**, **IfcOpenShell** (facultatif,
+  compilé) dans `thirdparty/`, archives vérifiées par SHA-256 (`cmake/dependencies.json`) ; ce qui est déjà présent
+  (par exemple Qt dans `C:\Qt`) n'est pas réinstallé ;
+- contrôle de **Visual Studio** (outils C++ x64, trouvés par `vswhere`) ; `--configure` lance `cmake --preset` dans
+  l'environnement de `vcvars64.bat`.
 
-- **Script principal d'orchestration : [`scripts/setup_build.ps1`](file:///e:/Book/Dev/TSA/scripts/setup_build.ps1)**
-  - Coordonne la détection, la validation par compilation test C++20, la vérification de compatibilité Qt / OCCT, et la génération CMake.
-- **Détection des compilateurs : [`scripts/detect_compiler.ps1`](file:///e:/Book/Dev/TSA/scripts/detect_compiler.ps1)**
-  - Interroge les outils Microsoft (`vswhere.exe`) pour localiser Visual Studio ou Visual Studio Build Tools, l'environnement `vcvarsall.bat` x64 et le Windows SDK.
-  - Vérifie la présence de `cl.exe` même s'il n'est pas déclaré dans le `PATH` global de Windows.
-  - Si MSVC est présent, il est **toujours prioritaire** et sélectionné (`Compiler sélectionné : MSVC`).
-  - Si MSVC est absent, il recherche un environnement **MinGW-w64** existant (`gcc.exe`, `g++.exe` dans le `PATH`, `C:\TSA\tools\mingw64\bin`, `C:\Qt\Tools\mingw*`, etc.).
+Prérequis non installés par le script : Visual Studio 2026 (charge « Développement Desktop en C++ »), CMake ≥ 3.20,
+Git, Python 3.
 
 ---
 
-### 10.2 Installation Sécurisée de MinGW-w64
+### 10.2 Compilateur
 
-Si **aucun compilateur fonctionnel n'est détecté** sur la machine hôte :
-
-- Le script [`scripts/install_mingw.ps1`](file:///e:/Book/Dev/TSA/scripts/install_mingw.ps1) prend le relais automatiquement.
-- **Règle d'or** : Il ne télécharge **jamais** MinGW si un environnement MSVC fonctionnel est déjà disponible.
-- **Source fiable et maintenue** : Utilise la distribution officielle **WinLibs MinGW-w64 GCC 16.2.0 + UCRT + SEH (x86_64)** depuis GitHub Releases.
-- **Contrôle d'intégrité strict** : Calcule l'empreinte **SHA256** du fichier téléchargé et la compare au condensat officiel (`c1f52294597c0b73786b2a78eb5d176d89226d2f21875eab75e783a8b1cefcc4`). En cas de non-concordance, le fichier est détruit et le script s'arrête avec un code d'erreur non nul.
-- **Emplacement contrôlé** : Installé par défaut dans `C:\TSA\tools\mingw64` (ou repli automatique dans `%LOCALAPPDATA%\TSA\tools\mingw64` si les droits d'administration sur `C:\` sont insuffisants).
-- **Configuration PATH** : Injecte le dossier `bin` dans la variable d'environnement `PATH` de la session courante sans créer de doublon.
+MSVC x64 (Visual Studio 2022 ou 2026) est le seul compilateur Windows pris en charge. Les anciens scripts PowerShell
+de détection et d'installation de MinGW-w64 (`scripts/setup_build.ps1`, `detect_*.ps1`, `install_mingw.ps1`) ont été
+retirés le 2026-11-01 : leur repli MinGW ne pouvait aboutir (Qt et OCCT de TSA sont des builds MSVC).
 
 ---
 
 ### 10.3 Compatibilité des Toolchains (Qt 6, OCCT, VTK)
 
-En C++, le mélange arbitraire d'ABI (Application Binary Interface) provoque des erreurs de liaison irrémédiables. Le script [`scripts/detect_qt.ps1`](file:///e:/Book/Dev/TSA/scripts/detect_qt.ps1) et [`scripts/detect_dependencies.ps1`](file:///e:/Book/Dev/TSA/scripts/detect_dependencies.ps1) appliquent une politique stricte :
+En C++, le mélange arbitraire d'ABI (Application Binary Interface) provoque des erreurs de liaison irrémédiables. CMake applique une politique stricte :
 
 | Compilateur Sélectionné | Toolchain Qt Requise | Toolchain OCCT Requise |
 |---|---|---|
@@ -399,26 +397,20 @@ Grâce au module CMake [`cmake/SetupDependencies.cmake`](file:///e:/Book/Dev/TSA
 
 ---
 
-### 10.5 Répertoires Non-Destructifs et Compilation
-
-Afin d'éviter tout conflit de cache CMake lorsque plusieurs compilateurs sont utilisés sur la même machine, le système n'écrase jamais le dossier `build/` existant :
-- Les configurations MSVC ciblent le dossier dédié **`build-msvc/`**.
-- Les configurations MinGW ciblent le dossier dédié **`build-mingw/`**.
-
-#### Commandes d'utilisation courante :
+### 10.5 Commandes d'utilisation courante
 
 ```powershell
-# 1. Configuration automatique (MSVC prioritaire, MinGW en repli)
-powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1
+# 1. Dépendances manquantes + configuration (preset ninja-debug par défaut)
+py -3 install_dependencies.py --configure
 
-# 2. Configuration ET compilation immédiate (Release)
-powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1 -Build
+# 2. Autre preset (CMakePresets.json), sans IfcOpenShell (compilation d'environ une heure)
+py -3 install_dependencies.py --configure ninja-release --skip ifcopenshell
 
-# 3. Compilation en mode Debug
-powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1 -Config Debug -Build
+# 3. État des dépendances, sans rien modifier
+py -3 install_dependencies.py --list
 
-# 4. Forcer l'utilisation de MinGW-w64 (test de la branche MinGW)
-powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1 -ForceMinGW
+# 4. Compilation (preset Ninja : environnement MSVC requis)
+cmd /c "`"C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat`" >nul && cmake --build --preset ninja-debug -- -k 0 -j 4"
 ```
 
 ---
