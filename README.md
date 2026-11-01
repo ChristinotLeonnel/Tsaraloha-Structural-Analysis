@@ -20,13 +20,13 @@
   <a href="https://opensees.berkeley.edu/"><img src="https://img.shields.io/badge/OpenSees-FEA%20Engine-E91E63?style=for-the-badge" alt="OpenSees" /></a>
   <a href="https://www.microsoft.com/windows"><img src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows x64" /></a>
   <a href="https://cmake.org"><img src="https://img.shields.io/badge/CMake-Ninja-064F8C?style=for-the-badge&logo=cmake&logoColor=white" alt="CMake & Ninja" /></a>
-  <a href="tests/"><img src="https://img.shields.io/badge/Tests-84%2F84%20Passing-10b981?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Tests 84/84 Passing" /></a>
+  <a href="docs/TESTING.md"><img src="https://img.shields.io/badge/Tests-572%20%7C%2060%20suites-10b981?style=for-the-badge&logo=checkmarx&logoColor=white" alt="572 tests, 60 suites" /></a>
   <a href="docs/NORMATIVE_SYSTEM.md"><img src="https://img.shields.io/badge/Eurocodes-EN%201990--1999-f59e0b?style=for-the-badge" alt="Eurocodes" /></a>
 </p>
 
 <p align="center">
   <a href="#-getting-started--démarrage-rapide">Démarrage Rapide</a> •
-  <a href="#-configuration--compilation">Compilation</a> •
+  <a href="#3-compilation">Compilation</a> •
   <a href="#-fonctionnalités-majeures">Fonctionnalités</a> •
   <a href="#-ruban-principal--ergonomie-cao">Interface</a> •
   <a href="#-architecture-logicielle--source-de-vérité">Architecture</a> •
@@ -43,89 +43,120 @@
 
 TSA permet de concevoir, modéliser, charger, analyser et inspecter en 3D interactive des bâtiments à étages, des halles industrielles, des fermes et treillis spatiaux, des structures haubanées et des systèmes de fondations selon les normes européennes (**Eurocodes**).
 
+> **Écosystème Tsaraloha.** TSA partage ses bibliothèques (`src/`) avec **TSALab**, le laboratoire scientifique
+> ([dépôt TSALab](https://github.com/ChristinotLeonnel/Tsaraloha-Structural-Analysis-Virtual-Laboratory)), dont TSA
+> compile en retour le cœur scientifique (`TSALab/science`, solveur des ossatures planes). Les deux dépôts se placent
+> côte à côte ; voir [docs/TSARALOHA_ARCHITECTURE.md](docs/TSARALOHA_ARCHITECTURE.md).
+
 ---
 
 ## 🚀 Getting Started / Démarrage Rapide
 
-### Prérequis Système & Environnement
-* **Système d'exploitation :** Windows 10 / 11 (64-bit)
-* **Compilateur :** MSVC (Visual Studio 2022 ou 2026 x64) avec support complet C++20 *(recommandé)* ou MinGW-w64 (GCC 13+)
-* **CMake :** Version 3.20+
-* **Ninja :** Intégré à Visual Studio (composant *Outils CMake pour Windows*) ou via `winget install Ninja-build.Ninja`
-* **Qt 6 :** Version 6.2+ (`Core`, `Gui`, `Widgets`, `Svg`) — ex. `C:\Qt\6.11.2\msvc2022_64`
-* **OpenCASCADE 8.0.1 & Dépendances 3rdparty :** Téléchargées et extraites automatiquement par CMake si absentes de la machine.
+### Prérequis
+
+À installer soi-même (le script de la section 2 installe tout le reste) :
+
+| Outil | Version | Remarque |
+| :--- | :--- | :--- |
+| Windows | 10 / 11, x64 | Linux : voir [docs/LINUX_BUILD.md](docs/LINUX_BUILD.md) (Ubuntu 24.04, GCC 13) |
+| Visual Studio | 2026 (ou 2022), x64 | charge « Développement Desktop en C++ » (MSVC, Windows SDK, Ninja). **MinGW n'est pas pris en charge** : Qt et OpenCASCADE sont des builds MSVC. |
+| CMake | ≥ 3.20 | |
+| Git | — | clonage des dépôts TSA et TSALab |
+| Python | ≥ 3.8 | sous Windows, lancer `py -3` (la commande `python` peut ouvrir le Microsoft Store) |
 
 ---
 
-### <ins>1. Téléchargement du Dépôt</ins>
+### 1. Cloner les dépôts
 
-Clonez le projet avec Git :
+TSA compile le cœur scientifique de TSALab : les deux dépôts doivent être **côte à côte**. Les noms courts (`TSA`,
+`TSALab`) comme les noms GitHub (`Tsaraloha-Structural-Analysis`, `Tsaraloha-Structural-Analysis-Virtual-Laboratory`)
+sont reconnus.
 
 ```powershell
 git clone https://github.com/ChristinotLeonnel/Tsaraloha-Structural-Analysis.git TSA
+git clone https://github.com/ChristinotLeonnel/Tsaraloha-Structural-Analysis-Virtual-Laboratory.git TSALab
 cd TSA
 ```
 
+Si TSALab n'est pas cloné, le script de la section 2 le clone dans `../TSALab`. Autre emplacement :
+`-DTSALAB_ROOT_DIR=<chemin>` à CMake.
+
 ---
 
-### <ins>2. Configuration Automatique des Dépendances</ins>
+### 2. Installer les dépendances et configurer
 
-Un seul fichier, `install_dependencies.py` (racine, Python ≥ 3.8), met tout en place puis configure CMake : dépôt voisin TSALab (trouvé ou cloné), Qt 6.12.0, OpenCASCADE 8.0.1, Gmsh, Eigen, OpenSees (archives vérifiées par SHA-256, installées dans `thirdparty/`), contrôle de Visual Studio (C++ x64) :
+Un seul fichier, [`install_dependencies.py`](install_dependencies.py), met tout en place puis configure CMake :
 
 ```powershell
-# Dépendances manquantes + cmake --preset ninja-debug (environnement MSVC chargé automatiquement)
 py -3 install_dependencies.py --configure
-# Autre preset, sans IfcOpenShell (facultatif, compilation d'environ une heure)
-py -3 install_dependencies.py --configure ninja-release --skip ifcopenshell
-# État des dépendances, sans rien modifier
-py -3 install_dependencies.py --list
 ```
 
-Prérequis non installés par le script : Visual Studio 2026 (charge « Développement Desktop en C++ »), CMake ≥ 3.20, Git, Python 3. Détails : `docs/DEPENDENCIES.md`.
+| Dépendance | Version | Emplacement | Statut |
+| :--- | :--- | :--- | :--- |
+| TSALab (cœur scientifique) | dépôt voisin | `../TSALab` | obligatoire |
+| Qt | 6.12.0 (`msvc2022_64`) | `thirdparty/Qt`, ou une installation existante (`C:\Qt\6.*`) | obligatoire |
+| OpenCASCADE + 3rdparty | 8.0.1 (`vc14-64`) | `thirdparty/` | obligatoire |
+| OpenSees | 3.8.0 (conda-forge) | `thirdparty/OpenSees` | facultatif (moteur par défaut) |
+| Gmsh | 4.15.2 | `thirdparty/` | facultatif (maillage) |
+| Eigen | 3.4.1 | `thirdparty/` | facultatif (moteur Fem3D) |
+| IfcOpenShell | 0.9.0post1 | `thirdparty/` | facultatif (import IFC, compilé : environ une heure) |
+
+- Toute archive est vérifiée par SHA-256 avant extraction (manifeste [`cmake/dependencies.json`](cmake/dependencies.json)) ;
+  ce qui est déjà présent n'est pas réinstallé, et un téléchargement interrompu reprend au lancement suivant.
+- `--configure` lance `cmake --preset ninja-debug` dans l'environnement de Visual Studio (`vcvars64.bat`, trouvé
+  automatiquement) : inutile d'ouvrir l'invite « x64 Native Tools ».
+
+```powershell
+py -3 install_dependencies.py --list                                         # état, rien n'est modifié
+py -3 install_dependencies.py --configure ninja-release --skip ifcopenshell  # autre preset, sans IfcOpenShell
+py -3 install_dependencies.py --only qt,occt --force qt                      # composants choisis, réinstallation
+```
+
+Détails (versions acceptées, détection, rapport `tsa-dependencies.txt`) : [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md).
 
 ---
 
-### <ins>3. Compilation du Projet</ins>
+### 3. Compilation
 
-#### Option A : Ninja Presets *(Recommandé pour le développement quotidien)*
-Ninja offre la vitesse de compilation maximale grâce à la compilation parallèle et aux en-têtes précompilés (PCH) :
+#### Option A : Ninja *(recommandé)*
+
+Les presets Ninja demandent l'environnement MSVC. Depuis PowerShell :
 
 ```powershell
-# 1. Charger l'environnement MSVC dans le terminal courant (une seule fois par session PowerShell)
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
-$vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
-& "$vs\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
-
-# 2. Configuration & compilation Debug
-cmake --preset ninja-debug
-cmake --build --preset ninja-debug -- -k 0
-
-# Ou compilation Release
-cmake --preset ninja-release
-cmake --build --preset ninja-release
+$vcvars = "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat"
+cmd /c "`"$vcvars`" >nul && cmake --build --preset ninja-debug -- -k 0 -j 4"
 ```
 
-#### Option B : Visual Studio Presets
+Ou, dans une invite « x64 Native Tools » :
+
 ```powershell
-# Configuration & compilation Release
-cmake --preset windows-x64-release
+cmake --build --preset ninja-debug -- -k 0 -j 4      # Debug   -> build-ninja-debug
+cmake --preset ninja-release                         # Release -> build-ninja-release
+cmake --build --preset ninja-release -- -j 4
+```
+
+> `-j 4` : au-delà, MSVC peut manquer de mémoire virtuelle pour les en-têtes précompilés (erreur C3859).
+
+#### Option B : Visual Studio
+
+```powershell
+cmake --preset windows-x64-release                   # -> build/
 cmake --build --preset windows-x64-release
 ```
 
+Ces presets n'ont pas besoin de l'environnement MSVC.
+
 ---
 
-### <ins>4. Lancement de TSA</ins>
-
-Utilisez le script automatique à la racine du projet :
+### 4. Lancement de TSA
 
 ```cmd
-run.bat
+run.bat                      :: TSA.exe le plus récemment compilé
+run.bat build-ninja-debug    :: TSA.exe d'un dossier de build précis
 ```
 
-> **Note :** `run.bat` initialise les variables d'environnement OpenCASCADE (`CSF_OCCTResourcePath`, `CSF_OCCTShadersPath`), injecte les bibliothèques dynamiques Qt et tierces dans le `PATH`, et démarre automatiquement le binaire le plus récent (`build-ninja-debug`, `build-ninja-release` ou `build/Release`). Pour cibler un dossier spécifique :
-> ```cmd
-> run.bat build-ninja-debug
-> ```
+> `run.bat` retrouve Qt (cache CMake du dossier de build, sinon `C:\Qt\6.*\msvc*_64`), OpenCASCADE et ses 3rdparty,
+> règle les variables OCCT (`CSF_OCCTResourcePath`, `CSF_OCCTShadersPath`) et le `PATH`, puis démarre `TSA.exe`.
 
 ---
 
@@ -133,8 +164,8 @@ run.bat
 
 Le temps de compilation de TSA est optimisé pour les développeurs C++ exigeants :
 
-* **Bibliothèque `TSA_Core` (OBJECT) :** Tout le code métier (modèle de données, grilles, calculs, commandes, extensions, I/O) est compilé **une seule et unique fois**, puis réutilisé directement par l'exécutable principal `TSA` et par la suite de tests `TSA_Tests`.
-* **En-têtes Précompilés (PCH) Partagés :** Les en-têtes volumineux stables (Qt Widgets/Core, OpenCASCADE `gp_*`/`TopoDS_Shape`, STL C++20) sont précompilés et partagés entre toutes les cibles.
+* **Bibliothèques en couches compilées une seule fois :** `TSA_Core` (statique : QtCore et géométrie OCCT seulement), `TSA_Model`, `TSA_Graphics`, `TSA_Widgets`, puis l'application. Elles sont liées par `TSA.exe`, par la suite de tests `TSA_TestSuite.exe`, et compilées à l'identité de TSALab pour `TSALab.exe`. L'ordre des couches (model < graphics < widgets < app) est contrôlé par `tools/check_layers.py`.
+* **En-têtes Précompilés (PCH) Partagés :** Les en-têtes volumineux stables (Qt Widgets/Core, OpenCASCADE `gp_*`/`TopoDS_Shape`, STL C++20) sont précompilés et réutilisés par les cibles.
 * **Includes OpenCASCADE en `SYSTEM` :** Élimine le coût d'analyse des avertissements issus des bibliothèques externes.
 
 ---
@@ -160,8 +191,9 @@ Le temps de compilation de TSA est optimisé pour les développeurs C++ exigeant
 * **Non disponible** : analyse non linéaire (second ordre $P\text{-}\Delta$, grands déplacements, plasticité, pilotage
   incrémental), pushover et analyses temporelles. Un ancien projet qui demandait une analyse non linéaire s'ouvre
   normalement, mais son calcul est refusé avec un message tant qu'une analyse linéaire n'a pas été choisie (ADR-025).
-* **Moteurs** : OpenSees (par défaut, 3D, résolution en un seul pas par `algorithm Linear`), Fem3D (3D : poutres, rotules,
-  appuis élastiques), Custom2D (ossatures planes).
+* **Moteurs** (`AnalysisManager`, [docs/ANALYSIS_ENGINES.md](docs/ANALYSIS_ENGINES.md)) : OpenSees (par défaut, 3D,
+  résolution en un seul pas par `algorithm Linear`), Fem3D (3D : poutres, rotules, appuis élastiques ; facultatif, compilé
+  si le dépôt voisin `../3DDesplacement` est présent), Custom2D (ossatures planes, cœur scientifique de TSALab).
 * **Câbles** : barres articulées précontraintes (déformation initiale $\varepsilon_0 = T_0 / EA$), calculées en un seul pas
   linéaire ; une compression n'est pas relâchée.
 * **Vérifications réglementaires** : distinctes de l'analyse. Elles sont partielles et ne sont pas validées du seul fait que
@@ -238,8 +270,8 @@ TSA applique un principe architectural strict : **le modèle structural (`TSA::M
                   /                                     \
                  v                                       v
     +-------------------------+             +-------------------------+
-    |  Constructeurs Géométrie |             |    Modèle d'Analyse     |
-    |    (*Geometry OCCT)     |             |      (OpenSees)         |
+    |  Constructeurs Géométrie |             |  Analyse (AnalysisMgr)  |
+    |    (*Geometry OCCT)     |             | OpenSees|Fem3D|Custom2D |
     +-------------------------+             +-------------------------+
                  |                                       |
                  v                                       v
@@ -257,27 +289,24 @@ TSA applique un principe architectural strict : **le modèle structural (`TSA::M
 
 ## 🧪 Tests Automatisés
 
-Le projet intègre une suite rigoureuse de **84 bancs d'essais unitaires automatisés** (100% de réussite) validant la chaîne géométrique, mécanique et logicielle :
+Dernière validation complète (2026-11-01, Release) : **60 suites, 572 tests, 0 échec** ; banc de validation des
+calculs 2 097 / 2 097 ; TSALab 27 / 27.
 
 ```powershell
-# 1. Compilation de la suite de tests (Presets Ninja)
+# Compilation de la suite (cible TSA_Tests -> TSA_TestSuite.exe), environnement MSVC chargé
 cmake --build --preset ninja-debug --target TSA_Tests
 
-# 2. Exécution directe
-.\build-ninja-debug\TSA_TestSuite.exe
+# Exécution recommandée : un processus et un délai par suite, dossier de sortie jetable (hors dépôt)
+py -3 tools/ci/run_test_suites.py --exe build-ninja-debug/TSA_TestSuite.exe --out <dossier> `
+   --available opensees,gmsh,display --timeout 600
 
-# Ou exécution via CTest
-ctest --test-dir build-ninja-debug --output-on-failure
+# Une seule suite (diagnostic)
+.\build-ninja-debug\TSA_TestSuite.exe --suite=io
 ```
 
-### Couverture des 14 Suites de Tests :
-* **Suites 1–8 :** Modélisation 3D solide B-Rep OCCT, système de câbles/haubans, format binaire `.tsa`, Undo/Redo transactionnel.
-* **Suite 9 :** Système d'extensions **TSALib** (registre, chargement différé, cache multi-niveaux, packaging `.tsalib`).
-* **Suite 10 :** Plans de travail 3D interactifs (WorkPlanes), transformations de repères, magnétisme spatial.
-* **Suite 11 :** Gestionnaire de fenêtres centralisé (`WindowManager`) et persistance des dispositions d'écran.
-* **Suite 12 :** Gestionnaire de nœuds centralisé, sélection et accrochage non-destructif.
-* **Suite 13 :** Système de charges structurales, poids propre automatique, cas et combinaisons Eurocodes, scripts OpenSees.
-* **Suite 14 :** Solveur OpenSees, immutabilité des snapshots de calcul, conditions d'appuis 3D (6 DDL), calculs multi-pas, diagrammes 3D $N, V, M$, détection des nœuds libres et synchronisation modèle/résultats.
+> `TSA_TestSuite.exe` n'a aucun délai interne et écrit des fichiers dans le dossier courant : ne pas le lancer depuis la
+> racine du dépôt. Une suite dont la dépendance manque (OpenSees, Gmsh, IfcOpenShell, affichage) est signalée
+> NON EXÉCUTÉE, jamais comptée réussie. Catégories, suites OpenGL, risques de blocage : [docs/TESTING.md](docs/TESTING.md).
 
 ---
 
@@ -321,7 +350,8 @@ Les interactions et raccourcis clavier respectent scrupuleusement la norme inter
 
 ```text
 TSA/
-├── cmake/                      # Scripts CMake et déploiement automatique OCCT/DLLs
+├── cmake/                      # Modules CMake : produits (TSAProduct), dépendances, déploiement des DLL
+│   └── dependencies.json       # Manifeste des dépendances (versions, adresses, SHA-256)
 ├── docs/                       # Guides d'architecture et spécifications techniques
 │   ├── ARCHITECTURE.md         # Flux de données et principes de conception
 │   ├── TSALIB_SYSTEM.md        # Spécification complète du système d'extensions TSALib
@@ -332,13 +362,18 @@ TSA/
 │   ├── OPENSEES_RESULTS.md         # Structure des résultats et diagrammes 3D
 │   ├── UI.md                       # Architecture de l'interface graphique Qt 6
 │   └── MODEL.md                # Spécification du modèle structural de données
+├── examples/                   # Projets de démonstration (.tsa)
 ├── Extensions/                 # Extensions installées (bibliothèque TSALib standard)
+├── packaging/                  # Installateur Windows (Inno Setup)
+├── product/                    # Identité du produit (ProductIdentity.h)
+├── python/                     # Paquet tsa_ai et ses tests
 ├── resources/                  # Ressources graphiques Qt (.qrc), icônes et branding
 │   ├── branding/               # Logos officiels vectoriels, bannières et renders
 │   └── icons/                  # Jeu d'icônes SVG pour le Ruban et les outils CAO
-├── scripts/                    # Scripts PowerShell d'orchestration et détection d'outils
-├── src/                        # Code source C++20 de l'application
-│   ├── Analysis/               # Solveurs EF statiques (OpenSees, Custom2D, résultats)
+├── scripts/                    # Compilation d'IfcOpenShell, icônes, scripts Linux (scripts/linux)
+├── sdk/                        # SDK : exemples, modules et outils en ligne de commande (tsa-mesh, tsa-ifc…)
+├── src/                        # Bibliothèques C++20 partagées avec TSALab et application
+│   ├── Analysis/               # Analyse multi-moteurs (OpenSees, Fem3D, Custom2D), résultats
 │   ├── App/                    # Classe d'application principale et initialisation
 │   ├── Commands/               # Commandes CAO réversibles (ICommand)
 │   ├── Coordinate/             # Points 3D, niveaux d'étages et plans de travail
@@ -352,11 +387,14 @@ TSA/
 │   ├── UI/                     # Interface Qt 6 (Ruban 8 onglets, Docks, Dialogues)
 │   ├── UndoRedo/               # Gestionnaire transactionnel Undo/Redo
 │   └── Viewer/                 # Vue 3D OpenCASCADE (OccView, textures PBR, sélection)
-├── tests/                      # Suite de tests unitaires automatisés (84 bancs d'essais)
-├── tools/                      # Outils de vérification automatisée (raccourcis, intégrité)
+├── tests/                      # Suite de tests automatisés (TSA_TestSuite : 60 suites)
+├── thirdparty/                 # Dépendances installées (non versionné : Qt, OCCT, OpenSees, Gmsh…)
+├── tools/                      # Vérifications (couches, raccourcis, paquet), lanceur de tests, benchmark
+├── translations/               # Traductions (anglais, malgache)
 ├── CMakeLists.txt              # Configuration principale du build CMake
-├── CMakePresets.json           # Presets de compilation Ninja et Visual Studio
-└── run.bat                     # Lanceur intelligent tout-en-un
+├── CMakePresets.json           # Presets Ninja, Visual Studio et Linux
+├── install_dependencies.py     # Installation des dépendances et configuration, en une commande
+└── run.bat                     # Lanceur de TSA.exe (Qt, OCCT et PATH réglés)
 ```
 
 ---
@@ -367,6 +405,11 @@ La suite complète des **guides architecturaux et spécifications techniques** e
 
 | Document | Contenu & Usage |
 |:---|:---|
+| **[DEPENDENCIES.md](docs/DEPENDENCIES.md)** | Dépendances : versions acceptées et validées, détection, installation (`install_dependencies.py`), rapport de configuration. |
+| **[LINUX_BUILD.md](docs/LINUX_BUILD.md)** | Compilation et tests sous Linux (Ubuntu 24.04, GCC 13). |
+| **[TESTING.md](docs/TESTING.md)** | Catégories de tests, exécution bornée, validation graphique. |
+| **[TSARALOHA_ARCHITECTURE.md](docs/TSARALOHA_ARCHITECTURE.md)** | Écosystème TSA / TSALab : bibliothèques partagées en couches, cœur scientifique. |
+| **[ANALYSIS_ENGINES.md](docs/ANALYSIS_ENGINES.md)** | Analyse multi-moteurs : ajouter un moteur sans toucher à l'interface. |
 | **[ANALYSIS_OPENSEES.md](docs/ANALYSIS_OPENSEES.md)** | Intégration du solveur OpenSees, pipeline de calcul, composants du module Analysis, validation analytique. |
 | **[OPENSEES_CALCULATION_METHODS.md](docs/OPENSEES_CALCULATION_METHODS.md)** | 🆕 **Guide complet pour les utilisateurs** : types d'analyses (statique linéaire, modale), commandes d'analyse générées, éléments structuraux, gestion des charges, solveurs et numérotation des DDL. |
 | **[OPENSEES_RESULTS.md](docs/OPENSEES_RESULTS.md)** | Structure et extraction des résultats, diagrammes 3D, déformée amplifiée, réactions d'appuis. |
