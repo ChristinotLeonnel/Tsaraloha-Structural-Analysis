@@ -1,3 +1,5 @@
+#include "../../Model/LegacyBarFrames.h"
+#include "../../Model/Load/LegacyLoads.h"
 #include "Tsa3dInternal.h"
 
 #include "../../BIM/Core/BimModel.h"
@@ -16,6 +18,17 @@
 
 namespace TSA::IO::Tsa3d
 {
+
+namespace
+{
+/// Version du document strictement antérieure à major.minor (« 1.0 » ; un nombre seul compte pour majeur.0).
+bool documentVersionBefore(const QJsonObject& doc, int major, int minor)
+{
+    const QStringList parts = doc.value("version").toVariant().toString().split('.');
+    const int docMajor = parts.value(0).toInt(), docMinor = parts.value(1).toInt();
+    return docMajor < major || (docMajor == major && docMinor < minor);
+}
+} // namespace
 
 using namespace detail;
 using namespace TSA::Model;
@@ -384,13 +397,16 @@ ImportResult importDocument(const QJsonObject& doc, TSA::Model::Model& model, co
         l.setName(str(o, "name"));
         l.setType(kind == "trapezoidal" ? LoadType::MemberLinear : kind == "point" ? LoadType::MemberPoint
                   : kind == "moment" ? LoadType::MemberMoment : LoadType::MemberUniform);
-        l.setDirection(enumValue<LoadDirection>(loadDirections(), o.value("direction").toString()).value_or(LoadDirection::Gravity));
-        l.setCoordSystem(enumValue<LoadCoordSystem>(coordSystems(), o.value("coordinateSystem").toString()).value_or(LoadCoordSystem::Global));
         l.setQ1(o.value("q1").toDouble() * intensity);
         l.setQ2((o.contains("q2") ? o.value("q2").toDouble() : o.value("q1").toDouble()) * intensity);
         l.setRelativePosition(relative);
         l.setX1(o.value("x1").toDouble(0.0) * pos);
         l.setX2(o.contains("x2") ? o.value("x2").toDouble() * pos : (relative ? 1.0 : 0.0));
+        const int storedDirection = std::max(0, static_cast<int>(loadDirections().indexOf(o.value("direction").toString())));
+        const bool gravity = !o.contains("direction") || loadDirections().at(storedDirection) == QLatin1String("gravity");
+        l = memberLoadFromStored(l.id(), l.elementId(), l.loadCaseId(), l.type(), l.q1(), l.q2(), gravity ? kLegacyGravityDirection : static_cast<std::uint8_t>(storedDirection),
+                                 enumValue<LoadCoordSystem>(coordSystems(), o.value("coordinateSystem").toString()).value_or(LoadCoordSystem::Global), l.x1(), l.x2(),
+                                 l.isRelativePosition(), l.name(), l.targetType());
         ls.memberLoads[id] = l;
         keep(o, "memberLoads", "memberLoad", id);
         ++res.loads;
@@ -447,6 +463,8 @@ ImportResult importDocument(const QJsonObject& doc, TSA::Model::Model& model, co
         }
     }
     model.restoreSnapshot(snap);
+    // Version 1.0 : repère local des barres verticales d'avant Robot, orientation physique conservée
+    if (documentVersionBefore(doc, 1, 1)) migrateLegacyBarFrames(model);
     for (const auto& [key, gid] : globalIds) model.bimForEdit().setAnalyticalGlobalId({ key.first, key.second }, gid.toStdString());
     if (doc.value("analysis").toObject().contains("settings"))
         model.setAnalysisSettingsJson(QJsonDocument(doc.value("analysis").toObject().value("settings").toObject()).toJson(QJsonDocument::Compact).toStdString());

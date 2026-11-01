@@ -209,7 +209,7 @@ TSA offre des outils géométriques avancés inspirés des logiciels de CAO maje
 - **Copie 3D Translation** : Duplique les éléments sélectionnés d'un vecteur spatial défini.
 - **Rotation 3D Spatiale** : Définition du centre de rotation et de l'angle.
 - **Presse-Papier Structural Intelligent (<kbd>Ctrl+C</kbd> / <kbd>Ctrl+V</kbd>)** :
-  - Copie l'ensemble sélectionné (nœuds, profilés, sections associées, dalles).
+  - Copie l'ensemble sélectionné et ses données : nœuds, appuis, éléments, sections, matériaux, charges et leurs cas de charge. Les outils de copie 3D, de réseau et de symétrie font de même.
   - Lors du collage, cliquez à l'endroit désiré dans le viewport 3D pour déposer le sous-ensemble avec ses connectivités intactes.
 - **Historique Undo / Redo (<kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd>)** : Annulation et rétablissement à niveaux illimités pour toutes les opérations de modélisation.
 

@@ -300,8 +300,8 @@ bool runSuite_MultiDoc(int& passed)
         const int q = lm.addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
         const int w = lm.addLoadCase(LoadCase(0, "W", LoadCaseCategory::Wind));
         const int s = lm.addLoadCase(LoadCase(0, "S", LoadCaseCategory::Snow));
-        lm.addMemberLoad(MemberLoad::uniform(p.beam, g, 5.0));
-        lm.addMemberLoad(MemberLoad::uniform(p.beam, q, 3.0));
+        lm.addMemberLoad(MemberLoad::uniform(p.beam, g, -5.0, LoadDirection::GlobalZ));
+        lm.addMemberLoad(MemberLoad::uniform(p.beam, q, -3.0, LoadDirection::GlobalZ));
         const int elu = lm.addCombination(LoadCombination(0, "ELU 1", LoadCombinationType::ULS_Fundamental, { { g, 1.35 }, { q, 1.5 } }));
         const int vent = lm.addCombination(LoadCombination(0, "ELU vent", LoadCombinationType::ULS_Fundamental, { { g, 1.0 }, { w, 1.5 } }));
         const int neige = lm.addCombination(LoadCombination(0, "ELS neige", LoadCombinationType::SLS_Characteristic, { { s, 1.0 } }));
@@ -372,7 +372,7 @@ bool runSuite_MultiDoc(int& passed)
         lm.clear();
         const int g = lm.addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead));
         lm.addNodalLoad(NodalLoad(0, p.b, g, 0, 0, -40.0));
-        lm.addMemberLoad(MemberLoad::uniform(p.beam, g, 8.0));
+        lm.addMemberLoad(MemberLoad::uniform(p.beam, g, -8.0, LoadDirection::GlobalZ));
         ClipboardOptions opt;
         opt.loads = true;
         clip.copyFrom(src, portalSelection(p), opt);
@@ -553,7 +553,7 @@ bool runSuite_MultiDoc(int& passed)
         const Portal pt = portal(m);
         auto& lm = m.loadManager();
         const int lc = lm.addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
-        lm.addMemberLoad(MemberLoad::uniform(pt.beam, lc, 12.0));
+        lm.addMemberLoad(MemberLoad::uniform(pt.beam, lc, -12.0, LoadDirection::GlobalZ));
         OccView view;
         view.resize(640, 480);
         view.show();

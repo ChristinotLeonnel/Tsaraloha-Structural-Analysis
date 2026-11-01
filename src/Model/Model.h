@@ -43,6 +43,8 @@ namespace TSA::Model
 {
 
 struct ModelDiff;
+struct ElementSet;
+struct ClipboardOptions;
 
 class IModelObserver
 {
@@ -231,6 +233,15 @@ public:
     // Transformations
     bool moveNodes(const std::set<int>& nodeIds, double dx, double dy, double dz);
     bool rotateNodes(const std::set<int>& nodeIds, const gp_Pnt& center, const gp_Dir& axis, double angleRad);
+    /// Copies transformées d'une sélection, avec tout ce que `options` emporte (appuis et charges par défaut). Un seul moteur :
+    /// StructuralClipboard. Retourne les ids créés ; warnings : ce qui n'a pas pu être copié à l'identique.
+    std::vector<int> copyElements(const ElementSet& elements, double dx, double dy, double dz, int repetitions,
+                                  const ClipboardOptions& options, std::vector<std::string>* warnings = nullptr);
+    std::vector<int> copyAndRotateElements(const ElementSet& elements, const gp_Pnt& center, const gp_Dir& axis, double angleRad, int repetitions,
+                                           const ClipboardOptions& options, std::vector<std::string>* warnings = nullptr);
+    /// Copie miroir : nœuds du plan (à planeTol près) partagés, élément entièrement sur le plan non dupliqué.
+    std::vector<int> mirrorCopyElements(const ElementSet& elements, const gp_Pnt& planePoint, const gp_Dir& planeNormal, const ClipboardOptions& options,
+                                        std::vector<std::string>* warnings = nullptr, double planeTol = 1e-6);
     std::vector<int> copyElements(const std::set<int>& nodeIds,
                                   const std::set<int>& beamIds,
                                   const std::set<int>& columnIds,

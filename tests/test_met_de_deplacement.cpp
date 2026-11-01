@@ -229,7 +229,7 @@ bool runSuite_MetDeDeplacement(int& passed)
                 nodesB[0] = a; nodesB[1] = b; nodesB[2] = c; nodesB[3] = d;
                 const int lc = model.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
                 model.loadManager().addNodalLoad(NodalLoad(0, b, lc, 15.0, 0.0, -20.0));
-                model.loadManager().addMemberLoad(MemberLoad::uniform(bm, lc, 12.0));
+                model.loadManager().addMemberLoad(MemberLoad::uniform(bm, lc, -12.0, LoadDirection::GlobalZ));
             }
         }
         AnalysisEngineRegistry reg;
@@ -290,7 +290,7 @@ bool runSuite_MetDeDeplacement(int& passed)
         model.getNode(b)->setSupport(SupportDefinition::pinned());
         const int bm = model.addBar(a, b, Section::ipe(300), Material::steelS235(), BarRole::Beam);
         const int lc = model.loadManager().addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead));
-        model.loadManager().addMemberLoad(MemberLoad::uniform(bm, lc, 10.0));
+        model.loadManager().addMemberLoad(MemberLoad::uniform(bm, lc, -10.0, LoadDirection::GlobalZ));
 
         AnalysisEngineRegistry reg;
         registerBuiltInEngines(reg);
@@ -356,7 +356,7 @@ bool runSuite_MetDeDeplacement(int& passed)
         const Material mat = Material::steelS235();
         const int bm = model.addBar(a, b, sec, mat, BarRole::Beam);
         const int lc = model.loadManager().addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead));
-        model.loadManager().addMemberLoad(MemberLoad::uniform(bm, lc, q204));
+        model.loadManager().addMemberLoad(MemberLoad::uniform(bm, lc, -q204, LoadDirection::GlobalZ));
 
         AnalysisEngineRegistry reg;
         registerBuiltInEngines(reg);

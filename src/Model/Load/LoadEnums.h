@@ -41,17 +41,17 @@ enum class LoadCoordSystem
 };
 
 /**
- * @brief Direction d'application de la charge.
+ * @brief Axe d'application de la charge. Valeur positive : sens de l'axe. Global : direction fixe, même si la structure tourne ;
+ * local : suit l'élément. Valeurs conservées dans les fichiers (3 : ancienne « gravité », convertie à la lecture, LegacyLoads.h).
  */
 enum class LoadDirection
 {
-    GlobalX,            ///< Axe global +X
-    GlobalY,            ///< Axe global +Y
-    GlobalZ,            ///< Axe global +Z
-    Gravity,            ///< Gravité globale (-Z par défaut dans TSA)
-    LocalX,             ///< Axe local x (longitudinal)
-    LocalY,             ///< Axe local y (axe fort/faible de la section)
-    LocalZ              ///< Axe local z (axe orthogonal de la section)
+    GlobalX = 0,        ///< Axe global +X
+    GlobalY = 1,        ///< Axe global +Y
+    GlobalZ = 2,        ///< Axe global +Z
+    LocalX = 4,         ///< Axe local x (longitudinal)
+    LocalY = 5,         ///< Axe local y (axe fort/faible de la section)
+    LocalZ = 6          ///< Axe local z (axe orthogonal de la section)
 };
 
 /**
@@ -113,7 +113,6 @@ inline std::string loadDirectionToString(LoadDirection dir)
     case LoadDirection::GlobalX: return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Global X");
     case LoadDirection::GlobalY: return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Global Y");
     case LoadDirection::GlobalZ: return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Global Z");
-    case LoadDirection::Gravity: return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Gravité (-Z)");
     case LoadDirection::LocalX:  return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Local x");
     case LoadDirection::LocalY:  return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Local y");
     case LoadDirection::LocalZ:  return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Local z");

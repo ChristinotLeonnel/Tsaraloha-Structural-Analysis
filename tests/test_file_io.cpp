@@ -765,10 +765,8 @@ bool runSuite_FileIO(int& passed)
         combo.setFactor(customCase, 1.5);
         int comboId = lm.addCombination(combo);
         int nlId = lm.addNodalLoad(NodalLoad(0, n3, customCase, 10.0, -2.5, -30.0, 0.5, 1.5, -4.0, LoadCoordSystem::Global, "P_tete"));
-        int mlId = lm.addMemberLoad(MemberLoad::trapezoidal(0, b1, 1, -5.0, -8.0, 0.1, 0.9, LoadDirection::GlobalZ,
-                                                             LoadCoordSystem::Global, true, "q_trap"));
-        MemberLoad colLoad = MemberLoad::uniform(0, c1, customCase, 2.0, LoadDirection::GlobalX, LoadCoordSystem::Global,
-                                                 "vent_poteau", MemberTargetType::Column);
+        int mlId = lm.addMemberLoad(MemberLoad::trapezoidal(0, b1, 1, -5.0, -8.0, 0.1, 0.9, LoadDirection::GlobalZ, true, "q_trap"));
+        MemberLoad colLoad = MemberLoad::uniform(0, c1, customCase, 2.0, LoadDirection::GlobalX, "vent_poteau", MemberTargetType::Column);
         int colLoadId = lm.addMemberLoad(colLoad);
         lm.setActiveLoadCaseId(customCase);
 
@@ -1055,9 +1053,9 @@ bool runSuite_FileIO(int& passed)
         std::string err;
         TEST_CHECK(writer.saveToFile(v2, old, nullptr, "P", "A", &err), "Test 506: enregistrement 2.0 (" << err << ")");
         TSA::IO::TSAFileHeader h2;
-        TEST_CHECK(TSA::IO::TSAFileReader::readHeader(v2, h2) && h2.versionMajor == 2
+        TEST_CHECK(TSA::IO::TSAFileReader::readHeader(v2, h2) && h2.versionMajor >= 2
                        && (h2.requiredFeatures & TSA::IO::FEATURE_SECTION_PROPERTIES) != 0,
-                   "Test 506: format 2.0, propriétés des sections déclarées obligatoires dans l'en-tête");
+                   "Test 506: format ≥ 2.0, propriétés des sections déclarées obligatoires dans l'en-tête");
         Model back;
         TSA::IO::TSAFileReader reader;
         TEST_CHECK(reader.loadFromFile(v2, back, nullptr, "", nullptr, nullptr, nullptr, &err), "Test 506: relecture 2.0 (" << err << ")");

@@ -322,6 +322,8 @@ set(UI_WIDGETS_SOURCES
     ${TSA_ROOT}/src/UI/Workspace/WorkspaceView.cpp
     ${TSA_ROOT}/src/UI/Common/EcosystemApplication.h
     ${TSA_ROOT}/src/UI/Common/EcosystemApplication.cpp
+    ${TSA_ROOT}/src/UI/Common/LoadAxisCombo.h
+    ${TSA_ROOT}/src/UI/Common/LoadAxisCombo.cpp
     ${TSA_ROOT}/src/UI/Common/SelectionSynchronizer.h
     ${TSA_ROOT}/src/UI/Common/SelectionSynchronizer.cpp
     ${TSA_ROOT}/src/UI/Widgets/SectionPreviewWidget.h
@@ -626,6 +628,12 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/Model/ModelDiff.cpp
     ${TSA_ROOT}/src/Model/StructuralClipboard.h
     ${TSA_ROOT}/src/Model/StructuralClipboard.cpp
+    ${TSA_ROOT}/src/Model/CopyTransform.h
+    ${TSA_ROOT}/src/Model/CopyTransform.cpp
+    ${TSA_ROOT}/src/Model/LegacyBarFrames.h
+    ${TSA_ROOT}/src/Model/LegacyBarFrames.cpp
+    ${TSA_ROOT}/src/Model/Load/LegacyLoads.h
+    ${TSA_ROOT}/src/Model/Load/LegacyLoads.cpp
     ${TSA_ROOT}/src/Model/SelectionQuery.h
     ${TSA_ROOT}/src/Model/SelectionQuery.cpp
 )
@@ -1275,6 +1283,8 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_benchmarks.cpp
     ${TSA_ROOT}/tests/test_display.cpp
     ${TSA_ROOT}/tests/test_axes.cpp
+    ${TSA_ROOT}/tests/test_copy_paste.cpp
+    ${TSA_ROOT}/tests/test_load_axes.cpp
     ${TSA_ROOT}/tests/test_multidoc.cpp
     ${TSA_ROOT}/tests/test_torsion.cpp
     ${TSA_ROOT}/tests/test_meshview.cpp

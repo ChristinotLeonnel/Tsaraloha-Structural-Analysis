@@ -20,85 +20,54 @@ public:
     MemberLoad(int id, int elementId, int loadCaseId,
                LoadType type = LoadType::MemberUniform,
                double q1 = 0.0, double q2 = 0.0,
-               LoadDirection direction = LoadDirection::Gravity,
-               LoadCoordSystem coordSys = LoadCoordSystem::Global,
+               LoadDirection direction = LoadDirection::GlobalZ,
                double x1 = 0.0, double x2 = 0.0,
                bool isRelative = false,
                const std::string& name = "",
                MemberTargetType targetType = MemberTargetType::Beam);
 
-    // Usines pratiques (Static Factories)
-    static MemberLoad uniform(int id, int elementId, int loadCaseId,
-                              double q, LoadDirection dir = LoadDirection::Gravity,
-                              LoadCoordSystem sys = LoadCoordSystem::Global,
-                              const std::string& name = "",
+    // Usines pratiques. L'axe est toujours explicite : X, Y, Z globaux ou x, y, z locaux, q signé.
+    static MemberLoad uniform(int id, int elementId, int loadCaseId, double q, LoadDirection dir, const std::string& name = "",
                               MemberTargetType targetType = MemberTargetType::Beam);
-
-    static MemberLoad uniform(int elementId, int loadCaseId,
-                              double q, LoadDirection dir = LoadDirection::Gravity,
-                              LoadCoordSystem sys = LoadCoordSystem::Global,
-                              const std::string& name = "",
+    static MemberLoad uniform(int elementId, int loadCaseId, double q, LoadDirection dir, const std::string& name = "",
                               MemberTargetType targetType = MemberTargetType::Beam)
     {
-        return uniform(0, elementId, loadCaseId, q, dir, sys, name, targetType);
+        return uniform(0, elementId, loadCaseId, q, dir, name, targetType);
     }
 
-    static MemberLoad uniform(int elementId, int loadCaseId,
-                              double q, LoadDirection dir,
-                              const std::string& name,
-                              MemberTargetType targetType = MemberTargetType::Beam)
+    static MemberLoad trapezoidal(int id, int elementId, int loadCaseId, double q1, double q2, double x1, double x2, LoadDirection dir,
+                                  bool isRelative = false, const std::string& name = "");
+    static MemberLoad trapezoidal(int elementId, int loadCaseId, double q1, double q2, double x1, double x2, LoadDirection dir,
+                                  bool isRelative = false, const std::string& name = "")
     {
-        return uniform(0, elementId, loadCaseId, q, dir, LoadCoordSystem::Global, name, targetType);
+        return trapezoidal(0, elementId, loadCaseId, q1, q2, x1, x2, dir, isRelative, name);
     }
-
-    static MemberLoad trapezoidal(int id, int elementId, int loadCaseId,
-                                 double q1, double q2, double x1, double x2,
-                                 LoadDirection dir = LoadDirection::Gravity,
-                                 LoadCoordSystem sys = LoadCoordSystem::Global,
-                                 bool isRelative = false,
-                                 const std::string& name = "");
-
-    static MemberLoad trapezoidal(int elementId, int loadCaseId,
-                                  double q1, double q2, double x1, double x2,
-                                  LoadDirection dir = LoadDirection::Gravity,
-                                  LoadCoordSystem sys = LoadCoordSystem::Global,
-                                  bool isRelative = false,
-                                  const std::string& name = "")
+    // Nom sans isRelative : surcharges explicites, sinon un littéral "nom" serait converti en isRelative = true.
+    static MemberLoad trapezoidal(int elementId, int loadCaseId, double q1, double q2, double x1, double x2, LoadDirection dir,
+                                  const char* name)
     {
-        return trapezoidal(0, elementId, loadCaseId, q1, q2, x1, x2, dir, sys, isRelative, name);
+        return trapezoidal(0, elementId, loadCaseId, q1, q2, x1, x2, dir, false, name);
     }
-
-    static MemberLoad trapezoidal(int elementId, int loadCaseId,
-                                  double q1, double q2, double x1, double x2,
-                                  LoadDirection dir,
+    static MemberLoad trapezoidal(int elementId, int loadCaseId, double q1, double q2, double x1, double x2, LoadDirection dir,
                                   const std::string& name)
     {
-        return trapezoidal(0, elementId, loadCaseId, q1, q2, x1, x2, dir, LoadCoordSystem::Global, false, name);
+        return trapezoidal(0, elementId, loadCaseId, q1, q2, x1, x2, dir, false, name);
     }
 
-    static MemberLoad pointOnMember(int id, int elementId, int loadCaseId,
-                                    double p, double position,
-                                    LoadDirection dir = LoadDirection::Gravity,
-                                    LoadCoordSystem sys = LoadCoordSystem::Global,
-                                    bool isRelative = false,
-                                    const std::string& name = "");
-
-    static MemberLoad pointOnMember(int elementId, int loadCaseId,
-                                    double p, double position,
-                                    LoadDirection dir = LoadDirection::Gravity,
-                                    LoadCoordSystem sys = LoadCoordSystem::Global,
-                                    bool isRelative = false,
-                                    const std::string& name = "")
+    static MemberLoad pointOnMember(int id, int elementId, int loadCaseId, double p, double position, LoadDirection dir,
+                                    bool isRelative = false, const std::string& name = "");
+    static MemberLoad pointOnMember(int elementId, int loadCaseId, double p, double position, LoadDirection dir,
+                                    bool isRelative = false, const std::string& name = "")
     {
-        return pointOnMember(0, elementId, loadCaseId, p, position, dir, sys, isRelative, name);
+        return pointOnMember(0, elementId, loadCaseId, p, position, dir, isRelative, name);
     }
-
-    static MemberLoad pointOnMember(int elementId, int loadCaseId,
-                                    double p, double position,
-                                    LoadDirection dir,
-                                    const std::string& name)
+    static MemberLoad pointOnMember(int elementId, int loadCaseId, double p, double position, LoadDirection dir, const char* name)
     {
-        return pointOnMember(0, elementId, loadCaseId, p, position, dir, LoadCoordSystem::Global, false, name);
+        return pointOnMember(0, elementId, loadCaseId, p, position, dir, false, name);
+    }
+    static MemberLoad pointOnMember(int elementId, int loadCaseId, double p, double position, LoadDirection dir, const std::string& name)
+    {
+        return pointOnMember(0, elementId, loadCaseId, p, position, dir, false, name);
     }
 
     // Identifiants
@@ -121,8 +90,8 @@ public:
     LoadDirection direction() const noexcept { return m_direction; }
     void setDirection(LoadDirection dir) noexcept { m_direction = dir; }
 
-    LoadCoordSystem coordSystem() const noexcept { return m_coordSys; }
-    void setCoordSystem(LoadCoordSystem sys) noexcept { m_coordSys = sys; }
+    /// Repère de la charge : celui de son axe.
+    LoadCoordSystem coordSystem() const noexcept { return coordSystemFor(m_direction); }
 
     // Intensités (kN/m pour répartie, kN pour ponctuelle, kNm/m pour moment réparti)
     double q1() const noexcept { return m_q1; }
@@ -188,8 +157,7 @@ public:
     /// Message d'erreur en français, vide si la charge est valide pour une barre de longueur L :
     /// valeurs finies, intensité non nulle, positions dans la barre, intervalle non vide.
     std::string validate(double length) const;
-    /// Repère cohérent avec la direction : local pour un axe local, global sinon (Gravité comprise).
-    /// Évite les combinaisons « axe local en repère global » que les moteurs liraient comme Gravité.
+    /// Repère d'un axe : local pour x, y, z, global pour X, Y, Z.
     static LoadCoordSystem coordSystemFor(LoadDirection direction) noexcept
     {
         return (direction == LoadDirection::LocalX || direction == LoadDirection::LocalY
@@ -203,8 +171,7 @@ private:
     LoadType m_type = LoadType::MemberUniform;
     double m_q1 = 0.0;
     double m_q2 = 0.0;
-    LoadDirection m_direction = LoadDirection::Gravity;
-    LoadCoordSystem m_coordSys = LoadCoordSystem::Global;
+    LoadDirection m_direction = LoadDirection::GlobalZ;
     double m_x1 = 0.0;
     double m_x2 = 0.0;
     bool m_isRelative = false;

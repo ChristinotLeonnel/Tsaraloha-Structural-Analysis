@@ -1,3 +1,4 @@
+#include "../Model/Load/LegacyLoads.h"
 #include "BenchmarkSuite.h"
 
 #include "../Analysis/Engine/AnalysisEngineRegistry.h"
@@ -450,16 +451,18 @@ TSA::Model::SupportDefinition supportOf(const QJsonValue& v, const QJsonValue& s
     return def;
 }
 
-TSA::Model::LoadDirection directionOf(const QString& d)
+/// Direction d'un cas de validation : valeur stockée ; absente ou « gravity » : ancienne gravité, convertie à la lecture.
+std::uint8_t directionOf(const QString& d)
 {
     using TSA::Model::LoadDirection;
-    if (d == "globalX") return LoadDirection::GlobalX;
-    if (d == "globalY") return LoadDirection::GlobalY;
-    if (d == "globalZ") return LoadDirection::GlobalZ;
-    if (d == "localX") return LoadDirection::LocalX;
-    if (d == "localY") return LoadDirection::LocalY;
-    if (d == "localZ") return LoadDirection::LocalZ;
-    return LoadDirection::Gravity;
+    auto stored = [](LoadDirection direction) { return static_cast<std::uint8_t>(direction); };
+    if (d == "globalX") return stored(LoadDirection::GlobalX);
+    if (d == "globalY") return stored(LoadDirection::GlobalY);
+    if (d == "globalZ") return stored(LoadDirection::GlobalZ);
+    if (d == "localX") return stored(LoadDirection::LocalX);
+    if (d == "localY") return stored(LoadDirection::LocalY);
+    if (d == "localZ") return stored(LoadDirection::LocalZ);
+    return TSA::Model::kLegacyGravityDirection;
 }
 
 Built buildModel(const QJsonObject& m, Model& model)
@@ -597,17 +600,24 @@ Built buildModel(const QJsonObject& m, Model& model)
             continue;
         }
         const auto dir = directionOf(o.value("direction").toString());
-        const auto sys = (dir == TSA::Model::LoadDirection::LocalX || dir == TSA::Model::LoadDirection::LocalY || dir == TSA::Model::LoadDirection::LocalZ)
-                             ? TSA::Model::LoadCoordSystem::Local
-                             : TSA::Model::LoadCoordSystem::Global;
+        const auto sys = dir >= static_cast<std::uint8_t>(TSA::Model::LoadDirection::LocalX) ? TSA::Model::LoadCoordSystem::Local : TSA::Model::LoadCoordSystem::Global;
         const QString type = o.value("type").toString("uniform");
         const bool rel = o.value("relative").toBool(true);
+        const int element = it->second.id, loadCase = caseOf(o.value("case"));
         TSA::Model::MemberLoad ml;
-        if (type == "point") ml = TSA::Model::MemberLoad::pointOnMember(it->second.id, caseOf(o.value("case")), o.value("p").toDouble(), o.value("x").toDouble(), dir, sys, rel);
+        if (type == "point")
+        {
+            const double p = o.value("p").toDouble();
+            ml = TSA::Model::memberLoadFromStored(0, element, loadCase, TSA::Model::LoadType::MemberPoint, p, p, dir, sys, o.value("x").toDouble(), o.value("x").toDouble(), rel, "", TSA::Model::MemberTargetType::Beam);
+        }
         else if (type == "trapezoidal")
-            ml = TSA::Model::MemberLoad::trapezoidal(it->second.id, caseOf(o.value("case")), o.value("q1").toDouble(), o.value("q2").toDouble(), o.value("x1").toDouble(0.0),
-                                                     o.value("x2").toDouble(1.0), dir, sys, rel);
-        else ml = TSA::Model::MemberLoad::uniform(it->second.id, caseOf(o.value("case")), o.value("q").toDouble(), dir, sys);
+            ml = TSA::Model::memberLoadFromStored(0, element, loadCase, TSA::Model::LoadType::MemberLinear, o.value("q1").toDouble(), o.value("q2").toDouble(), dir, sys,
+                                                  o.value("x1").toDouble(0.0), o.value("x2").toDouble(1.0), rel, "", TSA::Model::MemberTargetType::Beam);
+        else
+        {
+            const double q = o.value("q").toDouble();
+            ml = TSA::Model::memberLoadFromStored(0, element, loadCase, TSA::Model::LoadType::MemberUniform, q, q, dir, sys, 0.0, 0.0, false, "", TSA::Model::MemberTargetType::Beam);
+        }
         using K = TSA::Analysis::StructuralElementKind;
         ml.setTargetType(it->second.kind == K::Column ? TSA::Model::MemberTargetType::Column
                                                       : it->second.kind == K::Truss ? TSA::Model::MemberTargetType::Truss : TSA::Model::MemberTargetType::Beam);
@@ -620,6 +630,8 @@ Built buildModel(const QJsonObject& m, Model& model)
         sl.surfaceId = b.slabs.count(o.value("slab").toInt()) ? b.slabs.at(o.value("slab").toInt()) : 0;
         sl.loadCaseId = caseOf(o.value("case"));
         sl.value = o.value("q").toDouble();
+        // Direction absente : ancienne gravité, comme pour les charges sur barre
+        TSA::Model::applyStoredSurfaceDirection(sl, o.value("direction").toString().toStdString());
         lm.addSurfaceLoad(sl);
     }
     return b;

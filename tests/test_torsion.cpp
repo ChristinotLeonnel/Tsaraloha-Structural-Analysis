@@ -133,7 +133,7 @@ void dumpViews(Model& m, const std::shared_ptr<ResultsModel>& results, const QSt
 /// Moment réparti (couple par unité de longueur) sur une barre.
 MemberLoad couple(int bar, int lc, double q1, double q2, LoadDirection dir, double x1 = 0.0, double x2 = 0.0)
 {
-    MemberLoad l(0, bar, lc, LoadType::MemberMoment, q1, q2, dir, MemberLoad::coordSystemFor(dir), x1, x2);
+    MemberLoad l(0, bar, lc, LoadType::MemberMoment, q1, q2, dir, x1, x2);
     l.setName("couple réparti");
     return l;
 }
@@ -448,7 +448,7 @@ bool runTorsionMechanics(int& passed)
             mdl.getNode(a)->setSupport(SupportDefinition::pinned());
             mdl.getNode(b)->setSupport(SupportDefinition::pinned());
             const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam);
-            mdl.loadManager().addMemberLoad(MemberLoad::uniform(bar, addCase(mdl), q));
+            mdl.loadManager().addMemberLoad(MemberLoad::uniform(bar, addCase(mdl), -q, LoadDirection::GlobalZ));
             const auto snap = CalculationSnapshot::capture(mdl);
             bool forkY = snap.automaticRestraints().size() == 2;
             for (const auto& ar : snap.automaticRestraints()) forkY &= ar.dof == 4 && ar.reason.find("fourche") != std::string::npos;
@@ -503,7 +503,7 @@ bool runTorsionMechanics(int& passed)
             mdl.getNode(a)->setSupport(SupportDefinition::fixed());
             mdl.getNode(b)->setSupport(SupportDefinition::fixed());
             const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam);
-            mdl.loadManager().addMemberLoad(MemberLoad::uniform(bar, addCase(mdl), q));
+            mdl.loadManager().addMemberLoad(MemberLoad::uniform(bar, addCase(mdl), -q, LoadDirection::GlobalZ));
             ResultsModel r;
             TEST_CHECK(solve(mdl, p, r), "Test 330: calcul barre bi-encastrée sans DDL libre");
             const auto* er = r.getElementResults(StructuralElementKind::Beam, bar);
@@ -737,7 +737,7 @@ bool runTorsionMechanics(int& passed)
             mdl.getNode(a)->setSupport(SupportDefinition::pinned());
             mdl.getNode(b)->setSupport(SupportDefinition::pinned());
             const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam);
-            mdl.loadManager().addMemberLoad(MemberLoad::uniform(bar, addCase(mdl), q));
+            mdl.loadManager().addMemberLoad(MemberLoad::uniform(bar, addCase(mdl), -q, LoadDirection::GlobalZ));
             return bar;
         };
         // 1. Poutre selon Y sur deux articulations
@@ -791,7 +791,7 @@ bool runTorsionMechanics(int& passed)
             const int beam = mdl.addBar(b, c, Section::ipe(300), mat, BarRole::Beam);
             mdl.addColumn(d, c, Section::heb(200), mat);
             const int lc = addCase(mdl);
-            mdl.loadManager().addMemberLoad(MemberLoad::uniform(beam, lc, 12.0));
+            mdl.loadManager().addMemberLoad(MemberLoad::uniform(beam, lc, -12.0, LoadDirection::GlobalZ));
             mdl.loadManager().addNodalLoad(NodalLoad(0, b, lc, 8.0, 0, 0));
             ResultsModel rf, rl;
             AnalysisParameters pf = p, pl = p;
@@ -852,7 +852,7 @@ bool runTorsionMechanics(int& passed)
             TEST_CHECK(res.ok, "Test 334: import TSA3D avec charge surfacique");
             TEST_CHECK(issueText(mdl, Sev::Warning, "surfacique"), "Test 334: charge surfacique conservée signalée NON appliquée avant le calcul");
         }
-        // 2. Poids propre explicite, moment réparti sur treillis, moment réparti sans axe
+        // 2. Poids propre explicite, moment réparti sur treillis (tout moment a désormais un axe)
         {
             Model mdl;
             const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(3, 0, 0), c = mdl.addNode(3, 2, 0);
@@ -861,15 +861,13 @@ bool runTorsionMechanics(int& passed)
             const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam);
             const int truss = mdl.addTrussMember(b, c, 0.05);
             const int lc = addCase(mdl);
-            MemberLoad sw(0, bar, lc, LoadType::SelfWeight, 1.0, 1.0, LoadDirection::Gravity);
+            MemberLoad sw(0, bar, lc, LoadType::SelfWeight, -1.0, -1.0, LoadDirection::GlobalZ);
             mdl.loadManager().addMemberLoad(sw);
             TEST_CHECK(issueText(mdl, Sev::Warning, "poids propre"), "Test 334: poids propre explicite signalé (comportement de chaque moteur)");
             MemberLoad onTruss = couple(truss, lc, 1.0, 1.0, LoadDirection::LocalX);
             onTruss.setTargetType(MemberTargetType::Truss);
             mdl.loadManager().addMemberLoad(onTruss);
             TEST_CHECK(issueText(mdl, Sev::Warning, "barre articulée"), "Test 334: moment réparti sur treillis signalé non transmis");
-            mdl.loadManager().addMemberLoad(couple(bar, lc, 1.0, 1.0, LoadDirection::Gravity));
-            TEST_CHECK(issueText(mdl, Sev::Error, "pas d'axe défini"), "Test 334: moment réparti sans axe refusé (erreur)");
         }
         std::cout << "[PASS] Test 334: Charges non transmises signalées" << std::endl;
         ++passed;

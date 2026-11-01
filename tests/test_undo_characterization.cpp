@@ -607,7 +607,7 @@ bool runSuite_UndoCharacterization(int& passed)
 
         // LoadPropertiesView : charge nodale (339, sans clé, sans contrôle) et sur barre (380, validée, sans entrée si inchangée).
         const int nl = m.loadManager().addNodalLoad(NodalLoad(0, n2, 1, 0, 0, -10, 0, 0, 0, LoadCoordSystem::Global, "NL_test"));
-        const int ml = m.loadManager().addMemberLoad(MemberLoad::uniform(0, beam, 1, -5.0, LoadDirection::Gravity));
+        const int ml = m.loadManager().addMemberLoad(MemberLoad::uniform(0, beam, 1, -5.0, LoadDirection::GlobalZ));
         m.clearUndoRedo();
         {
             TSA::UI::LoadPropertiesView v(&m);
@@ -684,7 +684,7 @@ bool runSuite_UndoCharacterization(int& passed)
         {
             const int q = 2; // cas « Q » des valeurs par défaut (LoadManager.cpp:37)
             const int nl = m.loadManager().addNodalLoad(NodalLoad(0, n2, q, 0, 0, -3));
-            const int ml = m.loadManager().addMemberLoad(MemberLoad::uniform(0, b, q, -2.0, LoadDirection::Gravity));
+            const int ml = m.loadManager().addMemberLoad(MemberLoad::uniform(0, b, q, -2.0, LoadDirection::GlobalZ));
             m.clearUndoRedo();
             const std::string fp0 = fingerprint(m);
             TSA::UI::LoadCaseDialog fresh(&m); // tableau relu à la construction
@@ -774,7 +774,7 @@ bool runSuite_UndoCharacterization(int& passed)
         {
             using TSA::Model::applyMemberLoad;
             using TSA::Model::removeLoads;
-            MemberLoad proto = MemberLoad::uniform(0, 0, 1, -4.0, LoadDirection::Gravity);
+            MemberLoad proto = MemberLoad::uniform(0, 0, 1, -4.0, LoadDirection::GlobalZ);
             std::string err;
             UndoProbe p(m);
             TEST_CHECK(applyMemberLoad(m, proto, { { b }, { 424242 } }, "x", &err).empty() && p.undoDelta() == 0 && p.obs.events.empty(),
@@ -1095,7 +1095,7 @@ bool runSuite_UndoCharacterization(int& passed)
         }
         // F2 — charge sur barre (MemberLoadCommands.cpp:80).
         {
-            const MemberLoad proto = MemberLoad::uniform(0, 0, 1, -4.0, LoadDirection::Gravity);
+            const MemberLoad proto = MemberLoad::uniform(0, 0, 1, -4.0, LoadDirection::GlobalZ);
             std::string err;
             const auto t = measureTransition(m, &gm, [&] { TSA::Model::applyMemberLoad(m, proto, { { beam } }, "charge 520", &err); });
             if (!checkTransition(t, 1, 2, 0, "", "Test 520: F2 charge sur barre")) return false;
@@ -1469,7 +1469,7 @@ bool runSuite_UndoCharacterization(int& passed)
         TEST_CHECK(obs.count("ModelEdited") == 7, "Test 523: une révision par ajout (" << obs.count("ModelEdited") << ")");
 
         // Retraits : la charge portée par la poutre est retirée et notifiée AVANT la poutre (Model.cpp:599-620).
-        const int ml = m.loadManager().addMemberLoad(MemberLoad::uniform(0, beam, 1, -2.0, LoadDirection::Gravity));
+        const int ml = m.loadManager().addMemberLoad(MemberLoad::uniform(0, beam, 1, -2.0, LoadDirection::GlobalZ));
         obs.clear();
         TEST_CHECK(m.removeBeam(beam) && obs.specificSequence() == "MemberLoadRemoved(" + id(ml) + ") LoadRemoved(" + id(ml) + ") BeamRemoved(" + id(beam) + ")",
                    "Test 523: retrait de poutre chargée (" << obs.specificSequence() << ")");
@@ -1548,7 +1548,7 @@ bool runSuite_UndoCharacterization(int& passed)
             sl.targetKind = TSA::Model::SurfaceTargetKind::Slab;
             sl.surfaceId = s;
             sl.loadCaseId = ms.loadManager().loadCases().begin()->first;
-            sl.value = -5.0;
+            sl.value = 5.0;
             ms.loadManager().addSurfaceLoad(sl);
             UndoChar::RecordingObserver watcher(&ms);
             ms.removeSlab(s);

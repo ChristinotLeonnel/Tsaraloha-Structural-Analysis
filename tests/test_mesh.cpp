@@ -162,7 +162,7 @@ bool runSuite_Mesh(int& passed)
         TEST_CHECK(pos.size() == 3 && pos[0] < 1.0 - pos[2], "Test 289: progression géométrique depuis le nœud de départ");
 
         m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
-        m.loadManager().addMemberLoad(TSA::Model::MemberLoad::pointOnMember(0, b1, 1, -10.0, 2.2));
+        m.loadManager().addMemberLoad(TSA::Model::MemberLoad::pointOnMember(0, b1, 1, -10.0, 2.2, LoadDirection::GlobalZ));
         g = MeshGeometry::extract(m);
         auto withLoad = MeshGenerator::generate(g, settings1D(1.0));
         bool nodeAtLoad = false;
@@ -358,7 +358,7 @@ bool runSuite_Mesh(int& passed)
         const Material mat = Material::concreteC25_30();
         const int beam = m.addBar(a, b, sec, mat, BarRole::Beam);
         const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
-        m.loadManager().addMemberLoad(TSA::Model::MemberLoad::uniform(0, beam, lc, -q));
+        m.loadManager().addMemberLoad(TSA::Model::MemberLoad::uniform(0, beam, lc, -q, LoadDirection::GlobalZ));
         const auto g = MeshGeometry::extract(m);
         auto r = MeshGenerator::generate(g, settings1D(0.5));
         TSA::Analysis::AnalysisEngineRegistry reg;
@@ -401,7 +401,7 @@ bool runSuite_Mesh(int& passed)
         const Material mat = Material::steelS235();
         const int beam = m.addBar(a, b, sec, mat, BarRole::Beam);
         const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
-        m.loadManager().addMemberLoad(TSA::Model::MemberLoad::pointOnMember(0, beam, lc, -P, 1.7));
+        m.loadManager().addMemberLoad(TSA::Model::MemberLoad::pointOnMember(0, beam, lc, -P, 1.7, LoadDirection::GlobalZ));
         const auto g = MeshGeometry::extract(m);
         auto r = MeshGenerator::generate(g, settings1D(0.6));
         TSA::Analysis::AnalysisEngineRegistry reg;
@@ -559,7 +559,7 @@ bool runSuite_Mesh(int& passed)
             {
                 s.global.recombine = quads;
                 auto r = MeshGenerator::generate(g, s);
-                SurfacePressure p { "SL" + std::to_string(m.slabs().begin()->first), 5.0, SurfacePressure::Direction::Gravity, false };
+                SurfacePressure p { "SL" + std::to_string(m.slabs().begin()->first), -5.0, SurfacePressure::Direction::GlobalZ, false };
                 const auto d = distributeSurfaceLoad(r.mesh, g, p);
                 TEST_CHECK(d.ok && std::abs(d.resultant.z + 5.0 * 23.0) < 1e-6 && d.momentError < 1e-6,
                            "Test 298: dalle avec ouverture, ordre " << int(order) << (quads ? ", quadrangles" : ", triangles") << " : résultante " << d.resultant.z
@@ -569,7 +569,7 @@ bool runSuite_Mesh(int& passed)
         s.global.order = ElementOrder::First;
         s.global.recombine = false;
         auto r = MeshGenerator::generate(g, s);
-        SurfacePressure wind { "W" + std::to_string(wall), 1.2, SurfacePressure::Direction::LocalNormal, false };
+        SurfacePressure wind { "W" + std::to_string(wall), -1.2, SurfacePressure::Direction::LocalZ, false };
         const auto dw = distributeSurfaceLoad(r.mesh, g, wind);
         TEST_CHECK(dw.ok && std::abs(dw.resultant.norm() - 1.2 * 12.0) < 1e-6 && std::abs(dw.resultant.z) < 1e-9,
                    "Test 298: pression normale sur voile : résultante horizontale 14,4 kN");
@@ -658,7 +658,7 @@ bool runSuite_Mesh(int& passed)
         m.getSlab(sl)->setEdgeSupports(sups);
         const int lc = m.loadManager().addLoadCase(TSA::Model::LoadCase(0, "q", TSA::Model::LoadCaseCategory::Live));
         TSA::Model::SurfaceLoad q;
-        q.surfaceId = sl, q.loadCaseId = lc, q.value = 10.0;
+        q.surfaceId = sl, q.loadCaseId = lc, q.value = -10.0;
         m.loadManager().addSurfaceLoad(q);
 
         TSA::UI::MeshController ctl;

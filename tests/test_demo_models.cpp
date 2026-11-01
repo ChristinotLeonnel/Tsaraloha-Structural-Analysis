@@ -472,7 +472,7 @@ std::size_t lineLoad(Model& m, const std::string& prefix, int caseId, double q, 
     std::vector<int> ids;
     for (const auto& [id, b] : m.beams())
         if (b.name().rfind(prefix, 0) == 0) ids.push_back(id);
-    for (int id : ids) m.loadManager().addMemberLoad(MemberLoad::uniform(id, caseId, q, LoadDirection::Gravity, label, MemberTargetType::Beam));
+    for (int id : ids) m.loadManager().addMemberLoad(MemberLoad::uniform(id, caseId, -q, LoadDirection::GlobalZ, label, MemberTargetType::Beam));
     return ids.size();
 }
 
@@ -893,13 +893,13 @@ void buildCableStayedBridge(Model& m, TSA::Grid::GridDefinition& grid)
         }
     for (int id : inner)
     {
-        m.loadManager().addMemberLoad(MemberLoad::uniform(id, L.G, 8.75 * 10.0, LoadDirection::Gravity, "G superstructure (8,75 kN/m² × 10 m)", MemberTargetType::Beam));
-        m.loadManager().addMemberLoad(MemberLoad::uniform(id, L.Q, 4.0 * 10.0, LoadDirection::Gravity, "Q trafic (4,0 kN/m² × 10 m)", MemberTargetType::Beam));
+        m.loadManager().addMemberLoad(MemberLoad::uniform(id, L.G, -(8.75 * 10.0), LoadDirection::GlobalZ, "G superstructure (8,75 kN/m² × 10 m)", MemberTargetType::Beam));
+        m.loadManager().addMemberLoad(MemberLoad::uniform(id, L.Q, -(4.0 * 10.0), LoadDirection::GlobalZ, "Q trafic (4,0 kN/m² × 10 m)", MemberTargetType::Beam));
     }
     for (int id : ends)
     {
-        m.loadManager().addMemberLoad(MemberLoad::uniform(id, L.G, 8.75 * 5.0, LoadDirection::Gravity, "G superstructure (8,75 kN/m² × 5 m)", MemberTargetType::Beam));
-        m.loadManager().addMemberLoad(MemberLoad::uniform(id, L.Q, 4.0 * 5.0, LoadDirection::Gravity, "Q trafic (4,0 kN/m² × 5 m)", MemberTargetType::Beam));
+        m.loadManager().addMemberLoad(MemberLoad::uniform(id, L.G, -(8.75 * 5.0), LoadDirection::GlobalZ, "G superstructure (8,75 kN/m² × 5 m)", MemberTargetType::Beam));
+        m.loadManager().addMemberLoad(MemberLoad::uniform(id, L.Q, -(4.0 * 5.0), LoadDirection::GlobalZ, "Q trafic (4,0 kN/m² × 5 m)", MemberTargetType::Beam));
     }
     for (double xp : { L1, L1 + L2 })
         for (double y : { -legY, legY }) m.addFoundation(nodeAt(m, xp, y, zBase), 10.0, 8.0, 3.0, "Semelle de pylône");
@@ -1043,8 +1043,8 @@ double sumLineLoads(const Model& m, int caseId)
     double total = 0.0;
     for (const auto& [id, l] : m.loadManager().memberLoads())
         if (l.loadCaseId() == caseId)
-            if (const auto* b = m.getBeam(l.elementId())) total += l.q1() * b->length(m);
-    return total;
+            if (const auto* b = m.getBeam(l.elementId())) total -= l.q1() * b->length(m);   // Z global, q < 0 vers le bas
+    return total;   // charge descendante totale, égale à Σ Rz
 }
 
 bool solveCase(Model& m, int caseId, int combId, bool selfWeight, ResultsModel& out, std::string* err)

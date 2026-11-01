@@ -37,7 +37,7 @@ namespace TSA::IO::Tsa3d
 
 inline constexpr char kFormatName[] = "TSA3D";
 inline constexpr int kVersionMajor = 1;
-inline constexpr int kVersionMinor = 0;
+inline constexpr int kVersionMinor = 1;   // 1.1 : repère local des barres verticales selon Robot (y = +Y) ; 1.0 migré à la lecture
 QString versionString();   ///< « 1.0 »
 
 enum class Severity

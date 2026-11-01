@@ -470,8 +470,8 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                 if (q <= 0 || !sg) continue;
                 SurfacePressure p;
                 p.surface = ref;
-                p.value = q;
-                p.direction = SurfacePressure::Direction::Gravity;
+                p.value = -q;
+                p.direction = SurfacePressure::Direction::GlobalZ;
                 const auto res = distributeSurfaceLoad(mesh, geo, p);
                 if (!res.ok)
                 {
@@ -524,14 +524,15 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                     { ref });
                 continue;
             }
-            SurfacePressure::Direction dir = SurfacePressure::Direction::Gravity;
+            SurfacePressure::Direction dir = SurfacePressure::Direction::GlobalZ;
             switch (l.direction)
             {
             case TSA::Model::SurfaceLoadDirection::GlobalX: dir = SurfacePressure::Direction::GlobalX; break;
             case TSA::Model::SurfaceLoadDirection::GlobalY: dir = SurfacePressure::Direction::GlobalY; break;
             case TSA::Model::SurfaceLoadDirection::GlobalZ: dir = SurfacePressure::Direction::GlobalZ; break;
-            case TSA::Model::SurfaceLoadDirection::LocalNormal: dir = SurfacePressure::Direction::LocalNormal; break;
-            default: break;
+            case TSA::Model::SurfaceLoadDirection::LocalX: dir = SurfacePressure::Direction::LocalX; break;
+            case TSA::Model::SurfaceLoadDirection::LocalY: dir = SurfacePressure::Direction::LocalY; break;
+            case TSA::Model::SurfaceLoadDirection::LocalZ: dir = SurfacePressure::Direction::LocalZ; break;
             }
             SurfaceLoadResult res;
             if (l.distribution == TSA::Model::SurfaceLoadDistribution::Point)

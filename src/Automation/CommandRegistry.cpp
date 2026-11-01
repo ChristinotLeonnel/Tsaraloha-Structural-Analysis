@@ -465,7 +465,7 @@ void registerBuiltInCommands(CommandRegistry& reg)
 
     reg.add({ "loads.add_uniform", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Ajouter une charge répartie"),
               QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Charges"),
-              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Charge uniforme (kN/m) sur une poutre, sens de la pesanteur pour q > 0."),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Charge uniforme (kN/m) sur une poutre, suivant Z global : q < 0 vers le bas."),
               { param("beam", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Poutre"), VT::Integer),
                 param("case", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Cas de charge"), VT::Integer),
                 param("q", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Intensité"), VT::Real, Q::ForcePerLength) },
@@ -476,7 +476,7 @@ void registerBuiltInCommands(CommandRegistry& reg)
                     return fail(QCoreApplication::translate("TSA::Automation::Commands", "Poutre %1 inexistante.").arg(beam).toStdString());
                 if (!s.model().loadManager().getLoadCase(lc))
                     return fail(QCoreApplication::translate("TSA::Automation::Commands", "Cas de charge %1 inexistant.").arg(lc).toStdString());
-                const int id = s.model().loadManager().addMemberLoad(TSA::Model::MemberLoad::uniform(beam, lc, real(a, "q")));
+                const int id = s.model().loadManager().addMemberLoad(TSA::Model::MemberLoad::uniform(beam, lc, real(a, "q"), TSA::Model::LoadDirection::GlobalZ));
                 s.model().notifyMemberLoadAdded(id);
                 return done(QCoreApplication::translate("TSA::Automation::Commands", "Charge répartie %1 sur la poutre %2.")
                                 .arg(QString::number(id), QString::number(beam))

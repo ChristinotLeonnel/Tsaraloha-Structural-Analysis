@@ -1,5 +1,8 @@
 #include "Model.h"
+#include "CopyTransform.h"
 #include "ModelElementCopy.h"
+#include "SelectionQuery.h"
+#include "StructuralClipboard.h"
 
 #include <algorithm>
 #include <array>
@@ -51,6 +54,45 @@ bool collectSplittableLoads(const LoadManager& lm, int elementId, MemberTargetTy
     return true;
 }
 
+/// Angle de section, après une transformation rigide, des barres dont les deux extrémités sont transformées (id, angle).
+struct BarRotations
+{
+    std::vector<std::pair<int, double>> beams, columns;
+};
+
+BarRotations imageRotations(const Model& m, const std::set<int>& nodeIds, const gp_Trsf& trsf)
+{
+    BarRotations out;
+    if (std::abs(std::abs(trsf.ScaleFactor()) - 1.0) > 1e-12 || isTranslation(trsf)) return out;   // rigide seulement (une symétrie vaut -1)
+    auto image = [&](const auto& bar) {
+        const Node* a = m.getNode(bar.startNodeId());
+        const Node* b = m.getNode(bar.endNodeId());
+        const gp_Pnt pa(a->x(), a->y(), a->z()), pb(b->x(), b->y(), b->z());
+        return barRotationImage(trsf, pa, pb, bar.rotation(), pa.Transformed(trsf), pb.Transformed(trsf));
+    };
+    auto moved = [&](const auto& bar) {
+        return nodeIds.count(bar.startNodeId()) && nodeIds.count(bar.endNodeId()) && m.getNode(bar.startNodeId()) && m.getNode(bar.endNodeId());
+    };
+    for (const auto& [id, b] : m.beams())
+        if (moved(b)) out.beams.push_back({ id, image(b) });
+    for (const auto& [id, c] : m.columns())
+        if (moved(c)) out.columns.push_back({ id, image(c) });
+    return out;
+}
+
+void applyRotations(Model& m, const BarRotations& rotations)
+{
+    for (const auto& [id, angle] : rotations.beams)
+    {
+        m.getBeam(id)->setRotation(angle);
+        m.notifyBeamModified(id);
+    }
+    for (const auto& [id, angle] : rotations.columns)
+    {
+        m.getColumn(id)->setRotation(angle);
+        m.notifyColumnModified(id);
+    }
+}
 } // namespace
 
 // -----------------------------------------------------------------------------
@@ -66,6 +108,17 @@ std::vector<int> Model::mirrorElements(const std::set<int>& nodeIds,
                                        const std::set<int>& cableIds,
                                        double planeTol)
 {
+    if (keepOriginal)
+    {
+        ElementSet elements;
+        elements.nodes = nodeIds;
+        elements.beams = beamIds;
+        elements.columns = columnIds;
+        elements.slabs = slabIds;
+        elements.cables = cableIds;
+        return mirrorCopyElements(elements, planePoint, planeNormal, ClipboardOptions {}, nullptr, planeTol);
+    }
+
     std::vector<int> result;
 
     std::set<int> allNodeIds = nodeIds;
@@ -92,107 +145,30 @@ std::vector<int> Model::mirrorElements(const std::set<int>& nodeIds,
         return q;
     };
 
-    if (!keepOriginal)
-    {
-        for (int nid : allNodeIds)
-        {
-            auto* n = getNode(nid);
-            if (!n) continue;
-            bool onPlane = false;
-            gp_Pnt q = mirrored(*n, onPlane);
-            if (onPlane) continue;
-            n->setCoordinates(q.X(), q.Y(), q.Z());
-            notifyNodeModified(nid);
-            result.push_back(nid);
-        }
-        // La symétrie inverse le sens de parcours du contour : on le rétablit.
-        for (int sId : slabIds)
-        {
-            if (auto* s = getSlab(sId))
-            {
-                std::vector<int> nids = s->nodeIds();
-                std::reverse(nids.begin(), nids.end());
-                s->setNodeIds(nids);
-                notifySlabModified(sId);
-            }
-        }
-        return result;
-    }
-
-    std::map<int, int> oldToNew;
+    const BarRotations rotations = imageRotations(*this, allNodeIds, trsf);
     for (int nid : allNodeIds)
     {
-        const auto* n = getNode(nid);
+        auto* n = getNode(nid);
         if (!n) continue;
         bool onPlane = false;
         gp_Pnt q = mirrored(*n, onPlane);
-        if (onPlane)
-        {
-            oldToNew[nid] = nid; // partagé entre l'original et sa copie
-            continue;
-        }
-        const int newId = addNode(q.X(), q.Y(), q.Z());
-        oldToNew[nid] = newId;
-        result.push_back(newId);
+        if (onPlane) continue;
+        n->setCoordinates(q.X(), q.Y(), q.Z());
+        notifyNodeModified(nid);
+        result.push_back(nid);
     }
-
-    auto isOwnImage = [&](int a, int b) { return oldToNew[a] == a && oldToNew[b] == b; };
-
-    for (int bId : beamIds)
-    {
-        const auto* src = getBeam(bId);
-        if (!src || isOwnImage(src->startNodeId(), src->endNodeId())) continue;
-        const Beam srcCopy = *src; // addBeam peut réallouer
-        const int id = addBeam(oldToNew[srcCopy.startNodeId()], oldToNew[srcCopy.endNodeId()], srcCopy.width(), srcCopy.height());
-        if (auto* nb = getBeam(id)) { copyBeamAttributes(srcCopy, *nb); notifyBeamModified(id); }
-        result.push_back(id);
-    }
-
-    for (int cId : columnIds)
-    {
-        const auto* src = getColumn(cId);
-        if (!src || isOwnImage(src->startNodeId(), src->endNodeId())) continue;
-        const Column srcCopy = *src;
-        const int id = addColumn(oldToNew[srcCopy.startNodeId()], oldToNew[srcCopy.endNodeId()], srcCopy.width(), srcCopy.height());
-        if (auto* nc = getColumn(id)) { copyColumnAttributes(srcCopy, *nc); notifyColumnModified(id); }
-        result.push_back(id);
-    }
-
+    // La symétrie inverse le sens de parcours du contour : on le rétablit.
     for (int sId : slabIds)
     {
-        const auto* src = getSlab(sId);
-        if (!src) continue;
-        const Slab srcCopy = *src;
-        std::vector<int> nids;
-        bool allOnPlane = true;
-        for (int nid : srcCopy.nodeIds())
+        if (auto* s = getSlab(sId))
         {
-            nids.push_back(oldToNew[nid]);
-            allOnPlane = allOnPlane && oldToNew[nid] == nid;
+            std::vector<int> nids = s->nodeIds();
+            std::reverse(nids.begin(), nids.end());
+            s->setNodeIds(nids);
+            notifySlabModified(sId);
         }
-        if (allOnPlane) continue;
-        std::reverse(nids.begin(), nids.end());
-        const int id = addSlab(nids, srcCopy.thickness(), "", srcCopy.slabType());
-        if (auto* ns = getSlab(id))
-        {
-            ns->setMaterial(srcCopy.material());
-            ns->setColor(srcCopy.color());
-            notifySlabModified(id);
-        }
-        result.push_back(id);
     }
-
-    for (int cId : cableIds)
-    {
-        const auto* src = getCable(cId);
-        if (!src || isOwnImage(src->startNodeId(), src->endNodeId())) continue;
-        const Cable srcCopy = *src;
-        const int id = addCable(oldToNew[srcCopy.startNodeId()], oldToNew[srcCopy.endNodeId()],
-                                srcCopy.definition(), srcCopy.name(), srcCopy.geometryMode(), srcCopy.sag());
-        if (auto* nc = getCable(id)) { copyCableAttributes(srcCopy, *nc); notifyCableModified(id); }
-        result.push_back(id);
-    }
-
+    applyRotations(*this, rotations);
     return result;
 }
 
@@ -393,6 +369,7 @@ int Model::splitBarAt(ElementKind kind, int id, double t, int nodeId, int* newBa
 
 bool Model::transformNodes(const std::set<int>& nodeIds, const gp_Trsf& trsf)
 {
+    const BarRotations rotations = imageRotations(*this, nodeIds, trsf);
     bool any = false;
     for (int nid : nodeIds)
     {
@@ -403,6 +380,7 @@ bool Model::transformNodes(const std::set<int>& nodeIds, const gp_Trsf& trsf)
         notifyNodeModified(nid);
         any = true;
     }
+    applyRotations(*this, rotations);
     return any;
 }
 

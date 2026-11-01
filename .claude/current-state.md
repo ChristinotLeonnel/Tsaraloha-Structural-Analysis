@@ -1,9 +1,23 @@
 # Current State
 
-Last Updated: 2026-10-31 — analyse non linéaire retirée (ADR-025 ; commits a7b163e et c3cf5f6, fusion dans main demandée). Sections non
+Last Updated: 2026-10-31 — repères locaux et axes des charges (branche refactor/load-axes-section-rotation) ; avant : analyse non linéaire retirée (ADR-025 ; commits a7b163e et c3cf5f6, fusion dans main demandée). Sections non
 revues depuis le 2026-10-07 : voir l'audit du 2026-10-31 (TSA_CODE_QUALITY_AUDIT.md, § Documentation).
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
+
+## Repères locaux, rotation de section et axes des charges (2026-10-31, branche refactor/load-axes-section-rotation, fusionnée dans main le 2026-11-01)
+Status: IMPLEMENTED — convention de Robot Structural Analysis 2024 mesurée par son API : barre verticale (écart horizontal / L < 1e-3)
+y = +Y à γ = 0 ; γ de la copie recalculé en rotation, symétrie, inversion (CopyTransform::barRotationImage). Charges : axes seuls
+(X, Y, Z globaux, x, y, z locaux), plus de direction « gravité » (LoadDirection, SurfaceLoadDirection, LoadResolver, fenêtres :
+UI/Common/LoadAxisCombo). Anciens fichiers convertis à la lecture (LegacyLoads, LegacyBarFrames) ; .tsa 3.0, .tsa3d 1.1.
+Poids propre automatique conservé (−Z global). Rapport : docs/audit/2026-10-31/COORDINATE_SYSTEM_AND_SECTION_ROTATION_REPORT.md.
+Vérifié (Release build-ninja-release, reconstruite à neuf le 2026-11-01) : 60/60 suites, 572 tests (558-565 nouveaux), banc 2 097/2 097, TSALab 27/27 (branche du même nom),
+traductions en / mg complètes. Non vérifié : empreinte des exemples contre main, vrai TSA.exe (fenêtres de charge), Debug, Linux, panneaux de Robot.
+
+## Copier / Coller (2026-10-31, branche fix/copy-paste-complete, non commitée)
+Status: IMPLEMENTED — un seul moteur, StructuralClipboard : Ctrl+C / V et outils Copier, réseaux, rotation, Décaler, symétrie avec copie (pasteImage).
+Charges copiées par défaut (ClipboardOptions::loads, réglage Clipboard/copyLoads) ; rotation et symétrie : image des charges et des données de surface
+(CopyTransform). Rapport : docs/audit/2026-10-31/COPY_PASTE_AUDIT_AND_FIX_REPORT.md. Tests 549-557. Vérifié (Release) : 59/59 suites, 564 tests, TSALab 27/27, 104 fichiers d'empreinte identiques, banc 2 097/2 097. Non vérifié : vrai TSA.exe, Debug, Linux, fuites mémoire.
 
 ## Repères de la vue 3D (2026-10-31, branche feature/coordinate-axis-gizmos, fusionnée dans main)
 Status: IMPLEMENTED — trièdre global X, Y, Z à l'origine, indicateur d'angle et ViewCube aux mêmes couleurs, repères locaux x, y, z
@@ -60,6 +74,10 @@ Non vérifié : Windows/MSVC, CI GitHub (aucun push), essai manuel de l'interfac
 à prendre, ne pas supprimer sans accord).
 
 ## Build
+2026-11-01 matin : build-ninja-release de TSA et build-windows-validation de TSALab disparus à leur tour (dossier parent modifié à 08:19,
+cause inconnue) ; reconstruits par le preset ninja-release dans les deux dépôts (TSA 566 étapes).
+2026-10-31 soir : build-windows-validation de TSA introuvable (cause inconnue, absent de la Corbeille) ; Release reconstruite par le preset
+ninja-release (build-ninja-release, 566 étapes, OpenSees trouvé dans thirdparty/OpenSees). TSALab : TSALab/build-windows-validation.
 Poste au 2026-10-31 : Qt 6.12.0 réinstallée dans C:/Qt/6.12.0/msvc2022_64 (Qt retirée par une maintenance Qt le 30/10),
 OpenSees 3.8.0 réinstallé (thirdparty/OpenSees + build-windows-validation/engines/OpenSees) — BUG-146. Release
 build-windows-validation : 57/57 suites (opensees relancée seule après un délai au premier lancement), test 531 compris.

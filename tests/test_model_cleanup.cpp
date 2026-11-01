@@ -77,7 +77,7 @@ bool runSuite_ModelCleanup(int& passed)
         const int pf = p.addNode(2, 0, 0), pt = p.addNode(2, 0, 3);
         p.addColumn(pf, pt, Section::heb(200), Material::steelS235());
         const int lc = p.loadManager().addLoadCase(LoadCase(0, "Q"));
-        p.loadManager().addMemberLoad(MemberLoad::pointOnMember(pbm, lc, 10.0, 4.0));
+        p.loadManager().addMemberLoad(MemberLoad::pointOnMember(pbm, lc, -10.0, 4.0, LoadDirection::GlobalZ));
         const auto rp = ModelCleanup::clean(p);
         TEST_CHECK(rp.nodesConnectedOnBars == 0 && rp.refused.size() == 1 && p.beams().size() == 1,
                    "Test 162: division refusée et signalée (charge ponctuelle)");
@@ -91,7 +91,7 @@ bool runSuite_ModelCleanup(int& passed)
         const int a = m.addNode(0, 0, 0), b = m.addNode(5, 0, 0);
         const int b1 = bar(m, a, b), b2 = bar(m, b, a);
         const int lc = m.loadManager().addLoadCase(LoadCase(0, "G"));
-        const int load = m.loadManager().addMemberLoad(MemberLoad::uniform(b2, lc, 3.0));
+        const int load = m.loadManager().addMemberLoad(MemberLoad::uniform(b2, lc, -3.0, LoadDirection::GlobalZ));
         const int c = m.addNode(0, 0, 4);
         m.addColumn(a, c, Section::heb(200), Material::steelS235());
         m.addTrussMember(a, c, 0.05);
@@ -148,7 +148,7 @@ bool runSuite_ModelCleanup(int& passed)
         const int b2 = m.addNode(0.0003, 0, 3), c2 = m.addNode(5.9998, 0, 3);   // traverse dessinée à part
         const int beam = bar(m, b2, c2);
         const int lc = m.loadManager().addLoadCase(LoadCase(0, "G"));
-        m.loadManager().addMemberLoad(MemberLoad::uniform(beam, lc, 10.0));
+        m.loadManager().addMemberLoad(MemberLoad::uniform(beam, lc, -10.0, LoadDirection::GlobalZ));
 
         AnalysisEngineRegistry reg;
         registerBuiltInEngines(reg);

@@ -2760,8 +2760,9 @@ void OccView::updateSurfaceLoadShapes()
         case TSA::Model::SurfaceLoadDirection::GlobalX: dir = gp_Vec(1, 0, 0), dirName = tr("X global"); break;
         case TSA::Model::SurfaceLoadDirection::GlobalY: dir = gp_Vec(0, 1, 0), dirName = tr("Y global"); break;
         case TSA::Model::SurfaceLoadDirection::GlobalZ: dir = gp_Vec(0, 0, 1), dirName = tr("Z global"); break;
-        case TSA::Model::SurfaceLoadDirection::LocalNormal: dir = gp_Vec(-sg->frame.N.x, -sg->frame.N.y, -sg->frame.N.z), dirName = tr("normale locale"); break;
-        default: dir = gp_Vec(0, 0, -1), dirName = tr("gravité"); break;
+        case TSA::Model::SurfaceLoadDirection::LocalX: dir = gp_Vec(sg->frame.U.x, sg->frame.U.y, sg->frame.U.z), dirName = tr("x local"); break;
+        case TSA::Model::SurfaceLoadDirection::LocalY: dir = gp_Vec(sg->frame.V.x, sg->frame.V.y, sg->frame.V.z), dirName = tr("y local"); break;
+        case TSA::Model::SurfaceLoadDirection::LocalZ: dir = gp_Vec(sg->frame.N.x, sg->frame.N.y, sg->frame.N.z), dirName = tr("z local"); break;
         }
         if (l.value < 0) dir.Reverse();
         dir.Normalize();

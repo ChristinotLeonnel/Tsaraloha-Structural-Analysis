@@ -74,7 +74,7 @@ std::shared_ptr<ResultsModel> portalResults(Model& m, double h = 3.0, double loa
     const int beam = m.addBar(b, c, Section::ipe(300), Material::steelS235(), BarRole::Beam);
     m.addColumn(d, c, Section::heb(200), Material::steelS235());
     const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
-    m.loadManager().addMemberLoad(MemberLoad::uniform(beam, lc, load));
+    m.loadManager().addMemberLoad(MemberLoad::uniform(beam, lc, -load, LoadDirection::GlobalZ));
     m.loadManager().addNodalLoad(NodalLoad(0, b, lc, 10.0, 0.0, 0.0));
     AnalysisEngineRegistry reg;
     registerBuiltInEngines(reg);
@@ -455,7 +455,7 @@ bool runSuite_Display(int& passed)
         const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
         m.loadManager().addNodalLoad(NodalLoad(0, a, lc, 0, 0, -10.0));
         m.loadManager().addNodalLoad(NodalLoad(0, c, lc, 0, 0, -100.0));
-        m.loadManager().addMemberLoad(MemberLoad::uniform(beam, lc, 500.0));
+        m.loadManager().addMemberLoad(MemberLoad::uniform(beam, lc, -500.0, LoadDirection::GlobalZ));
         const auto mx = loadFamilyMaxima(m.loadManager());
         TEST_CHECK(mx.of(LoadFamily::Force) == 100.0 && mx.of(LoadFamily::LineForce) == 500.0 && mx.of(LoadFamily::Pressure) == 0.0, "Test 374: maxima par famille");
 
@@ -481,7 +481,7 @@ bool runSuite_Display(int& passed)
         // Valeurs des charges inchangées par l'affichage
         double sumFz = 0;
         for (const auto& [id, nl] : m.loadManager().nodalLoads()) sumFz += nl.fz();
-        TEST_CHECK(sumFz == -310.0 && m.loadManager().memberLoads().begin()->second.q1() == 500.0, "Test 374: valeurs des charges inchangées");
+        TEST_CHECK(sumFz == -310.0 && m.loadManager().memberLoads().begin()->second.q1() == -500.0, "Test 374: valeurs des charges inchangées");
         TEST_CHECK(view.loadScaleLegendText().contains("kN/m") && view.loadScaleLegendText().contains("200"), "Test 374: légende par famille");
         view.setModel(nullptr);
         view.hide();
@@ -516,12 +516,12 @@ bool runSuite_Display(int& passed)
             srcCaseG = lm.addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead));
             const int q = lm.addLoadCase(LoadCase(0, "Q bureaux", LoadCaseCategory::Live));
             lm.addNodalLoad(NodalLoad(0, n2, q, 12.5, 0.0, -100.0));
-            lm.addMemberLoad(MemberLoad::uniform(srcBeam, srcCaseG, 7.25));
+            lm.addMemberLoad(MemberLoad::uniform(srcBeam, srcCaseG, -7.25, LoadDirection::GlobalZ));
             SurfaceLoad sl;
             sl.targetKind = SurfaceTargetKind::Slab;
             sl.surfaceId = slab;
             sl.loadCaseId = q;
-            sl.value = 2.5;
+            sl.value = -2.5;
             lm.addSurfaceLoad(sl);
 
             ClipboardSelection sel;
@@ -581,9 +581,9 @@ bool runSuite_Display(int& passed)
         const auto* ml = lmB.getMemberLoad(r.memberLoadIds.at(0));
         const auto* nl = lmB.getNodalLoad(r.nodalLoadIds.at(0));
         const auto* su = lmB.getSurfaceLoad(r.surfaceLoadIds.at(0));
-        TEST_CHECK(ml && ml->q1() == 7.25 && ml->elementId() == pBeam->id() && ml->loadCaseId() == gB && nl && nl->fz() == -100.0 && nl->fx() == 12.5 &&
-                       su && su->value == 2.5 && su->surfaceId == slabB.id(),
-                   "Test 375: charges collées sur les nouveaux éléments, valeurs identiques (7,25 kN/m ; 12,5 / −100 kN ; 2,5 kN/m²)");
+        TEST_CHECK(ml && ml->q1() == -7.25 && ml->elementId() == pBeam->id() && ml->loadCaseId() == gB && nl && nl->fz() == -100.0 && nl->fx() == 12.5 &&
+                       su && su->value == -2.5 && su->surfaceId == slabB.id(),
+                   "Test 375: charges collées sur les nouveaux éléments, valeurs identiques (−7,25 kN/m ; 12,5 / −100 kN ; −2,5 kN/m², Z global)");
 
         // Annulation : une seule étape retire tout le collage ; Rétablir le remet
         TEST_CHECK(b.canUndo() && b.undo() && b.nodes().size() == nodesBefore && b.beams().size() == beamsBefore && b.slabs().empty() && b.walls().empty() &&

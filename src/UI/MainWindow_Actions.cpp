@@ -603,7 +603,7 @@ void MainWindow::createActions()
         m_actionClipCopySupports->setCheckable(true);
         m_actionClipCopyLoads->setCheckable(true);
         m_actionClipCopySupports->setChecked(settings.value("Clipboard/copySupports", true).toBool());
-        m_actionClipCopyLoads->setChecked(settings.value("Clipboard/copyLoads", false).toBool());
+        m_actionClipCopyLoads->setChecked(settings.value("Clipboard/copyLoads", true).toBool());
         connect(m_actionClipCopySupports, &QAction::toggled, this, [](bool on) { QSettings().setValue("Clipboard/copySupports", on); });
         connect(m_actionClipCopyLoads, &QAction::toggled, this, [](bool on) { QSettings().setValue("Clipboard/copyLoads", on); });
         m_actionClipMergeNodes = new QAction(tr("Fusionner les nœuds coïncidents au collage"), this);

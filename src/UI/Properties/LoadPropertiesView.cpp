@@ -1,3 +1,4 @@
+#include "../Common/LoadAxisCombo.h"
 #include "LoadPropertiesView.h"
 #include "../../Model/Model.h"
 #include "../../Model/Load/LoadManager.h"
@@ -18,6 +19,14 @@
 #include <QDoubleSpinBox>
 #include <QComboBox>
 #include <QGroupBox>
+
+namespace
+{
+const std::array<int, 3> kGlobalAxes { static_cast<int>(TSA::Model::LoadDirection::GlobalX), static_cast<int>(TSA::Model::LoadDirection::GlobalY),
+                                       static_cast<int>(TSA::Model::LoadDirection::GlobalZ) };
+const std::array<int, 3> kLocalAxes { static_cast<int>(TSA::Model::LoadDirection::LocalX), static_cast<int>(TSA::Model::LoadDirection::LocalY),
+                                      static_cast<int>(TSA::Model::LoadDirection::LocalZ) };
+} // namespace
 
 namespace TSA::UI
 {
@@ -144,14 +153,8 @@ void LoadPropertiesView::setupUi()
     auto* gridMember = new QGridLayout(m_groupMember);
 
     m_comboDirection = new QComboBox(this);
-    m_comboDirection->addItem(tr("Gravité (-Z)"), static_cast<int>(TSA::Model::LoadDirection::Gravity));
-    m_comboDirection->addItem(tr("Global X"), static_cast<int>(TSA::Model::LoadDirection::GlobalX));
-    m_comboDirection->addItem(tr("Global Y"), static_cast<int>(TSA::Model::LoadDirection::GlobalY));
-    m_comboDirection->addItem(tr("Global Z"), static_cast<int>(TSA::Model::LoadDirection::GlobalZ));
-    m_comboDirection->addItem(tr("Local x (axial)"), static_cast<int>(TSA::Model::LoadDirection::LocalX));
-    m_comboDirection->addItem(tr("Local y (transversal)"), static_cast<int>(TSA::Model::LoadDirection::LocalY));
-    m_comboDirection->addItem(tr("Local z (transversal)"), static_cast<int>(TSA::Model::LoadDirection::LocalZ));
-    gridMember->addWidget(new QLabel(tr("Direction :"), this), 0, 0);
+    TSA::UI::fillLoadAxisCombo(m_comboDirection, false, kGlobalAxes);
+    gridMember->addWidget(new QLabel(tr("Axe :"), this), 0, 0);
     gridMember->addWidget(m_comboDirection, 0, 1, 1, 3);
 
     m_lblQ1 = new QLabel(tr("Intensité q1 :"), this);
@@ -192,7 +195,14 @@ void LoadPropertiesView::setupUi()
     // Connexions
     connect(m_editName, &QLineEdit::editingFinished, this, &LoadPropertiesView::onFieldChanged);
     connect(m_comboLoadCase, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &LoadPropertiesView::onFieldChanged);
-    connect(m_comboCoordSys, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &LoadPropertiesView::onFieldChanged);
+    connect(m_comboCoordSys, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+        if (m_mode == DisplayMode::Member)   // l'axe suit le repère choisi, à la même position
+        {
+            const bool local = m_comboCoordSys->currentData().toInt() == static_cast<int>(TSA::Model::LoadCoordSystem::Local);
+            TSA::UI::fillLoadAxisCombo(m_comboDirection, local, local ? kLocalAxes : kGlobalAxes);
+        }
+        onFieldChanged();
+    });
     connect(m_spinFx, &QDoubleSpinBox::editingFinished, this, &LoadPropertiesView::onFieldChanged);
     connect(m_spinFy, &QDoubleSpinBox::editingFinished, this, &LoadPropertiesView::onFieldChanged);
     connect(m_spinFz, &QDoubleSpinBox::editingFinished, this, &LoadPropertiesView::onFieldChanged);
@@ -248,7 +258,7 @@ void LoadPropertiesView::refreshView()
         }
 
         m_lblHeader->setText(tr("Charge Nodale #%1").arg(m_loadId));
-        m_comboCoordSys->setEnabled(true);   // verrouillé seulement pour les charges sur barre
+        m_comboCoordSys->setEnabled(false);   // une charge nodale est globale : un nœud n'a pas de repère local
         m_editName->setText(QString::fromStdString(nl->name()));
         m_lblTarget->setText(tr("Nœud N%1").arg(nl->nodeId()));
 
@@ -290,6 +300,8 @@ void LoadPropertiesView::refreshView()
         int csIdx = m_comboCoordSys->findData(static_cast<int>(ml->coordSystem()));
         if (csIdx >= 0) m_comboCoordSys->setCurrentIndex(csIdx);
 
+        const bool local = ml->coordSystem() == TSA::Model::LoadCoordSystem::Local;
+        TSA::UI::fillLoadAxisCombo(m_comboDirection, local, local ? kLocalAxes : kGlobalAxes);
         int dirIdx = m_comboDirection->findData(static_cast<int>(ml->direction()));
         if (dirIdx >= 0) m_comboDirection->setCurrentIndex(dirIdx);
 
@@ -300,7 +312,7 @@ void LoadPropertiesView::refreshView()
 
         // Repère déduit de la direction (une direction locale en repère global serait lue comme
         // Gravité par les moteurs) ; champs propres au type de charge seulement.
-        m_comboCoordSys->setEnabled(false);
+        m_comboCoordSys->setEnabled(true);
         const bool moment = ml->type() == TSA::Model::LoadType::MemberMoment;
         const bool linear = ml->type() == TSA::Model::LoadType::MemberLinear || moment; // moment réparti : m1 → m2
         const bool point = ml->type() == TSA::Model::LoadType::MemberPoint;
@@ -368,7 +380,6 @@ void LoadPropertiesView::applyChanges()
         edited.setName(m_editName->text().trimmed().toStdString());
         edited.setLoadCaseId(m_comboLoadCase->currentData().toInt());
         edited.setDirection(static_cast<TSA::Model::LoadDirection>(m_comboDirection->currentData().toInt()));
-        edited.setCoordSystem(TSA::Model::MemberLoad::coordSystemFor(edited.direction()));
         edited.setQ1(m_spinQ1->value());
         const bool variable = edited.type() == TSA::Model::LoadType::MemberLinear || edited.type() == TSA::Model::LoadType::MemberMoment;
         edited.setQ2(variable ? m_spinQ2->value() : m_spinQ1->value());

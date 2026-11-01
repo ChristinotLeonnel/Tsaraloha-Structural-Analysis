@@ -143,7 +143,7 @@ bool runSuite_Extraction(int& passed)
                        && tcl2.find("eleLoad -ele " + std::to_string(beamTag) + " ") == std::string::npos,
                        "Test 105: charge appliquée au poteau 1, pas à la poutre 1");
             // Compatibilité : charge « Beam » (anciens fichiers) sur l'id d'un treillis sans poutre homonyme.
-            MemberLoad legacy = MemberLoad::uniform(99, lc, 1.0);
+            MemberLoad legacy = MemberLoad::uniform(99, lc, -1.0, LoadDirection::GlobalZ);
             TEST_CHECK(s2.findElementForLoad(legacy) == nullptr, "Test 105: charge orpheline ignorée");
         }
         ResultsModel r;
@@ -436,7 +436,7 @@ bool runSuite_Extraction(int& passed)
             int bb = m.addBar(n1, n2, Section::ipe(300), Material::steelS235(), BarRole::Beam);
             m.addColumn(n3, n2, Section::heb(200), Material::steelS235());
             int lc = addCase(m);
-            m.loadManager().addMemberLoad(MemberLoad::uniform(bb, lc, 12.0));
+            m.loadManager().addMemberLoad(MemberLoad::uniform(bb, lc, -12.0, LoadDirection::GlobalZ));
             m.loadManager().addNodalLoad(NodalLoad(0, n2, lc, 7.0, 0.0, -10.0));
             AnalysisParameters p;
             p.useKiloNewtons = kN;
@@ -565,7 +565,7 @@ bool runSuite_Extraction(int& passed)
         const Material mat = Material::steelS235();
         int bb = m.addBar(n1, n2, sec, mat, BarRole::Beam);
         int lc = addCase(m);
-        m.loadManager().addMemberLoad(MemberLoad::uniform(bb, lc, q));
+        m.loadManager().addMemberLoad(MemberLoad::uniform(bb, lc, -q, LoadDirection::GlobalZ));
         AnalysisParameters p;
         p.includeSelfWeight = false;
         ResultsModel r;
@@ -614,7 +614,7 @@ bool runSuite_Extraction(int& passed)
         const Material mat = Material::steelS235();
         int bb = m.addBar(n1, n2, sec, mat, BarRole::Beam);
         int lc = addCase(m);
-        m.loadManager().addMemberLoad(MemberLoad::trapezoidal(bb, lc, 0.0, q, 0.0, L, LoadDirection::Gravity));
+        m.loadManager().addMemberLoad(MemberLoad::trapezoidal(bb, lc, -0.0, -q, 0.0, L, LoadDirection::GlobalZ));
         AnalysisParameters p;
         p.includeSelfWeight = false;
         ResultsModel r;
@@ -662,7 +662,7 @@ bool runSuite_Extraction(int& passed)
         hinge.my = hinge.mz = true;
         m.getBeam(bb)->setStartRelease(hinge);
         int lc = addCase(m);
-        m.loadManager().addMemberLoad(MemberLoad::uniform(bb, lc, q));
+        m.loadManager().addMemberLoad(MemberLoad::uniform(bb, lc, -q, LoadDirection::GlobalZ));
         AnalysisParameters p;
         p.includeSelfWeight = false;
         ResultsModel r;
@@ -749,7 +749,7 @@ bool runSuite_Extraction(int& passed)
             hinge.my = hinge.mz = true;
             m.getBeam(bb)->setStartRelease(hinge);
             int lc = addCase(m);
-            m.loadManager().addMemberLoad(MemberLoad::uniform(bb, lc, q));
+            m.loadManager().addMemberLoad(MemberLoad::uniform(bb, lc, -q, LoadDirection::GlobalZ));
             AnalysisParameters p;
             p.includeSelfWeight = false;
             ResultsModel r;
@@ -870,7 +870,7 @@ bool runSuite_Extraction(int& passed)
             int c2 = m.addBar(d, c, sec, mat, BarRole::Column);
             int lc = addCase(m);
             m.loadManager().addNodalLoad(NodalLoad(0, b, lc, 10.0, 0.0, 0.0));
-            m.loadManager().addMemberLoad(MemberLoad::uniform(tr, lc, 15.0));
+            m.loadManager().addMemberLoad(MemberLoad::uniform(tr, lc, -15.0, LoadDirection::GlobalZ));
             AnalysisParameters p;
             p.includeSelfWeight = false;
             ResultsModel r;

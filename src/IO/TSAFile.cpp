@@ -1,3 +1,5 @@
+#include "../Model/LegacyBarFrames.h"
+#include "../Model/Load/LegacyLoads.h"
 #include "TSAFile.h"
 #include "TSAFile_BinaryUtils.h"
 #include "TSAPreviewGenerator.h"
@@ -823,7 +825,11 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
     }
 
     // 5. Désérialisation et parsing des Chunks
-    return parsePayload(uncompressedData.data(), uncompressedData.size(), model, gridManager, outProjectName, outAuthor, outThumbnail, errorMessage);
+    if (!parsePayload(uncompressedData.data(), uncompressedData.size(), model, gridManager, outProjectName, outAuthor, outThumbnail, errorMessage))
+        return false;
+    // Fichiers d'avant le format 3 : repère local des barres verticales converti, orientation physique conservée
+    if (header.versionMajor < 3) TSA::Model::migrateLegacyBarFrames(model);
+    return true;
 }
 
 bool TSAFileReader::extractPreviewBlock(const std::string& filePath, QImage& outImage)
@@ -1211,13 +1217,13 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         l.loadCaseId = o.value("case").toInt();
         l.name = o.value("name").toString().toStdString();
         l.distribution = o.value("distribution").toString() == "point" ? TSA::Model::SurfaceLoadDistribution::Point : TSA::Model::SurfaceLoadDistribution::Uniform;
-        l.direction = TSA::Model::surfaceLoadDirectionFromKey(o.value("direction").toString().toStdString());
         l.value = o.value("value").toDouble();
         l.projected = o.value("projected").toBool();
         l.u = o.value("u").toDouble();
         l.v = o.value("v").toDouble();
         l.gradU = o.value("gradU").toDouble();
         l.gradV = o.value("gradV").toDouble();
+        TSA::Model::applyStoredSurfaceDirection(l, o.value("direction").toString().toStdString());
         if (const QJsonArray z = o.value("zone").toArray(); z.size() == 4)
             l.zone = true, l.zoneU0 = z[0].toDouble(), l.zoneV0 = z[1].toDouble(), l.zoneU1 = z[2].toDouble(), l.zoneV1 = z[3].toDouble();
         if (l.id <= 0 || snapshot.loadSnapshot.surfaceLoads.count(l.id)) continue;

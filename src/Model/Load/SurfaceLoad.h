@@ -15,13 +15,15 @@ enum class SurfaceTargetKind
     Wall
 };
 
+/// Axe de la charge. Global : direction fixe. Local : repère de la surface, x = U, y = V, z = N (normale). Valeur positive : sens de l'axe.
 enum class SurfaceLoadDirection
 {
-    Gravity,        ///< −Z global (valeur positive vers le bas)
     GlobalX,
     GlobalY,
     GlobalZ,
-    LocalNormal     ///< −N (normale locale de la surface) : une valeur positive appuie sur la face supérieure
+    LocalX,
+    LocalY,
+    LocalZ
 };
 
 enum class SurfaceLoadDistribution
@@ -38,9 +40,9 @@ struct SurfaceLoad
     int loadCaseId = 0;
     std::string name;
     SurfaceLoadDistribution distribution = SurfaceLoadDistribution::Uniform;
-    SurfaceLoadDirection direction = SurfaceLoadDirection::Gravity;
+    SurfaceLoadDirection direction = SurfaceLoadDirection::GlobalZ;
     double value = 0.0;         ///< kN/m² (uniforme) ou kN (ponctuelle)
-    bool projected = false;     ///< uniforme, direction globale : intensité rapportée à la surface projetée
+    bool projected = false;     ///< uniforme, axe global : intensité rapportée à la surface projetée
     double u = 0.0, v = 0.0;    ///< ponctuelle : position dans le repère local de la surface (m)
     /// Uniforme : variation linéaire p(u, v) = value + gradU · u + gradV · v (kN/m³, repère local ; ex. hydrostatique)
     double gradU = 0.0, gradV = 0.0;
@@ -59,19 +61,11 @@ inline const char* surfaceLoadDirectionKey(SurfaceLoadDirection d)
     {
     case SurfaceLoadDirection::GlobalX: return "x";
     case SurfaceLoadDirection::GlobalY: return "y";
-    case SurfaceLoadDirection::GlobalZ: return "z";
-    case SurfaceLoadDirection::LocalNormal: return "normal";
-    default: return "gravity";
+    case SurfaceLoadDirection::LocalX: return "localX";
+    case SurfaceLoadDirection::LocalY: return "localY";
+    case SurfaceLoadDirection::LocalZ: return "localZ";
+    default: return "z";
     }
-}
-
-inline SurfaceLoadDirection surfaceLoadDirectionFromKey(const std::string& k)
-{
-    if (k == "x") return SurfaceLoadDirection::GlobalX;
-    if (k == "y") return SurfaceLoadDirection::GlobalY;
-    if (k == "z") return SurfaceLoadDirection::GlobalZ;
-    if (k == "normal") return SurfaceLoadDirection::LocalNormal;
-    return SurfaceLoadDirection::Gravity;
 }
 
 } // namespace TSA::Model
