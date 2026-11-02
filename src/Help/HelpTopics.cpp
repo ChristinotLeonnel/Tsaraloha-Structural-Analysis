@@ -157,6 +157,28 @@ HelpUrl buildHelpUrl(const QString& baseUrl, const QString& topicId, const QStri
     return result;
 }
 
+QList<HomeResource> homeResources(const QString& docsBaseUrl, const QString& repositoryUrl)
+{
+    QList<HomeResource> list;
+    const QUrl docs(docsBaseUrl);
+    if (isValidBaseUrl(docs))
+    {
+        list << HomeResource { QStringLiteral("documentation"), QString::fromLatin1(kOverviewTopic), QUrl() };
+        list << HomeResource { QStringLiteral("tutorials"), QStringLiteral("project.create"), QUrl() };
+        list << HomeResource { QStringLiteral("guide"), QStringLiteral("ui.overview"), QUrl() };
+        list << HomeResource { QStringLiteral("website"), QString(), docs };
+    }
+    const QUrl repository(repositoryUrl);
+    if (isValidBaseUrl(repository))
+    {
+        list << HomeResource { QStringLiteral("github"), QString(), repository };
+        QUrl technical = repository;
+        technical.setPath(repository.path() + QStringLiteral("/tree/main/docs"));
+        list << HomeResource { QStringLiteral("technical"), QString(), technical };
+    }
+    return list;
+}
+
 HelpUrl officialHelpUrl(const QString& topicId, const QString& language)
 {
     return buildHelpUrl(QString::fromUtf8(TSA::Product::kDocsBaseUrl), topicId, language,

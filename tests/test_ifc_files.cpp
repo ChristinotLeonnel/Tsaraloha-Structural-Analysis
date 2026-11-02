@@ -380,6 +380,19 @@ bool runSuite_IfcFiles(int& passed)
             v.context()->DisplayedObjects(list);
             return list.Extent();
         };
+        // Compte pris une fois la vue stabilisée : repères affichés par minuteries différées (même cause que le test 371, BUG-174 ;
+        // test 408 vu une fois en échec le 2026-11-02, 6/6 relancé seul)
+        auto settled = [&](OccView& v) {
+            int last = displayed(v), stable = 0;
+            for (int k = 0; k < 600 && stable < 15; ++k)
+            {
+                pump(1);
+                const int now = displayed(v);
+                stable = now == last ? stable + 1 : 0;
+                last = now;
+            }
+            return last;
+        };
         Model m;
         TEST_CHECK(load("ifc4_Building-Architecture.ifc", m).ok, "Test 408: import");
         const int n = m.addNode(0, 0, 0);   // un objet TSA ordinaire à côté des objets importés
@@ -390,17 +403,17 @@ bool runSuite_IfcFiles(int& passed)
         pump(20);
         view.setModel(&m);
         pump();
-        const int all = displayed(view);
+        const int all = settled(view);
         TEST_CHECK(view.bimGeometryVisible() && view.bimGeometryCount() == 12 && view.bimGeometryDisplayedCount() == 12,
                    "Test 408: 12 objets importés avec géométrie tracés");
         view.setBimGeometryVisible(false);
         pump();
         TEST_CHECK(!view.bimGeometryVisible() && view.bimGeometryDisplayedCount() == 0 && view.bimGeometryCount() == 12
-                       && displayed(view) == all - 12 && m.bim().elements().size() == 14 && m.nodes().size() == 1,
+                       && settled(view) == all - 12 && m.bim().elements().size() == 14 && m.nodes().size() == 1,
                    "Test 408: couche masquée, projet intact (14 produits), autres objets toujours affichés");
         view.setBimGeometryVisible(true);
         pump();
-        TEST_CHECK(view.bimGeometryDisplayedCount() == 12 && displayed(view) == all, "Test 408: couche réaffichée à l'identique");
+        TEST_CHECK(view.bimGeometryDisplayedCount() == 12 && settled(view) == all, "Test 408: couche réaffichée à l'identique");
 
         view.setBimGeometryVisible(false);
         Model other;

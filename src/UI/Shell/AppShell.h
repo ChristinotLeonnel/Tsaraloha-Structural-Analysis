@@ -57,6 +57,8 @@ public:
     ApplicationMode mode() const { return m_mode; }
 
     void showStartCenter();
+    /// Accueil sans fermer les projets : ils restent ouverts, l'accueil permet d'y revenir.
+    void showHome();
     void showProjectWorkspace();
 
     void createNewProject();
@@ -149,6 +151,7 @@ private:
     QTabBar* m_docTabs = nullptr;
     TSA::Platform::OpenFileQueue* m_openQueue = nullptr;
     QAction* m_actCloseAll = nullptr;
+    QAction* m_actHome = nullptr;
     QAction* m_actSaveAll = nullptr;
 
     QAction* m_actNew = nullptr;

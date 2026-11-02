@@ -136,6 +136,11 @@ AppShell::AppShell(QWidget* parent)
     connect(m_startCenter, &StartCenter::openDialogRequested, this, &AppShell::openProject);
     connect(m_startCenter, &StartCenter::openRequested, this, &AppShell::openProjectFile);
     connect(m_startCenter, &StartCenter::languageRequested, this, &AppShell::chooseLanguage);
+    connect(m_startCenter, &StartCenter::openDocumentRequested, this, [this](int index) {
+        if (index < 0 || index >= m_documents.size()) return;
+        activateDocument(m_documents[index]);
+        showProjectWorkspace();
+    });
 
     createActions();
     installResizeBorderFilter();
@@ -159,6 +164,9 @@ void AppShell::createActions()
     m_actRedo = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/redo.svg")), tr("Rétablir"), this);
     m_actCloseProject = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file/file_close.svg")), tr("Fermer le projet"), this);
     m_actCloseAll = new QAction(tr("Fermer tous les projets"), this);
+    m_actHome = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/common/home.svg")), tr("Accueil"), this);
+    m_actHome->setToolTip(tr("Revenir à l'accueil : les projets restent ouverts"));
+    connect(m_actHome, &QAction::triggered, this, &AppShell::showHome);
     m_actSaveAll = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_save.svg")), tr("Enregistrer tous les projets"), this);
     connect(m_actCloseAll, &QAction::triggered, this, &AppShell::closeAllProjects);
     connect(m_actSaveAll, &QAction::triggered, this, &AppShell::saveAllProjects);
@@ -204,6 +212,7 @@ void AppShell::createActions()
     syncStartCenterKeys();
     connect(&TSA::UI::Shortcuts::ShortcutManager::instance(), &TSA::UI::Shortcuts::ShortcutManager::shortcutsChanged, this, syncStartCenterKeys);
 
+    m_titleBar->addQuickAccess(m_actHome);
     m_titleBar->addQuickAccess(m_actNew);
     m_titleBar->addQuickAccess(m_actOpen);
     m_titleBar->addQuickAccess(m_actSave);
@@ -251,6 +260,7 @@ void AppShell::syncProxyActions()
             tip += QStringLiteral(" (%1)").arg(target->shortcut().toString(QKeySequence::NativeText));
         proxy->setToolTip(tip);
     }
+    m_actHome->setEnabled(isProjectOpen());
     m_actCloseProject->setEnabled(isProjectOpen());
     m_actCloseProject->setVisible(isProjectOpen());
     m_actCloseAll->setEnabled(isProjectOpen());
@@ -485,14 +495,25 @@ void AppShell::showTabMenu(const QPoint& pos)
 
 void AppShell::setMode(ApplicationMode mode)
 {
+    const bool modeChanged = mode != m_mode;
     m_mode = mode;
     if (mode == ApplicationMode::ProjectWorkspace && m_workspace)
     {
         // Le viewport doit être visible (OCCT initialisé) avant tout chargement ou capture.
         m_stack->setCurrentWidget(m_workspace);
+        if (modeChanged) m_workspace->setDocumentForeground(true);
     }
     else
     {
+        // Projets gardés ouverts : leurs panneaux flottants ne restent pas au-dessus de l'accueil
+        if (m_workspace && modeChanged) m_workspace->setDocumentForeground(false);
+        QList<OpenDocumentEntry> open;
+        for (const MainWindow* d : m_documents)
+        {
+            const auto* pm = d->projectManager();
+            open.push_back({ tabLabel(d), pm && pm->hasFilePath() ? pm->currentFilePath() : QString() });
+        }
+        m_startCenter->setOpenDocuments(open);
         m_startCenter->refresh();
         m_stack->setCurrentWidget(m_startCenter);
     }
@@ -506,6 +527,12 @@ void AppShell::setMode(ApplicationMode mode)
 
 void AppShell::showStartCenter()
 {
+    setMode(ApplicationMode::StartCenter);
+}
+
+void AppShell::showHome()
+{
+    m_startCenter->showPage(StartCenter::Page::Home);
     setMode(ApplicationMode::StartCenter);
 }
 
@@ -660,6 +687,8 @@ void AppShell::rebuildApplicationMenu()
 {
     QMenu* menu = m_titleBar->applicationMenu();
     menu->clear();
+    menu->addAction(m_actHome);
+    menu->addSeparator();
     menu->addAction(m_actNew);
     menu->addAction(m_actOpen);
 

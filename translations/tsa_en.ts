@@ -7520,14 +7520,6 @@ Source not present on this computer (distributed package): see the repository.</
         <translation>The browser could not be opened.</translation>
     </message>
     <message>
-        <source>Aucun aperçu</source>
-        <translation>No preview</translation>
-    </message>
-    <message>
-        <source>Aperçu indisponible</source>
-        <translation>Preview unavailable</translation>
-    </message>
-    <message>
         <source>… %1 autre(s), voir la console.</source>
         <translation>… %1 more, see the console.</translation>
     </message>
@@ -16173,6 +16165,14 @@ Each restraint is listed before the analysis and reported if it carries a force.
         <translation>Close all projects</translation>
     </message>
     <message>
+        <source>Accueil</source>
+        <translation>Home</translation>
+    </message>
+    <message>
+        <source>Revenir à l'accueil : les projets restent ouverts</source>
+        <translation>Back to Home: projects stay open</translation>
+    </message>
+    <message>
         <source>Enregistrer tous les projets</source>
         <translation>Save all projects</translation>
     </message>
@@ -23960,10 +23960,26 @@ Do you want to select it rather than create a duplicate?</translation>
 <context>
     <name>TSA::UI::ProjectCard</name>
     <message>
+        <source>Projet %1</source>
+        <translation>%1 project</translation>
+    </message>
+    <message>
+        <source>Projet %1 %2.%3</source>
+        <translation>%1 project %2.%3</translation>
+    </message>
+    <message>
+        <source>%1 · protégé</source>
+        <translation>%1 · protected</translation>
+    </message>
+    <message>
         <source>%1
 Double-clic pour ouvrir</source>
         <translation>%1
 Double-click to open</translation>
+    </message>
+    <message>
+        <source>Aucun aperçu</source>
+        <translation>No preview</translation>
     </message>
     <message>
         <source>Ouvert %1  ·  %2</source>
@@ -23972,6 +23988,26 @@ Double-click to open</translation>
     <message>
         <source>Modifié le %1</source>
         <translation>Modified on %1</translation>
+    </message>
+    <message>
+        <source>Ouvrir</source>
+        <translation>Open</translation>
+    </message>
+    <message>
+        <source>Ouvrir ce projet</source>
+        <translation>Open this project</translation>
+    </message>
+    <message>
+        <source>Retirer de la liste (le fichier n'est pas supprimé)</source>
+        <translation>Remove from the list (the file is not deleted)</translation>
+    </message>
+    <message>
+        <source>Retirer de la liste</source>
+        <translation>Remove from the list</translation>
+    </message>
+    <message>
+        <source>Projet protégé par mot de passe</source>
+        <translation>Password-protected project</translation>
     </message>
 </context>
 <context>
@@ -24301,6 +24337,51 @@ Double-click to open</translation>
     <message>
         <source>Les champs modifiés ici sont appliqués aux %1 éléments sélectionnés de ce type (nom et géométrie exceptés). Annuler (Ctrl+Z) les rétablit tous.</source>
         <translation>The fields changed here are applied to the %1 selected elements of this type (except name and geometry). Undo (Ctrl+Z) restores them all.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::UI::RecentFilesView</name>
+    <message>
+        <source>Nom du projet</source>
+        <translation>Project name</translation>
+    </message>
+    <message>
+        <source>Fichier</source>
+        <translation>File</translation>
+    </message>
+    <message>
+        <source>Emplacement</source>
+        <translation>Location</translation>
+    </message>
+    <message>
+        <source>Dernière ouverture</source>
+        <translation>Last opened</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Type</translation>
+    </message>
+    <message>
+        <source>%1
+Double-clic pour ouvrir</source>
+        <translation>%1
+Double-click to open</translation>
+    </message>
+    <message>
+        <source>Ouvrir</source>
+        <translation>Open</translation>
+    </message>
+    <message>
+        <source>Ouvrir ce projet</source>
+        <translation>Open this project</translation>
+    </message>
+    <message>
+        <source>Retirer de la liste (le fichier n'est pas supprimé)</source>
+        <translation>Remove from the list (the file is not deleted)</translation>
+    </message>
+    <message>
+        <source>Retirer de la liste</source>
+        <translation>Remove from the list</translation>
     </message>
 </context>
 <context>
@@ -26091,6 +26172,10 @@ Otherwise, click 'Apply'.</translation>
         <translation>Sort recent projects</translation>
     </message>
     <message>
+        <source>Présentation, téléchargements et nouveautés</source>
+        <translation>Overview, downloads and release notes</translation>
+    </message>
+    <message>
         <source>(%1)</source>
         <translation>(%1)</translation>
     </message>
@@ -26105,8 +26190,116 @@ Créez un nouveau projet ou ouvrez un fichier %1 : son aperçu apparaîtra ici.<
 Create a new project or open a %1 file: its preview will appear here.</translation>
     </message>
     <message>
+        <source>Ouvrir un projet récent</source>
+        <translation>Open a recent project</translation>
+    </message>
+    <message>
+        <source>Choisir dans la liste des projets récents</source>
+        <translation>Choose from the list of recent projects</translation>
+    </message>
+    <message>
+        <source>Parcourir les projets</source>
+        <translation>Browse projects</translation>
+    </message>
+    <message>
+        <source>Voir les projets d'un dossier</source>
+        <translation>See the projects in a folder</translation>
+    </message>
+    <message>
+        <source>Accueil</source>
+        <translation>Home</translation>
+    </message>
+    <message>
+        <source>Projets</source>
+        <translation>Projects</translation>
+    </message>
+    <message>
+        <source>Fichiers récents</source>
+        <translation>Recent files</translation>
+    </message>
+    <message>
+        <source>Ressources</source>
+        <translation>Resources</translation>
+    </message>
+    <message>
+        <source>Version %1</source>
+        <translation>Version %1</translation>
+    </message>
+    <message>
+        <source>Projets ouverts</source>
+        <translation>Open projects</translation>
+    </message>
+    <message>
+        <source>Tout afficher</source>
+        <translation>Show all</translation>
+    </message>
+    <message>
+        <source>Changer de dossier…</source>
+        <translation>Change folder…</translation>
+    </message>
+    <message>
+        <source>Rechercher dans ce dossier…</source>
+        <translation>Search this folder…</translation>
+    </message>
+    <message>
+        <source>Documentation %1</source>
+        <translation>%1 documentation</translation>
+    </message>
+    <message>
+        <source>Modélisation, charges, calcul et résultats, page par page</source>
+        <translation>Modelling, loads, analysis and results, page by page</translation>
+    </message>
+    <message>
+        <source>Tutoriels</source>
+        <translation>Tutorials</translation>
+    </message>
+    <message>
+        <source>Premiers pas : créer un projet, étape par étape</source>
+        <translation>First steps: create a project, step by step</translation>
+    </message>
+    <message>
+        <source>Guide utilisateur</source>
+        <translation>User guide</translation>
+    </message>
+    <message>
+        <source>L'interface et les commandes de %1</source>
+        <translation>The %1 interface and commands</translation>
+    </message>
+    <message>
+        <source>Site officiel %1</source>
+        <translation>%1 official website</translation>
+    </message>
+    <message>
+        <source>GitHub %1</source>
+        <translation>%1 on GitHub</translation>
+    </message>
+    <message>
+        <source>Code source et suivi du développement</source>
+        <translation>Source code and development tracking</translation>
+    </message>
+    <message>
+        <source>Documentation technique</source>
+        <translation>Technical documentation</translation>
+    </message>
+    <message>
+        <source>Architecture, formats de fichier et calculs, pour les développeurs</source>
+        <translation>Architecture, file formats and calculations, for developers</translation>
+    </message>
+    <message>
         <source>Aucun projet ne correspond à « %1 ».</source>
         <translation>No project matches “%1”.</translation>
+    </message>
+    <message>
+        <source>Aucun projet %1 dans ce dossier.</source>
+        <translation>No %1 project in this folder.</translation>
+    </message>
+    <message>
+        <source>Dossier de projets</source>
+        <translation>Projects folder</translation>
+    </message>
+    <message>
+        <source>Revenir à ce projet</source>
+        <translation>Back to this project</translation>
     </message>
     <message>
         <source>Ouvrir</source>

@@ -2,6 +2,21 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — Nouvel accueil organisé comme les logiciels BIM (branche feature/home-welcome-screen)
+
+- StartCenter réorganisé (pas de seconde page d'accueil) : colonne de gauche et pages Accueil, Projets, Fichiers récents,
+  Ressources. Nouveaux : UI/Common/ProjectCardGrid (carte déplacée de StartCenter, boutons Ouvrir et Retirer, nom enregistré,
+  fichier, type), UI/Common/RecentFilesView, Project/ProjectFileSummary (en-tête seul), TSA::Help::homeResources.
+- AppShell::showHome et commande Accueil (barre de titre, menu TSA) : retour à l'accueil sans fermer les projets, section Projets
+  ouverts pour y revenir. Icônes propres : common/home, projects, recent, resources, remove.
+- Réutilisés sans changement : NewProjectDialog (seul defaultDirectory devient public), AppShell::openProject, RecentProjects,
+  ModelPreviewCache, openHelpTopic, kSourceRepositoryUrl (existait déjà). Modèle, calculs, Annuler, format : inchangés.
+- Tests 602 (résumé des fichiers, ressources) et 603 (cartes et liste : vrais événements souris et clavier). Essai réel de
+  TSA.exe sur bureau masqué, captures vérifiées (thèmes sombre et clair).
+- Test 408 (suite ifc) : échec intermittent vu une fois, 6/6 relancé seul ; compte pris après les affichages différés (même cause que BUG-174).
+- Vérifié (Release, Windows) : 60/60 suites, banc 2 097 vérifications, 0 en échec ; TSALab 27/27, science 22/22 ; traductions 6 863 / 6 863 ;
+  12 contrôles de l'essai réel. Non vérifié : Linux, carte d'un projet protégé à l'écran, pages Ressources dans le navigateur.
+
 ## 2026-11-02 — Case « Afficher le mot de passe » (branche feature/password-show-toggle)
 
 - `UI/Dialogs/PasswordPromptDialog` : remplace QInputDialog à l'ouverture d'un projet protégé ; case décochée par défaut, partagée

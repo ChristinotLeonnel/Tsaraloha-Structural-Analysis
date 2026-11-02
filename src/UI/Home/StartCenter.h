@@ -1,70 +1,41 @@
 #pragma once
 
-// Start Center : seul écran affiché au lancement de TSA (aucun viewport, aucun panneau de
-// modélisation). Nouveau projet, ouverture d'un fichier et projets récents (aperçu du dernier état
-// réel de chaque modèle, nom, chemin, date de dernière ouverture), avec recherche et tri.
+// Start Center : écran d'accueil de TSA, organisé comme les logiciels BIM de référence : colonne de gauche (identité, actions
+// principales, navigation) et zone centrale à quatre pages — Accueil (projets ouverts, projets récents), Projets (dossier de
+// projets), Fichiers récents (liste détaillée), Ressources. Aucun viewport ni panneau de modélisation. Il réutilise la création
+// et l'ouverture d'AppShell (signaux), RecentProjects et ModelPreviewCache ; revenir à l'accueil ne ferme aucun projet.
 
-#include <QDateTime>
+#include "../Common/ProjectCardGrid.h"
+
 #include <QFrame>
 #include <QImage>
+#include <QList>
 #include <QPointer>
+#include <QVector>
 #include <QWidget>
 
+class QButtonGroup;
 class QComboBox;
 class QGridLayout;
 class QHBoxLayout;
 class QLabel;
 class QLineEdit;
+class QMenu;
 class QPushButton;
-class QScrollArea;
-class QGraphicsDropShadowEffect;
+class QStackedWidget;
+class QToolButton;
+class QVBoxLayout;
 
 namespace TSA::UI
 {
 
-class ProjectCard : public QFrame
+class RecentFilesView;
+
+/// Projet ouvert dans un onglet, présenté à l'accueil pour y revenir.
+struct OpenDocumentEntry
 {
-    Q_OBJECT
-
-public:
-    static constexpr int kImageWidth = 288;
-    static constexpr int kImageHeight = 162;
-
-    ProjectCard(const QString& path, const QDateTime& lastOpened, QWidget* parent = nullptr);
-
-    const QString& path() const { return m_path; }
-    const QString& name() const { return m_name; }
-    const QDateTime& lastOpened() const { return m_lastOpened; }
-    const QDateTime& lastModified() const { return m_lastModified; }
-
-    void setPreview(const QImage& image);
-    void setSelected(bool selected);
-    bool matches(const QString& filter) const;
-
-signals:
-    void clicked(ProjectCard* card);
-    void openRequested(const QString& path);
-    void contextMenuRequested(const QString& path, const QPoint& globalPos);
-
-protected:
-    void enterEvent(QEnterEvent* event) override;
-    void leaveEvent(QEvent* event) override;
-    void mousePressEvent(QMouseEvent* event) override;
-    void mouseDoubleClickEvent(QMouseEvent* event) override;
-    void contextMenuEvent(QContextMenuEvent* event) override;
-    void keyPressEvent(QKeyEvent* event) override;
-
-private:
-    void setStateProperty(const char* name, bool value);
-    static QPixmap placeholder(const QString& format);
-
-private:
-    QString m_path;
-    QString m_name;
-    QDateTime m_lastOpened;
-    QDateTime m_lastModified;
-    QLabel* m_image = nullptr;
-    QGraphicsDropShadowEffect* m_shadow = nullptr;
+    QString label;   ///< libellé de l'onglet
+    QString path;    ///< vide : projet jamais enregistré
 };
 
 class StartCenter : public QWidget
@@ -72,49 +43,85 @@ class StartCenter : public QWidget
     Q_OBJECT
 
 public:
+    enum class Page { Home, Projects, Recent, Resources };
+
     explicit StartCenter(QWidget* parent = nullptr);
 
-    /// Reconstruit les cartes (projets récents existants) et charge les aperçus en tâche de fond.
+    /// Reconstruit les pages (projets récents existants) et charge aperçus et résumés en tâche de fond.
     void refresh();
-    /// Remplace l'aperçu d'une carte (nouvelle capture du dernier état du modèle).
+    /// Remplace l'aperçu d'un projet (nouvelle capture du dernier état du modèle).
     void updatePreview(const QString& path, const QImage& image);
+    /// Projets ouverts dans les onglets (liste vide : section masquée).
+    void setOpenDocuments(const QList<OpenDocumentEntry>& documents);
+    void showPage(Page page);
+    Page currentPage() const;
 
 signals:
     void newProjectRequested();
     void openDialogRequested();
     void openRequested(const QString& path);
     void languageRequested();
+    void openDocumentRequested(int index);
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
-    void showEvent(QShowEvent* event) override;
 
 private:
+    QWidget* createSideBar();
+    QWidget* createHomePage();
+    QWidget* createProjectsPage();
+    QWidget* createRecentPage();
+    QWidget* createResourcesPage();
+    QToolButton* addNavigation(QVBoxLayout* layout, const QString& icon, const QString& text, Page page);
     void applyTheme(bool dark);
-    void applyFilter();
-    void relayoutCards();
-    void loadPreviewsAsync();
-    void selectCard(ProjectCard* card);
+    void rebuildOpenRecentMenu();
+    void refreshProjectsPage();
+    void updateHomeState();
+    void updateRecentState();
+    void updateProjectsState();
+    void loadDetailsAsync(const QStringList& paths);
+    void chooseProjectsFolder();
+    void forget(const QString& path);
+    void openResource(const QString& id);
     void showCardMenu(const QString& path, const QPoint& globalPos);
 
 private:
-    QHBoxLayout* m_outer = nullptr;
-    QWidget* m_identity = nullptr; // logo, titre, Nouveau / Ouvrir
+    QWidget* m_sideBar = nullptr;
     QLabel* m_logo = nullptr;
-    QLineEdit* m_search = nullptr;
-    QComboBox* m_sort = nullptr;
-    QLabel* m_count = nullptr;
+    QWidget* m_identity = nullptr;
+    QStackedWidget* m_pages = nullptr;
+    QButtonGroup* m_navigation = nullptr;
     QPushButton* m_btnNew = nullptr;
     QPushButton* m_btnOpen = nullptr;
-    QScrollArea* m_scroll = nullptr;
-    QWidget* m_cardsHost = nullptr;
-    QGridLayout* m_grid = nullptr;
-    QLabel* m_empty = nullptr;
-    QList<QPointer<ProjectCard>> m_cards;   // tous les projets récents
-    QList<QPointer<ProjectCard>> m_visible; // filtrés et triés, dans l'ordre affiché
-    QPointer<ProjectCard> m_selected;
-    int m_columns = 0;
-    quint64 m_generation = 0; // annule les chargements d'aperçus d'un affichage précédent
+    QToolButton* m_btnOpenRecent = nullptr;
+    QToolButton* m_btnBrowse = nullptr;
+    QPushButton* m_btnLanguage = nullptr;
+    QMenu* m_recentMenu = nullptr;
+
+    // Accueil
+    QWidget* m_openSection = nullptr;
+    QHBoxLayout* m_openList = nullptr;
+    ProjectCardGrid* m_homeGrid = nullptr;
+    QLabel* m_homeEmpty = nullptr;
+    QLabel* m_homeCount = nullptr;
+    QPushButton* m_homeShowAll = nullptr;
+
+    // Projets
+    QLabel* m_folderLabel = nullptr;
+    QLineEdit* m_projectsSearch = nullptr;
+    ProjectCardGrid* m_projectsGrid = nullptr;
+    QLabel* m_projectsEmpty = nullptr;
+    QString m_projectsFolder;
+
+    // Fichiers récents
+    QLineEdit* m_recentSearch = nullptr;
+    QComboBox* m_recentSort = nullptr;
+    QLabel* m_recentCount = nullptr;
+    RecentFilesView* m_recentView = nullptr;
+    QLabel* m_recentEmpty = nullptr;
+
+    quint64 m_generation = 0;   ///< annule les chargements d'un affichage précédent
+    QVector<ProjectCardGrid::Entry> m_recent;
 };
 
 } // namespace TSA::UI
