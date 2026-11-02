@@ -2,6 +2,7 @@
 #include "../Project/RecoveryStore.h"
 #include "App/ProductInfo.h"
 #include "Analysis/AnalysisEngineOptions.h"
+#include "Dialogs/PasswordPromptDialog.h"
 #include "Dock/AnalysisDataDock.h"
 #include "MainWindow.h"
 #include "../Viewer/DisplayProfile.h"
@@ -96,8 +97,6 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QDockWidget>
-#include <QInputDialog>
-#include <QLineEdit>
 #include <QMessageBox>
 #include <QIcon>
 #include <QPainter>
@@ -1848,13 +1847,13 @@ bool MainWindow::loadFile(const QString& path)
         status = m_projectManager->openProject(path, *m_model, m_gridManager, password, &errorMsg);
         if (status != OpenStatus::PasswordRequired && status != OpenStatus::WrongPassword)
             break;
-        bool accepted = false;
         const QString label = status == OpenStatus::WrongPassword
             ? tr("Mot de passe incorrect pour « %1 ». Réessayer :").arg(QFileInfo(path).fileName())
             : tr("Le projet « %1 » est protégé par mot de passe :").arg(QFileInfo(path).fileName());
-        password = QInputDialog::getText(this, tr("Projet protégé"), label, QLineEdit::Password, QString(), &accepted);
-        if (!accepted)
+        TSA::UI::PasswordPromptDialog prompt(tr("Projet protégé"), label, this);
+        if (prompt.exec() != QDialog::Accepted)
             return false;
+        password = prompt.password();
     }
     bool ok = status == OpenStatus::Ok;
     const qint64 openMs = loadTimer.elapsed();

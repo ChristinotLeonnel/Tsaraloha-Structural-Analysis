@@ -23908,6 +23908,17 @@ Tianao ho fidiana ve izy toy izay hamorona dika mitovy?</translation>
     </message>
 </context>
 <context>
+    <name>TSA::UI::PasswordPromptDialog</name>
+    <message>
+        <source>Afficher le mot de passe</source>
+        <translation>Asehoy ny teny miafina</translation>
+    </message>
+    <message>
+        <source>Montre le texte saisi : à éviter si quelqu'un peut voir l'écran</source>
+        <translation>Asehoy ny soratra nampidirina : aza atao raha misy olona afaka mahita ny efijery</translation>
+    </message>
+</context>
+<context>
     <name>TSA::UI::PointSelector</name>
     <message>
         <source>(X, Y, Z) ou N&lt;id&gt;</source>

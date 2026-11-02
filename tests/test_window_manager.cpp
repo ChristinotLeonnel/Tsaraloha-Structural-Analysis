@@ -2,6 +2,10 @@
 #include "UI/WindowManager/WindowManager.h"
 #include "UI/WindowManager/ProjectLayoutState.h"
 #include "UI/Common/WheelGuard.h"
+#include "UI/Dialogs/PasswordPromptDialog.h"
+#include <QCheckBox>
+#include <QDialogButtonBox>
+#include <QPushButton>
 #include <QAbstractItemView>
 #include <QComboBox>
 #include <QLineEdit>
@@ -370,6 +374,34 @@ bool runSuite_WindowManager(int& passed)
                    "Test 582: liste d'une liste déroulante ouverte — défilement normal");
         combo->hidePopup();
         std::cout << "[PASS] Test 582: La molette ne modifie plus les champs survolés (défilement de la zone)" << std::endl;
+        passed++;
+    }
+    // TEST 601 : saisie du mot de passe — masquée par défaut, case « Afficher le mot de passe », texte conservé
+    {
+        TSA::UI::PasswordPromptDialog dialog(QStringLiteral("Projet protégé"), QStringLiteral("Mot de passe :"));
+        auto* field = dialog.findChild<QLineEdit*>();
+        auto* show = dialog.findChild<QCheckBox*>();
+        TEST_CHECK(field && show && field->echoMode() == QLineEdit::Password && !show->isChecked(), "Test 601: saisie masquée par défaut, case décochée");
+        field->setText(QStringLiteral("Pont-été-2026"));
+        show->setChecked(true);
+        TEST_CHECK(field->echoMode() == QLineEdit::Normal && field->text() == QStringLiteral("Pont-été-2026"), "Test 601: case cochée — texte visible, inchangé");
+        show->setChecked(false);
+        TEST_CHECK(field->echoMode() == QLineEdit::Password && dialog.password() == QStringLiteral("Pont-été-2026"), "Test 601: case décochée — texte de nouveau masqué");
+        auto* ok = dialog.findChild<QDialogButtonBox*>()->button(QDialogButtonBox::Ok);
+        TEST_CHECK(ok && ok->isDefault() | ok->autoDefault(), "Test 601: Entrée valide la saisie");
+
+        // Fenêtre de protection : la même case commande la saisie et la confirmation
+        QWidget parent;
+        auto* first = new QLineEdit(&parent);
+        auto* second = new QLineEdit(&parent);
+        first->setEchoMode(QLineEdit::Password);
+        second->setEchoMode(QLineEdit::Password);
+        auto* both = TSA::UI::PasswordPromptDialog::createVisibilityToggle({ first, second }, &parent);
+        both->setChecked(true);
+        TEST_CHECK(first->echoMode() == QLineEdit::Normal && second->echoMode() == QLineEdit::Normal, "Test 601: saisie et confirmation visibles ensemble");
+        both->setChecked(false);
+        TEST_CHECK(first->echoMode() == QLineEdit::Password && second->echoMode() == QLineEdit::Password, "Test 601: saisie et confirmation masquées ensemble");
+        std::cout << "[PASS] Test 601: Saisie du mot de passe, case Afficher" << std::endl;
         passed++;
     }
     return true;

@@ -2,6 +2,11 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — Case « Afficher le mot de passe » (branche feature/password-show-toggle)
+
+- `UI/Dialogs/PasswordPromptDialog` : remplace QInputDialog à l'ouverture d'un projet protégé ; case décochée par défaut, partagée
+  avec la fenêtre de protection (saisie et confirmation ensemble). Test 601 (suite window).
+
 ## 2026-11-02 — Une seule fenêtre de TSA, comme AutoCAD (branche feature/single-instance-documents, ADR-028)
 
 - `Platform/SingleInstance` et `Platform/OpenFileQueue` : un lancement suivant confie ses fichiers à l'instance en cours et se

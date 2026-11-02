@@ -3,6 +3,7 @@
 #include "MainWindow.h"
 #include "App/ProductInfo.h"
 
+#include "Dialogs/PasswordPromptDialog.h"
 #include "Dock/LogConsoleDock.h"
 #include "../ExtensionSystem/LibraryManager.h"
 #include "../Model/Model.h"
@@ -138,6 +139,8 @@ void MainWindow::onActionProjectPassword()
     form->addRow(tr("Mot de passe :"), first);
     form->addRow(tr("Confirmation :"), second);
     layout->addLayout(form);
+    auto* showPassword = TSA::UI::PasswordPromptDialog::createVisibilityToggle({ first, second }, &dialog);
+    layout->addWidget(showPassword);
     auto* note = new QLabel(tr("Le contenu du fichier est chiffré (AES-256-GCM, clé dérivée du mot de passe) : sans le mot de passe, "
                                "personne ne peut l'ouvrir, et %1 ne peut pas le retrouver. Le nom du fichier reste visible.")
                                 .arg(TSA::Product::name()),
@@ -163,6 +166,7 @@ void MainWindow::onActionProjectPassword()
         const bool on = protect->isChecked();
         first->setEnabled(on);
         second->setEnabled(on);
+        showPassword->setEnabled(on);
         QString why;
         if (on && first->text().size() < kMinLength) why = tr("Au moins %1 caractères.").arg(kMinLength);
         else if (on && first->text() != second->text()) why = tr("Les deux saisies diffèrent.");
