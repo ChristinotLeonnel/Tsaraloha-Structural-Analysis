@@ -28,7 +28,7 @@ constexpr std::uint32_t tag(char a, char b, char c, char d)
 constexpr std::uint32_t kMeta = tag('M', 'E', 'T', 'A'), kCurr = tag('C', 'U', 'R', 'R'), kFinl = tag('F', 'I', 'N', 'L'),
                         kStep = tag('S', 'T', 'E', 'P'), kShel = tag('S', 'H', 'E', 'L'), kModl = tag('M', 'O', 'D', 'L'),
                         kSurf = tag('S', 'U', 'R', 'F'), kMesh = tag('M', 'E', 'S', 'H'), kPlan = tag('P', 'L', 'A', 'N'),
-                        kTabl = tag('T', 'A', 'B', 'L');
+                        kTabl = tag('T', 'A', 'B', 'L'), kTrac = tag('T', 'R', 'A', 'C');
 
 struct Writer
 {
@@ -432,6 +432,13 @@ std::string ResultsModel::toBinary() const
         s.u32(m_planarCurves.size());
         for (const auto& [k, c] : m_planarCurves) put(s, c);
     });
+    // Trace du calcul (BUG-111) : section ajoutée sans changer la disposition (une version antérieure la saute)
+    w.section(kTrac, [&](Writer& s) {
+        s.str(m_analysisTrace.inputFingerprint);
+        s.str(m_analysisTrace.contextJson);
+        s.str(m_analysisTrace.engineInputName);
+        s.str(m_analysisTrace.engineInput);
+    });
     w.section(kTabl, [&](Writer& s) {
         s.u32(m_engineTables.size());
         for (const auto& t : m_engineTables)
@@ -578,6 +585,13 @@ bool ResultsModel::fromBinary(const std::string& bytes, std::string* error)
                 get(s, c);
                 r.m_planarCurves[c.key] = std::move(c);
             }
+        }
+        else if (t == kTrac)
+        {
+            r.m_analysisTrace.inputFingerprint = s.str();
+            r.m_analysisTrace.contextJson = s.str();
+            r.m_analysisTrace.engineInputName = s.str();
+            r.m_analysisTrace.engineInput = s.str();
         }
         else if (t == kTabl)
         {

@@ -6,6 +6,8 @@
 
 #include "Analysis/AnalysisController.h"
 #include "Analysis/Engine/AnalysisManager.h"
+#include "NDC/ReportConfiguration.h"
+#include "NDC/NDCGenerator.h"
 #include "Automation/CommandRegistry.h"
 #include "Analysis/Engines/Custom2D/Custom2DAdapter.h"
 #include "Analysis/Engines/Custom2D/Custom2DEngine.h"
@@ -1688,6 +1690,91 @@ bool runSuite_Engines(int& passed)
         }
         TEST_CHECK(computed >= 1, "Test 586: au moins un moteur 3D a calculé la cornière");
         std::cout << "[PASS] Test 586: Cornière calculée sur ses axes principaux (flexion déviée)" << std::endl;
+        ++passed;
+    }
+
+
+    // -------------------------------------------------------------------------
+    // TEST 587 (BUG-111) : trace du calcul — empreinte SHA-256 des données d'entrée (moteur, réglages, modèle préparé),
+    // script remis à OpenSees conservé (le dossier temporaire était détruit), enregistrés avec les résultats, cités par la note
+    // -------------------------------------------------------------------------
+    {
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        const AnalysisEngine* ops = reg.engine("opensees");
+        if (!ops || !ops->availability().available)
+            std::cout << "[SKIP] Test 587: OpenSees indisponible" << std::endl;
+        else
+        {
+            auto build = [](Model& m, double fz) {
+                const int a = m.addNode(0, 0, 0), b = m.addNode(0, 0, 3), c = m.addNode(4, 0, 3);
+                m.getNode(a)->setSupport(SupportDefinition::fixed());
+                m.getNode(c)->setSupport(SupportDefinition::pinned());
+                m.addColumn(a, b, Section::heb(200), Material::steelS235());
+                m.addBar(b, c, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+                const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+                m.loadManager().addNodalLoad(NodalLoad(0, b, lc, 5.0, 0.0, fz));
+                m.loadManager().setActiveLoadCaseId(lc);
+            };
+            auto runOn = [&](Model& m, const std::string& engineId, bool selfWeight) {
+                GridManager gm;
+                AnalysisManager mgr(reg);
+                AnalysisContext c;
+                c.engineId = engineId;
+                c.common.includeSelfWeight = selfWeight;
+                return mgr.run(c, mgr.prepare(m, &gm, c));
+            };
+            Model m1, m2, m3;
+            build(m1, -10.0);
+            build(m2, -10.0);
+            build(m3, -12.0);   // une charge différente
+            const auto r1 = runOn(m1, "opensees", false), r1b = runOn(m1, "opensees", false), r2 = runOn(m2, "opensees", false);
+            const auto r3 = runOn(m3, "opensees", false), r4 = runOn(m1, "opensees", true);   // r4 : réglage différent
+            const auto& t1 = r1.results.analysisTrace();
+            TEST_CHECK(r1.success && t1.inputFingerprint.size() == 64 && t1.inputFingerprint == r1b.results.analysisTrace().inputFingerprint &&
+                           t1.inputFingerprint == r2.results.analysisTrace().inputFingerprint,
+                       "Test 587: mêmes données (même modèle recalculé, ou modèle identique) → même empreinte (" << t1.inputFingerprint << ")");
+            TEST_CHECK(r3.results.analysisTrace().inputFingerprint != t1.inputFingerprint && r4.results.analysisTrace().inputFingerprint != t1.inputFingerprint,
+                       "Test 587: charge ou réglage modifié → empreinte différente");
+            TEST_CHECK(t1.engineInputName == "model.tcl" && textHas(t1.engineInput, "element elasticBeamColumn") && textHas(t1.engineInput, "load ") &&
+                           textHas(t1.contextJson, "\"engineId\":\"opensees\""),
+                       "Test 587: script OpenSees conservé (" << t1.engineInput.size() << " octets) et réglages enregistrés");
+
+            // Enregistrement dans le .tsa (bloc RSLT) : trace relue à l'identique
+            ResultsModel back;
+            std::string fingerprint, error;
+            TEST_CHECK(decodeStoredResults(encodeStoredResults(r1.results, "m"), back, fingerprint, &error) &&
+                           back.analysisTrace().inputFingerprint == t1.inputFingerprint && back.analysisTrace().engineInput == t1.engineInput &&
+                           back.analysisTrace().contextJson == t1.contextJson,
+                       "Test 587: trace relue du bloc de résultats (" << error << ")");
+
+            // Note de calcul : empreinte citée
+            using namespace TSA::NDC;
+            auto shared = std::make_shared<ResultsModel>(r1.results);
+            bool cited = false;
+            for (const NoteLayout layout : { NoteLayout::Legacy, NoteLayout::Detailed })
+            {
+                ReportConfiguration cfg;
+                cfg.noteLayout = layout;
+                bool found = false;
+                for (const auto& ch : NDCGenerator::generate(m1, shared, cfg).chapters)
+                    for (const auto& sec : ch.sections)
+                        for (const auto& kv : sec.keyValues)
+                            if (kv.second == QString::fromStdString(t1.inputFingerprint)) found = true;
+                cited = (layout == NoteLayout::Legacy ? true : cited) && found;
+            }
+            TEST_CHECK(cited, "Test 587: empreinte citée par la note historique et par la note détaillée");
+
+            // Autre moteur 3D (Fem3D, s'il est présent) : empreinte calculée aussi, sans fichier d'entrée
+            if (const AnalysisEngine* fem = reg.engine("fem3d"); fem && fem->availability().available)
+            {
+                const auto rf = runOn(m1, "fem3d", false);
+                TEST_CHECK(rf.success && rf.results.analysisTrace().inputFingerprint.size() == 64 &&
+                               rf.results.analysisTrace().inputFingerprint != t1.inputFingerprint && rf.results.analysisTrace().engineInput.empty(),
+                           "Test 587: Fem3D — empreinte propre (moteur différent), aucun fichier d'entrée");
+            }
+        }
+        std::cout << "[PASS] Test 587: Trace du calcul (empreinte des données, script conservé, enregistrée, citée)" << std::endl;
         ++passed;
     }
 

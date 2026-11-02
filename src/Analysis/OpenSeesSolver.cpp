@@ -436,6 +436,9 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     m_results.setExecutionMetadata(meta);
     m_results.setAvailability(m_results.availabilityFromData());
     m_results.setSolverMesh(opsMap.solverMesh(snapshot)); // maillage réellement écrit dans model.tcl
+    // Script exact remis à OpenSees, conservé avec les résultats (le dossier temporaire est détruit), BUG-111
+    m_results.analysisTrace().engineInputName = "model.tcl";
+    m_results.analysisTrace().engineInput = script;
 
     emit progressChanged(100, tr("Calcul et post-traitement terminés avec succès."));
     return true;

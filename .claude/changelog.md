@@ -2,6 +2,20 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — BUG-111 (étapes 1-2) : trace du calcul (branche fix/calculation-traceability)
+
+- Manquait : aucune empreinte des données d'entrée ; script OpenSees détruit avec le dossier temporaire.
+- `AnalysisTrace` (ResultsModel) : empreinte SHA-256 des données d'entrée, réglages (AnalysisContext JSON compact), nom et contenu
+  du fichier d'entrée du moteur. `AnalysisManager::inputFingerprint` (pour tout moteur, dans run) : « tsa-calculation-input/1 »,
+  moteur, réglages JSON, script statique OpenSees de référence du modèle préparé (déterministe, sans chemin ni date).
+  `OpenSeesSolver` conserve model.tcl. Enregistrée dans le .tsa : section TRAC du bloc RSLT (une version antérieure la saute ;
+  disposition inchangée). Citée par la note historique et la note projet (« Empreinte des données du calcul (SHA-256) », fichier
+  d'entrée conservé). docs/TSA_FILE_FORMAT.md.
+- Test 587 (suite engines) : mêmes données → même empreinte (recalcul, modèle identique) ; charge ou réglage modifié → autre
+  empreinte ; script conservé ; trace relue du bloc RSLT ; empreinte citée par les deux notes ; Fem3D : empreinte propre, aucun
+  fichier d'entrée. Suite complète 60/60 ; check_layers 0 ; TSALab 27/27.
+- Reste : annexe nationale des vérifications figée dans le projet ; export du script depuis l'interface.
+
 ## 2026-11-02 — BUG-133 corrigé : OpenSees installé depuis l'application par conda-forge (branche fix/opensees-download)
 
 - Cause : `OpenSeesManager::downloadAndInstall` visait l'archive officielle d'opensees.berkeley.edu, disparue (404) ; seule

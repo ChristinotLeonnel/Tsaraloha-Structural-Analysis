@@ -188,6 +188,20 @@ struct GlobalEquilibrium
     bool isBalanced(double tol = 1e-3) const;
 };
 
+/// Trace du calcul (BUG-111) : ce qui permet de prouver, plus tard, sur quelles données exactes les résultats ont été
+/// obtenus. Enregistrée avec les résultats dans le .tsa (bloc RSLT, section TRAC).
+struct AnalysisTrace
+{
+    /// SHA-256 (hexadécimal) des données d'entrée du calcul : moteur, réglages (AnalysisContext JSON) et description
+    /// complète du modèle calculé (nœuds, appuis, barres, sections, matériaux, charges retenues). Deux calculs de même
+    /// empreinte ont reçu les mêmes données ; une note qui la cite désigne sans ambiguïté le calcul.
+    std::string inputFingerprint;
+    std::string contextJson;       ///< réglages du calcul (AnalysisContext::toJson, compact)
+    std::string engineInputName;   ///< nom du fichier d'entrée du moteur, ex. « model.tcl » ; vide si le moteur n'en a pas
+    std::string engineInput;       ///< contenu exact remis au moteur (script OpenSees), conservé au lieu d'être détruit
+    bool empty() const { return inputFingerprint.empty() && engineInput.empty(); }
+};
+
 /**
  * @brief Métadonnées d'exécution des résultats d'analyse.
  *
@@ -471,6 +485,10 @@ public:
     const std::map<ElementKey, PlanarMemberCurves>& planarCurves() const { return m_planarCurves; }
     void setPlanarCurves(const PlanarMemberCurves& c) { m_planarCurves[c.key] = c; }
 
+    // Trace du calcul (empreinte des données d'entrée, script remis au moteur), BUG-111
+    const AnalysisTrace& analysisTrace() const noexcept { return m_analysisTrace; }
+    AnalysisTrace& analysisTrace() noexcept { return m_analysisTrace; }
+
     // Résultats propres au moteur
     const std::vector<EngineResultTable>& engineTables() const { return m_engineTables; }
     void addEngineTable(const EngineResultTable& t) { m_engineTables.push_back(t); }
@@ -534,6 +552,7 @@ private:
     AdvancedResults m_advanced;
     ResultAvailability m_availability;
     std::vector<EngineResultTable> m_engineTables;
+    AnalysisTrace m_analysisTrace;
     std::map<ElementKey, PlanarMemberCurves> m_planarCurves;
     SolverMesh m_solverMesh;
     std::vector<StepResults> m_stepResults;
