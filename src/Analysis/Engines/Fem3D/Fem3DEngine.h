@@ -1,6 +1,6 @@
 #pragma once
 
-// Moteur « fem3d » : moteur EF 3D de TSA (dépôt voisin 3DDesplacement), MOTEUR SECONDAIRE. OpenSees reste le moteur
+// Moteur « fem3d » : moteur EF 3D de TSA (dépôt voisin TSA-3D-FEM-Engine), MOTEUR SECONDAIRE. OpenSees reste le moteur
 // 3D par défaut tant que la qualification de Fem3D dans TSA n'est pas complète (docs/ANALYSIS_ENGINES.md).
 //
 // Logique de secours (réglages du moteur, jamais implicite) :
@@ -36,7 +36,7 @@ public:
     static QJsonObject settingsToJson(const Settings& settings);
 
     /// Tolérance de la comparaison Fem3D / OpenSees, fixée avant les essais (mêmes critères que les benchmarks du
-    /// moteur, 3DDesplacement/docs/validation/VALIDATION_OPENSEES.md §3) : |écart| ≤ max(1e-6·|OpenSees|, 1e-9·échelle).
+    /// moteur, TSA-3D-FEM-Engine/docs/validation/VALIDATION_OPENSEES.md §3) : |écart| ≤ max(1e-6·|OpenSees|, 1e-9·échelle).
     static constexpr double kCompareRelative = 1e-6;
     static constexpr double kCompareAbsoluteFactor = 1e-9;
 

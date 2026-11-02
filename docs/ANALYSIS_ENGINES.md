@@ -21,7 +21,7 @@ UI Analysis (AnalysisDialog, AnalysisManagerPanel)   console / Blueprint / IA (a
           ┌──────────────┼──────────────────┐
           ▼              ▼                  ▼
    OpenSeesEngine   Custom2DEngine     Fem3DEngine (facultatif)
-   (OpenSeesSolver) (Custom2D::ISolver) (bibliothèque fem3d, ../3DDesplacement)
+   (OpenSeesSolver) (Custom2D::ISolver) (bibliothèque fem3d, ../TSA-3D-FEM-Engine)
           └──────────────┴──────────────────┘
                          │ ResultsModel (ids TSA)
                          ▼
@@ -146,10 +146,10 @@ Puis mettre à jour `Custom2DEngine::capabilities()` selon ce que le solveur fai
 
 ### Fem3D (`fem3d`) — moteur secondaire
 
-Moteur éléments finis 3D de TSA, développé dans le dépôt voisin **3DDesplacement** (TSA-3D-FEM-Engine, bibliothèque
-`fem3d`, C++20 + Eigen, sans Qt). **Facultatif** : CMake le cherche dans `../3DDesplacement` (`TSA_FEM3D_DIR`) ;
+Moteur éléments finis 3D de TSA, développé dans le dépôt voisin **TSA-3D-FEM-Engine** (ancien nom de dossier 3DDesplacement, bibliothèque
+`fem3d`, C++20 + Eigen, sans Qt). **Facultatif** : CMake le cherche dans `../TSA-3D-FEM-Engine`, puis `../3DDesplacement` (`TSA_FEM3D_DIR`) ;
 présent, il est compilé (`TSA_HAS_FEM3D`) et enregistré **après** OpenSees, qui reste le moteur 3D par défaut tant que
-la qualification de Fem3D dans TSA n'est pas complète (niveau 5, `3DDesplacement/docs/validation/QUALIFICATION.md`).
+la qualification de Fem3D dans TSA n'est pas complète (niveau 5, `TSA-3D-FEM-Engine/docs/validation/QUALIFICATION.md`).
 
 - **Périmètre** (capacités) : statique linéaire 3D ; poutres et poteaux d'Euler–Bernoulli (rigidité exacte, comme
   `elasticBeamColumn`) ; rotules My, Mz ; appuis et ressorts ; charges nodales ; charges réparties uniformes ou
@@ -169,7 +169,7 @@ la qualification de Fem3D dans TSA n'est pas complète (niveau 5, `3DDesplacemen
   confié à un autre moteur.
 - Pas de maillage du solveur joint (`setSolverMesh`) : un élément fini par barre, sans nœud auxiliaire.
 
-Documentation du moteur : `3DDesplacement/docs/` (théorie, conventions, audit indépendant, plan de validation,
+Documentation du moteur : `TSA-3D-FEM-Engine/docs/` (théorie, conventions, audit indépendant, plan de validation,
 qualification, bibliographie, limites).
 
 ## Ajouter un moteur

@@ -142,7 +142,7 @@ bool runSuite_Engines(int& passed)
         registerBuiltInEngines(reg);
         TEST_CHECK(reg.hasEngine("opensees") && reg.hasEngine("custom2d"), "Test 130: OpenSees et Custom2D enregistrés");
 #ifdef TSA_HAS_FEM3D
-        constexpr std::size_t builtInEngines = 3;   // + moteur EF 3D Fem3D (dépôt voisin 3DDesplacement)
+        constexpr std::size_t builtInEngines = 3;   // + moteur EF 3D Fem3D (dépôt voisin TSA-3D-FEM-Engine)
 #else
         constexpr std::size_t builtInEngines = 2;
 #endif

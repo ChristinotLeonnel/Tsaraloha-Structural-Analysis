@@ -228,7 +228,7 @@ Le temps de compilation de TSA est optimisé pour les développeurs C++ exigeant
   normalement, mais son calcul est refusé avec un message tant qu'une analyse linéaire n'a pas été choisie (ADR-025).
 * **Moteurs** (`AnalysisManager`, [docs/ANALYSIS_ENGINES.md](docs/ANALYSIS_ENGINES.md)) : OpenSees (par défaut, 3D,
   résolution en un seul pas par `algorithm Linear`), Fem3D (3D : poutres, rotules, appuis élastiques ; facultatif, compilé
-  si le dépôt voisin `../3DDesplacement` est présent), Custom2D (ossatures planes, cœur scientifique de TSALab).
+  si le dépôt voisin `../TSA-3D-FEM-Engine` est présent ; ancien nom `../3DDesplacement` accepté), Custom2D (ossatures planes, cœur scientifique de TSALab).
 * **Câbles** : barres articulées précontraintes (déformation initiale $\varepsilon_0 = T_0 / EA$), calculées en un seul pas
   linéaire ; une compression n'est pas relâchée.
 * **Vérifications réglementaires** : distinctes de l'analyse. Elles sont partielles et ne sont pas validées du seul fait que

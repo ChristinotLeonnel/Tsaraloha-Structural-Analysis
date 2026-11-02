@@ -1,6 +1,6 @@
 #pragma once
 
-// Conversion AnalysisModel (CalculationSnapshot 3D) ↔ moteur EF 3D Fem3D (dépôt voisin 3DDesplacement).
+// Conversion AnalysisModel (CalculationSnapshot 3D) ↔ moteur EF 3D Fem3D (dépôt voisin TSA-3D-FEM-Engine).
 //
 // La conversion réutilise les briques du chemin OpenSees, pour que les deux moteurs calculent EXACTEMENT le même
 // modèle et que leurs résultats soient présentés de la même façon :
@@ -8,7 +8,7 @@
 //  - OpenSeesAnalysisBuilder::loadPatterns / beamElementLoads : cas, combinaison, poids propre, charges sur barre
 //    résolues dans les axes locaux ;
 //  - OpenSeesResultsReader : stations (convention de ResultsModel), équilibre global, blocages automatiques.
-// Périmètre de Fem3D (docs/ANALYSIS_ENGINES.md, 3DDesplacement/docs/validation/QUALIFICATION.md) : poutres et poteaux
+// Périmètre de Fem3D (docs/ANALYSIS_ENGINES.md, TSA-3D-FEM-Engine/docs/validation/QUALIFICATION.md) : poutres et poteaux
 // d'Euler–Bernoulli, rotules My / Mz, appuis et ressorts, charges nodales, charges réparties uniformes ou linéaires
 // sur TOUTE la longueur (poids propre compris), statique linéaire. Tout le reste est signalé, jamais approché.
 

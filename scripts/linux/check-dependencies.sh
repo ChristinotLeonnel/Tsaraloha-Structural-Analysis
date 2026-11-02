@@ -15,7 +15,7 @@ for tool in cmake ninja g++ git python3; do
 done
 if command -v cmake >/dev/null; then
     v="$(cmake --version | head -n 1 | grep -oE '[0-9]+\.[0-9]+' | head -n 1)"
-    if [[ "$(printf '%s\n3.21\n' "$v" | sort -V | head -n 1)" != "3.21" ]]; then bad "CMake >= 3.21 requis (3DDesplacement), trouvé $v"; fi
+    if [[ "$(printf '%s\n3.21\n' "$v" | sort -V | head -n 1)" != "3.21" ]]; then bad "CMake >= 3.21 requis (TSA-3D-FEM-Engine), trouvé $v"; fi
 fi
 
 tsa_info "Qt 6 (Core Gui Widgets Svg Network ; Test facultatif)"
@@ -51,7 +51,9 @@ done
 tsa_info "Dépôts voisins"
 root="$(dirname "$TSA_SOURCE_DIR")"
 [[ -f "$root/TSALab/science/CMakeLists.txt" ]] && ok "TSALab/science" || bad "../TSALab (cœur scientifique obligatoire)"
-[[ -f "$root/3DDesplacement/CMakeLists.txt" ]] && ok "3DDesplacement (moteur fem3d)" || warn "../3DDesplacement (moteur fem3d facultatif)"
+if [[ -f "$root/TSA-3D-FEM-Engine/CMakeLists.txt" ]]; then ok "TSA-3D-FEM-Engine (moteur fem3d)"
+elif [[ -f "$root/3DDesplacement/CMakeLists.txt" ]]; then ok "3DDesplacement (moteur fem3d, ancien nom de TSA-3D-FEM-Engine)"
+else warn "../TSA-3D-FEM-Engine (moteur fem3d facultatif)"; fi
 [[ -f "$TSA_SOURCE_DIR/thirdparty/eigen-3.4.1/include/eigen3/Eigen/Core" ]] && ok "Eigen (thirdparty)" || warn "Eigen thirdparty/eigen-3.4.1 (requis par fem3d ; python3 install_dependencies.py --only eigen)"
 
 tsa_info "Maillage"

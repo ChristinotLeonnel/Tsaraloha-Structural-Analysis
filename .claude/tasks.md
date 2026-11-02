@@ -30,7 +30,8 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
 ## Correction des bugs de known-issues, du plus critique au moins critique (2026-11-02)
 - [x] BUG-152 (HIGH, verdict non sécuritaire) : flambement EC3 sur les deux axes principaux, test 584.
 - [x] BUG-151 (HIGH) : câble comprimé ou détendu signalé après le calcul, test 585.
-- [x] BUG-153 (HIGH) : cornières sur leurs axes principaux (OpenSees ; Fem3D non exécuté ici), test 586.
+- [x] BUG-153 (HIGH) : cornières sur leurs axes principaux (OpenSees et Fem3D), test 586.
+- [x] Moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine (60/60 suites, banc 2 097 vérifications).
 - [ ] Suivants (HIGH) : BUG-133
   téléchargement OpenSees ; BUG-111 traçabilité ; BUG-117 P2 ; BUG-002 dalles et voiles hors calcul.
 - [ ] Traductions en / mg manquantes (88 / 107 textes, dont Style des charges, menus d'affichage) : tools/i18n.
@@ -82,7 +83,7 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
       (ADR-025) ; cas de rotules et portiques aléatoires ajoutés au banc pour les moteurs qui les passent.
 - [ ] Revoir les résultats déjà produits avec rotules + charge non uniforme, ou en non linéaire.
 - [ ] Non exécuté : TSALab_TestSuite, tsalab_science_tests S6 (non concluant), fem3dpost_tests (délai), ASan, Linux, Debug, interface réelle.
-- [ ] Régénérer les 26 journaux vidés de 3DDesplacement/benchmarks/OpenSees/results (après correction de BUG-161).
+- [ ] Régénérer les 26 journaux vidés de TSA-3D-FEM-Engine/benchmarks/OpenSees/results (après correction de BUG-161).
 - [ ] Décisions : ADR-022 et modal, moteur par défaut, note Legacy, câbles, licences.
 
 ## Courbes 2D superposées (2026-10-30, branche feature/diagram-multi-curves)
