@@ -70,7 +70,9 @@ void ResultsDockWidget::syncFromVisualManager(TSA::Viewer::ResultsVisualManager*
     m_labelEffectiveScale->setText(tr("Échelle effective : ×%1%2").arg(visualMgr->deformationScale(), 0, 'g', 5).arg(std::abs(visualMgr->deformationScale() - 1.0) < 1e-12 ? tr(" (non amplifiée)") : QString()));
     if (m_labelDiagramScale)
     {
-        const QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(visualMgr->diagramType());
+        // Unité des valeurs tracées (celle du calcul : kN ou N), BUG-117
+        const QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(visualMgr->diagramType(),
+                                                                         !m_resultsModel || m_resultsModel->units().force != "N");
         if (visualMgr->diagramType() == TSA::Geometry::DiagramType::None) m_labelDiagramScale->setText(tr("Aucun diagramme affiché"));
         else if (visualMgr->diagramAllZero()) m_labelDiagramScale->setText(tr("Grandeur nulle sur toute la structure"));
         else
@@ -440,8 +442,16 @@ void ResultsDockWidget::updateSummaryText()
         return;
     }
 
-    const auto& s = m_resultsModel->summary();
-    const auto& eq = m_resultsModel->equilibrium();
+    // Valeurs affichées en kN et kN·m, quelle que soit l'unité du calcul (OpenSees peut calculer en N) : BUG-117
+    auto s = m_resultsModel->summary();
+    auto eq = m_resultsModel->equilibrium();
+    {
+        const double k = m_resultsModel->units().forceToKiloNewtons();
+        s.maxBendingMoment *= k;
+        s.maxTension *= k;
+        s.maxTorsionMoment *= k;
+        eq.reactionFz *= k;
+    }
 
     m_labelStatus->setText(tr("✓ Calcul disponible"));
     m_labelStatus->setStyleSheet("font-weight: bold; color: #10b981;");

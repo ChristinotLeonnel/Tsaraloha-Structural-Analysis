@@ -408,7 +408,7 @@ QString ResultsVisualManager::legendSummaryText() const
     }
     if (m_diagramType != TSA::Geometry::DiagramType::None)
     {
-        const QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(m_diagramType);
+        const QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(m_diagramType, !m_results || m_results->units().force != "N");
         if (m_diagramAllZero)
             text += tr("DIAGRAMME : %1 — grandeur nulle sur toute la structure (aucun diagramme)\n")
                         .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(m_diagramType));
@@ -897,7 +897,7 @@ void ResultsVisualManager::updateDiagramShapes()
             offsetDir.Normalize();
             gp_Vec vAB(p1, p2);
             double length = vAB.Magnitude();
-            QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(m_diagramType);
+            QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(m_diagramType, m_results->units().force != "N");   // BUG-117
 
             auto addLabel = [&](size_t idx, double val)
             {
@@ -984,8 +984,11 @@ void ResultsVisualManager::updateReactionShapes()
         return;
     }
 
-    for (const auto& [nodeId, react] : m_results->allReactions())
+    const double toKN = m_results->units().forceToKiloNewtons();   // flèches et textes en kN (calcul en kN ou N), BUG-117
+    for (const auto& [nodeId, raw] : m_results->allReactions())
     {
+        auto react = raw;
+        for (double* v : { &react.rx, &react.ry, &react.rz, &react.mx, &react.my, &react.mz }) *v *= toKN;
         const auto* n = m_model->getNode(nodeId);
         if (!n) continue;
 

@@ -762,8 +762,16 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
                           .arg(engineName)
                           .arg(meta.solverVersion.empty() ? QString() : " " + QString::fromStdString(meta.solverVersion))
                           .arg(QString::fromStdString(prepared.model.scopeLabel));
-    const auto ext = m_resultsModel->summary();
-    const auto eq = m_resultsModel->equilibrium();
+    // Résumé affiché en kN et kN·m, quelle que soit l'unité du calcul (OpenSees peut calculer en N) : BUG-117
+    auto ext = m_resultsModel->summary();
+    auto eq = m_resultsModel->equilibrium();
+    {
+        const double k = m_resultsModel->units().forceToKiloNewtons();
+        ext.maxBendingMoment *= k;
+        ext.maxTension *= k;
+        ext.maxTorsionMoment *= k;
+        eq.reactionFz *= k;
+    }
     const auto& modal = m_resultsModel->modal();
     const bool isModal = m_resultsModel->analysisType() == TSA::Analysis::AnalysisType::Modal && !modal.empty();
     if (isModal)

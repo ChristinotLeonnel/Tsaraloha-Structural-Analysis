@@ -547,7 +547,7 @@ Diagram2DWidget::Scaling Diagram2DWidget::effectiveScaling() const
     QStringList units;
     for (DiagramType t : m_types)
     {
-        const QString u = TSA::Geometry::DiagramGeometry::diagramUnit(t);
+        const QString u = TSA::Geometry::DiagramGeometry::diagramUnit(t, !m_results || m_results->units().force != "N");
         if (!units.contains(u)) units << u;
     }
     return (m_layout == Layout::Overlay && units.size() > 2) ? Scaling::Normalized : Scaling::PerUnit;
@@ -689,7 +689,7 @@ Diagram2DWidget::Frame Diagram2DWidget::buildFrame() const
         Curve c;
         c.type = t;
         c.name = Diagram2D::shortName(t);
-        c.unit = TSA::Geometry::DiagramGeometry::diagramUnit(t);
+        c.unit = TSA::Geometry::DiagramGeometry::diagramUnit(t, m_results->units().force != "N");   // unité du calcul, BUG-117
         c.color = Diagram2D::curveColor(t);
         c.samples = Diagram2D::sampleCurve(*el, t, f.length);
         if (c.samples.empty()) continue;

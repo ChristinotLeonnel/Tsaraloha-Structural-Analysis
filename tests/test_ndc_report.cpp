@@ -19,6 +19,10 @@
 #include "Model/Column.h"
 #include "Model/SupportDefinition.h"
 #include "Standards/Design/ConcreteDesignEC2.h"
+#include "UI/Dock/ResultsDockWidget.h"
+#include "UI/Properties/NodePropertiesView.h"
+#include "Geometry/DiagramGeometry.h"
+#include <QLabel>
 #include "Standards/Design/SteelDesignEC3.h"
 
 #include <QFile>
@@ -362,6 +366,11 @@ bool runSuite_NDCReport(int& passed)
             r->setNodeReaction(n3, ra);
             ra.rz = 40.2 * scale;
             r->setNodeReaction(n1, ra);
+            r->setNodeDisplacement(n3, NodeDisplacement {});   // nœud calculé : le panneau du nœud affiche ses réactions
+            GlobalEquilibrium eq;   // résultantes (dock Résultats : réaction totale)
+            eq.reactionFz = 252.9 * scale;
+            eq.appliedFz = -252.9 * scale;
+            r->setEquilibrium(eq);
             r->setValid(true);
             return r;
         };
@@ -404,6 +413,29 @@ bool runSuite_NDCReport(int& passed)
             for (std::size_t i = 0; i < tKN.size() && i < tN.size(); ++i)
                 TEST_CHECK(tKN[i].rows == tN[i].rows, std::string("Test 492 : tableau « ") + tKN[i].caption.toStdString() + "» identique en kN et en N (note " + name + ")");
         }
+
+        // BUG-117 (P2) : affichages des résultats indépendants de l'unité du calcul — dock Résultats, propriétés du nœud (réactions
+        // en kN quelle que soit l'unité) ; unité des diagrammes = unité des valeurs tracées (kN·m ou N·m)
+        for (const auto& results : { rKN, rN })
+        {
+            const std::string unitName = results->units().force;
+            TSA::UI::ResultsDockWidget dock;
+            dock.setModel(&model);
+            dock.setResultsModel(results);
+            TSA::UI::NodePropertiesView node(&model);
+            node.setResultsModel(results);
+            node.setElementId(n3);
+            QStringList texts;
+            for (const QWidget* w : { static_cast<const QWidget*>(&dock), static_cast<const QWidget*>(&node) })
+                for (const QLabel* l : w->findChildren<QLabel*>()) texts << l->text();
+            const QString all = texts.join(QLatin1Char('\n'));
+            TEST_CHECK(all.contains(QStringLiteral("Réaction totale Rz : 252.9 kN")) && all.contains(QStringLiteral("212.70 kN")) &&
+                           !all.contains(QStringLiteral("212700")) && !all.contains(QStringLiteral("252900")),
+                       "Test 492 : dock Résultats et réactions du nœud en kN pour un calcul en " << unitName);
+        }
+        TEST_CHECK(TSA::Geometry::DiagramGeometry::diagramUnit(TSA::Geometry::DiagramType::BendingMy, rN->units().force != "N") == QStringLiteral("Nm") &&
+                       TSA::Geometry::DiagramGeometry::diagramUnit(TSA::Geometry::DiagramType::BendingMy, rKN->units().force != "N") == QStringLiteral("kNm"),
+                   "Test 492 : unité des diagrammes = unité du calcul");
 
         // Valeur attendue indépendante de la note : ratio EC2 calculé directement en SI
         const auto direct = TSA::Standards::Design::ConcreteDesignEC2::calculateFromModel(Section::rectangular(0.30, 0.50), Material::concreteC25_30(), 60.3e3);

@@ -304,7 +304,9 @@ void NodePropertiesView::refreshView()
 
         if (m_resultsModel->hasNodeReaction(m_nodeId))
         {
-            const auto& r = m_resultsModel->nodeReaction(m_nodeId);
+            // Réactions affichées en kN et kN·m, quelle que soit l'unité du calcul (BUG-117)
+            auto r = m_resultsModel->nodeReaction(m_nodeId);
+            for (double* v : { &r.rx, &r.ry, &r.rz, &r.mx, &r.my, &r.mz }) *v *= m_resultsModel->units().forceToKiloNewtons();
             m_labelReactFx->setText(tr("%1 kN").arg(r.rx, 0, 'f', 2));
             m_labelReactFy->setText(tr("%1 kN").arg(r.ry, 0, 'f', 2));
             m_labelReactFz->setText(tr("%1 kN").arg(r.rz, 0, 'f', 2));
