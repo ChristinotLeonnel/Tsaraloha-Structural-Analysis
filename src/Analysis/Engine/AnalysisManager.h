@@ -53,6 +53,10 @@ public:
     std::vector<std::string> unsupportedFeatures(const AnalysisContext& context) const;
     /// Message destiné à l'utilisateur pour ces fonctionnalités.
     static std::string unsupportedFeaturesMessage(const std::vector<std::string>& features);
+    /// Câbles comprimés ou détendus (effort normal minimal N ≤ 0) dans ces résultats : avertissement à l'utilisateur, vide
+    /// s'il n'y en a aucun (BUG-151). Un câble ne reprend pas de compression, mais le calcul linéaire le fait travailler
+    /// comme une barre : run() ajoute ce texte aux points à vérifier après calcul, quel que soit le moteur.
+    static std::string slackCableWarning(const ResultsModel& results);
 
     /// Contrôles communs déduits des capacités du moteur (public pour les tests).
     static ValidationResult validateGeneric(const AnalysisContext& context,

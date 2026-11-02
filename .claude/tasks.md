@@ -29,8 +29,10 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
 
 ## Correction des bugs de known-issues, du plus critique au moins critique (2026-11-02)
 - [x] BUG-152 (HIGH, verdict non sécuritaire) : flambement EC3 sur les deux axes principaux, test 584.
-- [ ] Suivants (HIGH) : BUG-151 câble comprimé accepté ; BUG-153 cornières (calcul sur axes géométriques) ; BUG-133
+- [x] BUG-151 (HIGH) : câble comprimé ou détendu signalé après le calcul, test 585.
+- [ ] Suivants (HIGH) : BUG-153 cornières (calcul sur axes géométriques) ; BUG-133
   téléchargement OpenSees ; BUG-111 traçabilité ; BUG-117 P2 ; BUG-002 dalles et voiles hors calcul.
+- [ ] Traductions en / mg manquantes (88 / 107 textes, dont Style des charges, menus d'affichage) : tools/i18n.
 
 ## Affichage intelligent des charges (2026-11-01/02, branche feature/load-display-scaling)
 - [x] Échelle d'après la structure, style des charges, cas affichés, test 583.

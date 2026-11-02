@@ -2840,6 +2840,33 @@ Tianao hotehirizina ve ny fanovana alohan'ny hanohizana?</translation>
         <translation>Modely: fihaonana %1, andry mitsivalana %2, andry %3, takelaka %4 | %5</translation>
     </message>
     <message>
+        <source>Dernier calcul enregistré avec le projet : %1, %2 — %3%4</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>réussi</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>en échec</source>
+        <translation type="unfinished" />
+    </message>
+    <message numerus="yes">
+        <source>%n anomalie(s) de validation relevée(s) au dernier enregistrement.</source>
+        <translation type="unfinished">
+            <numerusform />
+            <numerusform />
+        </translation>
+    </message>
+    <message>
+        <source>Résultats du dernier calcul rétablis (enregistrés avec le projet).</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Vue enregistrée</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Mode Sombre (Actif)</source>
         <translation>Endrika maizina (mandeha)</translation>
     </message>
@@ -3858,6 +3885,14 @@ Tianao hotehirizina ve ny fanovana alohan'ny hanohizana?</translation>
     <message>
         <source>Informations sur l'application, OpenCASCADE et crédits</source>
         <translation>Mombamomba ny rindranasa, OpenCASCADE ary ireo nandray anjara</translation>
+    </message>
+    <message>
+        <source>Fichiers &amp;liés et bibliothèques...</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Fichiers reliés au projet (imports, exports, textures, documents joints) et bibliothèques utilisées : présence et intégrité contrôlées à l'ouverture</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>&amp;Exporter Rapport de Diagnostic...</source>
@@ -6539,6 +6574,109 @@ Jereo Fanampiana &gt; Môdiola.</translation>
         <source>Un Blueprint est en cours d'exécution : arrêtez-le ou attendez sa fin avant de %1.</source>
         <translation>Misy Blueprint mandeha: ajanony na andraso ho vita alohan'ny %1.</translation>
     </message>
+    <message>
+        <source>Fichier lié introuvable (%1) : %2</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Fichier lié modifié depuis son enregistrement (%1) : %2</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Bibliothèque requise absente de ce poste : %1 %2 — calcul reproductible (propriétés figées dans le projet), définitions indisponibles pour de nouveaux éléments.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Bibliothèque %1 : version %2 installée, %3 utilisée par le projet.</source>
+        <translation type="unfinished" />
+    </message>
+    <message numerus="yes">
+        <source>%n fichier(s) lié(s) au projet, tous présents et inchangés.</source>
+        <translation type="unfinished">
+            <numerusform />
+            <numerusform />
+        </translation>
+    </message>
+    <message>
+        <source>Dernier enregistrement : %1 par %2 (%3, format %4).</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>auteur non renseigné</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Fichiers liés et bibliothèques</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Fichiers reliés au projet (contrôlés à chaque ouverture, jamais ouverts automatiquement) :</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Rôle</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Fichier</source>
+        <translation type="unfinished">Rakitra</translation>
+    </message>
+    <message>
+        <source>État</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Modifié le</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Bibliothèques utilisées par le projet :</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Bibliothèque</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Version du projet</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Sur ce poste</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Définitions</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Enregistrer aussi les chemins absolus (décocher pour un fichier à transmettre : ils peuvent révéler le nom d'utilisateur)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>absente</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>installée</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>version %1</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Joindre un document…</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Retirer le lien</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Joindre un document au projet</source>
+        <translation type="unfinished" />
+    </message>
 </context>
 <context>
     <name>OccView</name>
@@ -6785,6 +6923,10 @@ Jereo Fanampiana &gt; Môdiola.</translation>
         <translation>Eo ambanin'ny tondro: tariby C%1 (fihaonana %2 -&gt; %3 | halavany = %4 m | Ø%5 mm | T0 = %6 kN)</translation>
     </message>
     <message>
+        <source>Modification du plan de travail terminée</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Plan de travail %1 : %2, origine %3</source>
         <translation>Planina fiasana %1: %2, fiaviana %3</translation>
     </message>
@@ -6819,6 +6961,32 @@ Jereo Fanampiana &gt; Môdiola.</translation>
     <message>
         <source>non porteur</source>
         <translation>tsy mitondra enta</translation>
+    </message>
+    <message>
+        <source>Tous les cas : %1</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Cas affiché : %1</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>aucune charge</source>
+        <translation type="unfinished" />
+    </message>
+    <message numerus="yes">
+        <source>%n autre(s) cas chargé(s) masqué(s) — Charges › Cas affichés</source>
+        <translation type="unfinished">
+            <numerusform />
+            <numerusform />
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n valeur(s) superposée(s) masquée(s) — zoomer pour les lire</source>
+        <translation type="unfinished">
+            <numerusform />
+            <numerusform />
+        </translation>
     </message>
     <message>
         <source>X global</source>
@@ -7425,6 +7593,18 @@ Atomboka ve ny kajy?</translation>
         <source>Autres commandes de cet onglet</source>
         <translation>Baiko hafa ao amin'ity pejy ity</translation>
     </message>
+    <message>
+        <source>présent</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>modifié depuis</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>introuvable</source>
+        <translation type="unfinished" />
+    </message>
 </context>
 <context>
     <name>TSA::Analysis</name>
@@ -7712,6 +7892,14 @@ Atomboka ve ny kajy?</translation>
     <message>
         <source>Moteur %1 indisponible : %2</source>
         <translation>Tsy azo ampiasaina ny motera kajy %1: %2</translation>
+    </message>
+    <message>
+        <source>K%1 (N = %2 kN)</source>
+        <translation>K%1 (N = %2 kN)</translation>
+    </message>
+    <message>
+        <source>%1 câble(s) comprimé(s) ou détendu(s) (N ≤ 0) : %2. Un câble ne reprend pas de compression, mais le calcul linéaire l'a fait travailler comme une barre : ces résultats ne représentent pas la structure réelle. Augmenter la précontrainte, retirer le câble détendu ou le remplacer par une barre, puis relancer le calcul.</source>
+        <translation>Tariby %1 voatsindry na malemy (N ≤ 0) : %2. Tsy mahazaka fanerena ny tariby, nefa ny kajy tsipika dia nampiasa azy toy ny tsorakazo : tsy maneho ny rafitra tena izy ireo valiny ireo. Ampitomboy ny fanenjanana mialoha, esory ny tariby malemy na soloy tsorakazo izy, dia avereno ny kajy.</translation>
     </message>
 </context>
 <context>
@@ -18244,6 +18432,10 @@ Atombohy ny kajy (F5) mba hanoritana ny fiolahana.</translation>
         <translation>Averina amin'ny voalohany ny fanondroana</translation>
     </message>
     <message>
+        <source>Afficher ou masquer le repère global X, Y, Z et les repères locaux x, y, z des éléments sélectionnés (réglages : Affichage › Repères)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Échelle des charges</source>
         <translation>Haben'ny enta</translation>
     </message>
@@ -18298,6 +18490,37 @@ Atombohy ny kajy (F5) mba hanoritana ny fiolahana.</translation>
     <message>
         <source>Réinitialiser l'échelle des charges</source>
         <translation>Averina amin'ny voalohany ny haben'ny enta</translation>
+    </message>
+    <message>
+        <source>Style des charges…</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Couleurs (par cas, par intensité…), texte des valeurs (hauteur, décimales, symbole, unité), épaisseur des flèches, cas affichés — comme un style de cote</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Cas affichés</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Tous les cas superposés</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Flèches et valeurs de tous les cas en même temps (couleur du cas, voir Style des charges)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Aucun cas de charge</source>
+        <translation type="unfinished" />
+    </message>
+    <message numerus="yes">
+        <source>%1 — %n charge(s)</source>
+        <translation type="unfinished">
+            <numerusform />
+            <numerusform />
+        </translation>
     </message>
     <message>
         <source>Applique les réglages graphiques du profil (aucune donnée du modèle ni des résultats n'est modifiée)</source>
@@ -20934,6 +21157,129 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
     </message>
 </context>
 <context>
+    <name>TSA::UI::LoadStyleDialog</name>
+    <message>
+        <source>Style des charges</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Affichage des charges dans la vue 3D. Les valeurs des charges ne sont jamais modifiées.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Cas affichés</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Cas actif seulement (choix : Charges › Cas affichés)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Tous les cas superposés</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Couleurs</source>
+        <translation type="unfinished">Loko</translation>
+    </message>
+    <message>
+        <source>Par cas de charge</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Par intensité (bleu → rouge)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Par famille (forces, moments, linéiques, surfaciques)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Couleur unique</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Couleur…</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Texte des valeurs</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Hauteur liée au modèle, comme une cote (grandit en zoomant, bornée à l'écran)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Hauteur constante à l'écran</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Automatique (d'après la structure)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Hauteur :</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>de</source>
+        <translation type="unfinished">avy amin'ny</translation>
+    </message>
+    <message>
+        <source>à</source>
+        <translation type="unfinished">hatramin'ny</translation>
+    </message>
+    <message>
+        <source>À l'écran :</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Taille à l'écran :</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Décimales :</source>
+        <translation type="unfinished">Desimaly:</translation>
+    </message>
+    <message>
+        <source>Symbole (« q = », « P = », « Fz = »)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Unité (kN, kN/m, kN/m²)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Nom du cas (« [Q] »)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Contour contrasté (lisible devant la structure)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Masquer les valeurs qui se chevauchent (la plus forte reste ; zoomer pour lire les autres)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Flèches</source>
+        <translation type="unfinished">Fiondrika</translation>
+    </message>
+    <message>
+        <source>Épaisseur :</source>
+        <translation type="unfinished">Hateviana:</translation>
+    </message>
+    <message>
+        <source>Longueur : d'après la structure (hauteur d'étage, longueur des barres), jamais le zoom — réglage du facteur : Affichage › Échelle des charges.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Couleur des charges</source>
+        <translation type="unfinished" />
+    </message>
+</context>
+<context>
     <name>TSA::UI::LocalMeshDialog</name>
     <message>
         <source>Maillage local de la sélection</source>
@@ -22686,8 +23032,8 @@ Tianao ho fidiana ve izy toy izay hamorona dika mitovy?</translation>
         <translation>Ampidiro ny anaran'ny tetikasa.</translation>
     </message>
     <message>
-        <source>Le nom ne doit pas contenir les caractères &lt; &gt; : &quot; / \ | ? *</source>
-        <translation>Tsy tokony hisy ireto litera ireto ny anarana: &lt; &gt; : &quot; / \ | ? *</translation>
+        <source>Le nom ne doit pas contenir les caractères &lt; &gt; : " / \ | ? *</source>
+        <translation>Tsy tokony hisy ireto litera ireto ny anarana: &lt; &gt; : " / \ | ? *</translation>
     </message>
     <message>
         <source>Choisissez un emplacement (chemin absolu).</source>
@@ -24496,6 +24842,10 @@ Tsindrio indroa raha hanokatra</translation>
         <translation>Fampisehoana ny enta</translation>
     </message>
     <message>
+        <source>Cas affichés</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Échelle des charges</source>
         <translation>Haben'ny enta</translation>
     </message>
@@ -24588,6 +24938,10 @@ Tsindrio indroa raha hanokatra</translation>
         <translation>Fahitana</translation>
     </message>
     <message>
+        <source>Réglages des repères</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Fenêtres</source>
         <translation>Varavarankely</translation>
     </message>
@@ -24671,8 +25025,8 @@ Tsindrio indroa raha hanokatra</translation>
         <translation>Tehirizo</translation>
     </message>
     <message>
-        <source>Saisissez un nom (les caractères &lt; &gt; : &quot; / \ | ? * sont remplacés).</source>
-        <translation>Ampidiro anarana (soloina ny litera &lt; &gt; : &quot; / \ | ? *).</translation>
+        <source>Saisissez un nom (les caractères &lt; &gt; : " / \ | ? * sont remplacés).</source>
+        <translation>Ampidiro anarana (soloina ny litera &lt; &gt; : " / \ | ? *).</translation>
     </message>
     <message>
         <source>Un template « %1 » existe déjà : son remplacement vous sera demandé.</source>
@@ -26993,6 +27347,14 @@ Mamorona tetikasa vaovao na sokafy rakitra %1: eto no hiseho ny topimasony.</tra
     <message>
         <source>Enregistrer sous 'Personnalisée'</source>
         <translation>Tehirizo ho 'Namboarina'</translation>
+    </message>
+    <message>
+        <source>Restaurer la disposition enregistrée dans le projet</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>À l'ouverture d'un projet, rétablir les panneaux, l'onglet du ruban et l'espace de travail tels qu'ils étaient lors de son dernier enregistrement</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>&amp;Réinitialiser la disposition</source>

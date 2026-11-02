@@ -513,6 +513,14 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
         for (const auto& m : prepared.validation.messages())
             if (m.severity == severity) meta.preparationMessages.push_back(m.category.empty() ? m.text : m.category + " : " + m.text);
 
+    // Câbles comprimés ou détendus (BUG-151) : point à vérifier après calcul, quel que soit le moteur (dialogue de fin de
+    // calcul, console, journal, note de calcul) ; jamais tu, les résultats restent consultables.
+    if (const std::string slack = slackCableWarning(r.results); !slack.empty())
+    {
+        meta.warnings.push_back(slack);
+        r.results.appendLog("\n[AVERTISSEMENT] " + slack + "\n");
+    }
+
     // Catégories annoncées = capacité déclarée ET données réellement présentes (capacités du moteur producteur).
     const AnalysisCapabilities caps = (producer ? producer : engine)->capabilities();
     ResultAvailability a = r.results.availabilityFromData();
@@ -524,6 +532,30 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
     a.dofMapping &= caps.providesDofMapping;
     r.results.setAvailability(a);
     return r;
+}
+
+std::string AnalysisManager::slackCableWarning(const ResultsModel& results)
+{
+    const double toKN = results.units().forceToKiloNewtons();
+    std::vector<std::pair<double, int>> slack;   // (N minimal en kN, id du câble)
+    for (const auto& [key, er] : results.allElementResults())
+    {
+        if (key.kind != StructuralElementKind::Cable) continue;
+        const double n = er.minNormalForce() * toKN;
+        if (std::isfinite(n) && n <= 1e-6) slack.push_back({ n, key.id });
+    }
+    if (slack.empty()) return {};
+    std::sort(slack.begin(), slack.end());   // le plus comprimé d'abord
+    std::vector<std::string> labels;
+    for (const auto& [n, id] : slack)
+        labels.push_back(trArgs(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager", "K%1 (N = %2 kN)"),
+                                { std::to_string(id), QString::number(n, 'f', 2).toStdString() }));
+    return trArgs(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager",
+                                    "%1 câble(s) comprimé(s) ou détendu(s) (N ≤ 0) : %2. Un câble ne reprend pas de compression, mais "
+                                    "le calcul linéaire l'a fait travailler comme une barre : ces résultats ne représentent pas la "
+                                    "structure réelle. Augmenter la précontrainte, retirer le câble détendu ou le remplacer par une "
+                                    "barre, puis relancer le calcul."),
+                  { std::to_string(slack.size()), shortList(labels, 8) });
 }
 
 void AnalysisManager::cancel(const EngineId& id)

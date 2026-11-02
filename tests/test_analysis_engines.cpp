@@ -1525,5 +1525,78 @@ bool runSuite_Engines(int& passed)
     }
 #endif
 
+    // -------------------------------------------------------------------------
+    // TEST 585 (BUG-151) : câble comprimé ou détendu signalé après le calcul, quel que soit le moteur. Avant : tirant soulevé
+    // de 30 kN, N = −20,2 kN, calcul réussi sans aucun avertissement.
+    // -------------------------------------------------------------------------
+    {
+        // 1. Contrôle seul, sur des résultats construits (unités N) : câble comprimé, câble détendu, câble tendu, barre comprimée
+        ResultsModel synthetic;
+        synthetic.setUnits(UnitSystem::fromKiloNewtons(false));
+        auto addResult = [&](StructuralElementKind kind, int id, double nNewtons) {
+            ElementResults e;
+            e.kind = kind;
+            e.elementId = id;
+            e.length = 3.0;
+            e.startForces.N = nNewtons;
+            e.endForces.N = nNewtons;
+            e.endForces.position = 3.0;
+            synthetic.setElementResults(e);
+        };
+        addResult(StructuralElementKind::Cable, 1, -20200.0);
+        addResult(StructuralElementKind::Cable, 2, 0.0);
+        addResult(StructuralElementKind::Cable, 3, 15000.0);
+        addResult(StructuralElementKind::Beam, 4, -50000.0);
+        const std::string w = AnalysisManager::slackCableWarning(synthetic);
+        TEST_CHECK(textHas(w, "2 câble(s)") && textHas(w, "K1 (N = -20.20 kN)") && textHas(w, "K2") && !textHas(w, "K3") && !textHas(w, "K4"),
+                   "Test 585: câbles comprimé et détendu signalés, câble tendu et barre ignorés (" << w << ")");
+        ResultsModel none;
+        TEST_CHECK(AnalysisManager::slackCableWarning(none).empty(), "Test 585: aucun câble, aucun avertissement");
+
+        // 2. Calcul réel (OpenSees) : poutre bi-encastrée, câble vertical précontraint entre son milieu et le sol ; une charge
+        //    descendante raccourcit le câble (compression au-delà de la précontrainte), un soulèvement le tend
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        const AnalysisEngine* ops = reg.engine("opensees");
+        if (!ops || !ops->availability().available)
+            std::cout << "[SKIP] Test 585: calcul réel — OpenSees indisponible" << std::endl;
+        else
+        {
+            auto runTie = [&](double fz, std::string* warnings, double* nCable) {
+                Model m;
+                GridManager gm;
+                const int a = m.addNode(0, 0, 3), mid = m.addNode(3, 0, 3), b = m.addNode(6, 0, 3), ground = m.addNode(3, 0, 0);
+                m.getNode(a)->setSupport(SupportDefinition::fixed());
+                m.getNode(b)->setSupport(SupportDefinition::fixed());
+                m.getNode(ground)->setSupport(SupportDefinition::pinned());
+                m.addBar(a, mid, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+                m.addBar(mid, b, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+                const int cable = m.addCable(mid, ground, 0.020);
+                const int lc = m.loadManager().addLoadCase(LoadCase(0, "W", LoadCaseCategory::Wind));
+                m.loadManager().addNodalLoad(NodalLoad(0, mid, lc, 0.0, 0.0, fz));
+                m.loadManager().setActiveLoadCaseId(lc);
+                AnalysisManager mgr(reg);
+                AnalysisContext c;
+                c.engineId = "opensees";
+                c.common.includeSelfWeight = false;
+                const auto run = mgr.run(c, mgr.prepare(m, &gm, c));
+                if (!run.success) return false;
+                for (const auto& x : run.results.executionMetadata().warnings) *warnings += x + "\n";
+                const auto* er = run.results.getElementResults(StructuralElementKind::Cable, cable);
+                *nCable = er ? er->minNormalForce() * run.results.units().forceToKiloNewtons() : 0.0;
+                return er != nullptr;
+            };
+            std::string upWarnings, downWarnings;
+            double upN = 0.0, downN = 0.0;
+            const bool down = runTie(-300.0, &downWarnings, &downN), up = runTie(30.0, &upWarnings, &upN);
+            TEST_CHECK(down && downN < 0.0 && textHas(downWarnings, "câble(s) comprimé(s)"),
+                       "Test 585: câble comprimé (300 kN vers le bas) — N = " << downN << " kN, avertissement après calcul (" << downWarnings << ")");
+            TEST_CHECK(up && upN > 0.0 && !textHas(upWarnings, "câble(s)"),
+                       "Test 585: câble tendu (soulèvement de 30 kN) — N = " << upN << " kN, aucun avertissement");
+        }
+        std::cout << "[PASS] Test 585: Câble comprimé ou détendu signalé après le calcul" << std::endl;
+        ++passed;
+    }
+
     return true;
 }

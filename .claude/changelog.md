@@ -2,6 +2,19 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — BUG-151 corrigé : câble comprimé ou détendu signalé après le calcul (branche fix/cable-compression-warning)
+
+- Cause : un câble est un `corotTruss` élastique qui résiste autant en compression qu'en traction ; aucun contrôle après calcul
+  (seule la note détaillée comptait les câbles comprimés). Tirant comprimé : calcul réussi, aucun avertissement.
+- Correction : `AnalysisManager::slackCableWarning` (tout câble à N minimal ≤ 0, le plus comprimé d'abord, liste courte), ajouté
+  par `AnalysisManager::run` aux `executionMetadata().warnings` et au journal, pour tout moteur : dialogue « Calcul terminé — points
+  à vérifier », console, `.tsa` (bloc RSLT) ; note historique : « Point à vérifier après calcul » (avertissements du calcul,
+  jusque-là absents de cette note). Retirer automatiquement les câbles détendus exigerait des itérations (non linéaire, ADR-025) :
+  non fait. Traductions en / mg des deux textes. docs/cable-system/analysis.md.
+- Test 585 (suite engines) : contrôle sur résultats construits (comprimé, détendu, tendu, barre) ; calcul OpenSees réel (poutre
+  bi-encastrée, câble précontraint jusqu'au sol) : 300 kN vers le bas → N < 0 et avertissement ; soulèvement → tendu, aucun.
+  Suite complète 59/60 (367 : BUG-173) ; check_layers 0 ; TSALab 27/27.
+
 ## 2026-11-02 — BUG-152 corrigé : flambement EC3 vérifié sur les deux axes (branche fix/ndc-legacy-buckling)
 
 - Cause : la note historique (« Legacy », présentation par défaut) appelait `calculateFromBar(..., strongAxis = true)` — axe fort

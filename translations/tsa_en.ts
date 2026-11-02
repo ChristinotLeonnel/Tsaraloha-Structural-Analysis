@@ -2840,6 +2840,33 @@ Do you want to save the changes before continuing?</translation>
         <translation>Model: %1 nodes, %2 beams, %3 columns, %4 slabs | %5</translation>
     </message>
     <message>
+        <source>Dernier calcul enregistré avec le projet : %1, %2 — %3%4</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>réussi</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>en échec</source>
+        <translation type="unfinished" />
+    </message>
+    <message numerus="yes">
+        <source>%n anomalie(s) de validation relevée(s) au dernier enregistrement.</source>
+        <translation type="unfinished">
+            <numerusform />
+            <numerusform />
+        </translation>
+    </message>
+    <message>
+        <source>Résultats du dernier calcul rétablis (enregistrés avec le projet).</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Vue enregistrée</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Mode Sombre (Actif)</source>
         <translation>Dark mode (on)</translation>
     </message>
@@ -3858,6 +3885,14 @@ Do you want to save the changes before continuing?</translation>
     <message>
         <source>Informations sur l'application, OpenCASCADE et crédits</source>
         <translation>Information about the application, OpenCASCADE and credits</translation>
+    </message>
+    <message>
+        <source>Fichiers &amp;liés et bibliothèques...</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Fichiers reliés au projet (imports, exports, textures, documents joints) et bibliothèques utilisées : présence et intégrité contrôlées à l'ouverture</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>&amp;Exporter Rapport de Diagnostic...</source>
@@ -6539,6 +6574,109 @@ See Help &gt; Modules.</translation>
         <source>Un Blueprint est en cours d'exécution : arrêtez-le ou attendez sa fin avant de %1.</source>
         <translation>A Blueprint is running: stop it or wait for it to finish before you %1.</translation>
     </message>
+    <message>
+        <source>Fichier lié introuvable (%1) : %2</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Fichier lié modifié depuis son enregistrement (%1) : %2</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Bibliothèque requise absente de ce poste : %1 %2 — calcul reproductible (propriétés figées dans le projet), définitions indisponibles pour de nouveaux éléments.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Bibliothèque %1 : version %2 installée, %3 utilisée par le projet.</source>
+        <translation type="unfinished" />
+    </message>
+    <message numerus="yes">
+        <source>%n fichier(s) lié(s) au projet, tous présents et inchangés.</source>
+        <translation type="unfinished">
+            <numerusform />
+            <numerusform />
+        </translation>
+    </message>
+    <message>
+        <source>Dernier enregistrement : %1 par %2 (%3, format %4).</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>auteur non renseigné</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Fichiers liés et bibliothèques</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Fichiers reliés au projet (contrôlés à chaque ouverture, jamais ouverts automatiquement) :</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Rôle</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Fichier</source>
+        <translation type="unfinished">File</translation>
+    </message>
+    <message>
+        <source>État</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Modifié le</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Bibliothèques utilisées par le projet :</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Bibliothèque</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Version du projet</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Sur ce poste</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Définitions</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Enregistrer aussi les chemins absolus (décocher pour un fichier à transmettre : ils peuvent révéler le nom d'utilisateur)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>absente</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>installée</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>version %1</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Joindre un document…</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Retirer le lien</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Joindre un document au projet</source>
+        <translation type="unfinished" />
+    </message>
 </context>
 <context>
     <name>OccView</name>
@@ -6785,6 +6923,10 @@ See Help &gt; Modules.</translation>
         <translation>Hover: cable C%1 (nodes %2 -&gt; %3 | length = %4 m | Ø%5 mm | T0 = %6 kN)</translation>
     </message>
     <message>
+        <source>Modification du plan de travail terminée</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Plan de travail %1 : %2, origine %3</source>
         <translation>Work plane %1: %2, origin %3</translation>
     </message>
@@ -6819,6 +6961,32 @@ See Help &gt; Modules.</translation>
     <message>
         <source>non porteur</source>
         <translation>non-load-bearing</translation>
+    </message>
+    <message>
+        <source>Tous les cas : %1</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Cas affiché : %1</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>aucune charge</source>
+        <translation type="unfinished" />
+    </message>
+    <message numerus="yes">
+        <source>%n autre(s) cas chargé(s) masqué(s) — Charges › Cas affichés</source>
+        <translation type="unfinished">
+            <numerusform />
+            <numerusform />
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n valeur(s) superposée(s) masquée(s) — zoomer pour les lire</source>
+        <translation type="unfinished">
+            <numerusform />
+            <numerusform />
+        </translation>
     </message>
     <message>
         <source>X global</source>
@@ -7425,6 +7593,18 @@ Run the analysis?</translation>
         <source>Autres commandes de cet onglet</source>
         <translation>Other commands of this tab</translation>
     </message>
+    <message>
+        <source>présent</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>modifié depuis</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>introuvable</source>
+        <translation type="unfinished" />
+    </message>
 </context>
 <context>
     <name>TSA::Analysis</name>
@@ -7712,6 +7892,14 @@ Run the analysis?</translation>
     <message>
         <source>Moteur %1 indisponible : %2</source>
         <translation>Engine %1 unavailable: %2</translation>
+    </message>
+    <message>
+        <source>K%1 (N = %2 kN)</source>
+        <translation>K%1 (N = %2 kN)</translation>
+    </message>
+    <message>
+        <source>%1 câble(s) comprimé(s) ou détendu(s) (N ≤ 0) : %2. Un câble ne reprend pas de compression, mais le calcul linéaire l'a fait travailler comme une barre : ces résultats ne représentent pas la structure réelle. Augmenter la précontrainte, retirer le câble détendu ou le remplacer par une barre, puis relancer le calcul.</source>
+        <translation>%1 cable(s) in compression or slack (N ≤ 0): %2. A cable cannot carry compression, yet the linear analysis made it work as a bar: these results do not represent the real structure. Increase the pretension, remove the slack cable or replace it with a bar, then run the analysis again.</translation>
     </message>
 </context>
 <context>
@@ -18247,6 +18435,10 @@ Run the analysis (F5) to plot the curves.</translation>
         <translation>Reset coordinate systems</translation>
     </message>
     <message>
+        <source>Afficher ou masquer le repère global X, Y, Z et les repères locaux x, y, z des éléments sélectionnés (réglages : Affichage › Repères)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Échelle des charges</source>
         <translation>Load scale</translation>
     </message>
@@ -18301,6 +18493,37 @@ Run the analysis (F5) to plot the curves.</translation>
     <message>
         <source>Réinitialiser l'échelle des charges</source>
         <translation>Reset the load scale</translation>
+    </message>
+    <message>
+        <source>Style des charges…</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Couleurs (par cas, par intensité…), texte des valeurs (hauteur, décimales, symbole, unité), épaisseur des flèches, cas affichés — comme un style de cote</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Cas affichés</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Tous les cas superposés</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Flèches et valeurs de tous les cas en même temps (couleur du cas, voir Style des charges)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Aucun cas de charge</source>
+        <translation type="unfinished" />
+    </message>
+    <message numerus="yes">
+        <source>%1 — %n charge(s)</source>
+        <translation type="unfinished">
+            <numerusform />
+            <numerusform />
+        </translation>
     </message>
     <message>
         <source>Applique les réglages graphiques du profil (aucune donnée du modèle ni des résultats n'est modifiée)</source>
@@ -20938,6 +21161,129 @@ Unchecked: waits for a click on 'Apply'.</translation>
     </message>
 </context>
 <context>
+    <name>TSA::UI::LoadStyleDialog</name>
+    <message>
+        <source>Style des charges</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Affichage des charges dans la vue 3D. Les valeurs des charges ne sont jamais modifiées.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Cas affichés</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Cas actif seulement (choix : Charges › Cas affichés)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Tous les cas superposés</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Couleurs</source>
+        <translation type="unfinished">Colours</translation>
+    </message>
+    <message>
+        <source>Par cas de charge</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Par intensité (bleu → rouge)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Par famille (forces, moments, linéiques, surfaciques)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Couleur unique</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Couleur…</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Texte des valeurs</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Hauteur liée au modèle, comme une cote (grandit en zoomant, bornée à l'écran)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Hauteur constante à l'écran</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Automatique (d'après la structure)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Hauteur :</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>de</source>
+        <translation type="unfinished">from</translation>
+    </message>
+    <message>
+        <source>à</source>
+        <translation type="unfinished">to</translation>
+    </message>
+    <message>
+        <source>À l'écran :</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Taille à l'écran :</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Décimales :</source>
+        <translation type="unfinished">Decimals:</translation>
+    </message>
+    <message>
+        <source>Symbole (« q = », « P = », « Fz = »)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Unité (kN, kN/m, kN/m²)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Nom du cas (« [Q] »)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Contour contrasté (lisible devant la structure)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Masquer les valeurs qui se chevauchent (la plus forte reste ; zoomer pour lire les autres)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Flèches</source>
+        <translation type="unfinished">Deflections</translation>
+    </message>
+    <message>
+        <source>Épaisseur :</source>
+        <translation type="unfinished">Thickness:</translation>
+    </message>
+    <message>
+        <source>Longueur : d'après la structure (hauteur d'étage, longueur des barres), jamais le zoom — réglage du facteur : Affichage › Échelle des charges.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Couleur des charges</source>
+        <translation type="unfinished" />
+    </message>
+</context>
+<context>
     <name>TSA::UI::LocalMeshDialog</name>
     <message>
         <source>Maillage local de la sélection</source>
@@ -22690,8 +23036,8 @@ Do you want to select it rather than create a duplicate?</translation>
         <translation>Enter a project name.</translation>
     </message>
     <message>
-        <source>Le nom ne doit pas contenir les caractères &lt; &gt; : &quot; / \ | ? *</source>
-        <translation>The name must not contain the characters &lt; &gt; : &quot; / \ | ? *</translation>
+        <source>Le nom ne doit pas contenir les caractères &lt; &gt; : " / \ | ? *</source>
+        <translation>The name must not contain the characters &lt; &gt; : " / \ | ? *</translation>
     </message>
     <message>
         <source>Choisissez un emplacement (chemin absolu).</source>
@@ -24500,6 +24846,10 @@ Double-click to open</translation>
         <translation>Load display</translation>
     </message>
     <message>
+        <source>Cas affichés</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Échelle des charges</source>
         <translation>Load scale</translation>
     </message>
@@ -24592,6 +24942,10 @@ Double-click to open</translation>
         <translation>Visibility</translation>
     </message>
     <message>
+        <source>Réglages des repères</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Fenêtres</source>
         <translation>Windows</translation>
     </message>
@@ -24675,8 +25029,8 @@ Double-click to open</translation>
         <translation>Save</translation>
     </message>
     <message>
-        <source>Saisissez un nom (les caractères &lt; &gt; : &quot; / \ | ? * sont remplacés).</source>
-        <translation>Enter a name (the characters &lt; &gt; : &quot; / \ | ? * are replaced).</translation>
+        <source>Saisissez un nom (les caractères &lt; &gt; : " / \ | ? * sont remplacés).</source>
+        <translation>Enter a name (the characters &lt; &gt; : " / \ | ? * are replaced).</translation>
     </message>
     <message>
         <source>Un template « %1 » existe déjà : son remplacement vous sera demandé.</source>
@@ -26997,6 +27351,14 @@ Create a new project or open a %1 file: its preview will appear here.</translati
     <message>
         <source>Enregistrer sous 'Personnalisée'</source>
         <translation>Save as 'Custom'</translation>
+    </message>
+    <message>
+        <source>Restaurer la disposition enregistrée dans le projet</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>À l'ouverture d'un projet, rétablir les panneaux, l'onglet du ruban et l'espace de travail tels qu'ils étaient lors de son dernier enregistrement</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>&amp;Réinitialiser la disposition</source>

@@ -17,7 +17,7 @@ Les données d'un câble sont portées par l'interface `ICableElement` et la str
 | Matériau | `uniaxialMaterial Elastic` (E) |
 | Précontrainte | `uniaxialMaterial InitStrain`, ε₀ = T₀ / (E·A) |
 | Résolution | un seul pas : `algorithm Linear`, `integrator LoadControl 1.0`, `analyze 1`, à la géométrie initiale, sans itération |
-| Compression | **non relâchée** : un câble comprimé reste actif et son effort normal négatif est rendu tel quel (BUG-151) |
+| Compression | **non relâchée** : un câble comprimé reste actif et son effort normal négatif est rendu tel quel ; tout câble à N ≤ 0 est **signalé après le calcul**, quel que soit le moteur (`AnalysisManager::slackCableWarning` : dialogue « points à vérifier », console, journal, note de calcul ; BUG-151, test 585) |
 
 ### 1.1 Raideur de la précontrainte
 
@@ -48,7 +48,8 @@ singuliers les modèles dont les câbles n'ont pas d'autre raideur transversale 
 ### 1.3 Ce qui n'est pas calculé
 
 - **Traction seule** : `CableAnalysisProperties::tensionOnly` est une donnée descriptive (bibliothèques, fichiers, TSA3D).
-  Aucun moteur ne la lit, et aucun câble détendu n'est retiré du calcul.
+  Aucun moteur ne la lit, et aucun câble détendu n'est retiré du calcul : il est signalé (tableau ci-dessus) ; le retirer et
+  relancer, augmenter sa précontrainte ou le remplacer par une barre reste un choix de l'utilisateur.
 - **Grands déplacements, itérations d'équilibre, réglage itératif des tensions** : relèvent de l'analyse non linéaire,
   non disponible.
 - **Flèche sous poids propre (module d'Ernst)** : la formule est implémentée dans le modèle (§ 2), mais le calcul ne
