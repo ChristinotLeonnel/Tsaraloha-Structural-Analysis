@@ -1,4 +1,5 @@
 #include "../Analysis/Engine/AnalysisManager.h"
+#include "../Project/RecoveryStore.h"
 #include "App/ProductInfo.h"
 #include "Analysis/AnalysisEngineOptions.h"
 #include "Dock/AnalysisDataDock.h"
@@ -87,6 +88,9 @@
 #include <QDateTime>
 #include <QElapsedTimer>
 #include <QTimer>
+#include <QTime>
+#include <QUuid>
+#include <QLockFile>
 #include <QSignalBlocker>
 #include <QLabel>
 #include <QAction>
@@ -272,7 +276,50 @@ MainWindow::MainWindow(QWidget* parent)
     }
     restoreWorkspaceState();   // après les panneaux : le mode Blueprint masque ceux du modèle
 
+    // Sauvegarde automatique (BUG-157) : copie de récupération périodique d'un document modifié, verrouillée tant que le
+    // document est ouvert (une autre instance ne la propose pas à la récupération)
+    m_recoveryKey = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    m_recoveryLock = TSA::Project::RecoveryStore().lock(m_recoveryKey);
+    if (const int minutes = TSA::Project::RecoveryStore::intervalMinutes(); minutes > 0)
+    {
+        m_autosaveTimer = new QTimer(this);
+        m_autosaveTimer->setInterval(minutes * 60 * 1000);
+        connect(m_autosaveTimer, &QTimer::timeout, this, [this] { autosaveNow(); });
+        m_autosaveTimer->start();
+    }
+
     updateWindowTitle();
+}
+
+bool MainWindow::autosaveNow()
+{
+    if (!m_model || !m_session || !m_session->hasUnsavedChanges()) return false;
+    QString error;
+    const QString title = m_projectManager ? m_projectManager->windowTitle() : QString();
+    if (!TSA::Project::RecoveryStore().write(m_recoveryKey, *m_model, m_gridManager,
+                                            m_projectManager ? m_projectManager->currentFilePath() : QString(), title, &error))
+    {
+        if (m_consoleDock) m_consoleDock->appendLog(tr("Copie de récupération impossible : %1").arg(error), "WARN");
+        return false;
+    }
+    if (m_statusInfo) m_statusInfo->setText(tr("Copie de récupération enregistrée (%1)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm"))));
+    return true;
+}
+
+void MainWindow::adoptRecoveredProject(const QString& originalPath, const QString& title)
+{
+    if (!m_model) return;
+    if (m_projectManager)
+    {
+        m_projectManager->adoptFilePath(originalPath);
+        if (originalPath.isEmpty() && !title.isEmpty()) m_projectManager->setProjectName(title);
+    }
+    m_model->setModified(true);   // à enregistrer : le fichier d'origine ne contient pas ces modifications
+    updateWindowTitle();
+    if (m_consoleDock)
+        m_consoleDock->appendLog(originalPath.isEmpty() ? tr("Projet récupéré après une fermeture inattendue (jamais enregistré) : à enregistrer.")
+                                                        : tr("Projet récupéré après une fermeture inattendue : %1 — à enregistrer.").arg(originalPath),
+                                 "WARN");
 }
 
 MainWindow::~MainWindow()
@@ -285,6 +332,8 @@ MainWindow::~MainWindow()
     for (QObject* child : findChildren<QObject*>())
         QObject::disconnect(child, nullptr, this, nullptr);
     if (m_model) m_model->setGridManager(nullptr);
+    // Fermeture normale (enregistré, ou modifications abandonnées par l'utilisateur) : copie de récupération inutile
+    TSA::Project::RecoveryStore().remove(m_recoveryKey);
 }
 
 void MainWindow::onResultsBecameStale()
@@ -1921,7 +1970,7 @@ void MainWindow::onAnalysisRunCompleted(const TSA::Analysis::AnalysisContext& co
     if (!success)
     {
         // Un calcul réussi marque déjà le document (résultats) ; un échec aussi : son diagnostic est enregistré avec le projet.
-        m_model->setUnsavedFlag(true);
+        m_model->setProjectStateUnsaved(true);   // BUG-176
         updateWindowTitle();
     }
 }

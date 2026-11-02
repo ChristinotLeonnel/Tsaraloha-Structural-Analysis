@@ -5,6 +5,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QBuffer>
+#include <QCoreApplication>
 #include <QGuiApplication>
 #include <cmath>
 #include <algorithm>
@@ -82,7 +83,9 @@ QImage TSAPreviewGenerator::generateThumbnail(const TSA::Model::Model& model,
     painter.setPen(QPen(QColor(51, 65, 85), 2.0));
     painter.drawRoundedRect(1, 1, width - 2, height - 2, 8, 8);
 
-    const bool hasGuiApp = (QGuiApplication::instance() != nullptr);
+    // QGuiApplication::instance() rend aussi une simple QCoreApplication (outil en ligne de commande) : les polices exigent une
+    // vraie application graphique (BUG-159 : arrêt 0xC0000409 en enregistrant depuis un outil sans interface)
+    const bool hasGuiApp = qobject_cast<QGuiApplication*>(QCoreApplication::instance()) != nullptr;
 
     const auto& nodesMap = model.nodes();
     if (nodesMap.empty())

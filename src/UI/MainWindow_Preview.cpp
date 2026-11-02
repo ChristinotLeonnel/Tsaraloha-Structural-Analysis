@@ -5,6 +5,7 @@
 //  - La caméra est mémorisée par projet et restaurée à la réouverture.
 
 #include "MainWindow.h"
+#include "../Project/RecoveryStore.h"
 
 #include "../Project/ModelPreviewCache.h"
 #include "../Project/ProjectManager.h"
@@ -117,6 +118,7 @@ void MainWindow::onProjectFileOpened(const QString& path)
 
 void MainWindow::onProjectFileSaved(const QString& path)
 {
+    TSA::Project::RecoveryStore().remove(m_recoveryKey);   // projet enregistré : copie de récupération inutile (BUG-157)
     TSA::Project::RecentProjects().touch(path);
     TSA::Platform::WindowsAssociation::notifyFileUpdated(path); // miniature Explorateur à jour
     capturePreview(false);

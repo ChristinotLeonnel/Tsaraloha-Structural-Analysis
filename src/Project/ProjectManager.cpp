@@ -28,12 +28,19 @@ QString ProjectManager::currentFileName() const
 
 QString ProjectManager::windowTitle() const
 {
-    QString name = currentFileName();
+    // Projet sans fichier mais nommé (import IFC…) : son nom, comme l'onglet et l'arbre (BUG-077)
+    QString name = !hasFilePath() && !m_projectName.isEmpty() ? m_projectName : currentFileName();
     if (m_isModified)
     {
         name += " *";
     }
     return QString("%1 - %2").arg(TSA::Product::name(), name);
+}
+
+void ProjectManager::adoptFilePath(const QString& path)
+{
+    m_currentFilePath = path;
+    emit projectTitleChanged(windowTitle());
 }
 
 void ProjectManager::setModified(bool modified)

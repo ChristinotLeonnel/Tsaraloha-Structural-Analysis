@@ -5,6 +5,7 @@
 #include "../../Model/Model.h"
 #include "../../Model/Column.h"
 #include "../../Model/MaterialLibrary.h"
+#include <algorithm>
 #include <cmath>
 
 #include <QVBoxLayout>
@@ -117,6 +118,7 @@ void ColumnPropertiesView::setupUi()
     // 2. Section Transversale
     auto* grpSec = new QGroupBox(tr("Section Transversale"), this);
     auto* formSec = new QFormLayout(grpSec);
+    m_formSection = formSec;
     formSec->setContentsMargins(8, 8, 8, 8);
     formSec->setSpacing(6);
 
@@ -149,7 +151,17 @@ void ColumnPropertiesView::setupUi()
     m_spinRadius->setSingleStep(0.02);
     m_spinRadius->setSuffix(" m");
     connect(m_spinRadius, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ColumnPropertiesView::onWidgetChanged);
-    formSec->addRow(tr("Rayon (r) :"), m_spinRadius);
+    formSec->addRow(tr("Rayon du cercle (r) :"), m_spinRadius);
+
+    // Tube : épaisseur de paroi (BUG-115 : « Tube » produisait un rectangle plein, faute d'épaisseur)
+    m_spinThickness = new QDoubleSpinBox(grpSec);
+    m_spinThickness->setRange(0.002, 0.5);
+    m_spinThickness->setDecimals(3);
+    m_spinThickness->setSingleStep(0.001);
+    m_spinThickness->setValue(0.010);
+    m_spinThickness->setSuffix(" m");
+    connect(m_spinThickness, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ColumnPropertiesView::onWidgetChanged);
+    formSec->addRow(tr("Épaisseur de paroi (t) :"), m_spinThickness);
 
     m_previewWidget = new SectionPreviewWidget(grpSec);
     m_previewWidget->setFixedHeight(120);
@@ -187,12 +199,14 @@ void ColumnPropertiesView::refreshLibraries()
 void ColumnPropertiesView::updateSectionVisibility(int secType)
 {
     auto t = static_cast<TSA::Model::SectionShape>(secType);
-    bool isRect = (t == TSA::Model::SectionShape::Rectangular || t == TSA::Model::SectionShape::BoxHollow);
-    bool isCirc = (t == TSA::Model::SectionShape::Circular);
-
-    m_spinWidth->setVisible(isRect);
-    m_spinHeight->setVisible(isRect);
-    m_spinRadius->setVisible(isCirc);
+    const bool isTube = t == TSA::Model::SectionShape::BoxHollow;
+    const bool isRect = t == TSA::Model::SectionShape::Rectangular || isTube;
+    const bool isCirc = t == TSA::Model::SectionShape::Circular;
+    // Ligne entière (libellé compris) : un libellé restait affiché sans son champ (BUG-121 (2))
+    m_formSection->setRowVisible(m_spinWidth, isRect);
+    m_formSection->setRowVisible(m_spinHeight, isRect);
+    m_formSection->setRowVisible(m_spinRadius, isCirc);
+    m_formSection->setRowVisible(m_spinThickness, isTube);
 }
 
 void ColumnPropertiesView::onSectionTypeChanged(int index)
@@ -207,6 +221,13 @@ TSA::Model::Section ColumnPropertiesView::getSectionFromUi() const
     if (t == TSA::Model::SectionShape::Circular)
     {
         return TSA::Model::Section::circular(m_spinRadius->value() * 2.0, "Poteau Circulaire");
+    }
+    if (t == TSA::Model::SectionShape::BoxHollow)
+    {
+        // Paroi plus mince que la demi-dimension : sinon section pleine (aucun vide)
+        const double b = m_spinWidth->value(), h = m_spinHeight->value();
+        const double tw = std::min(m_spinThickness->value(), 0.49 * std::min(b, h));
+        return TSA::Model::Section::boxHollow(b, h, tw, tw, "Poteau Tube");
     }
     return TSA::Model::Section::rectangular(m_spinWidth->value(), m_spinHeight->value(), "Poteau Rectangulaire");
 }
@@ -286,14 +307,16 @@ void ColumnPropertiesView::refreshView()
     updateSectionVisibility(static_cast<int>(sec.shape));
     // Les champs ne représentent que les sections rectangulaires et circulaires pleines : un profilé (HEA, IPE…),
     // un tube ou une autre forme n'est pas modifiable ici (dialogue des sections), jamais reconstruit en rectangle.
-    m_sectionEditable = sec.shape == TSA::Model::SectionShape::Rectangular || sec.shape == TSA::Model::SectionShape::Circular;
-    for (QWidget* w : std::initializer_list<QWidget*> { m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius })
+    m_sectionEditable = sec.shape == TSA::Model::SectionShape::Rectangular || sec.shape == TSA::Model::SectionShape::Circular ||
+                        sec.shape == TSA::Model::SectionShape::BoxHollow;
+    for (QWidget* w : std::initializer_list<QWidget*> { m_comboSectionType, m_spinWidth, m_spinHeight, m_spinRadius, m_spinThickness })
         w->setEnabled(m_sectionEditable);
     m_comboSectionType->setToolTip(m_sectionEditable ? QString() : tr("Profil %1 : forme non modifiable dans ce panneau (dialogue des sections).").arg(QString::fromStdString(sec.name)));
 
     m_spinWidth->setValue(sec.width);
     m_spinHeight->setValue(sec.height);
     m_spinRadius->setValue(sec.diameter / 2.0);
+    m_spinThickness->setValue(sec.shape == TSA::Model::SectionShape::BoxHollow && sec.tw > 0.0 ? sec.tw : 0.010);
     m_spinRotation->setValue(col->rotation());
 
     // Matériau absent de la liste (importé, personnalisé) : aucun choix affiché, jamais remplacé par un autre.

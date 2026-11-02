@@ -240,13 +240,21 @@ void OccView::refreshDimensionsForNodes(const std::vector<int>& nodeIds)
 Handle(AIS_InteractiveObject) OccView::detectedPreferringModel()
 {
     Handle(AIS_InteractiveObject) first = m_context->DetectedInteractive();
-    if (!m_selectionManager || m_selectionManager->getDimensionId(first) <= 0) return first;
+    if (!m_selectionManager || first.IsNull()) return first;
+    // Poignée du plan de travail (choix explicite) : retenue telle quelle
+    if (first == m_workPlaneTrihedron || first == m_workPlaneOriginShape) return first;
+    // Un élément du modèle détecté sous le curseur l'emporte sur tout objet hors modèle (cotation, ligne ou repère de grille,
+    // étiquette, panneau du plan de travail), et un nœud sur la barre qui y aboutit (cible plus précise). BUG-075 : un clic sur
+    // un nœud ne le sélectionnait pas (objet de grille détecté en premier : sélection vidée ; ou barre retenue à sa place).
+    Handle(AIS_InteractiveObject) firstModel;
     for (m_context->InitDetected(); m_context->MoreDetected(); m_context->NextDetected())
     {
         Handle(AIS_InteractiveObject) obj = m_context->DetectedCurrentObject();
-        if (!obj.IsNull() && m_selectionManager->isModelObject(obj)) return obj;
+        if (obj.IsNull() || !m_selectionManager->isModelObject(obj)) continue;
+        if (m_selectionManager->getNodeId(obj) > 0) return obj;
+        if (firstModel.IsNull()) firstModel = obj;
     }
-    return first;
+    return firstModel.IsNull() ? first : firstModel;
 }
 
 bool OccView::overlayConsumesClick()

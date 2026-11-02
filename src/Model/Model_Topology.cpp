@@ -3,10 +3,12 @@
 #include "ModelElementCopy.h"
 #include "SelectionQuery.h"
 #include "StructuralClipboard.h"
+#include "../Mesh/MeshGeometry.h"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <map>
 #include <gp_Ax2.hxx>
 #include <gp_Trsf.hxx>
 
@@ -146,6 +148,16 @@ std::vector<int> Model::mirrorElements(const std::set<int>& nodeIds,
     };
 
     const BarRotations rotations = imageRotations(*this, allNodeIds, trsf);
+    // Repère local des dalles AVANT la symétrie : ouvertures, appuis de bord et charges en (u, v) y sont exprimés (BUG-171)
+    auto slabCorners = [&](const std::vector<int>& ids) {
+        std::vector<TSA::Mesh::P3> corners;
+        for (int id : ids)
+            if (const Node* n = getNode(id)) corners.push_back({ n->x(), n->y(), n->z() });
+        return corners;
+    };
+    std::map<int, TSA::Mesh::PlaneFrame> sourceFrames;
+    for (int sId : slabIds)
+        if (const auto* s = getSlab(sId); s && s->nodeIds().size() >= 3) sourceFrames[sId] = TSA::Mesh::slabFrame(slabCorners(s->nodeIds()));
     for (int nid : allNodeIds)
     {
         auto* n = getNode(nid);
@@ -157,17 +169,37 @@ std::vector<int> Model::mirrorElements(const std::set<int>& nodeIds,
         notifyNodeModified(nid);
         result.push_back(nid);
     }
-    // La symétrie inverse le sens de parcours du contour : on le rétablit.
+    // La symétrie inverse le sens de parcours du contour : contour rétabli comme pour une copie miroir (repère local aligné
+    // sur l'image de celui de la source), puis ouvertures, appuis de bord et charges surfaciques ramenés dans le nouveau repère
+    // local (BUG-171 : ils restaient en (u, v) de l'ancien repère et se retrouvaient ailleurs sur la dalle).
+    bool surfaceLoadsMoved = false;
     for (int sId : slabIds)
     {
-        if (auto* s = getSlab(sId))
+        auto* s = getSlab(sId);
+        if (!s) continue;
+        const std::vector<int> contour = mirroredContour(s->nodeIds());
+        s->setNodeIds(contour);
+        if (const auto src = sourceFrames.find(sId); src != sourceFrames.end())
         {
-            std::vector<int> nids = s->nodeIds();
-            std::reverse(nids.begin(), nids.end());
-            s->setNodeIds(nids);
-            notifySlabModified(sId);
+            const SurfacePointMap map = surfacePointMap(src->second, TSA::Mesh::slabFrame(slabCorners(contour)), trsf);
+            std::vector<SlabOpening> openings = s->openings();
+            for (auto& o : openings)
+                for (auto& pt : o.polygon) pt = map(pt.first, pt.second);
+            s->setOpenings(openings);
+            std::vector<SurfaceEdgeSupport> edges = s->edgeSupports();
+            for (auto& e : edges) e.edge = mirroredEdge(e.edge, static_cast<int>(contour.size()));
+            s->setEdgeSupports(edges);
+            for (const auto& [lid, l] : m_loadManager.surfaceLoads())
+                if (l.targetKind == SurfaceTargetKind::Slab && l.surfaceId == sId)
+                    if (SurfaceLoad* load = m_loadManager.getSurfaceLoad(lid))
+                    {
+                        *load = surfaceLoadAt(*load, map);
+                        surfaceLoadsMoved = true;
+                    }
         }
+        notifySlabModified(sId);
     }
+    if (surfaceLoadsMoved) notifySurfaceLoadsChanged();
     applyRotations(*this, rotations);
     return result;
 }

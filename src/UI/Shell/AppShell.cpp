@@ -22,7 +22,11 @@
 #include "../Theme/ThemeManager.h"
 #include "../../Project/ProjectManager.h"
 #include "../../Project/RecentProjects.h"
+#include "../../Project/RecoveryStore.h"
 
+#include <QLocale>
+#include <QPushButton>
+#include <QMessageBox>
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
@@ -553,6 +557,48 @@ bool AppShell::openProjectFile(const QString& path)
         return true;
     }
     return loadIntoWorkspace(path);
+}
+
+void AppShell::offerRecovery()
+{
+    const TSA::Project::RecoveryStore store;
+    const auto entries = store.orphans();
+    if (entries.empty()) return;
+    QStringList lines;
+    for (const auto& e : entries)
+        lines << tr("• %1 — copie du %2").arg(e.originalPath.isEmpty() ? (e.title.isEmpty() ? tr("projet sans titre") : e.title) : e.originalPath,
+                                              QLocale().toString(e.savedAt.toLocalTime(), QLocale::ShortFormat));
+    QMessageBox box(QMessageBox::Warning, tr("Récupération de projets"),
+                    tr("%1 n'a pas été fermé normalement. %n projet(s) modifié(s) peuvent être récupérés depuis leur dernière copie "
+                       "automatique :", nullptr, static_cast<int>(entries.size()))
+                            .arg(TSA::Product::name()) + QStringLiteral("\n\n") + lines.join(QLatin1Char('\n')),
+                    QMessageBox::NoButton, this);
+    QPushButton* recover = box.addButton(tr("Récupérer"), QMessageBox::AcceptRole);
+    QPushButton* discard = box.addButton(tr("Supprimer les copies"), QMessageBox::DestructiveRole);
+    box.addButton(tr("Plus tard"), QMessageBox::RejectRole);
+    box.setDefaultButton(recover);
+    box.exec();
+    if (box.clickedButton() == recover)
+    {
+        for (const auto& e : entries) recoverProject(e.file, e.key, e.originalPath, e.title);
+    }
+    else if (box.clickedButton() == discard)
+    {
+        for (const auto& e : entries) store.remove(e.key);
+    }
+}
+
+bool AppShell::recoverProject(const QString& recoveryFile, const QString& key, const QString& originalPath, const QString& title)
+{
+    if (!loadIntoWorkspace(recoveryFile)) return false;
+    m_workspace->adoptRecoveredProject(originalPath, title);
+    TSA::Project::RecentProjects().remove(recoveryFile);   // la copie n'est pas un projet récent
+    if (!originalPath.isEmpty()) TSA::Project::RecentProjects().touch(originalPath);
+    // Contenu repris par le document ouvert, qui a sa propre copie de récupération : l'ancienne est effacée
+    TSA::Project::RecoveryStore().remove(key);
+    refreshTabs();
+    updateTitle();
+    return true;
 }
 
 bool AppShell::loadIntoWorkspace(const QString& path)

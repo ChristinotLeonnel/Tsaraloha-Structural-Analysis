@@ -72,6 +72,8 @@ private:
     QDoubleSpinBox* m_spinWidth = nullptr;
     QDoubleSpinBox* m_spinHeight = nullptr;
     QDoubleSpinBox* m_spinRadius = nullptr;
+    QDoubleSpinBox* m_spinThickness = nullptr;   ///< épaisseur du tube (BUG-115)
+    class QFormLayout* m_formSection = nullptr;
     QDoubleSpinBox* m_spinRotation = nullptr;
 
     SectionPreviewWidget* m_previewWidget = nullptr;

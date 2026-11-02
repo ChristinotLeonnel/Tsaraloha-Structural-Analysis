@@ -1,56 +1,10 @@
 # Known Issues
 
-Last Updated: 2026-11-02 (BUG-179 ajouté, test 343 intermittent ; BUG-154, BUG-155, BUG-156 corrigés et retirés, tests 588-590 ; BUG-111 terminé et retiré, annexe nationale du projet, test 591 ; BUG-002 retiré : dalles et voiles calculés en coques depuis le maillage du projet, suite surfaces ; BUG-117 P2 corrigé ; BUG-111 étapes 1-2 faites, test 587 ; BUG-133 corrigé et retiré : installation d'OpenSees depuis l'application par conda-forge ; BUG-173 : moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine ; BUG-153 corrigé et retiré, test 586 — reste documenté : centre de cisaillement, docs/AUDIT_CALCULS.md § 8 ; BUG-151 corrigé et retiré, test 585 ; BUG-152 corrigé et retiré, test 584 ; BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
+Last Updated: 2026-11-02 soir (17 bugs corrigés et retirés, tests 592-597 et suites stabilisées : BUG-157 sauvegarde automatique et récupération, BUG-171, BUG-175, BUG-176, BUG-075, BUG-115, BUG-121, BUG-147, BUG-077, BUG-102, BUG-138, BUG-135, BUG-169/104, BUG-173, BUG-174/179 (compte de référence pris après les affichages différés) ; BUG-159 à 168 : restent 161, 167, 168 ; BUG-117 : reste l'équilibre Custom2D ; BUG-137 : reste Linux ; BUG-124 : reste Windows sans OpenSees). Avant : 2026-11-02 (BUG-179 ajouté, test 343 intermittent ; BUG-154, BUG-155, BUG-156 corrigés et retirés, tests 588-590 ; BUG-111 terminé et retiré, annexe nationale du projet, test 591 ; BUG-002 retiré : dalles et voiles calculés en coques depuis le maillage du projet, suite surfaces ; BUG-117 P2 corrigé ; BUG-111 étapes 1-2 faites, test 587 ; BUG-133 corrigé et retiré : installation d'OpenSees depuis l'application par conda-forge ; BUG-173 : moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine ; BUG-153 corrigé et retiré, test 586 — reste documenté : centre de cisaillement, docs/AUDIT_CALCULS.md § 8 ; BUG-151 corrigé et retiré, test 585 ; BUG-152 corrigé et retiré, test 584 ; BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
 
 ## Ouverts
 
 Audit technique du 2026-10-31 : détail, reproduction et correction de BUG-148 à BUG-168 dans docs/audit/2026-10-31/TSA_BUG_REGISTER.md.
-
-## BUG-179
-Status: OPEN (LOW, intermittent, vu une fois le 2026-11-02) — suite `meshview`, test 343 (« effacement : contexte revenu à l'état
-initial ») : un objet affiché de trop après l'effacement de la vue de maillage, pendant une suite complète (Release, branche
-fix/dangling-references, poste chargé : suite terminée en 1,5 s au lieu de 7,7 s). Relancée seule 4 fois : 12/12. Même famille que
-BUG-174 (test 371). Code non modifié par la branche. À surveiller : capturer la sortie complète si cela se reproduit.
-
-## BUG-175
-Status: OPEN (MEDIUM, à vérifier, relu dans le code le 2026-11-01, non reproduit) — contenu comparé par Annuler incomplet :
-`TSAFileWriter::snapshotContentBytes` n'écrit pas les charges surfaciques (dans `loadSnapshot` mais écrites par le chunk SURF), ni
-les ouvertures, formulations et appuis de bord des surfaces, ni les propriétés des sections (chunks OPNG, SURF, SECP construits à
-part). `UndoManager::sameContent` pourrait donc juger identiques deux états qui ne diffèrent que par ces données, et une
-transaction ne changeant qu'elles ne créerait aucune entrée Annuler — sauf si `ModelDiff` (accélérateur) les détecte : non vérifié.
-L'empreinte des résultats enregistrés (TSAProjectIO::modelFingerprint) les inclut déjà (étape 4). Piste : écrire ces données dans
-snapshotContentBytes depuis l'instantané (fonctions Detail::openingsChunkJson / surfacesChunkJson à rendre utilisables sur un
-instantané). Test à écrire : transaction qui ne change qu'une charge surfacique.
-Related files: src/IO/TSAFile.cpp (snapshotContentBytes), src/UndoRedo/UndoManager.cpp (sameContent)
-
-## BUG-176
-Status: OPEN (LOW, limite connue de l'étape 4, 2026-11-01) — après un calcul, le document est marqué « à enregistrer » (résultats du
-bloc RSLT) ; mais Annuler jusqu'à l'état enregistré le rend « non modifié » (UndoManager::matchesClean ne compare que le modèle) alors
-que les nouveaux résultats ne sont pas dans le fichier. Fermer sans enregistrer perd alors ces résultats (recalculables), jamais une
-donnée du modèle. Piste : mémoriser au point d'enregistrement une marque des résultats enregistrés et la comparer aussi.
-Related files: src/UndoRedo/UndoManager.cpp, src/UI/MainWindow_Tools.cpp (onAnalysisResultsChanged)
-
-## BUG-174
-Status: OPEN (LOW, intermittent, vu une fois le 2026-11-01) — suite `display`, test 371 (« aucun objet de résultat orphelin ») :
-36 objets affichés pour 35 attendus (`shown == withModel + d1.total()`, tests/test_display*.cpp:251), suite terminée en 1,6 s au lieu
-de 7 s, pendant une suite complète (Release, branche fix/save-dirty-state, étape 2). Relancée seule : 5/5 réussie ; suite complète
-précédente : réussie. Aucun lien établi avec l'étape 2 (fonctions ajoutées dans DisplayProfile.cpp, appelées seulement par MainWindow,
-non lié aux tests). À surveiller : capturer la sortie complète si cela se reproduit.
-
-## BUG-173
-Status: OPEN (LOW, environnement, constaté le 2026-11-01) — suite `benchmarks`, test 367 en échec sur un poste sans le moteur Fem3D
-(dépôt voisin `../TSA-3D-FEM-Engine` absent) : 1 140 vérifications réussies, 0 en échec, mais 957 « non disponibles » (13 cas fem3d
-ignorés, « moteur indisponible ») et le test exige `checksUnavailable() == 0`. Sans lien avec le code testé. 2026-11-02 : moteur
-cloné dans `../TSA-3D-FEM-Engine` sur le poste de développement, trouvé par CMake (nouveau nom, ancien `../3DDesplacement` accepté) :
-60/60 suites, banc 2 097 vérifications réussies, 0 en échec. Reste : le test échoue sur un poste sans le moteur ; piste : déclarer
-`fem3d` dans `--available` du lanceur (run_test_suites.py) et ignorer ses cas quand il manque.
-Related files: tests/test_benchmarks.cpp:71, tools/ci/run_test_suites.py
-
-## BUG-171
-Status: OPEN (MEDIUM, relu dans le code le 2026-10-31, non reproduit par un test) — symétrie sans copie (Model::mirrorElements, keepOriginal = false) :
-le contour de la dalle est inversé, mais ses ouvertures, appuis de bord et charges surfaciques en (u, v) ne sont pas convertis ; ils se retrouvent
-ailleurs sur la dalle. La copie miroir, elle, les convertit (CopyTransform.h). Correction : appliquer mirroredContour, surfacePointMap et surfaceLoadImage
-à ce chemin. Voir docs/audit/2026-10-31/COPY_PASTE_AUDIT_AND_FIX_REPORT.md § 6.
 
 ## BUG-170
 Status: OPEN (LOW, vu une fois le 2026-10-31, non reproduit) — suite `surfaces` : 12 tests réussis, ligne RESULTS écrite, puis processus
@@ -58,28 +12,15 @@ bloqué jusqu'au délai de 600 s (DÉLAI DÉPASSÉ, 622 s au lieu de 10 s), sur 
 la sortie du processus, après les tests. 10 autres exécutions dont 6 répétées : 10 s, code 0. Cause inconnue ; lien avec les repères ni
 établi ni exclu (tests/test_surfaces.cpp ne crée aucune OccView). À surveiller : capturer la pile si cela se reproduit.
 
-## BUG-169
-Status: OPEN (LOW, reproduit le 2026-10-31) — test 457 (suite i18n) : seuil de 50 ms non tenu en Debug (pire recherche dans un
-index synthétique de 6 000 entrées : 347 à 410 ms, sans autre charge ; 18 ms en Release). L'arrêt au premier échec (BUG-104)
-empêche ensuite les tests 458 à 463 de tourner en Debug. Correction : seuil dépendant du type de compilation, ou mesure en
-Release seulement.
-
-## BUG-157
-Status: OPEN (MEDIUM, code) — aucune sauvegarde automatique ni récupération après plantage.
-
 ## BUG-158
 Status: OPEN (MEDIUM, mesuré) — Fem3D : 117 s contre 18 s pour OpenSees à 29 200 barres, environ 90 % dans SimplicialLDLT.
 
-## BUG-159 à BUG-168
-Status: OPEN (LOW) — saveToFile sans QGuiApplication ; OpenSeesPlanarSolver (TSALab) sans arrêt après délai, code 259 ; banc
-Fem3D/OpenSees qui supprime ses références et conclut « 0 écart » sans comparaison ; moteur écrit en dur dans la note ; budget
-Annuler sous-estimé ; TSA_OPS_SUCCESS non contrôlé ; version OpenSees non lue ; décompression sans plafond, CRC nul accepté ;
-chiffrement XOR ; clé d'API en clair hors Windows.
-
-## BUG-147
-Status: OPEN (mineur, constat 2026-10-30) — DiagramGeometry::diagramTypeName renvoie des QStringLiteral français non
-traduits (« Effort Tranchant (Vy) »…) : infobulles des puces du dock Diagrammes 2D et libellés 3D restent en français en
-anglais / malgache. Piste : QCoreApplication::translate dans DiagramGeometry + traductions.
+## BUG-161, BUG-167, BUG-168 (restes de BUG-159 à BUG-168)
+Status: OPEN (LOW) — BUG-161 : banc Fem3D/OpenSees du dépôt du moteur (../TSA-3D-FEM-Engine) qui supprime ses références et
+conclut « 0 écart » sans comparaison (autre dépôt). BUG-167 : chiffrement XOR du contenu .tsa (obscurcissement, pas une
+protection ; décision à prendre : AES authentifié ou retrait, compatibilité .tsa et test_thumbnail_provider à préserver).
+BUG-168 : clé d'API de l'IA en clair hors Windows (trousseau Linux / macOS : libsecret ou QtKeychain, dépendance à décider).
+BUG-159, 160, 162 à 166 corrigés le 2026-11-02 (changelog).
 
 ## BUG-144
 Status: OPEN (constat, 2026-10-29) — secours OpenSees de Fem3D sans cas atteignable depuis l'interface : depuis
@@ -108,38 +49,9 @@ Status: OPEN (tests, inspection du code, non reproduit) — risques de blocage :
 mesh 390 / 299), OpenSeesSolver sans délai, wait() sans délai des contrôleurs ; TSA_TestSuite sans délai interne et
 écrivant dans le dossier courant (fichiers test_bug110_*.tsa, empty_project.tsa à la racine du dépôt). docs/TESTING.md.
 
-Validation Windows du 2026-10-28 (docs/reports/WINDOWS_VALIDATION_REPORT.md, identifiants W-n du rapport) :
-
-## BUG-138
-Area: SDK — tsa3d_roundtrip_example
-Problem: l'exemple est produit dans <build>/sdk sans les DLL (Qt, OCCT) : lancé depuis un autre dossier courant, il échoue
-(0xC0000135, DLL introuvable) ; il fonctionne depuis le dossier de compilation (dossier courant dans la recherche des DLL).
-Constaté le 2026-10-29 en validant B ; antérieur à B (RUNTIME_OUTPUT_DIRECTORY sdk/ inchangé).
-Impact: LOW (exemple de développement, non livré)
-Status: OPEN
-
 ## BUG-137 (dépendances, audit 2026-10-28)
 Area: cmake/ (presets, détection, déploiement)
-Problem: Qt figé 6.11.2 dans les presets (W-9) ; plancher Qt 6.2 faux pour les traductions (qt_add_lrelease exige 6.9) ;
-windeployqt en cache d'une autre Qt possible ; DLL OCCT déployées depuis un chemin figé ; aucun contrôle de chaîne de
-compilation / mélange dans CMake.
-Status: FIXED sous Windows (matrice m1-m7, docs/DEPENDENCIES.md) ; Linux NON TESTÉ ; TSALab sans détection auto de Qt
-(appel tsa_find_qt à ajouter dans TSALab, accord requis).
-
-## BUG-135 (W-6, W-7, W-8)
-Area: chemins UTF-8 restants, déploiement
-Problem: TSALab lab/Tests/LabTests.cpp:120 (L5, même défaut que BUG-131 : 17/27, 27/27 avec TEMP ASCII) ;
-test_torsion.cpp:724 (remove sur chemin étroit, fichier laissé dans TEMP) ; DeployDependencies.cmake:30 liste Qt6* comme
-« introuvables » malgré EXCLUDE_REGEXES (cosmétique).
-Status: PARTIEL (2026-10-28) — W-8 FIXED : DeployDependencies.cmake retire Qt6* de la liste des introuvables
-(filtre d'abord placé dans RuntimeDependencies.cmake, déplacé : il affaiblissait le contrôle strict du paquet ;
-vérifié : plus d'avertissement, package_TSA + verify_package OK). W-7 corrigé
-(TSA::Core::utf8Path, compilé) mais NON EXÉCUTÉ : la suite torsion s'arrête au test 321 sans OpenSees. W-6 OPEN
-(TSALab : autre dépôt, correctif d'une ligne à autoriser).
-
-Défauts BUG-125 à BUG-130 : constatés et FIGÉS par la suite « undo » (tests 513-523, branche test/etape2-caracterisation,
-non commitée) ; non corrigés volontairement (caractérisation avant l'étape 2). Une correction devra modifier le test
-marqué « DÉFAUT FIGÉ » explicitement.
+Status: FIXED sous Windows (matrice m1-m7, docs/DEPENDENCIES.md) ; TSALab appelle tsa_find_qt. RESTE : Linux NON TESTÉ.
 
 ## BUG-130
 Area: Undo/Redo — défauts mineurs caractérisés
@@ -149,35 +61,16 @@ AIToolRegistry.cpp:392 ; charge nodale validée sans contrôle, LoadPropertiesVi
 grilles et charges de surface de MainWindow_Mesh (326, 359) sans notification d'observateur ; validation de la grille
 active sans changement : xIsBold / yIsBold / zIsBold normalisés (vides → false), sans effet visible (test 522).
 Impact: LOW
-Status: FIXED (2026-10-29) sauf un point cosmétique — corrigés : entrées sans changement (bibliothèque, IA, charge nodale),
+Status: OPEN (cosmétique seul) — FIXED le 2026-10-29 sauf un point — corrigés : entrées sans changement (bibliothèque, IA, charge nodale),
 appui posé sans NodeModified, appuis linéiques notifiés, duplication de grille sans vue 3D (GridSettingsDialog::setModel),
 charges surfaciques notifiées (IModelObserver::onSurfaceLoadsChanged / Model::notifySurfaceLoadsChanged). Reste : gras de
 grille normalisés à la validation (sans effet visible). Tests 514-523.
 
 ## BUG-124
 Area: TSALab — suite complète sans OpenSees
-Problem: sans OpenSees, la suite TSALab reste en échec : L10 (« calcul OpenSees ») exige OpenSees et, la suite
-s'arrêtant au premier échec, empêche l'exécution des tests suivants (6 / 27 dans le rapport de correction de BUG-121 (4),
-apres_sans.log). D'autres tests sont suspectés, non confirmés (non atteints) ; pistes d'investigation seulement, pas des
-causes démontrées : LabTests.cpp, boucle sur custom2d/opensees (vers la ligne 462), réglages opensees (vers 558-583),
-L14 « OpenSees disponible » (vers 694). Distinct de BUG-121 (4) (L9 seul).
-Impact: TSALab ne peut pas terminer sa suite sur un poste ou une CI sans OpenSees.
-Cause démontrée (diagnostic du 2026-10-26) : (1) main : (structuralOnly || runSuite_Lab) && runSuite_Structural — un échec de
-la suite Lab empêchait l'exécution des 16 tests Structural (L15-L30), pourtant indépendants d'OpenSees (16/16 avec
---structural) ; (2) L10 à L14 exigeaient OpenSees sans contrôler sa disponibilité (L10 : calcul du portique spatial ; L11 :
-passage opensees de la boucle ; L12 : extraction avancée et mode léger ; L13 : chaîne FEA-01/FEA-07 ; L14 : calcul des coques).
-Correction (TSALab/lab/Tests/LabTests.cpp seul, branche fix/l9-sans-opensees, avec BUG-121 (4)) : les deux suites
-s'exécutent toujours ; disponibilité d'OpenSees lue dans le registre des moteurs (availability(), jamais le texte d'une
-erreur) ; seules les parties dépendantes d'OpenSees sont ignorées, avec une ligne [SKIP] et le motif du moteur ; compteur
-« parties ignorées » dans le bilan RESULTS. Résultats Linux Release consignés dans le rapport de correction : sans OpenSees
-27/27 réussis, code de sortie 0, six parties ignorées (L9 à L14) ; avec OpenSees 27/27, aucune partie ignorée (sortie
-identique à la référence) ; un faux moteur disponible qui échoue au calcul n'est pas traité comme indisponible (L9 à L14
-en échec, aucun [SKIP]) ; les erreurs numériques font toujours échouer les tests (RDM-01, FEA-01 faussés) ; les suites Lab
-et Structural sont toutes deux exécutées ; échecs numériques et échecs de calcul toujours détectés. Commit TSALab local
-58063a70e9d54fc461f85d1fe45acaa2c277ab5f (branche fix/l9-sans-opensees, lab/Tests/LabTests.cpp seul), non poussé.
-Restent à valider : Windows/MSVC et poste sans Gmsh.
+Status: CODE CORRIGÉ (TSALab main, commit 58063a7, avec BUG-121 (4)) ; validé sous Linux sans et avec OpenSees, sous Windows avec
+OpenSees (27/27, 2026-11-02). RESTE : exécution Windows sans OpenSees (exécutable masqué) non faite.
 Preuves : TSA-rapports/2026-10-26/preuves/BUG-124/.
-Status: CORRIGÉ LOCALEMENT — validation Linux effectuée — commit TSALab créé — validation Windows en attente.
 
 ## BUG-123
 Area: Tests des raccourcis sous Windows (CI)
@@ -190,49 +83,14 @@ Impact: LOW — test seulement ; aucune modification de code proposée sans acco
 Status: OPEN. 2026-11-01 : test 262 (« fichier remplacé une deuxième fois : toujours surveillé ») échoué une fois en suite
 complète (Release, branche fix/no-wheel-on-fields), 5/5 réussi en suite seule : même famille (écriture de shortcut.txt).
 
-## BUG-121
-Area: Panneaux Propriétés (essais d'interface du 2026-10-26)
-Problem: (1) CORRIGÉ : liste « Type de profilé » désactivée affichant un type faux pour une forme hors liste (UPN montré
-« Profilé en I » ou « Rectangulaire ») → désignation réelle affichée (Beam/ColumnPropertiesView, test 493 complété).
-(2) OUVERT : libellés des champs masqués (« Largeur (b) : », « Rayon (r) : »…) visibles sans champ (QFormLayout) ;
-« Rayon (r) : » (cercle) voisin de « Rayon de congé (r) : ». (3) OUVERT : « IA non configurée » (barre d'état) non traduit.
-(4) TSALab test L9 échouait sans OpenSees au lieu de signaler la partie OpenSees non exécutée. Cause (dans L9 seul) :
-l'assertion exigeait que toutes les vérifications réussissent (16/16), OpenSees comprises ; l'en-tête exigeait
-« OpenSees 3.8 » ; le bloc des références externes forçait le moteur opensees. La logique du banc était juste et n'a pas
-été modifiée (moteur indisponible → cas skipped avec motif, vérifications non disponibles, jamais en échec), mais
-checksUnavailable() mêle cas ignorés et calculs échoués d'un moteur présent : c'est au test de les distinguer.
-Correction locale (TSALab, branche fix/l9-sans-opensees, lab/Tests/LabTests.cpp seul) : disponibilité d'OpenSees lue
-dans le registre des moteurs ; sans OpenSees, cas OpenSees exigés ignorés (non exécutés, motif « indisponible », aucune
-vérification disponible) avec une ligne [SKIP] ; tout autre cas exécuté avec toutes ses vérifications réussies ; version
-jamais inventée (« OpenSees (version inconnue) ») ; références externes sur custom2d sans OpenSees. Comportement avec
-OpenSees inchangé. Résultats Linux Release consignés dans le rapport de correction du 2026-10-26 : A (sans OpenSees) L9
-réussi, 8 vérifications Custom2D réussies, 8 OpenSees non exécutées ; B (avec OpenSees) L9 16/16, TSALab 27/27 ;
-C1 et C2 (valeur attendue faussée, sans et avec OpenSees) et C4 (OpenSees disponible, calcul en échec) : L9 en échec,
-vrais échecs détectés ; C3 (exécutable qui plante à la sonde) : partie ignorée avec le motif déclaré par le moteur.
-Preuves : TSA-rapports/2026-10-26/preuves/BUG-121_4/. Windows/MSVC non testé. Commit TSALab local
-58063a70e9d54fc461f85d1fe45acaa2c277ab5f (branche fix/l9-sans-opensees, lab/Tests/LabTests.cpp seul, « fix(tsalab): tests
-du laboratoire sans OpenSees (BUG-121 (4), BUG-124) »), non poussé.
-Statut (4) : CORRIGÉ LOCALEMENT — validation Linux effectuée — commit TSALab créé — validation Windows en attente.
-Status: PARTIAL.
-
 ## BUG-117
 Area: Unités — consommateurs qui supposent kN (audit transversal du 2026-10-26, rapport hors dépôt)
-Problem: P1 : raideurs d'appui exportées en kN/m dans un IFC qui déclare N (IfcExporter.cpp:132-139, 187, 423-430),
-import sans facteur (IfcImporter.cpp:489-497) — VÉRIFIÉ ; comparaison Fem3D / OpenSees si OpenSees en N
-(Fem3DEngine.cpp:195-300) ; export TSA3D des réactions (Tsa3dExport.cpp:376-387). P2 : affichages « kN » en dur
-(résumé du dock, console, propriétés du nœud, flèches 3D, légendes des diagrammes : diagramUnit jamais renseigné,
-coques) ; libellés faux (NDCGenerator « Résidu <= 0.001 kN » relatif ; moment réparti kN·m/m). P3 : équilibre Custom2D
-par construction, g = 9,81 / 9,80665 (Beam::weight en N), UnitSystem : toute chaîne ≠ « N » vaut kN.
-Impact: HIGH pour l'IFC (échange avec d'autres logiciels), MEDIUM ailleurs (OpenSees en N seulement).
-Status: PARTIELLEMENT FIXED (2026-10-26, D4 approuvé) — P1 corrigés, reproduits avant correction : IFC (raideurs en N/m,
-IfcDerivedUnit LINEARSTIFFNESSUNIT / ROTATIONALSTIFFNESSUNIT déclarées ; import : unité déclarée, sinon FORCEUNIT /
-LENGTHUNIT / PLANEANGLEUNIT ; ancien export TSA reconnu par « … STEP writer » sans unité → kN/m + avertissement ; test 501,
-lecteur indépendant IfcOpenShell 0.9 Python : 5000 N/m avant, 5e6 N/m après, 0 erreur de schéma) ; Fem3D / OpenSees en N
-(166/240 faux écarts avant, 0 après ; test 499) ; TSA3D réactions en kN + bloc results.units (test 500, schéma mis à
-jour). Références avant / après : TSA-rapports/2026-10-26/references/unites_echanges/. P2 CORRIGÉ le 2026-11-02 (test 492
-complété : calcul en kN et en N) : résumé de fin de calcul (console, barre d'état) et dock Résultats, réactions du panneau du nœud
-et flèches de réaction 3D convertis en kN (UnitSystem::forceToKiloNewtons) ; unité des diagrammes (3D, dock, courbes 2D) = unité du
-calcul (diagramUnit(type, kN)) ; libellé du résidu de la note historique déjà relatif. RESTE OPEN : P3.
+Status: PARTIEL — P1 corrigés le 2026-10-26 (IFC, Fem3D / OpenSees en N, TSA3D ; tests 499-501), P2 le 2026-11-02 (affichages
+indépendants de l'unité du calcul ; test 492), P3 en partie le 2026-11-02 : une seule valeur de g (TSA::Units::kGravity = 9,81,
+celle des moteurs : Beam, Cable, LoadManager ; test 58.1) ; UnitSystem reconnaît « MN » explicitement. RESTE OPEN : équilibre
+Custom2D vérifié par construction (résidu calculé avec les efforts du même solveur : ne détecte pas une erreur d'assemblage) —
+piste : résidu à partir des réactions et des charges appliquées, indépendamment de la résolution.
+Related files: src/Analysis/Engines/Custom2D/
 
 ## BUG-118
 Area: Paquets .tsalib — suite de BUG-109 (conception du 2026-10-26, hors dépôt)
@@ -248,33 +106,6 @@ inspection : octets en trop, doublons de casse, noms réservés Windows, point /
 découverte : le premier dossier (livré) l'emporte, conflit dans discoveryWarnings() ; import de dossier réservé au mode
 développeur ; commentaire « signé » retiré. Test 505. RESTE : E1 (registre qualifié, provenance SNAP), E2 (magasin
 versionné, journal, reprise, retour arrière), E3 (minisign/libsodium), E4, E5.
-
-## BUG-115
-Area: Panneau Propriétés du poteau — « Tube Rectangulaire / Creux » (ColumnPropertiesView::getSectionFromUi)
-Problem: choisir explicitement « Tube » produit un rectangle PLEIN nommé « Poteau Rectangulaire » (aucun champ
-d'épaisseur). Depuis BUG-106, ce n'est plus déclenché par une autre modification, seulement par ce choix explicite.
-Impact: MEDIUM. Status: OPEN.
-
-## BUG-104
-Area: Tests — i18n, test 457 (recherche, seuil 50 ms)
-Problem: en Debug, la requête la plus lente dépasse le seuil (60 ms sur 6 000 entrées ; ~11 ms en Release) ; l'échec
-arrête la suite, et les tests 458–463 ne s'exécutent pas (décompte Debug 482/490 au lieu de 489).
-Reproduction: build-linux-debug, 2026-10-25, suite complète xcb.
-Impact: LOW (performance réelle conforme en Release) ; masque toutefois 6 tests en Debug.
-Status: OPEN — pistes : seuil selon NDEBUG, ou poursuivre la suite après cet échec.
-Related files: tests/test_i18n.cpp, tests/test_main.cpp
-
-## BUG-102
-Area: OpenSees — chemin explicite de l'exécutable (src/Analysis/OpenSeesManager.cpp)
-Problem: aucune option de l'interface n'écrit le chemin d'OpenSees : `setCustomExecutablePath` n'a aucun appelant ;
-seule la clé QSettings `OpenSees/ExecutablePath` (organisation « TSA », application « TSA_StructuralAnalysis » ;
-~/.config/TSA/TSA_StructuralAnalysis.conf sous Linux, registre sous Windows) permet de l'imposer, à la main.
-Reproduction: Grep `setCustomExecutablePath` dans src/ (2026-10-25) : seule la définition.
-Impact: LOW sous Windows (exécutable livré dans thirdparty/OpenSees), MEDIUM sous Linux (application lancée depuis le
-bureau : OpenSees introuvable si ~/.profile n'ajoute pas son dossier au PATH).
-Status: OPEN — comportement vérifié le 2026-10-25 (suite opensees) : chemin enregistré prioritaire, PATH, environnement
-minimal (introuvable, message explicite). Ne pas proposer de lien symbolique (Tcl ne trouve plus lib/tcl8.6).
-Related files: src/Analysis/OpenSeesManager.cpp, docs/LINUX_BUILD.md §7
 
 ## BUG-076
 Area: Tests / intégration continue (vue 3D OCCT)
@@ -315,27 +146,6 @@ Status: OPEN — seuil volontairement non modifié. Pistes à évaluer avant tou
 processus plutôt que le temps écoulé, ou isoler les mesures de performance dans une suite à part lancée sans
 parallélisme ; ne pas assouplir le seuil pour faire passer la CI.
 Related files: tests/test_commands.cpp
-
-## BUG-077
-Area: Import IFC / titre de la fenêtre
-Problem: le projet issu d'un import IFC s'ouvre dans un nouvel onglet nommé d'après le fichier, mais la barre de titre
-affiche « TSA — Sans titre * » tant qu'il n'est pas enregistré (`ProjectManager::windowTitle` ne connaît que le nom du
-fichier).
-Reproduction: Importer IFC… → ifc4x3_Building-Structural.ifc → onglet « ifc4x3_Building-Structural ● », titre « Sans titre ».
-Impact: LOW (cosmétique ; l'onglet et l'arbre portent le bon nom)
-Status: OPEN — constaté le 17/10/2026 (essai UI Automation de l'import IFC).
-Related files: src/Project/ProjectManager.cpp, src/UI/MainWindow_Bim.cpp
-
-## BUG-075
-Area: Sélection 3D / nœuds
-Problem: un clic simple sur un nœud dans la vue 3D ne le sélectionne pas (Propriétés vides, « 0 sél. »), avec ou
-sans cotation ; la sélection par l'arbre fonctionne. Hypothèse non vérifiée : l'objet détecté en premier sous le
-curseur est un axe de grille ou une étiquette (non enregistrés), d'où `clearSelection`.
-Reproduction: qa_topo.tsa, vue 3D, clic sur le nœud N8 → infobulle « Nœud N8 », aucun nœud sélectionné.
-Impact: MEDIUM (sélection des nœuds à la souris)
-Status: OPEN — constaté le 2026-10-10 pendant la vérification des cotations ; piste : étendre
-`OccView::detectedPreferringModel` à tout objet détecté non enregistré.
-Related files: src/Viewer/OccView_Events.cpp, src/Viewer/OccView_Shapes.cpp
 
 ## BUG-006
 Area: Undo/Redo

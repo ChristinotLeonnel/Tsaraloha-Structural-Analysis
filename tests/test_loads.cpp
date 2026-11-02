@@ -139,9 +139,9 @@ bool runSuite_Loads(int& passed)
         TEST_CHECK(beamId > 0, "Subtest 58.1: Beam added to model");
 
         // Formule théorique : q = rho * A * g / 1000 (kN/m)
-        // rho = 2500 kg/m3, A = 0.15 m2, g = 9.80665 m/s2
-        // q = 2500 * 0.15 * 9.80665 / 1000 = 3.67749375 kN/m
-        double expectedQ = (2500.0 * 0.15 * 9.80665) / 1000.0;
+        // rho = 2500 kg/m3, A = 0.15 m2, g = 9.81 m/s2 (valeur unique de TSA, celle des moteurs : BUG-117 P3)
+        // q = 2500 * 0.15 * 9.81 / 1000 = 3.67875 kN/m
+        double expectedQ = (2500.0 * 0.15 * 9.81) / 1000.0;
         double computedQ = LoadManager::computeElementSelfWeight(model, beamId);
 
         TEST_CHECK(approxEqual(computedQ, expectedQ, 1e-4), "Subtest 58.1: Beam self-weight matches analytical formula");

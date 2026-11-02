@@ -1,6 +1,6 @@
 # Tasks
 
-Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-11-02 soir. Avant : 2026-11-01. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
 ## État du projet dans le .tsa (2026-11-01, branche fix/save-dirty-state, plan docs/PROJECT_STATE_PLAN.md validé)
 - [x] Étape 0 : BUG-074 (test 573). [x] Étape 1 : socle, blocs d'état, format 3.1 (test 574).
@@ -9,7 +9,8 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
 - [x] Étape 4 RSLT (test 577) ; mesure taille / durée sur un grand modèle à faire.
 - [x] Étape 5 DIAG (test 578).
 - [x] Étape 6 PMAN (test 579) ; [x] étape 7 documentation (TSA_FILE_FORMAT § 5.w, README, ADR-026).
-- [ ] Suites : BUG-175 (vérifier), BUG-176, boîte des propriétés du projet, export de la note de calcul relié au manifeste, mesure RSLT sur un grand modèle ; essai manuel dans TSA.exe (Ctrl+S, réouverture).
+- [x] BUG-175, BUG-176 corrigés (2026-11-02, tests 594, 597).
+- [ ] Suites : boîte des propriétés du projet, export de la note de calcul relié au manifeste, mesure RSLT sur un grand modèle ; essai manuel dans TSA.exe (Ctrl+S, réouverture).
 - [x] TSALab 27/27 après étape 2 et correctif des noms de dépôts (branche fix/tests-repo-name). Fusion et push non demandés.
 
 ## Mise en place en un seul fichier (2026-11-01, branche fix/setup-build-mingw-path)
@@ -37,7 +38,14 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
 - [x] BUG-117 P2 : affichages des résultats en kN quelle que soit l'unité du calcul, test 492 complété.
 - [x] BUG-002 clos (déjà corrigé par le maillage ; fonction morte retirée).
 - [x] BUG-154, BUG-155, BUG-156 corrigés ; BUG-111 terminé (annexe du projet), tests 588-591.
-- [ ] Suivants : BUG-157 sauvegarde automatique ; BUG-171 symétrie sans copie ; BUG-175 ; BUG-117 P3.
+- [x] Branche fix/autosave-recovery (2026-11-02, non commitée) : BUG-157 sauvegarde automatique et récupération (test 592),
+      BUG-171 (593), BUG-175 (594), BUG-075 (595), BUG-115 / BUG-121 (596), BUG-176 (597), BUG-147, BUG-077, BUG-102, BUG-138,
+      BUG-159, BUG-162 à 166, BUG-117 P3 (g unique), BUG-169/104, BUG-173, BUG-174/179 (tests stabilisés) ; traductions en / mg 100 %.
+- [x] TSALab (branche fix/opensees-timeout, non commitée) : BUG-160, OpenSeesPlanarSolver arrêté après le délai.
+- [ ] Commit, fusion et push des deux branches : accord demandé.
+- [ ] Restent ouverts, hors portée d'une correction ici : voir known-issues.md (décisions : BUG-144, 140, 167 ; autres dépôts :
+      BUG-161, 158, 076 ; environnement : BUG-012, 021, 023, 033, 036, 168, 137 Linux ; tests intermittents : BUG-079, 123, 170 ;
+      grands chantiers : BUG-006, 008, 028, 118 E1-E5 ; BUG-117 équilibre Custom2D ; BUG-124 Windows sans OpenSees).
 - [ ] Traductions en / mg manquantes (88 / 107 textes, dont Style des charges, menus d'affichage) : tools/i18n.
 
 ## Affichage intelligent des charges (2026-11-01/02, branche feature/load-display-scaling)

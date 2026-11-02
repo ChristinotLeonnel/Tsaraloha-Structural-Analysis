@@ -120,6 +120,7 @@ void BeamPropertiesView::setupUi()
     // 2. Section Transversale
     auto* grpSec = new QGroupBox(tr("Section Transversale"), this);
     auto* formSec = new QFormLayout(grpSec);
+    m_formSection = formSec;
     formSec->setContentsMargins(8, 8, 8, 8);
     formSec->setSpacing(6);
 
@@ -153,7 +154,7 @@ void BeamPropertiesView::setupUi()
     m_spinRadius->setSingleStep(0.02);
     m_spinRadius->setSuffix(" m");
     connect(m_spinRadius, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &BeamPropertiesView::onWidgetChanged);
-    formSec->addRow(tr("Rayon (r) :"), m_spinRadius);
+    formSec->addRow(tr("Rayon du cercle (r) :"), m_spinRadius);
 
     m_spinFlangeWidth = new QDoubleSpinBox(grpSec);
     m_spinFlangeWidth->setRange(0.01, 2.0);
@@ -233,13 +234,14 @@ void BeamPropertiesView::updateSectionVisibility(int secType)
     bool isI    = (t == TSA::Model::SectionShape::IShape);
     bool isTube = (t == TSA::Model::SectionShape::BoxHollow);
 
-    m_spinWidth->setVisible(isRect || isTube);
-    m_spinHeight->setVisible(isRect || isTube || isI);
-    m_spinRadius->setVisible(isCirc);
-    m_spinFlangeWidth->setVisible(isI);
-    m_spinFlangeThick->setVisible(isI);
-    m_spinWebThick->setVisible(isI || isTube);
-    m_spinFillet->setVisible(isI);
+    // Ligne entière (libellé compris) : un libellé restait affiché sans son champ (BUG-121 (2))
+    m_formSection->setRowVisible(m_spinWidth, isRect || isTube);
+    m_formSection->setRowVisible(m_spinHeight, isRect || isTube || isI);
+    m_formSection->setRowVisible(m_spinRadius, isCirc);
+    m_formSection->setRowVisible(m_spinFlangeWidth, isI);
+    m_formSection->setRowVisible(m_spinFlangeThick, isI);
+    m_formSection->setRowVisible(m_spinWebThick, isI || isTube);
+    m_formSection->setRowVisible(m_spinFillet, isI);
 }
 
 void BeamPropertiesView::onSectionTypeChanged(int index)

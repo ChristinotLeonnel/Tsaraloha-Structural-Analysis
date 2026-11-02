@@ -915,6 +915,8 @@ set(PROJECT_SOURCES
     ${TSA_ROOT}/src/Project/ProjectTemplates.cpp
     ${TSA_ROOT}/src/Project/RecentProjects.h
     ${TSA_ROOT}/src/Project/RecentProjects.cpp
+    ${TSA_ROOT}/src/Project/RecoveryStore.h
+    ${TSA_ROOT}/src/Project/RecoveryStore.cpp
     ${TSA_ROOT}/src/Project/ModelPreviewCache.h
     ${TSA_ROOT}/src/Project/ModelPreviewCache.cpp
 )
@@ -1728,7 +1730,9 @@ function(tsaraloha_add_sdk_tools product model product_dir)
             target_link_options(${t} PRIVATE /SUBSYSTEM:CONSOLE)
         endif()
     endforeach()
-    set_target_properties(tsa3d_generator_example tsa3d_roundtrip_example PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/sdk)
+    # Programme autonome (sans Qt ni TSA) : dossier sdk/. L'exemple d'intégration (Qt + bibliothèque TSA) est produit à côté de
+    # TSA.exe, dont il partage les DLL déployées (BUG-138 : dans sdk/, sans DLL, il ne se lançait que depuis le dossier de build)
+    set_target_properties(tsa3d_generator_example PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/sdk)
     # Module d'exemple assemblé dans <build>/modules/sample.csvimport (manifeste, exemples, bin/) : c'est la
     # disposition livrée (AppPaths::shippedModulesDir), utilisée telle quelle en développement et par le paquet.
     # Runtime C statique : le convertisseur est lancé dans un processus séparé, sans les DLL de l'hôte.

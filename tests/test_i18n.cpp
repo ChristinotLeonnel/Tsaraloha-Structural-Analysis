@@ -346,7 +346,12 @@ bool runSuite_I18n(int& passed)
             worst = std::max(worst, timer.elapsed());
             TEST_CHECK(r.size() <= 12, "Test 457: au plus 12 résultats");
         }
-        TEST_CHECK(worst < 50, "Test 457: requête la plus lente " << worst << " ms sur 6 000 entrées (< 50 ms)");
+#ifdef NDEBUG
+        constexpr int kWorstMs = 50;     // Release : exigence de l'interface
+#else
+        constexpr int kWorstMs = 1000;   // Debug : code non optimisé (~10 × plus lent, BUG-169 / BUG-104) ; l'exigence vaut en Release
+#endif
+        TEST_CHECK(worst < kWorstMs, "Test 457: requête la plus lente " << worst << " ms sur 6 000 entrées (< " << kWorstMs << " ms)");
         std::cout << "[PASS] Test 457: Recherche rapide sur 6 000 entrées (pire requête " << worst << " ms)" << std::endl;
         ++passed;
     }

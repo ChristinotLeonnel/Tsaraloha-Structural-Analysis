@@ -5,6 +5,7 @@
 class QCheckBox;
 class QComboBox;
 class QSpinBox;
+class QLabel;
 
 namespace TSA::UI
 {
@@ -27,6 +28,8 @@ private:
     QComboBox* m_extraction = nullptr;
     QSpinBox* m_maxStiffnessDofs = nullptr;
     QCheckBox* m_kiloNewtons = nullptr;
+    QLabel* m_executable = nullptr;   ///< exécutable OpenSees retenu (réglage de l'application, BUG-102)
+    void refreshExecutable();
 };
 
 } // namespace TSA::UI

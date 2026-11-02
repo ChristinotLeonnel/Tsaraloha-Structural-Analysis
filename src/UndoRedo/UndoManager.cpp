@@ -38,6 +38,12 @@ size_t UndoManager::estimateSnapshotBytes(const TSA::Model::Model::ModelStateSna
            snap.foundations.size() * (sizeof(TSA::Model::Foundation) + mapNode) +
            snap.trussMembers.size() * (sizeof(TSA::Model::TrussMember) + mapNode) +
            snap.cables.size() * (sizeof(TSA::Model::Cable) + mapNode) +
+           // Charges, BIM et cotations (BUG-163 : omis, le budget de mémoire de l'historique était dépassable)
+           snap.loadSnapshot.nodalLoads.size() * (sizeof(TSA::Model::NodalLoad) + mapNode) +
+           snap.loadSnapshot.memberLoads.size() * (sizeof(TSA::Model::MemberLoad) + mapNode) +
+           snap.loadSnapshot.surfaceLoads.size() * (sizeof(TSA::Model::SurfaceLoad) + mapNode) +
+           (snap.loadSnapshot.loadCases.size() + snap.loadSnapshot.combinations.size()) * (256 + mapNode) +
+           snap.bim.elements().size() * (512 + mapNode) +
            snap.coordinatesJson.size() + snap.gridsJson.size();
 }
 

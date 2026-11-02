@@ -659,8 +659,10 @@ void chapterMethod(Ctx& x, NDCDocument& doc)
 {
     auto ch = x.makeChapter(QStringLiteral("Méthode de calcul et formules"));
     NDCSection s;
+    // Moteur réel du calcul (BUG-162 : « moteur OpenSees » était écrit quel que soit le moteur)
+    const QString engine = x.hasResults() ? engineLabel(x.results->executionMetadata()) : QStringLiteral("moteur du calcul");
     s.paragraphs.push_back(QStringLiteral("Méthode des déplacements : assemblage de la matrice de rigidité globale K et résolution du système linéaire "
-                                          "pour les déplacements nodaux U sous le vecteur des charges F (moteur OpenSees, algorithme linéaire) :"));
+                                          "pour les déplacements nodaux U sous le vecteur des charges F (%1, calcul linéaire) :").arg(engine));
     s.paragraphs.push_back(formula(QStringLiteral("K · U = F")));
     s.paragraphs.push_back(QStringLiteral("Rigidités élémentaires d'une poutre de longueur L (repère local) : axiale E·A/L, flexion 12·E·I/L³, 6·E·I/L², "
                                           "4·E·I/L et 2·E·I/L, torsion G·I<sub>t</sub>/L. Les charges réparties sont transformées en forces nodales équivalentes."));

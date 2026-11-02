@@ -13,6 +13,7 @@
 #include "NDC/ReportManager.h"
 #include "Model/Model.h"
 
+#include <set>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
@@ -68,7 +69,21 @@ bool runSuite_Benchmarks(int& passed)
         TEST_CHECK(writeReport(report, QDir(QCoreApplication::applicationDirPath()).filePath("validation-reports"), &err), "Test 367: rapport écrit (" << err.toStdString() << ")");
         std::cout << "  " << rdm << " cas RDM, " << fea << " cas FEA ; " << report.checksPassed() << " vérifications réussies, " << report.checksFailed() << " en échec, "
                   << report.casesSkipped() << " cas ignoré(s)" << std::endl;
-        TEST_CHECK(report.checksFailed() == 0 && report.checksUnavailable() == 0 && report.checksPassed() >= 100, "Test 367: toutes les vérifications réussies");
+        // Vérifications non disponibles des seuls cas CALCULÉS : un cas ignoré (moteur facultatif absent de ce poste, ex. Fem3D)
+        // est annoncé, pas compté en échec (BUG-173 : le test échouait sur tout poste sans le moteur fem3d)
+        int unavailableRan = 0;
+        std::set<std::string> skippedEngines;
+        for (const auto& o : report.cases)
+        {
+            if (o.skipped)
+            {
+                skippedEngines.insert(o.engine);
+                continue;
+            }
+            for (const auto& k : o.checks) unavailableRan += !k.available;
+        }
+        for (const auto& e : skippedEngines) std::cout << "  [SKIP] Test 367: cas du moteur « " << e << " » ignorés (moteur indisponible sur ce poste)" << std::endl;
+        TEST_CHECK(report.checksFailed() == 0 && unavailableRan == 0 && report.checksPassed() >= 100, "Test 367: toutes les vérifications réussies");
         std::cout << "[PASS] Test 367: Banc de validation RDM et FEA (" << report.checksPassed() << " vérifications)" << std::endl;
         ++passed;
     }

@@ -57,7 +57,7 @@ void MainWindow::registerLinkedFile(const QString& role, const QString& path)
     if (!m_manifest->registerLink(role.toStdString(), path.toStdString(), project))
         return;
     // Le lien fait partie du projet : à enregistrer (révision inchangée, aucun résultat invalidé).
-    m_model->setUnsavedFlag(true);
+    m_model->setProjectStateUnsaved(true);   // hors modèle : Annuler ne le lève pas (BUG-176)
     updateWindowTitle();
 }
 
@@ -186,7 +186,7 @@ void MainWindow::onActionLinkedFiles()
         const auto link = m_manifest->links()[static_cast<std::size_t>(row)];
         if (m_manifest->removeLink(link.role, link.absolutePath.empty() ? link.relativePath : link.absolutePath))
         {
-            m_model->setUnsavedFlag(true);
+            m_model->setProjectStateUnsaved(true);   // hors modèle : Annuler ne le lève pas (BUG-176)
             updateWindowTitle();
         }
         refresh();

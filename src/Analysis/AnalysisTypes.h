@@ -114,9 +114,9 @@ struct UnitSystem
 
     /// Facteur d'un effort de ce système vers le newton (1000 en kN, 1 en N) ; les moments suivent (kN·m, N·m).
     /// Les vérifications normatives (EC2, EC3) travaillent en SI : passer par ce facteur, jamais par une constante.
-    double forceToNewtons() const { return force == "N" ? 1.0 : 1000.0; }
+    double forceToNewtons() const { return force == "N" ? 1.0 : force == "MN" ? 1.0e6 : 1000.0; }   // kN par défaut (BUG-117 P3)
     /// Facteur d'un effort de ce système vers le kilonewton (unité d'affichage des notes de calcul).
-    double forceToKiloNewtons() const { return force == "N" ? 1.0e-3 : 1.0; }
+    double forceToKiloNewtons() const { return forceToNewtons() * 1.0e-3; }
 };
 
 /// Matrice dense, stockage ligne par ligne.

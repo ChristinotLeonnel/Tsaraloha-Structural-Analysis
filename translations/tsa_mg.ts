@@ -2374,6 +2374,22 @@
         <translation>Modely: fihaonana %1, andry mitsivalana %2, andry %3, takelaka %4 | Vonona</translation>
     </message>
     <message>
+        <source>Copie de récupération impossible : %1</source>
+        <translation>Tsy azo natao ny dika famerenana : %1</translation>
+    </message>
+    <message>
+        <source>Copie de récupération enregistrée (%1)</source>
+        <translation>Voatahiry ny dika famerenana (%1)</translation>
+    </message>
+    <message>
+        <source>Projet récupéré après une fermeture inattendue (jamais enregistré) : à enregistrer.</source>
+        <translation>Tetikasa naverina taorian'ny fikatonana tsy nampoizina (mbola tsy voatahiry) : tehirizo.</translation>
+    </message>
+    <message>
+        <source>Projet récupéré après une fermeture inattendue : %1 — à enregistrer.</source>
+        <translation>Tetikasa naverina taorian'ny fikatonana tsy nampoizina : %1 — tehirizo.</translation>
+    </message>
+    <message>
         <source>Modèle modifié depuis le dernier calcul : résultats obsolètes, relancez l'analyse.</source>
         <translation>Niova ny modely hatramin'ny kajy farany: efa lany andro ny vokatra, atombohy indray ny kajy.</translation>
     </message>
@@ -2841,30 +2857,27 @@ Tianao hotehirizina ve ny fanovana alohan'ny hanohizana?</translation>
     </message>
     <message>
         <source>Dernier calcul enregistré avec le projet : %1, %2 — %3%4</source>
-        <translation type="unfinished" />
+        <translation>Kajy farany voatahiry miaraka amin'ny tetikasa : %1, %2 — %3%4</translation>
     </message>
     <message>
         <source>réussi</source>
-        <translation type="unfinished" />
+        <translation>nahomby</translation>
     </message>
     <message>
         <source>en échec</source>
-        <translation type="unfinished" />
+        <translation>tsy nahomby</translation>
     </message>
     <message numerus="yes">
         <source>%n anomalie(s) de validation relevée(s) au dernier enregistrement.</source>
-        <translation type="unfinished">
-            <numerusform />
-            <numerusform />
-        </translation>
+        <translation><numerusform>Olana %n hita tamin'ny fanamarinana tamin'ny fitahirizana farany.</numerusform></translation>
     </message>
     <message>
         <source>Résultats du dernier calcul rétablis (enregistrés avec le projet).</source>
-        <translation type="unfinished" />
+        <translation>Naverina ny valin'ny kajy farany (voatahiry miaraka amin'ny tetikasa).</translation>
     </message>
     <message>
         <source>Vue enregistrée</source>
-        <translation type="unfinished" />
+        <translation>Fijery voatahiry</translation>
     </message>
     <message>
         <source>Mode Sombre (Actif)</source>
@@ -3888,11 +3901,11 @@ Tianao hotehirizina ve ny fanovana alohan'ny hanohizana?</translation>
     </message>
     <message>
         <source>Fichiers &amp;liés et bibliothèques...</source>
-        <translation type="unfinished" />
+        <translation>Rakitra &amp;mifandray sy tranomboky...</translation>
     </message>
     <message>
         <source>Fichiers reliés au projet (imports, exports, textures, documents joints) et bibliothèques utilisées : présence et intégrité contrôlées à l'ouverture</source>
-        <translation type="unfinished" />
+        <translation>Rakitra mifandray amin'ny tetikasa (fanafarana, fanondranana, endrika, antontan-taratasy miaraka) sy tranomboky ampiasaina : hamarinina amin'ny fanokafana ny fisiany sy ny maha-feno azy</translation>
     </message>
     <message>
         <source>&amp;Exporter Rapport de Diagnostic...</source>
@@ -5730,7 +5743,7 @@ Maj + tsindry amin'ny fitaovana: ampiasao indray mandeha ny fomba iray hafa.</tr
     </message>
     <message>
         <source>Profilé %1</source>
-        <translation type="unfinished" />
+        <translation>Fizarana %1</translation>
     </message>
     <message>
         <source>Profilé %1 appliqué à %2 barre(s) (h=%3m, b=%4m)</source>
@@ -5758,7 +5771,7 @@ Maj + tsindry amin'ny fitaovana: ampiasao indray mandeha ny fomba iray hafa.</tr
     </message>
     <message>
         <source>Section %1</source>
-        <translation type="unfinished" />
+        <translation>Fizarana %1</translation>
     </message>
     <message>
         <source>Section Rectangulaire (%1 x %2 m) appliquée à %3 élément(s)</source>
@@ -6576,106 +6589,103 @@ Jereo Fanampiana &gt; Môdiola.</translation>
     </message>
     <message>
         <source>Fichier lié introuvable (%1) : %2</source>
-        <translation type="unfinished" />
+        <translation>Tsy hita ny rakitra mifandray (%1) : %2</translation>
     </message>
     <message>
         <source>Fichier lié modifié depuis son enregistrement (%1) : %2</source>
-        <translation type="unfinished" />
+        <translation>Niova hatramin'ny nanoratana azy ny rakitra mifandray (%1) : %2</translation>
     </message>
     <message>
         <source>Bibliothèque requise absente de ce poste : %1 %2 — calcul reproductible (propriétés figées dans le projet), définitions indisponibles pour de nouveaux éléments.</source>
-        <translation type="unfinished" />
+        <translation>Tsy ao amin'ity solosaina ity ny tranomboky ilaina : %1 %2 — azo averina ny kajy (raikitra ao amin'ny tetikasa ny toetra), tsy misy ny famaritana ho an'ny singa vaovao.</translation>
     </message>
     <message>
         <source>Bibliothèque %1 : version %2 installée, %3 utilisée par le projet.</source>
-        <translation type="unfinished" />
+        <translation>Tranomboky %1 : dikan-teny %2 napetraka, %3 ampiasain'ny tetikasa.</translation>
     </message>
     <message numerus="yes">
         <source>%n fichier(s) lié(s) au projet, tous présents et inchangés.</source>
-        <translation type="unfinished">
-            <numerusform />
-            <numerusform />
-        </translation>
+        <translation><numerusform>Rakitra %n mifandray amin'ny tetikasa, misy avokoa ary tsy niova.</numerusform></translation>
     </message>
     <message>
         <source>Dernier enregistrement : %1 par %2 (%3, format %4).</source>
-        <translation type="unfinished" />
+        <translation>Fitahirizana farany : %1 nataon'i %2 (%3, endrika %4).</translation>
     </message>
     <message>
         <source>auteur non renseigné</source>
-        <translation type="unfinished" />
+        <translation>tsy voalaza ny mpanoratra</translation>
     </message>
     <message>
         <source>Fichiers liés et bibliothèques</source>
-        <translation type="unfinished" />
+        <translation>Rakitra mifandray sy tranomboky</translation>
     </message>
     <message>
         <source>Fichiers reliés au projet (contrôlés à chaque ouverture, jamais ouverts automatiquement) :</source>
-        <translation type="unfinished" />
+        <translation>Rakitra mifandray amin'ny tetikasa (hamarinina isaky ny fanokafana, tsy sokafana ho azy mihitsy) :</translation>
     </message>
     <message>
         <source>Rôle</source>
-        <translation type="unfinished" />
+        <translation>Anjara</translation>
     </message>
     <message>
         <source>Fichier</source>
-        <translation type="unfinished">Rakitra</translation>
+        <translation>Rakitra</translation>
     </message>
     <message>
         <source>État</source>
-        <translation type="unfinished" />
+        <translation>Toetra</translation>
     </message>
     <message>
         <source>Modifié le</source>
-        <translation type="unfinished" />
+        <translation>Novaina tamin'ny</translation>
     </message>
     <message>
         <source>Bibliothèques utilisées par le projet :</source>
-        <translation type="unfinished" />
+        <translation>Tranomboky ampiasain'ny tetikasa :</translation>
     </message>
     <message>
         <source>Bibliothèque</source>
-        <translation type="unfinished" />
+        <translation>Tranomboky</translation>
     </message>
     <message>
         <source>Version du projet</source>
-        <translation type="unfinished" />
+        <translation>Dikan'ny tetikasa</translation>
     </message>
     <message>
         <source>Sur ce poste</source>
-        <translation type="unfinished" />
+        <translation>Amin'ity solosaina ity</translation>
     </message>
     <message>
         <source>Définitions</source>
-        <translation type="unfinished" />
+        <translation>Famaritana</translation>
     </message>
     <message>
         <source>Enregistrer aussi les chemins absolus (décocher pour un fichier à transmettre : ils peuvent révéler le nom d'utilisateur)</source>
-        <translation type="unfinished" />
+        <translation>Tehirizo koa ny lalana feno (esory raha rakitra halefa : mety hampiseho ny anaran'ny mpampiasa izy ireo)</translation>
     </message>
     <message>
         <source>absente</source>
-        <translation type="unfinished" />
+        <translation>tsy misy</translation>
     </message>
     <message>
         <source>installée</source>
-        <translation type="unfinished" />
+        <translation>napetraka</translation>
     </message>
     <message>
         <source>version %1</source>
-        <translation type="unfinished" />
+        <translation>dikan-teny %1</translation>
     </message>
     <message>
         <source>Joindre un document…</source>
-        <translation type="unfinished" />
+        <translation>Hampiaraka antontan-taratasy…</translation>
     </message>
     <message>
         <source>Retirer le lien</source>
-        <translation type="unfinished" />
+        <translation>Esory ny rohy</translation>
     </message>
     <message>
         <source>Joindre un document au projet</source>
-        <translation type="unfinished" />
+        <translation>Hampiaraka antontan-taratasy amin'ny tetikasa</translation>
     </message>
 </context>
 <context>
@@ -6924,7 +6934,7 @@ Jereo Fanampiana &gt; Môdiola.</translation>
     </message>
     <message>
         <source>Modification du plan de travail terminée</source>
-        <translation type="unfinished" />
+        <translation>Vita ny fanovana ny fisaka fiasana</translation>
     </message>
     <message>
         <source>Plan de travail %1 : %2, origine %3</source>
@@ -6964,29 +6974,23 @@ Jereo Fanampiana &gt; Môdiola.</translation>
     </message>
     <message>
         <source>Tous les cas : %1</source>
-        <translation type="unfinished" />
+        <translation>Tranga rehetra : %1</translation>
     </message>
     <message>
         <source>Cas affiché : %1</source>
-        <translation type="unfinished" />
+        <translation>Tranga aseho : %1</translation>
     </message>
     <message>
         <source>aucune charge</source>
-        <translation type="unfinished" />
+        <translation>tsy misy enta</translation>
     </message>
     <message numerus="yes">
         <source>%n autre(s) cas chargé(s) masqué(s) — Charges › Cas affichés</source>
-        <translation type="unfinished">
-            <numerusform />
-            <numerusform />
-        </translation>
+        <translation><numerusform>Tranga %n hafa misy enta nafenina — Enta › Tranga aseho</numerusform><numerusform>Tranga %n hafa misy enta nafenina — Enta › Tranga aseho</numerusform></translation>
     </message>
     <message numerus="yes">
         <source>%n valeur(s) superposée(s) masquée(s) — zoomer pour les lire</source>
-        <translation type="unfinished">
-            <numerusform />
-            <numerusform />
-        </translation>
+        <translation><numerusform>Sanda %n mifanindry nafenina — ahakaiky ny fijery hamakiana azy</numerusform><numerusform>Sanda %n mifanindry nafenina — ahakaiky ny fijery hamakiana azy</numerusform></translation>
     </message>
     <message>
         <source>X global</source>
@@ -7579,15 +7583,26 @@ Atomboka ve ny kajy?</translation>
     </message>
     <message>
         <source>présent</source>
-        <translation type="unfinished" />
+        <translation>misy</translation>
     </message>
     <message>
         <source>modifié depuis</source>
-        <translation type="unfinished" />
+        <translation>niova hatramin'ny</translation>
     </message>
     <message>
         <source>introuvable</source>
-        <translation type="unfinished" />
+        <translation>tsy hita</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::AI::AIOrchestrator</name>
+    <message>
+        <source>IA non configurée</source>
+        <translation>Tsy voaomana ny IA</translation>
+    </message>
+    <message>
+        <source>LOCAL (arrêtée)</source>
+        <translation>AN-TOERANA (mijanona)</translation>
     </message>
 </context>
 <context>
@@ -8780,6 +8795,10 @@ Atomboka ve ny kajy?</translation>
         <translation>Nijanona tamin'ny kaody hadisoana %1 ny OpenSees</translation>
     </message>
     <message>
+        <source>OpenSees n'a pas terminé le script de calcul (marqueur de fin absent : erreur dans le script).%1</source>
+        <translation>Tsy namita ny script kajy ny OpenSees (tsy hita ny mari-pahavitana : misy hadisoana ao amin'ny script).%1</translation>
+    </message>
+    <message>
         <source>Extraction des matrices de rigidité (passage séparé)...</source>
         <translation>Maka ny matrisin'ny hahenjana (fizotrana misaraka)...</translation>
     </message>
@@ -9689,11 +9708,11 @@ Atomboka ve ny kajy?</translation>
     </message>
     <message>
         <source>Raideurs d'appui lues en kN/m et kN·m/rad : fichier écrit par une version antérieure de l'export IFC de TSA, sans unité de raideur déclarée.</source>
-        <translation type="unfinished" />
+        <translation>Hamafin'ny fanohanana vakiana amin'ny kN/m sy kN·m/rad : rakitra nosoratan'ny dikan-teny taloha amin'ny fanondranana IFC an'ny TSA, tsy nisy fandrefesana hamafisana voalaza.</translation>
     </message>
     <message>
         <source>Unité des raideurs d'appui non déclarée par le fichier : déduite des unités de force, de longueur et d'angle (facteurs vers kN/m : %1, vers kN·m/rad : %2).</source>
-        <translation type="unfinished" />
+        <translation>Tsy voalazan'ny rakitra ny fandrefesana hamafin'ny fanohanana : nalaina avy amin'ny fandrefesana hery, halavany ary zoro (coefficient mankany kN/m : %1, mankany kN·m/rad : %2).</translation>
     </message>
     <message>
         <source>%1 produit(s) porteur(s) dans le fichier, aucun n'a pu être converti</source>
@@ -10757,18 +10776,81 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
     </message>
 </context>
 <context>
+    <name>TSA::Geometry::DiagramGeometry</name>
+    <message>
+        <source>Effort Normal (N)</source>
+        <translation>Hery mahitsy (N)</translation>
+    </message>
+    <message>
+        <source>Effort Tranchant (Vy)</source>
+        <translation>Hery manapaka (Vy)</translation>
+    </message>
+    <message>
+        <source>Effort Tranchant (Vz)</source>
+        <translation>Hery manapaka (Vz)</translation>
+    </message>
+    <message>
+        <source>Moment de Torsion (Mx)</source>
+        <translation>Momentan'ny fanodinkodinana (Mx)</translation>
+    </message>
+    <message>
+        <source>Moment Fléchissant (My)</source>
+        <translation>Momentan'ny fiforetana (My)</translation>
+    </message>
+    <message>
+        <source>Moment Fléchissant (Mz)</source>
+        <translation>Momentan'ny fiforetana (Mz)</translation>
+    </message>
+    <message>
+        <source>Déplacement Axial (UX)</source>
+        <translation>Fifindrana araka ny axe (UX)</translation>
+    </message>
+    <message>
+        <source>Flèche Horizontale (UY)</source>
+        <translation>Fiforetana mitsivalana (UY)</translation>
+    </message>
+    <message>
+        <source>Flèche Verticale (UZ)</source>
+        <translation>Fiforetana mitsangana (UZ)</translation>
+    </message>
+    <message>
+        <source>Flèche Résultante (U)</source>
+        <translation>Fiforetana vokatra (U)</translation>
+    </message>
+    <message>
+        <source>Rotation de Torsion (RX)</source>
+        <translation>Fihodinana fanodinkodinana (RX)</translation>
+    </message>
+    <message>
+        <source>Rotation Flexion (RY)</source>
+        <translation>Fihodinana fiforetana (RY)</translation>
+    </message>
+    <message>
+        <source>Rotation Flexion (RZ)</source>
+        <translation>Fihodinana fiforetana (RZ)</translation>
+    </message>
+    <message>
+        <source>Contrainte normale de fibre extrême (σ = N/A ± M/W)</source>
+        <translation>Fanerena mahitsy amin'ny tady farany (σ = N/A ± M/W)</translation>
+    </message>
+    <message>
+        <source>Aucun</source>
+        <translation>Tsy misy</translation>
+    </message>
+</context>
+<context>
     <name>TSA::IO::TSAFile</name>
     <message>
         <source>Propriétés de section non interprétables (%1 %2, section « %3 ») : %4. Le projet n'est pas ouvert pour ne pas calculer avec des propriétés différentes.</source>
-        <translation type="unfinished" />
+        <translation>Tsy azo adika ny toetran'ny fizarana (%1 %2, fizarana « %3 ») : %4. Tsy sokafana ny tetikasa mba tsy hikajiana amin'ny toetra hafa.</translation>
     </message>
     <message>
         <source>rayon de congé absent ou invalide</source>
-        <translation type="unfinished" />
+        <translation>tsy misy na diso ny tadivavarin'ny fihodinana</translation>
     </message>
     <message>
         <source>%1 recalculée (%2) différente de la valeur enregistrée (%3)</source>
-        <translation type="unfinished" />
+        <translation>%1 nokajiana indray (%2) tsy mitovy amin'ny sanda voatahiry (%3)</translation>
     </message>
     <message>
         <source>Impossible de créer le fichier .tsa : %1 (%2)</source>
@@ -10816,7 +10898,7 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
     </message>
     <message>
         <source>Ce projet exige des fonctionnalités que cette version de %1 ne connaît pas (masque 0x%2) : il ne peut pas être interprété de manière fiable. Veuillez mettre à jour %1.</source>
-        <translation type="unfinished" />
+        <translation>Mitaky fahaiza-manao tsy fantatr'ity dikan'ny %1 ity ity tetikasa ity (saron-tava 0x%2) : tsy azo adika azo antoka izy. Havaozy ny %1.</translation>
     </message>
     <message>
         <source>Taille du payload excessive (dépassement limite de sécurité de 1 Go).</source>
@@ -10847,6 +10929,10 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
         <translation>Tsy nety ny famelarana ny angona .tsa (simba ny fikorianan'angona zlib).</translation>
     </message>
     <message>
+        <source>Taille décompressée incohérente avec l'en-tête : fichier altéré.</source>
+        <translation>Tsy mifanaraka amin'ny lohateny ny habe voavaha : simba ny rakitra.</translation>
+    </message>
+    <message>
         <source>Payload invalide dans le fichier .tsa.</source>
         <translation>Angona tsy mety ao amin'ny rakitra .tsa.</translation>
     </message>
@@ -10864,11 +10950,11 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
     </message>
     <message>
         <source>Propriétés des sections absentes ou illisibles (chunk SECP) : le projet ne peut pas être interprété de manière fiable.</source>
-        <translation type="unfinished" />
+        <translation>Tsy misy na tsy azo vakiana ny toetran'ny fizarana (chunk SECP) : tsy azo adika azo antoka ny tetikasa.</translation>
     </message>
     <message>
         <source>Version des formules de section %1 (schéma %2) inconnue de cette version de %3 (formules %4) : le projet n'est pas ouvert.</source>
-        <translation type="unfinished" />
+        <translation>Tsy fantatr'ity dikan'ny %3 ity (fomba %4) ny dikan'ny fomba fikajiana fizarana %1 (schéma %2) : tsy sokafana ny tetikasa.</translation>
     </message>
     <message>
         <source>Fichier incohérent (endommagé ou modifié hors de TSA) : %1 élément(s) désignent un nœud absent (%2). Projet non ouvert.</source>
@@ -16075,6 +16161,34 @@ Voatanisa alohan'ny kajy ny fanakanana tsirairay ary ambara raha mitondra hery i
         <translation>Sokafy tetikasa %1</translation>
     </message>
     <message>
+        <source>• %1 — copie du %2</source>
+        <translation>• %1 — dika tamin'ny %2</translation>
+    </message>
+    <message>
+        <source>projet sans titre</source>
+        <translation>tetikasa tsy misy lohateny</translation>
+    </message>
+    <message>
+        <source>Récupération de projets</source>
+        <translation>Famerenana tetikasa</translation>
+    </message>
+    <message numerus="yes">
+        <source>%1 n'a pas été fermé normalement. %n projet(s) modifié(s) peuvent être récupérés depuis leur dernière copie automatique :</source>
+        <translation><numerusform>Tsy nakatona ara-dalàna ny %1. Tetikasa %n novaina azo averina avy amin'ny dika ho azy farany :</numerusform></translation>
+    </message>
+    <message>
+        <source>Récupérer</source>
+        <translation>Averina</translation>
+    </message>
+    <message>
+        <source>Supprimer les copies</source>
+        <translation>Fafao ny dika</translation>
+    </message>
+    <message>
+        <source>Plus tard</source>
+        <translation>Any aoriana</translation>
+    </message>
+    <message>
         <source>Aucun projet récent</source>
         <translation>Tsy misy tetikasa vao haingana</translation>
     </message>
@@ -16419,8 +16533,8 @@ Ohatra: -10.00; 0.00; 0.00</translation>
         <translation>Haavony (h):</translation>
     </message>
     <message>
-        <source>Rayon (r) :</source>
-        <translation>Antsasaky ny savaivony (r):</translation>
+        <source>Rayon du cercle (r) :</source>
+        <translation>Tadivavarin'ny faribolana (r) :</translation>
     </message>
     <message>
         <source>Largeur Semelle (bf) :</source>
@@ -16436,11 +16550,11 @@ Ohatra: -10.00; 0.00; 0.00</translation>
     </message>
     <message>
         <source>Rayon de congé âme-semelle d'un profil laminé (0 : profil soudé). Conservé quand une dimension change.</source>
-        <translation type="unfinished" />
+        <translation>Tadivavarin'ny fihodinana eo amin'ny vatany sy ny elany amin'ny profil voahodina (0 : profil vita amin'ny famatsiana). Tazomina rehefa miova ny refy iray.</translation>
     </message>
     <message>
         <source>Rayon de congé (r) :</source>
-        <translation type="unfinished" />
+        <translation>Tadivavarin'ny fihodinana (r) :</translation>
     </message>
     <message>
         <source>Aire (A) :</source>
@@ -16480,7 +16594,7 @@ Ohatra: -10.00; 0.00; 0.00</translation>
     </message>
     <message>
         <source>Profil %1 : forme non modifiable dans ce panneau (dialogue des sections).</source>
-        <translation type="unfinished" />
+        <translation>Profil %1 : tsy azo ovaina amin'ity takelaka ity ny endrika (varavarankely fizarana).</translation>
     </message>
     <message>
         <source>Couleur de la Poutre</source>
@@ -16492,18 +16606,21 @@ Ohatra: -10.00; 0.00; 0.00</translation>
     </message>
     <message>
         <source>Profilé I %1×%2×%3×%4</source>
-        <translation type="unfinished" />
+        <translation>Profil I %1×%2×%3×%4</translation>
     </message>
     <message>
         <source>Profil normalisé modifié</source>
-        <translation type="unfinished" />
+        <translation>Profil manara-penitra novaina</translation>
     </message>
     <message>
         <source>Les dimensions ne correspondent plus au profil normalisé « %1 ».
 Le rayon de congé (%2 mm) est conservé.
 
 Convertir en section personnalisée « %3 » ?</source>
-        <translation type="unfinished" />
+        <translation>Tsy mifanaraka intsony amin'ny profil manara-penitra « %1 » ny refy.
+Tazomina ny tadivavarin'ny fihodinana (%2 mm).
+
+Avadika ho fizarana manokana « %3 » ?</translation>
     </message>
 </context>
 <context>
@@ -17261,7 +17378,7 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
     </message>
     <message>
         <source>Mini-carte : cliquer ou glisser pour déplacer la vue</source>
-        <translation type="unfinished" />
+        <translation>Sarintany kely : tsindrio na sintony hamindrana ny fijery</translation>
     </message>
     <message>
         <source>Zoom du graphe (molette autour du curseur, bouton du milieu pour déplacer)</source>
@@ -17935,8 +18052,12 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
         <translation>Haavony (h):</translation>
     </message>
     <message>
-        <source>Rayon (r) :</source>
-        <translation>Antsasaky ny savaivony (r):</translation>
+        <source>Rayon du cercle (r) :</source>
+        <translation>Tadivavarin'ny faribolana (r) :</translation>
+    </message>
+    <message>
+        <source>Épaisseur de paroi (t) :</source>
+        <translation>Hatevin'ny rindrina (t) :</translation>
     </message>
     <message>
         <source>Affichage</source>
@@ -17968,7 +18089,7 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
     </message>
     <message>
         <source>Profil %1 : forme non modifiable dans ce panneau (dialogue des sections).</source>
-        <translation type="unfinished" />
+        <translation>Profil %1 : tsy azo ovaina amin'ity takelaka ity ny endrika (varavarankely fizarana).</translation>
     </message>
     <message>
         <source>Couleur du Poteau</source>
@@ -18497,7 +18618,7 @@ Atombohy ny kajy (F5) mba hanoritana ny fiolahana.</translation>
     </message>
     <message>
         <source>Afficher ou masquer le repère global X, Y, Z et les repères locaux x, y, z des éléments sélectionnés (réglages : Affichage › Repères)</source>
-        <translation type="unfinished" />
+        <translation>Asehoy na afeno ny axe ankapobeny X, Y, Z sy ny axe an-toerana x, y, z amin'ny singa voafidy (fikirana : Fampisehoana › Axe)</translation>
     </message>
     <message>
         <source>Échelle des charges</source>
@@ -18557,34 +18678,31 @@ Atombohy ny kajy (F5) mba hanoritana ny fiolahana.</translation>
     </message>
     <message>
         <source>Style des charges…</source>
-        <translation type="unfinished" />
+        <translation>Endrika fanehoana enta…</translation>
     </message>
     <message>
         <source>Couleurs (par cas, par intensité…), texte des valeurs (hauteur, décimales, symbole, unité), épaisseur des flèches, cas affichés — comme un style de cote</source>
-        <translation type="unfinished" />
+        <translation>Loko (araka ny tranga, araka ny hamafiny…), soratry ny sanda (haavo, isa aorian'ny faingo, mari-pamantarana, fandrefesana), hatevin'ny zana-tsipìka, tranga aseho — toy ny endrika fandrefesana</translation>
     </message>
     <message>
         <source>Cas affichés</source>
-        <translation type="unfinished" />
+        <translation>Tranga aseho</translation>
     </message>
     <message>
         <source>Tous les cas superposés</source>
-        <translation type="unfinished" />
+        <translation>Tranga rehetra mifanindry</translation>
     </message>
     <message>
         <source>Flèches et valeurs de tous les cas en même temps (couleur du cas, voir Style des charges)</source>
-        <translation type="unfinished" />
+        <translation>Zana-tsipìka sy sandan'ny tranga rehetra miaraka (lokon'ny tranga, jereo ny Endrika fanehoana enta)</translation>
     </message>
     <message>
         <source>Aucun cas de charge</source>
-        <translation type="unfinished" />
+        <translation>Tsy misy tranga enta</translation>
     </message>
     <message numerus="yes">
         <source>%1 — %n charge(s)</source>
-        <translation type="unfinished">
-            <numerusform />
-            <numerusform />
-        </translation>
+        <translation><numerusform>%1 — enta %n</numerusform><numerusform>%1 — enta %n</numerusform></translation>
     </message>
     <message>
         <source>Applique les réglages graphiques du profil (aucune donnée du modèle ni des résultats n'est modifiée)</source>
@@ -19224,7 +19342,8 @@ Tsy nila nanangonana indray.</translation>
     <message>
         <source>L'ajout d'un dossier d'extension non empaqueté est réservé au mode développeur.
 Installez plutôt un package .tsalib.</source>
-        <translation type="unfinished" />
+        <translation>Ho an'ny fomba mpamorona ihany ny fanampiana lahatahiry fanitarana tsy voafono.
+Apetraho kosa ny fonosana .tsalib.</translation>
     </message>
     <message>
         <source>Ou sélectionner un dossier d'extension à importer</source>
@@ -21224,123 +21343,123 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
     <name>TSA::UI::LoadStyleDialog</name>
     <message>
         <source>Style des charges</source>
-        <translation type="unfinished" />
+        <translation>Endrika fanehoana enta</translation>
     </message>
     <message>
         <source>Affichage des charges dans la vue 3D. Les valeurs des charges ne sont jamais modifiées.</source>
-        <translation type="unfinished" />
+        <translation>Fampisehoana ny enta amin'ny fijery 3D. Tsy ovaina mihitsy ny sandan'ny enta.</translation>
     </message>
     <message>
         <source>Cas affichés</source>
-        <translation type="unfinished" />
+        <translation>Tranga aseho</translation>
     </message>
     <message>
         <source>Cas actif seulement (choix : Charges › Cas affichés)</source>
-        <translation type="unfinished" />
+        <translation>Ny tranga mavitrika ihany (safidy : Enta › Tranga aseho)</translation>
     </message>
     <message>
         <source>Tous les cas superposés</source>
-        <translation type="unfinished" />
+        <translation>Tranga rehetra mifanindry</translation>
     </message>
     <message>
         <source>Couleurs</source>
-        <translation type="unfinished">Loko</translation>
+        <translation>Loko</translation>
     </message>
     <message>
         <source>Par cas de charge</source>
-        <translation type="unfinished" />
+        <translation>Araka ny tranga enta</translation>
     </message>
     <message>
         <source>Par intensité (bleu → rouge)</source>
-        <translation type="unfinished" />
+        <translation>Araka ny hamafiny (manga → mena)</translation>
     </message>
     <message>
         <source>Par famille (forces, moments, linéiques, surfaciques)</source>
-        <translation type="unfinished" />
+        <translation>Araka ny karazany (hery, moment, enta an-tsipika, enta ambonin'ny velarana)</translation>
     </message>
     <message>
         <source>Couleur unique</source>
-        <translation type="unfinished" />
+        <translation>Loko tokana</translation>
     </message>
     <message>
         <source>Couleur…</source>
-        <translation type="unfinished" />
+        <translation>Loko…</translation>
     </message>
     <message>
         <source>Texte des valeurs</source>
-        <translation type="unfinished" />
+        <translation>Soratry ny sanda</translation>
     </message>
     <message>
         <source>Hauteur liée au modèle, comme une cote (grandit en zoomant, bornée à l'écran)</source>
-        <translation type="unfinished" />
+        <translation>Haavo mifandray amin'ny modely, toy ny fandrefesana (mitombo rehefa manakaiky, voafetra amin'ny efijery)</translation>
     </message>
     <message>
         <source>Hauteur constante à l'écran</source>
-        <translation type="unfinished" />
+        <translation>Haavo tsy miova amin'ny efijery</translation>
     </message>
     <message>
         <source>Automatique (d'après la structure)</source>
-        <translation type="unfinished" />
+        <translation>Ho azy (araka ny rafitra)</translation>
     </message>
     <message>
         <source>Hauteur :</source>
-        <translation type="unfinished" />
+        <translation>Haavo :</translation>
     </message>
     <message>
         <source>de</source>
-        <translation type="unfinished">avy amin'ny</translation>
+        <translation>avy amin'ny</translation>
     </message>
     <message>
         <source>à</source>
-        <translation type="unfinished">hatramin'ny</translation>
+        <translation>hatramin'ny</translation>
     </message>
     <message>
         <source>À l'écran :</source>
-        <translation type="unfinished" />
+        <translation>Amin'ny efijery :</translation>
     </message>
     <message>
         <source>Taille à l'écran :</source>
-        <translation type="unfinished" />
+        <translation>Habe amin'ny efijery :</translation>
     </message>
     <message>
         <source>Décimales :</source>
-        <translation type="unfinished">Desimaly:</translation>
+        <translation>Isa aorian'ny faingo :</translation>
     </message>
     <message>
         <source>Symbole (« q = », « P = », « Fz = »)</source>
-        <translation type="unfinished" />
+        <translation>Mari-pamantarana (« q = », « P = », « Fz = »)</translation>
     </message>
     <message>
         <source>Unité (kN, kN/m, kN/m²)</source>
-        <translation type="unfinished" />
+        <translation>Fandrefesana (kN, kN/m, kN/m²)</translation>
     </message>
     <message>
         <source>Nom du cas (« [Q] »)</source>
-        <translation type="unfinished" />
+        <translation>Anaran'ny tranga (« [Q] »)</translation>
     </message>
     <message>
         <source>Contour contrasté (lisible devant la structure)</source>
-        <translation type="unfinished" />
+        <translation>Sisiny mifanohitra loko (mazava eo anoloan'ny rafitra)</translation>
     </message>
     <message>
         <source>Masquer les valeurs qui se chevauchent (la plus forte reste ; zoomer pour lire les autres)</source>
-        <translation type="unfinished" />
+        <translation>Afeno ny sanda mifanindry (ny lehibe indrindra no tavela ; manakaiky hamakiana ny hafa)</translation>
     </message>
     <message>
         <source>Flèches</source>
-        <translation type="unfinished">Fiondrika</translation>
+        <translation>Zana-tsipìka</translation>
     </message>
     <message>
         <source>Épaisseur :</source>
-        <translation type="unfinished">Hateviana:</translation>
+        <translation>Hateviny :</translation>
     </message>
     <message>
         <source>Longueur : d'après la structure (hauteur d'étage, longueur des barres), jamais le zoom — réglage du facteur : Affichage › Échelle des charges.</source>
-        <translation type="unfinished" />
+        <translation>Halavany : araka ny rafitra (haavon'ny rihana, halavan'ny tsorakazo), tsy araka ny fanakaikezana mihitsy — fikirana ny coefficient : Fampisehoana › Mizana enta.</translation>
     </message>
     <message>
         <source>Couleur des charges</source>
-        <translation type="unfinished" />
+        <translation>Lokon'ny enta</translation>
     </message>
 </context>
 <context>
@@ -23679,6 +23798,36 @@ Tianao ho fidiana ve izy toy izay hamorona dika mitovy?</translation>
         <source>Unités kN, m, kPa</source>
         <translation>Refy fandrefesana kN, m, kPa</translation>
     </message>
+    <message>
+        <source>Exécutable OpenSees</source>
+        <translation>Fandaharana OpenSees</translation>
+    </message>
+    <message>
+        <source>Choisir…</source>
+        <translation>Safidio…</translation>
+    </message>
+    <message>
+        <source>Par défaut</source>
+        <translation>Tsotra</translation>
+    </message>
+    <message>
+        <source>Emplacement par défaut : dossier de l'application, puis PATH</source>
+        <translation>Toerana tsotra : lahatahirin'ny rindrambaiko, avy eo PATH</translation>
+    </message>
+    <message>
+        <source>Programmes (*.exe)</source>
+        <translation>Fandaharana (*.exe)</translation>
+    </message>
+    <message>
+        <source>Ce programme n'est pas un OpenSees opérationnel :
+%1</source>
+        <translation>Tsy OpenSees mandeha ity fandaharana ity :
+%1</translation>
+    </message>
+    <message>
+        <source>Aucun exécutable trouvé (dossier de l'application, PATH).</source>
+        <translation>Tsy nahitana fandaharana (lahatahirin'ny rindrambaiko, PATH).</translation>
+    </message>
 </context>
 <context>
     <name>TSA::UI::PointSelector</name>
@@ -24911,7 +25060,7 @@ Tsindrio indroa raha hanokatra</translation>
     </message>
     <message>
         <source>Cas affichés</source>
-        <translation type="unfinished" />
+        <translation>Tranga aseho</translation>
     </message>
     <message>
         <source>Échelle des charges</source>
@@ -25007,7 +25156,7 @@ Tsindrio indroa raha hanokatra</translation>
     </message>
     <message>
         <source>Réglages des repères</source>
-        <translation type="unfinished" />
+        <translation>Fikirana ny axe</translation>
     </message>
     <message>
         <source>Fenêtres</source>
@@ -27134,7 +27283,7 @@ Mamorona tetikasa vaovao na sokafy rakitra %1: eto no hiseho ny topimasony.</tra
     </message>
     <message>
         <source>Section %1 : non modifiable dans ce panneau (dialogue des sections).</source>
-        <translation type="unfinished" />
+        <translation>Fizarana %1 : tsy azo ovaina amin'ity takelaka ity (varavarankely fizarana).</translation>
     </message>
     <message>
         <source>Couleur de la Barre de Treillis</source>
@@ -27418,11 +27567,11 @@ Mamorona tetikasa vaovao na sokafy rakitra %1: eto no hiseho ny topimasony.</tra
     </message>
     <message>
         <source>Restaurer la disposition enregistrée dans le projet</source>
-        <translation type="unfinished" />
+        <translation>Averina ny fandaminana voatahiry ao amin'ny tetikasa</translation>
     </message>
     <message>
         <source>À l'ouverture d'un projet, rétablir les panneaux, l'onglet du ruban et l'espace de travail tels qu'ils étaient lors de son dernier enregistrement</source>
-        <translation type="unfinished" />
+        <translation>Rehefa manokatra tetikasa, averina toy ny tamin'ny fitahirizana farany ny takelaka, ny tabilaon'ny ribbon ary ny toerana fiasana</translation>
     </message>
     <message>
         <source>&amp;Réinitialiser la disposition</source>

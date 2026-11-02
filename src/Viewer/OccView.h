@@ -190,6 +190,9 @@ public:
     void highlightSelection();
 
     TSA::Viewer::SelectionManager* selectionManager() const { return m_selectionManager; }
+    /// Objet retenu au clic : un élément du modèle détecté sous le curseur l'emporte sur tout objet hors modèle (cotation,
+    /// grille, étiquette, panneau du plan de travail), sauf les poignées du plan de travail (BUG-075).
+    Handle(AIS_InteractiveObject) detectedPreferringModel();
 
     // Actions de vue et navigation étendues (AutoCAD / Robot SA style)
     void fitAll();
@@ -698,9 +701,6 @@ public:
 private:
     /// Cotations qui suivent ces nœuds (déplacés) : mises à jour.
     void refreshDimensionsForNodes(const std::vector<int>& nodeIds);
-    /// Objet détecté au clic ; une cotation cède la place à un élément du modèle détecté au même endroit
-    /// (lignes d'attache au ras des nœuds, ligne de cote croisant une barre).
-    Handle(AIS_InteractiveObject) detectedPreferringModel();
     /// Toutes les entités détectées sous le curseur sont proposées au calque (le plan de travail, confondu avec
     /// une dalle maillée, peut être détecté en premier) : vrai si l'une d'elles a été consommée.
     bool overlayConsumesClick();

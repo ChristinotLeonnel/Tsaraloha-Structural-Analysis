@@ -1,6 +1,8 @@
 #include "Application.h"
 #include "../UI/Shell/AppShell.h"
 
+#include <QTimer>
+
 Application::Application(int& argc, char** argv)
     : TSA::UI::EcosystemApplication(argc, argv)
 {
@@ -18,5 +20,7 @@ bool Application::init()
 
     const QStringList files = projectFilesFromArguments();
     if (!files.isEmpty()) m_shell->openProjectFile(files.first());
+    // Fermeture brutale précédente : projets modifiés à récupérer (BUG-157), une fois la fenêtre affichée
+    QTimer::singleShot(0, m_shell.get(), [shell = m_shell.get()] { shell->offerRecovery(); });
     return true;
 }

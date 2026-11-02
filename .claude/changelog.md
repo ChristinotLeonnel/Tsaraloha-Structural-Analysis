@@ -2,6 +2,32 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 (soir) — bugs restants de known-issues (branche fix/autosave-recovery, TSALab fix/opensees-timeout, non commitées)
+
+- BUG-157 : sauvegarde automatique et récupération — `Project/RecoveryStore` (copie .tsa + fiche .json dans <AppLocalData>/recovery,
+  verrou QLockFile par session, orphelins = verrou libre), minuterie MainWindow (QSettings Project/autosaveMinutes, 5 min, 0 = arrêt),
+  AppShell::offerRecovery au lancement (Récupérer / Supprimer les copies / Plus tard), projet récupéré qui reprend son chemin d'origine
+  (ProjectManager::adoptFilePath), copie retirée à l'enregistrement et à la fermeture normale. Test 592. docs/UI.md.
+- BUG-171 : symétrie sans copie — ouvertures, appuis de bord et charges surfaciques des dalles convertis (repère de dalle source,
+  mirroredContour, surfacePointMap, mirroredEdge, surfaceLoadAt). Test 593.
+- BUG-175 : contenu comparé par Annuler — `TSAFileWriter::undoContentBytes` (sections, ouvertures, surfaces, charges surfaciques depuis
+  l'instantané) ; modelFingerprint inchangé (résultats enregistrés toujours valides). Test 594.
+- BUG-176 : résultats non enregistrés gardés « à enregistrer » même après Annuler jusqu'à l'état enregistré
+  (Model::setProjectStateUnsaved). Test 597.
+- BUG-075 : clic sur un nœud — OccView::detectedPreferringModel préfère le nœud détecté, puis l'objet du modèle. Test 595.
+- BUG-115, BUG-121 (2) : tube creux du poteau éditable (épaisseur de paroi), lignes masquées avec leur libellé (setRowVisible),
+  « Rayon du cercle (r) ». Test 596. BUG-121 (3) : « IA non configurée » traduit.
+- BUG-147 : noms des diagrammes traduits. BUG-077 : titre d'un projet importé = nom du projet. BUG-102 : exécutable OpenSees choisi
+  (et contrôlé) dans les options OpenSees, ou remis par défaut. BUG-138 : exemple roundtrip produit à côté de TSA.exe.
+- BUG-159 (aperçu sans QGuiApplication), BUG-162 (moteur réel dans la note), BUG-163 (budget Annuler : charges, BIM), BUG-164
+  (marqueur TSA_OPS_SUCCESS exigé), BUG-165 (version d'OpenSees lue avant le banc), BUG-166 (décompression plafonnée à 2 Gio, taille
+  annoncée contrôlée). BUG-160 (TSALab) : OpenSeesPlanarSolver arrête le processus après 120 s.
+- BUG-117 P3 (en partie) : g = TSA::Units::kGravity (9,81) dans Beam, Cable, LoadManager (test 58.1 ajusté) ; « MN » reconnu.
+- Tests : BUG-169/104 (seuil du test 457 selon NDEBUG), BUG-173 (test 367 : cas d'un moteur absent ignorés, pas en échec),
+  BUG-174/179 (tests 343, 346, 371 : compte de référence pris après les affichages différés). BUG-135 : W-6, W-7 clos.
+- Traductions en / mg : 6 799 / 6 799 (144 nouvelles).
+- Vérifié (Release) : 60/60 suites, banc 2 097 vérifications réussies, 0 en échec ; check_layers 0 violation.
+
 ## 2026-11-02 — BUG-154, BUG-155, BUG-156 corrigés ; BUG-111 terminé (branche fix/dangling-references)
 
 - BUG-154 (références pendantes) : contrôle d'intégrité en fin de lecture du .tsa (TSAFileReader::parsePayload, avant toute
