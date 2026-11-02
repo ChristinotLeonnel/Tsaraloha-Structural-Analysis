@@ -887,89 +887,47 @@ void MainWindow::onActionToggleReactions(bool checked)
     }
 }
 
-void MainWindow::onActionDiagramMz()
+void MainWindow::toggleDiagram(TSA::Geometry::DiagramType type, QAction* action)
 {
-    if (m_occView && m_occView->resultsVisual())
+    // Plusieurs résultats à la fois (Vy + Vz + Mx…) : chaque bouton reste enfoncé et s'ajoute aux autres
+    if (m_occView && m_occView->resultsVisual()) m_occView->resultsVisual()->setDiagramVisible(type, action->isChecked());
+    syncDiagramActions();
+}
+
+void MainWindow::syncDiagramActions()
+{
+    if (!m_occView || !m_occView->resultsVisual()) return;
+    using T = TSA::Geometry::DiagramType;
+    const auto* results = m_occView->resultsVisual();
+    const std::pair<QAction*, T> actions[] = { { m_actionDiagramMz, T::BendingMz }, { m_actionDiagramMy, T::BendingMy }, { m_actionDiagramMx, T::TorsionMx },
+                                               { m_actionDiagramVz, T::ShearForceVz }, { m_actionDiagramVy, T::ShearForceVy }, { m_actionDiagramN, T::AxialForceN },
+                                               { m_actionDiagramDeflection, T::DeflectionUz } };
+    for (const auto& [action, type] : actions)
     {
-        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::BendingMz);
+        if (!action) continue;
+        const QSignalBlocker blocker(action);
+        action->setChecked(results->isDiagramVisible(type));
+    }
+    if (m_actionDeformedWire)
+    {
+        const QSignalBlocker blocker(m_actionDeformedWire);
+        m_actionDeformedWire->setChecked(results->deformedRepresentation() == TSA::Viewer::DeformedRepresentation::Wire);
     }
     if (m_diagramWidget)
     {
-        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::BendingMz);
+        const auto types = results->diagramTypes();
+        if (types.empty()) m_diagramWidget->setDiagramType(T::None);
+        else m_diagramWidget->setDiagramTypes(types);
     }
 }
 
-void MainWindow::onActionDiagramMy()
-{
-    if (m_occView && m_occView->resultsVisual())
-    {
-        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
-    }
-    if (m_diagramWidget)
-    {
-        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
-    }
-}
-
-void MainWindow::onActionDiagramMx()
-{
-    if (m_occView && m_occView->resultsVisual())
-    {
-        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::TorsionMx);
-    }
-    if (m_diagramWidget)
-    {
-        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::TorsionMx);
-    }
-}
-
-void MainWindow::onActionDiagramVz()
-{
-    if (m_occView && m_occView->resultsVisual())
-    {
-        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVz);
-    }
-    if (m_diagramWidget)
-    {
-        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::ShearForceVz);
-    }
-}
-
-void MainWindow::onActionDiagramVy()
-{
-    if (m_occView && m_occView->resultsVisual())
-    {
-        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVy);
-    }
-    if (m_diagramWidget)
-    {
-        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::ShearForceVy);
-    }
-}
-
-void MainWindow::onActionDiagramN()
-{
-    if (m_occView && m_occView->resultsVisual())
-    {
-        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::AxialForceN);
-    }
-    if (m_diagramWidget)
-    {
-        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::AxialForceN);
-    }
-}
-
-void MainWindow::onActionDiagramDeflection()
-{
-    if (m_occView && m_occView->resultsVisual())
-    {
-        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::DeflectionUz);
-    }
-    if (m_diagramWidget)
-    {
-        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::DeflectionUz);
-    }
-}
+void MainWindow::onActionDiagramMz() { toggleDiagram(TSA::Geometry::DiagramType::BendingMz, m_actionDiagramMz); }
+void MainWindow::onActionDiagramMy() { toggleDiagram(TSA::Geometry::DiagramType::BendingMy, m_actionDiagramMy); }
+void MainWindow::onActionDiagramMx() { toggleDiagram(TSA::Geometry::DiagramType::TorsionMx, m_actionDiagramMx); }
+void MainWindow::onActionDiagramVz() { toggleDiagram(TSA::Geometry::DiagramType::ShearForceVz, m_actionDiagramVz); }
+void MainWindow::onActionDiagramVy() { toggleDiagram(TSA::Geometry::DiagramType::ShearForceVy, m_actionDiagramVy); }
+void MainWindow::onActionDiagramN() { toggleDiagram(TSA::Geometry::DiagramType::AxialForceN, m_actionDiagramN); }
+void MainWindow::onActionDiagramDeflection() { toggleDiagram(TSA::Geometry::DiagramType::DeflectionUz, m_actionDiagramDeflection); }
 
 void MainWindow::onActionDiagramNone()
 {
@@ -1001,7 +959,8 @@ void MainWindow::onActionResultsDisp()
 
 void MainWindow::onActionResultsForces()
 {
-    onActionDiagramMz();
+    if (m_occView && m_occView->resultsVisual()) m_occView->resultsVisual()->setDiagramVisible(TSA::Geometry::DiagramType::BendingMz, true);
+    syncDiagramActions();
 }
 
 void MainWindow::onActionResultsStress()

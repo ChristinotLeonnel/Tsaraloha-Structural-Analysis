@@ -5,6 +5,11 @@ revues depuis le 2026-10-07 : voir l'audit du 2026-10-31 (TSA_CODE_QUALITY_AUDIT
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
+## Résultats et plan de travail (2026-11-02, branche feature/results-multi-section-view)
+Status: IMPLEMENTED — plusieurs diagrammes ensemble, résultats isolés avec le plan, coupe 2D par défaut (ancien mode conservé), textes
+placés et dimensionnés, déformée filaire, couleurs par type de charge. Tests 604-607, captures OCCT (variable TSA_TEST_CAPTURE).
+Non vérifié dans TSA.exe : boutons du ruban, fenêtre Style des charges. Limites : tasks.md.
+
 ## Accueil (2026-11-02, branche feature/home-welcome-screen)
 Status: IMPLEMENTED (Windows) / UNKNOWN (Linux) — StartCenter : colonne de gauche, pages Accueil, Projets, Fichiers récents, Ressources ;
 commande Accueil sans fermer les projets (AppShell::showHome). Tests 602-603, essai réel de TSA.exe avec captures (docs/UI.md).

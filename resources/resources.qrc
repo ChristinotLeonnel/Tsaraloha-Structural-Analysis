@@ -172,6 +172,8 @@
         <file alias="common/theme_dark.svg">icons/common/theme_dark.svg</file>
         <file alias="common/theme_light.svg">icons/common/theme_light.svg</file>
         <file alias="common/help.svg">icons/common/help.svg</file>
+        <file alias="modeling/plane_section.svg">icons/modeling/plane_section.svg</file>
+        <file alias="analysis/deformed_wire.svg">icons/analysis/deformed_wire.svg</file>
         <file alias="common/home.svg">icons/common/home.svg</file>
         <file alias="common/projects.svg">icons/common/projects.svg</file>
         <file alias="common/recent.svg">icons/common/recent.svg</file>

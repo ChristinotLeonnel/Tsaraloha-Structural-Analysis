@@ -108,7 +108,7 @@ QStringList displayProfileKeys()
              "grid",             "gridLabels",   "gridLevels",     "workPlane",       "categories",       "loads",
              "surfaceLoads",     "forces",       "moments",        "loadValues",      "loadScale",        "loadScaleMode",
              "loadMinRatio",     "loadLegend",   "deformed",       "deformedMode",    "deformationPreset", "deformationScale",
-             "diagram",          "diagramMultiplier", "diagramLabels", "reactions",    "legend",           "sectionRotation",
+             "diagram",          "diagramLayers", "deformedWire", "diagramMultiplier", "diagramLabels", "reactions",    "legend",           "sectionRotation",
              "annotationMode",   "annotationPixels",  "annotationModelHeight" };
 }
 
@@ -144,6 +144,10 @@ QJsonObject captureDisplaySettings(const OccView& view)
         o["deformationPreset"] = nameOf(presets(), r->deformationScalePreset());
         if (r->deformationScalePreset() == ScalePreset::Custom) o["deformationScale"] = r->deformationScale();
         o["diagram"] = nameOf(diagrams(), r->diagramType());
+        QJsonArray layers;
+        for (const auto type : r->diagramTypes()) layers.append(nameOf(diagrams(), type));
+        o["diagramLayers"] = layers;
+        o["deformedWire"] = r->deformedRepresentation() == DeformedRepresentation::Wire;
         o["diagramMultiplier"] = r->diagramScaleMultiplier();
         o["diagramLabels"] = r->areDiagramLabelsVisible();
         o["reactions"] = r->areReactionsVisible();
@@ -213,6 +217,14 @@ QStringList applyDisplaySettings(OccView& view, const QJsonObject& s)
         if (ScalePreset p; valueOf(presets(), s.value("deformationPreset"), &p))
             r->setDeformationScalePreset(p, s.value("deformationScale").isDouble() ? s.value("deformationScale").toDouble() : 1.0);
         if (TSA::Geometry::DiagramType d; valueOf(diagrams(), s.value("diagram"), &d)) r->setDiagramType(d);
+        if (s.value("diagramLayers").isArray())
+        {
+            std::vector<TSA::Geometry::DiagramType> layers;
+            for (const auto& value : s.value("diagramLayers").toArray())
+                if (TSA::Geometry::DiagramType d; valueOf(diagrams(), value, &d)) layers.push_back(d);
+            r->setDiagramTypes(layers);
+        }
+        boolean("deformedWire", [&](bool v) { r->setDeformedRepresentation(v ? DeformedRepresentation::Wire : DeformedRepresentation::Solid); });
         number("diagramMultiplier", 1e-3, 1e3, [&](double v) { r->setDiagramScaleMultiplier(v); });
         boolean("diagramLabels", [&](bool v) { r->setDiagramLabelsVisible(v); });
         boolean("reactions", [&](bool v) { r->setReactionsVisible(v); });

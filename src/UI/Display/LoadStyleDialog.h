@@ -35,6 +35,10 @@ private:
 
     TSA::Viewer::LoadDisplaySettings m_original;
     QColor m_singleColor;
+    std::array<QColor, TSA::Viewer::kLoadCategoryCount> m_categoryColors;
+    std::array<QPushButton*, TSA::Viewer::kLoadCategoryCount> m_categoryButtons {};
+    QWidget* m_categoryPanel = nullptr;
+    void refreshCategoryButtons();
     bool m_loading = false;
 
     QRadioButton* m_activeCase = nullptr;

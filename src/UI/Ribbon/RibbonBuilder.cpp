@@ -176,7 +176,8 @@ void RibbonBuilder::buildGridTab(RibbonBar* bar, const RibbonActions& a)
     PanelBuilder(tab, tr("Grilles et niveaux")).large({ a.actionNewGrid }).small({ a.actionGridManager, a.actionManageLevels });
     PanelBuilder(tab, tr("Plan de travail")).large({ a.actionWorkPlaneXY })
         .small({ a.actionWorkPlaneXZ, a.actionWorkPlaneYZ, a.actionWorkPlaneLevel })
-        .small({ a.actionWorkPlaneCustom, a.actionWorkPlaneVisible, a.actionViewNormalToPlane });
+        .small({ a.actionWorkPlaneCustom, a.actionWorkPlaneVisible, a.actionViewNormalToPlane })
+        .large({ a.actionPlaneSection });
     PanelBuilder(tab, tr("Navigation sur la grille"))
         .small({ a.actionWorkPlaneNextRef, a.actionWorkPlanePrevRef, a.actionWorkPlaneBack })
         .small({ a.actionWorkPlaneNextInter, a.actionWorkPlanePrevInter, a.actionWorkPlaneAlignInter });
@@ -236,7 +237,7 @@ void RibbonBuilder::buildResultsTab(RibbonBar* bar, const RibbonActions& a)
 {
     RibbonTab* tab = bar->addTab(tr("Résultats"));
     PanelBuilder(tab, tr("Panneau")).large({ a.actionResultsDock });
-    PanelBuilder(tab, tr("Déformée et efforts")).large({ a.actionDeformedToggle })
+    PanelBuilder(tab, tr("Déformée et efforts")).large({ a.actionDeformedToggle, a.actionDeformedWire })
         .small({ a.actionResultsDisp, a.actionResultsForces, a.actionResultsStress });
     PanelBuilder(tab, tr("Diagrammes")).small({ a.actionDiagramMz, a.actionDiagramMy, a.actionDiagramMx })
         .small({ a.actionDiagramVz, a.actionDiagramVy, a.actionDiagramN })

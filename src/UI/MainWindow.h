@@ -98,6 +98,8 @@ namespace TSA::UI { class DisplayMenus; class WorkspaceView; class BlueprintEdit
 
 /// ProjectWorkspace de TSA : viewport, ruban, docks et barre d'état d'un projet ouvert.
 /// Embarqué dans TSA::UI::AppShell (page du mode Workspace) ; créé au premier projet ouvert ou créé.
+namespace TSA::Geometry { enum class DiagramType; }
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -654,6 +656,10 @@ private:
     QAction* m_actionResultsForces = nullptr;
     QAction* m_actionResultsStress = nullptr;
     QAction* m_actionDeformedToggle = nullptr;
+    QAction* m_actionDeformedWire = nullptr;
+    QAction* m_actionPlaneSection = nullptr;   ///< vue en coupe 2D du plan de travail (par défaut)
+    void toggleDiagram(TSA::Geometry::DiagramType type, QAction* action);
+    void syncDiagramActions();
     QAction* m_actionDiagramMz = nullptr;
     QAction* m_actionDiagramMy = nullptr;
     QAction* m_actionDiagramMx = nullptr;

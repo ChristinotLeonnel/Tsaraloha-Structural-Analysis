@@ -2,6 +2,18 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — Résultats multiples, coupe 2D du plan, textes, déformée filaire, couleurs par type de charge (branche feature/results-multi-section-view)
+
+- ResultsVisualManager : couches de diagrammes (échelle et couleur propres), `setDiagramVisible`, boutons cochables, `setDiagramType`
+  garde son sens (remplace). Profils d'affichage : clés `diagramLayers`, `deformedWire`.
+- Le plan de travail et l'isolation s'appliquent aux résultats (`applyIsolation`, sans recalcul).
+- `OccView::PlaneViewMode` (Section par défaut, Proximity = ancien mode), `OccView_SectionCut.cpp` : coupe calculée sur le volume affiché.
+- Textes des résultats : calque supérieur, contour contrasté, taille de Style des charges, décalés hors de la section, sur le côté de
+  l'élément si le décalage est vu de bout (défaut vu sur capture), chevauchements masqués selon le zoom.
+- `DeformedRepresentation` (Déformée filaire) ; `LoadColorMode::ByCategory`, huit couleurs réglables dans Style des charges.
+- Valeurs aux deux extrémités de chaque élément (et extrêmes intérieurs), ligne de rappel vers le point de courbe, couleur du diagramme, test 608.
+- Tests 604-607 ; test 373 : scène comptée hors textes de résultats (leur nombre affiché suit le zoom).
+
 ## 2026-11-02 — Nouvel accueil organisé comme les logiciels BIM (branche feature/home-welcome-screen)
 
 - StartCenter réorganisé (pas de seconde page d'accueil) : colonne de gauche et pages Accueil, Projets, Fichiers récents,
