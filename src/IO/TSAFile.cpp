@@ -1326,6 +1326,39 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     snapshot.nextCableId = maxCab + 1;
     snapshot.actionName = "Chargement Projet .tsa";
 
+    // Intégrité référentielle (BUG-154) : un élément qui désigne un nœud absent (fichier endommagé ou fabriqué) faisait planter
+    // le calcul (violation d'accès). Fichier refusé, projet ouvert intact (rien n'a encore été appliqué au modèle).
+    {
+        std::vector<std::string> dangling;
+        auto need = [&](const char* kind, int id, int nodeId) {
+            if (!snapshot.nodes.count(nodeId))
+                dangling.push_back(std::string(kind) + " " + std::to_string(id) + " → nœud " + std::to_string(nodeId));
+        };
+        for (const auto& [id, b] : snapshot.beams) need("poutre", id, b.startNodeId()), need("poutre", id, b.endNodeId());
+        for (const auto& [id, b] : snapshot.columns) need("poteau", id, b.startNodeId()), need("poteau", id, b.endNodeId());
+        for (const auto& [id, b] : snapshot.trussMembers) need("treillis", id, b.startNodeId()), need("treillis", id, b.endNodeId());
+        for (const auto& [id, b] : snapshot.cables) need("câble", id, b.startNodeId()), need("câble", id, b.endNodeId());
+        for (const auto& [id, w] : snapshot.walls) need("voile", id, w.startNodeId()), need("voile", id, w.endNodeId());
+        for (const auto& [id, sl] : snapshot.slabs)
+            for (int n : sl.nodeIds()) need("dalle", id, n);
+        for (const auto& [id, f] : snapshot.foundations)
+            if (f.nodeId() > 0) need("fondation", id, f.nodeId());
+        if (!dangling.empty())
+        {
+            std::string list;
+            for (std::size_t i = 0; i < dangling.size() && i < 5; ++i) list += (i ? " ; " : "") + dangling[i];
+            if (dangling.size() > 5) list += " (+" + std::to_string(dangling.size() - 5) + ")";
+            if (errorMessage)
+                *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile",
+                                                            "Fichier incohérent (endommagé ou modifié hors de TSA) : %1 élément(s) désignent un nœud "
+                                                            "absent (%2). Projet non ouvert.")
+                                    .arg(dangling.size())
+                                    .arg(QString::fromStdString(list))
+                                    .toStdString();
+            return false;
+        }
+    }
+
     if (hasCoordinates && model.coordinateSystem()) model.coordinateSystem()->deserializeFromJson(loadedCoordinates);
     if (hasGrids && gridManager) gridManager->deserializeFromJson(loadedGrids);
 

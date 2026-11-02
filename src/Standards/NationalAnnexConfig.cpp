@@ -19,6 +19,26 @@ void NationalAnnexConfig::setAnnex(NationalAnnexCode annex)
     m_currentAnnex = annex;
 }
 
+NationalAnnexCode nationalAnnexFromKey(const std::string& key)
+{
+    if (key == "CEN") return NationalAnnexCode::CEN_Default;
+    if (key == "DE") return NationalAnnexCode::Germany_DIN;
+    if (key == "UK") return NationalAnnexCode::UK_BS;
+    return NationalAnnexCode::France_NF;
+}
+
+std::string nationalAnnexKey(NationalAnnexCode code)
+{
+    switch (code)
+    {
+    case NationalAnnexCode::CEN_Default: return "CEN";
+    case NationalAnnexCode::Germany_DIN: return "DE";
+    case NationalAnnexCode::UK_BS: return "UK";
+    case NationalAnnexCode::France_NF:
+    default: return "FR";
+    }
+}
+
 QString NationalAnnexConfig::annexName() const
 {
     return nationalAnnexToString(m_currentAnnex);

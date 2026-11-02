@@ -7448,22 +7448,6 @@ Source not present on this computer (distributed package): see the repository.</
         <translation>… %1 more, see the console.</translation>
     </message>
     <message>
-        <source>Dalles et voiles non calculés</source>
-        <translation>Slabs and walls not analysed</translation>
-    </message>
-    <message>
-        <source>Le modèle contient %1 dalle(s) et %2 voile(s).
-
-TSA ne maille pas encore ces éléments : ils ne sont PAS transmis à OpenSees (ni leur rigidité, ni leurs charges). Seuls les éléments filaires (poutres, poteaux, treillis, câbles) sont calculés.
-
-Lancer quand même le calcul ?</source>
-        <translation>The model contains %1 slab(s) and %2 wall(s).
-
-TSA does not mesh these elements yet: they are NOT sent to OpenSees (neither their stiffness nor their loads). Only line elements (beams, columns, trusses, cables) are analysed.
-
-Run the analysis anyway?</translation>
-    </message>
-    <message>
         <source>… et %1 autre(s)</source>
         <translation>… and %1 more</translation>
     </message>
@@ -7615,6 +7599,10 @@ Run the analysis?</translation>
 </context>
 <context>
     <name>TSA::Analysis::AnalysisController</name>
+    <message>
+        <source>Calcul interrompu par une erreur interne (%1).</source>
+        <translation>Analysis stopped by an internal error (%1).</translation>
+    </message>
     <message>
         <source>Un calcul est déjà en cours.</source>
         <translation>An analysis is already running.</translation>
@@ -7814,6 +7802,14 @@ Run the analysis?</translation>
         <translation>Valid loads.</translation>
     </message>
     <message>
+        <source>Poids propre : aucun cas n'est marqué « poids propre » ; appliqué avec le coefficient 1 au calcul d'un cas (règle des anciens projets), pas aux combinaisons. Marquer le cas G pour l'inclure aussi dans les combinaisons.</source>
+        <translation>Self-weight: no load case is marked “self-weight”; applied with factor 1 when a load case is analysed (rule of older projects), not to combinations. Mark case G to include it in combinations too.</translation>
+    </message>
+    <message>
+        <source>Poids propre : le(s) cas calculé(s) ne le portent pas (il est porté par le cas marqué « poids propre », G en général) ; il n'est donc pas appliqué.</source>
+        <translation>Self-weight: the analysed load case(s) do not carry it (it is carried by the case marked “self-weight”, usually G); it is therefore not applied.</translation>
+    </message>
+    <message>
         <source>%1 charge(s) appliquée(s) hors portée ne sont pas transmises.</source>
         <translation>%1 load(s) applied outside the analysis scope are not transferred.</translation>
     </message>
@@ -7828,6 +7824,14 @@ Run the analysis?</translation>
     <message>
         <source>Ce projet demande une fonctionnalité qui n'est plus prise en charge : %1. TSA prend actuellement en charge l'analyse structurale linéaire : ce calcul n'est pas lancé à la place d'un autre. Choisissez une analyse linéaire dans les paramètres d'analyse. Les autres données du projet sont conservées.</source>
         <translation>This project requests a feature that is no longer supported: %1. TSA currently supports linear structural analysis: no other analysis is run in its place. Choose a linear analysis in the analysis settings. The other project data are kept.</translation>
+    </message>
+    <message>
+        <source>Préparation du calcul</source>
+        <translation>Analysis preparation</translation>
+    </message>
+    <message>
+        <source>erreur interne pendant la préparation du modèle de calcul (%1). Le calcul n'est pas lancé ; vérifier les données du modèle (coordonnées, sections, barres de longueur nulle).</source>
+        <translation>internal error while preparing the analysis model (%1). The analysis is not started; check the model data (coordinates, sections, zero-length bars).</translation>
     </message>
     <message>
         <source>Moteur d'analyse inconnu : « %1 ».</source>
@@ -7884,6 +7888,10 @@ Run the analysis?</translation>
     <message>
         <source>Dalles et voiles non maillés : ni leur rigidité ni leurs charges ne sont calculées. Générer le maillage (Analyse &gt; Maillage) pour les transmettre en coques.</source>
         <translation>Slabs and walls not meshed: neither their stiffness nor their loads are analysed. Generate the mesh (Analysis &gt; Mesh) to transfer them as shells.</translation>
+    </message>
+    <message>
+        <source>Calcul interrompu par une erreur interne (%1). Aucun résultat n'a été produit ; le projet n'est pas modifié.</source>
+        <translation>Analysis stopped by an internal error (%1). No result was produced; the project is unchanged.</translation>
     </message>
     <message>
         <source>Le modèle d'analyse n'est pas valide :</source>
@@ -8552,6 +8560,10 @@ Run the analysis?</translation>
         <source>Vérification échouée après extraction.</source>
         <translation>Verification failed after extraction.</translation>
     </message>
+    <message>
+        <source>Installation interrompue par une erreur interne (%1).</source>
+        <translation>Installation stopped by an internal error (%1).</translation>
+    </message>
 </context>
 <context>
     <name>TSA::Analysis::OpenSeesModelMap</name>
@@ -8694,6 +8706,10 @@ Run the analysis?</translation>
     <message>
         <source>Initialisation de l'analyse asynchrone...</source>
         <translation>Initialising the asynchronous analysis...</translation>
+    </message>
+    <message>
+        <source>Calcul interrompu par une erreur interne (%1).</source>
+        <translation>Analysis stopped by an internal error (%1).</translation>
     </message>
     <message>
         <source>Calcul terminé avec succès.</source>
@@ -10853,6 +10869,10 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
     <message>
         <source>Version des formules de section %1 (schéma %2) inconnue de cette version de %3 (formules %4) : le projet n'est pas ouvert.</source>
         <translation>Section formula version %1 (schema %2) is unknown to this version of %3 (formulas %4): the project is not opened.</translation>
+    </message>
+    <message>
+        <source>Fichier incohérent (endommagé ou modifié hors de TSA) : %1 élément(s) désignent un nœud absent (%2). Projet non ouvert.</source>
+        <translation>Inconsistent file (damaged or modified outside TSA): %1 element(s) refer to a missing node (%2). Project not opened.</translation>
     </message>
     <message>
         <source>Nombre de nœuds anormalement élevé dans le fichier.</source>
@@ -15548,6 +15568,34 @@ Units: %10%11</translation>
     <message>
         <source>Inclure le poids propre</source>
         <translation>Include self-weight</translation>
+    </message>
+    <message>
+        <source>Interrupteur général du poids propre. Coché, il est porté par le cas marqué « poids propre » (G), avec son coefficient ; un cas calculé seul qui n'est pas marqué ne le reçoit pas.</source>
+        <translation>Master switch for self-weight. When checked, it is carried by the case marked “self-weight” (G), with its factor; a case analysed alone that is not marked does not receive it.</translation>
+    </message>
+    <message>
+        <source>France (NF EN /NA)</source>
+        <translation>France (NF EN /NA)</translation>
+    </message>
+    <message>
+        <source>Recommandations du CEN</source>
+        <translation>CEN recommendations</translation>
+    </message>
+    <message>
+        <source>Allemagne (DIN EN /NA)</source>
+        <translation>Germany (DIN EN /NA)</translation>
+    </message>
+    <message>
+        <source>Royaume-Uni (BS EN /NA)</source>
+        <translation>United Kingdom (BS EN /NA)</translation>
+    </message>
+    <message>
+        <source>Annexe nationale des vérifications EC2 / EC3 (γ, ψ), enregistrée avec le projet.</source>
+        <translation>National annex of the EC2 / EC3 checks (γ, ψ), saved with the project.</translation>
+    </message>
+    <message>
+        <source>Annexe nationale :</source>
+        <translation>National annex:</translation>
     </message>
     <message>
         <source>Nombre de modes propres calculés (valeurs propres les plus basses).</source>
@@ -21719,6 +21767,10 @@ The other objects keep their settings.</translation>
 </context>
 <context>
     <name>TSA::UI::MeshController</name>
+    <message>
+        <source>erreur interne du mailleur (%1)</source>
+        <translation>internal mesher error (%1)</translation>
+    </message>
     <message>
         <source>%1 nœuds, %2 éléments (1D : %3, 2D : %4, 3D : %5) en %6 ms</source>
         <translation>%1 nodes, %2 elements (1D: %3, 2D: %4, 3D: %5) in %6 ms</translation>

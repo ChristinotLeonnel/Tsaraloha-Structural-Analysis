@@ -880,6 +880,7 @@ bool runSuite_Surfaces(int& passed)
         spring.stiffness = { 0, 0, 2000.0, 0, 0, 0 };
         m.getSlab(s)->setEdgeSupports({ rigid, spring });
         const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        m.loadManager().getLoadCase(lc)->setSelfWeightIncluded(true);   // le cas calculé porte le poids propre (règle unique, BUG-156)
         TSA::Model::SurfaceLoad sl;
         sl.surfaceId = s;
         sl.loadCaseId = lc;

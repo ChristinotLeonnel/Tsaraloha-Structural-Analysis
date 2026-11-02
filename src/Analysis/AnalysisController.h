@@ -53,7 +53,10 @@ public:
 
     // --- Réglages d'analyse du projet ---------------------------------------------------------
     const AnalysisContext& context() const { return m_context; }
-    void setContext(const AnalysisContext& context) { m_context = context; }
+    /// Réglages du calcul ; l'annexe nationale du projet devient celle des vérifications (BUG-111).
+    void setContext(const AnalysisContext& context);
+    /// Annexe nationale de ces réglages appliquée aux vérifications EC2 / EC3 (document mis au premier plan).
+    void applyNationalAnnex() const;
     /// Relit les réglages enregistrés avec le projet (moteur absent → premier moteur disponible).
     /// Faux si des réglages existaient mais étaient illisibles (réglages par défaut appliqués).
     bool restoreContextFromModel();

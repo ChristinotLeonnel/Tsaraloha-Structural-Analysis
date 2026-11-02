@@ -942,7 +942,8 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
         return gp_Pnt(n1->x + (n2->x - n1->x) * t, n1->y + (n2->y - n1->y) * t, n1->z + (n2->z - n1->z) * t);
     };
 
-    auto accumulateLoads = [&](int targetCaseId, double factor, bool includeSW) {
+    auto accumulateLoads = [&](int targetCaseId, double factor, double swFactor) {
+        const bool includeSW = swFactor != 0.0;
         for (const auto& nl : snapshot.nodalLoads())
         {
             if (targetCaseId > 0 && nl.loadCaseId() != targetCaseId) continue;
@@ -977,7 +978,7 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
         {
             if (f.loadCaseId == 0 ? !includeSW : (targetCaseId > 0 && f.loadCaseId != targetCaseId)) continue;
             const auto* n = snapshot.getNode(f.nodeId);
-            addForce(n ? gp_Pnt(n->x, n->y, n->z) : gp_Pnt(), gp_Vec(f.fx, f.fy, f.fz) * (factor * forceScale));
+            addForce(n ? gp_Pnt(n->x, n->y, n->z) : gp_Pnt(), gp_Vec(f.fx, f.fy, f.fz) * (factor * (f.loadCaseId == 0 ? swFactor : 1.0) * forceScale));
         }
 
         if (includeSW)
@@ -987,33 +988,14 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
             {
                 const double W = el.section.area() * el.material.density * g * el.length
                                * (params.useKiloNewtons ? 1e-3 : 1.0);
-                addForce(pointOnElement(el, 0.5 * el.length), gp_Vec(0.0, 0.0, -W * factor));
+                addForce(pointOnElement(el, 0.5 * el.length), gp_Vec(0.0, 0.0, -W * factor * swFactor));
             }
         }
     };
 
-    if (params.targetCombinationId > 0)
-    {
-        auto it = snapshot.combinations().find(params.targetCombinationId);
-        if (it != snapshot.combinations().end())
-        {
-            for (const auto& [caseId, factor] : it->second.caseFactors())
-            {
-                bool includeSW = false;
-                auto lcIt = snapshot.loadCases().find(caseId);
-                if (lcIt != snapshot.loadCases().end())
-                {
-                    includeSW = lcIt->second.isSelfWeightIncluded();
-                }
-                accumulateLoads(caseId, factor, includeSW);
-            }
-        }
-    }
-    else
-    {
-        int filterCaseId = (params.targetLoadCaseId > 0) ? params.targetLoadCaseId : 0;
-        accumulateLoads(filterCaseId, 1.0, params.includeSelfWeight);
-    }
+    // Mêmes motifs que le script (cas, facteurs, poids propre : règle unique, BUG-156)
+    for (const auto& pattern : OpenSeesAnalysisBuilder::loadPatterns(snapshot, params))
+        accumulateLoads(pattern.caseId, pattern.factor, pattern.selfWeightFactor);
 
     // Somme des réactions (appuis fixes + ressorts reportés sur leur nœud TSA)
     for (const auto& [nodeId, r] : outResults.allReactions())

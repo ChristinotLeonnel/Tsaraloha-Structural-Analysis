@@ -1,4 +1,5 @@
 #include "Custom2DAdapter.h"
+#include "../../../Model/Load/SelfWeightRule.h"
 
 #include "../../ElementTransformation.h"
 #include "../../LoadResolver.h"
@@ -237,7 +238,8 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
 
     // Cas, combinaisons, demande
     for (const auto& [id, lc] : snap.loadCases())
-        in.loadCases.push_back({ id, lc.name(), lc.isSelfWeightIncluded(), lc.selfWeightFactor() });
+        // Combinaisons : poids propre des cas marqués, seulement si l'interrupteur du calcul est actif (règle unique, BUG-156)
+        in.loadCases.push_back({ id, lc.name(), context.common.includeSelfWeight && lc.isSelfWeightIncluded(), lc.selfWeightFactor() });
     for (const auto& [id, c] : snap.combinations())
         in.combinations.push_back({ id, c.name(), c.caseFactors() });
 
@@ -250,7 +252,15 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
     in.request.type = Custom2D::AnalysisType::LinearStatic;
     in.request.loadCaseIds = context.loadCaseIds;
     in.request.combinationId = context.combinationId;
-    in.request.includeSelfWeight = context.common.includeSelfWeight;
+    // Calcul de cas : coefficient de la règle unique (BUG-156) ; le solveur applique 1 → poids linéique mis à l'échelle
+    if (context.combinationId <= 0)
+    {
+        const double sw = TSA::Model::loadCasesSelfWeightFactor(model.snapshot.loadCases(), context.common.includeSelfWeight, context.loadCaseIds);
+        in.request.includeSelfWeight = sw != 0.0;
+        for (auto& e : in.elements) e.weightPerLength *= sw;
+    }
+    else
+        in.request.includeSelfWeight = context.common.includeSelfWeight;
     const gp_Vec g(0, 0, -1);
     in.request.gravityX = g.Dot(vec(pl.u));
     in.request.gravityY = g.Dot(vec(pl.v));

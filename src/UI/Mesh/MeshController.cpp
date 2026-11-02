@@ -1,4 +1,5 @@
 #include "MeshController.h"
+#include "../../Core/ExceptionText.h"
 
 #include "../../Model/Model.h"
 
@@ -88,7 +89,17 @@ bool MeshController::generate(bool preview)
         o.progress = [self](int p, const std::string& s) {
             if (self) QMetaObject::invokeMethod(self, [self, p, s] { if (self) emit self->progress(p, QString::fromStdString(s)); }, Qt::QueuedConnection);
         };
-        *result = MeshGenerator::generate(*geometry, *settings, o);
+        try
+        {
+            *result = MeshGenerator::generate(*geometry, *settings, o);
+        }
+        catch (...)   // frontière du thread (BUG-155) : erreur affichée comme un échec du maillage
+        {
+            result->ok = false;
+            result->record.errors.push_back(QCoreApplication::translate("TSA::UI::MeshController", "erreur interne du mailleur (%1)")
+                                         .arg(QString::fromStdString(TSA::Core::currentExceptionText()))
+                                         .toStdString());
+        }
     });
     connect(m_thread, &QThread::finished, this, [this, result, preview] {
         m_thread->deleteLater();

@@ -90,9 +90,9 @@ public:
     /// commandes OpenSees (wipe, model) avant d'écrire « OPENSEES_CHECK_OK_<version> ». OpenSees 3.8.0 n'a pas
     /// d'option de version (seules -noHeader et -suppressOutput existent) et rend 0 même si Tcl ne s'initialise pas :
     /// seule la présence de ce marqueur prouve le fonctionnement, pas la bannière.
-    /// timeoutMs : délai d'exécution (5 s ; au premier lancement d'un exécutable tout juste installé, l'antivirus peut l'analyser
+    /// timeoutMs : délai d'exécution (15 s : 5 s ne suffisaient pas sur un poste chargé, constaté le 2026-11-02 ; au premier lancement d'un exécutable tout juste installé, l'antivirus peut l'analyser
     /// plusieurs secondes : downloadAndInstall attend 60 s).
-    OpenSeesCheckResult checkExecutable(const QString& exePath, int timeoutMs = 5000) const;
+    OpenSeesCheckResult checkExecutable(const QString& exePath, int timeoutMs = 15000) const;
     /// Classe la sortie de la commande de contrôle (sans lancer de processus).
     static OpenSeesCheckResult interpretCheckOutput(const QString& output, int exitCode, bool crashed);
     /// Plus ancienne version prise en charge par les scripts générés (OpenSeesAdapter : 3.4.0 - 3.8.0+).

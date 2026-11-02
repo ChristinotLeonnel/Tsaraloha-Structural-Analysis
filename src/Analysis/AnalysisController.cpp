@@ -1,4 +1,6 @@
 #include "AnalysisController.h"
+#include "../Core/ExceptionText.h"
+#include "../Standards/NationalAnnexConfig.h"
 
 #include "ResultsModel.h"
 #include "ResultsValidityGuard.h"
@@ -62,7 +64,19 @@ bool AnalysisController::restoreContextFromModel()
     if (!m_registry->engine(context.engineId) && !m_registry->ids().empty())
         context.engineId = m_registry->ids().front();
     m_context = context;
+    applyNationalAnnex();
     return ok;
+}
+
+void AnalysisController::setContext(const AnalysisContext& context)
+{
+    m_context = context;
+    applyNationalAnnex();
+}
+
+void AnalysisController::applyNationalAnnex() const
+{
+    TSA::Standards::NationalAnnexConfig::instance().setAnnex(TSA::Standards::nationalAnnexFromKey(m_context.common.nationalAnnex));
 }
 
 std::string AnalysisController::unsupportedFeaturesMessage() const
@@ -114,7 +128,16 @@ bool AnalysisController::start(const AnalysisContext& context, const PreparedAna
     m_lastRun = result;
     const AnalysisRunCallbacks callbacks = makeCallbacks();
     m_worker = QThread::create([this, context, job, result, callbacks] {
-        *result = m_manager->run(context, *job, callbacks);
+        // run() contient déjà ses exceptions ; frontière ultime du thread (BUG-155) : jamais std::terminate
+        try
+        {
+            *result = m_manager->run(context, *job, callbacks);
+        }
+        catch (...)
+        {
+            result->success = false;
+            result->message = tr("Calcul interrompu par une erreur interne (%1).").arg(QString::fromStdString(TSA::Core::currentExceptionText())).toStdString();
+        }
     });
     connect(m_worker, &QThread::finished, this, &AnalysisController::onWorkerFinished);
     emit started(QString::fromStdString(engine->info().name));

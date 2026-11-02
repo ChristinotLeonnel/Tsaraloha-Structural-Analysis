@@ -1,6 +1,7 @@
 #include "OpenSeesAnalysisBuilder.h"
 #include <tuple>
 #include "OpenSeesModelMap.h"
+#include "../Model/Load/SelfWeightRule.h"
 #include "LoadResolver.h"
 #include <algorithm>
 #include <set>
@@ -619,20 +620,18 @@ std::vector<LoadPatternSpec> OpenSeesAnalysisBuilder::loadPatterns(const Calcula
             int pId = 1;
             for (const auto& [caseId, factor] : it->second.caseFactors())
             {
-                bool includeSW = false;
-                auto lcIt = snapshot.loadCases().find(caseId);
-                if (lcIt != snapshot.loadCases().end())
-                {
-                    includeSW = lcIt->second.isSelfWeightIncluded();
-                }
-                patterns.push_back({ pId++, "Combo Case " + std::to_string(caseId), caseId, factor, includeSW });
+                // Règle unique du poids propre (BUG-156) : interrupteur du calcul ET cas marqué, coefficient du cas
+                const double sw = TSA::Model::combinationCaseSelfWeightFactor(snapshot.loadCases(), params.includeSelfWeight, caseId);
+                patterns.push_back({ pId++, "Combo Case " + std::to_string(caseId), caseId, factor, sw != 0.0, sw });
             }
         }
     }
     else
     {
         const int filterCaseId = (params.targetLoadCaseId > 0) ? params.targetLoadCaseId : 0;
-        patterns.push_back({ 1, "Cas Principal", filterCaseId, 1.0, params.includeSelfWeight });
+        const double sw = TSA::Model::loadCasesSelfWeightFactor(snapshot.loadCases(), params.includeSelfWeight,
+                                                                filterCaseId > 0 ? std::vector<int> { filterCaseId } : std::vector<int> {});
+        patterns.push_back({ 1, "Cas Principal", filterCaseId, 1.0, sw != 0.0, sw });
     }
     return patterns;
 }
@@ -736,8 +735,9 @@ std::map<int, std::vector<BeamElementLoad>> OpenSeesAnalysisBuilder::beamElement
         for (const auto& [tag, el] : snapshot.elements())
         {
             if (el.type == SnapshotElement::ElementType::Truss || el.type == SnapshotElement::ElementType::Cable) continue;
-            const double linWeight = el.section.area() * el.material.density * 9.81 * (params.useKiloNewtons ? 1e-3 : 1.0) * pattern.factor;
-            if (linWeight <= 1e-5) continue;
+            const double linWeight =
+                el.section.area() * el.material.density * 9.81 * (params.useKiloNewtons ? 1e-3 : 1.0) * pattern.factor * pattern.selfWeightFactor;
+            if (std::abs(linWeight) <= 1e-5) continue;
             const auto* n1 = snapshot.getNode(el.startNodeId);
             const auto* n2 = snapshot.getNode(el.endNodeId);
             if (!n1 || !n2) continue;
@@ -808,7 +808,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
         {
             double k = 0.0;
             if (f.loadCaseId == 0)
-                k = pattern.includeSelfWeight ? factor : 0.0;
+                k = factor * pattern.selfWeightFactor;   // poids propre des surfaces : règle unique (BUG-156)
             else if (pattern.caseId == 0 || f.loadCaseId == pattern.caseId)
                 k = factor;
             if (k == 0.0) continue;
@@ -842,8 +842,9 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
             for (const auto& [tag, el] : snapshot.elements())
             {
                 if (el.type != SnapshotElement::ElementType::Truss && el.type != SnapshotElement::ElementType::Cable) continue;
-                const double linWeight = el.section.area() * el.material.density * 9.81 * (params.useKiloNewtons ? 1e-3 : 1.0) * factor;
-                if (linWeight <= 1e-5) continue;
+                const double linWeight =
+                    el.section.area() * el.material.density * 9.81 * (params.useKiloNewtons ? 1e-3 : 1.0) * factor * pattern.selfWeightFactor;
+                if (std::abs(linWeight) <= 1e-5) continue;
                 const double halfW = linWeight * el.length * 0.5;
                 const std::string who = (el.type == SnapshotElement::ElementType::Truss ? "Poids propre treillis #" : "Poids propre câble #") + std::to_string(el.id);
                 tcl << "  load " << el.startNodeId << " 0 0 " << (-halfW) << " 0 0 0 ;# " << who << "\n";

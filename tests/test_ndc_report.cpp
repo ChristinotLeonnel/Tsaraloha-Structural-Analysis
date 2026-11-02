@@ -11,6 +11,10 @@
 
 #include "Analysis/OpenSeesSolver.h"
 #include "Analysis/ResultsModel.h"
+#include "Standards/NationalAnnexConfig.h"
+#include "Grid/GridManager.h"
+#include "Analysis/Engine/AnalysisContext.h"
+#include "Analysis/AnalysisController.h"
 #include "Model/Model.h"
 #include "Model/Section.h"
 #include "Model/Material.h"
@@ -26,6 +30,7 @@
 #include "Standards/Design/SteelDesignEC3.h"
 
 #include <QFile>
+#include <QJsonObject>
 #include <QDir>
 #include <cmath>
 
@@ -522,6 +527,49 @@ bool runSuite_NDCReport(int& passed)
                        "Test 584 : note " << name << " — poteau comprimé NON CONFORME, poteau tendu non vérifié (" << rows << " ligne(s), "
                                           << nonConforming << " non conforme(s), " << conforming << " conforme(s))");
         }
+        passed++;
+    }
+
+
+    // TEST 591 (BUG-111, reste) : annexe nationale des vérifications figée dans le projet — réglage du calcul enregistré dans le
+    // .tsa, appliqué à l'ouverture, au premier plan du document et à la génération de la note (avant : singleton jamais réglé)
+    {
+        using namespace TSA::Standards;
+        using TSA::Analysis::AnalysisContext;
+        auto& annex = NationalAnnexConfig::instance();
+        const NationalAnnexCode saved = annex.currentAnnex();
+
+        AnalysisContext ctx;
+        TEST_CHECK(ctx.common.nationalAnnex == "FR", "Test 591 : annexe par défaut France (celle appliquée jusqu'ici)");
+        ctx.common.nationalAnnex = "CEN";
+        bool ok = false;
+        const AnalysisContext back = AnalysisContext::fromJson(ctx.toJson(), &ok);
+        QJsonObject legacy = ctx.toJson();
+        QJsonObject common = legacy.value("common").toObject();
+        common.remove("nationalAnnex");
+        legacy["common"] = common;
+        TEST_CHECK(ok && back.common.nationalAnnex == "CEN" && AnalysisContext::fromJson(legacy).common.nationalAnnex == "FR",
+                   "Test 591 : annexe enregistrée dans les réglages du projet ; ancien projet (clé absente) : France");
+        for (const auto code : { NationalAnnexCode::CEN_Default, NationalAnnexCode::France_NF, NationalAnnexCode::Germany_DIN, NationalAnnexCode::UK_BS })
+            TEST_CHECK(nationalAnnexFromKey(nationalAnnexKey(code)) == code, "Test 591 : code court de l'annexe réversible");
+
+        // Contrôleur : réglages validés ou relus du projet → annexe des vérifications
+        Model model;
+        TSA::Grid::GridManager gm;
+        TSA::Analysis::AnalysisController controller(&model, &gm);
+        annex.setAnnex(NationalAnnexCode::France_NF);
+        controller.setContext(ctx);
+        TEST_CHECK(annex.currentAnnex() == NationalAnnexCode::CEN_Default, "Test 591 : réglages du calcul → annexe des vérifications");
+        TEST_CHECK(controller.storeContextInModel(), "Test 591 : réglages enregistrés dans le modèle");
+
+        // Note : annexe du projet, quelle que soit celle réglée auparavant dans l'application
+        annex.setAnnex(NationalAnnexCode::Germany_DIN);
+        ReportConfiguration cfg;
+        cfg.noteLayout = NoteLayout::Legacy;
+        const NDCDocument doc = NDCGenerator::generate(model, nullptr, cfg);
+        TEST_CHECK(annex.currentAnnex() == NationalAnnexCode::CEN_Default, "Test 591 : la note applique l'annexe du projet");
+        annex.setAnnex(saved);
+        std::cout << "[PASS] Test 591: Annexe nationale figée dans le projet" << std::endl;
         passed++;
     }
 

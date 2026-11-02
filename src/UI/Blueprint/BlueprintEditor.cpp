@@ -1169,7 +1169,15 @@ bool BlueprintEditor::execute(bool debugging, bool stepFromStart)
         runner.setCache(&m_cache);   // l'interface ne touche pas au cache pendant l'exécution (édition bloquée)
         m_runner = &runner;
         QEventLoop loop;
-        QThread* worker = QThread::create([&runner, &report] { report = runner.run(); });
+        QThread* worker = QThread::create([&runner, &report] {
+            try
+            {
+                report = runner.run();
+            }
+            catch (...)   // frontière du thread (BUG-155) : le rapport reste celui d'une exécution non aboutie
+            {
+            }
+        });
         connect(worker, &QThread::finished, &loop, &QEventLoop::quit);
         worker->start();
         loop.exec();

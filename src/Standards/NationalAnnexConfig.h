@@ -96,6 +96,10 @@ private:
 };
 
 QString nationalAnnexToString(NationalAnnexCode code);
+/// Code court enregistré dans le projet (AnalysisContext, « CEN », « FR », « DE », « UK ») ; vide ou inconnu : France, l'annexe
+/// appliquée par TSA jusqu'au 2026-11-02 (BUG-111 : annexe figée dans le projet).
+NationalAnnexCode nationalAnnexFromKey(const std::string& key);
+std::string nationalAnnexKey(NationalAnnexCode code);
 QString buildingCategoryToString(BuildingCategory cat);
 
 } // namespace TSA::Standards

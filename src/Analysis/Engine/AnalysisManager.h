@@ -69,6 +69,10 @@ public:
                                             const AnalysisCapabilities& caps);
 
 private:
+    // Corps réels de prepare() et run() ; les fonctions publiques les entourent d'une frontière d'exception (BUG-155) : une
+    // exception d'un moteur, d'OCCT (gp_Vec::Normalize…) ou de la mémoire devient un message, jamais une fermeture brutale.
+    PreparedAnalysis prepareUnguarded(const TSA::Model::Model& model, const TSA::Grid::GridManager* grids, const AnalysisContext& context) const;
+    AnalysisRunResult runUnguarded(const AnalysisContext& context, const PreparedAnalysis& prepared, const AnalysisRunCallbacks& callbacks);
     AnalysisEngineRegistry& m_registry;
 };
 

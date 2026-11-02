@@ -6,6 +6,10 @@
 
 #include "Analysis/AnalysisController.h"
 #include "Analysis/Engine/AnalysisManager.h"
+#include <stdexcept>
+#include <limits>
+#include <gp_Vec.hxx>
+#include "Core/ExceptionText.h"
 #include "NDC/ReportConfiguration.h"
 #include "NDC/NDCGenerator.h"
 #include "Automation/CommandRegistry.h"
@@ -90,6 +94,37 @@ AnalysisScope gridScope(const std::string& gridId, GridAxisFamily family, const 
     s.axisLabel = label;
     return s;
 }
+
+/// Moteur de test (BUG-155) : lève une exception dans validate() ou run(), comme un moteur ou OCCT défaillant.
+class ThrowingEngine final : public AnalysisEngine
+{
+public:
+    explicit ThrowingEngine(bool inValidate) : m_inValidate(inValidate) {}
+    EngineInfo info() const override { return { m_inValidate ? "throw-validate" : "throw-run", "Moteur de test", "", "" }; }
+    AnalysisCapabilities capabilities() const override
+    {
+        AnalysisCapabilities c;
+        c.supports3D = c.supportsFrame = c.supportsStatic = true;
+        c.providesDisplacements = c.providesReactions = c.providesElementForces = true;
+        return c;
+    }
+    EngineAvailability availability() const override { return { true, "", false }; }
+    ValidationResult validate(const AnalysisContext&, const AnalysisModel&) const override
+    {
+        if (m_inValidate) throw std::runtime_error("défaillance simulée de la validation");
+        return {};
+    }
+    AnalysisRunResult run(const AnalysisContext&, const AnalysisModel&, const AnalysisRunCallbacks&) override
+    {
+        gp_Vec v(0.0, 0.0, 0.0);
+        v.Normalize();   // Standard_ConstructionError (OCCT), comme les fichiers du fuzzing
+        return {};
+    }
+    void cancel() override {}
+
+private:
+    bool m_inValidate = false;
+};
 
 /// Solveur de test (tests uniquement) : renvoie des valeurs DÉTERMINISTES dérivées des indices
 /// reçus, pour vérifier le remappage indice 2D → objet TSA. Ce n'est pas un calcul.
@@ -1775,6 +1810,179 @@ bool runSuite_Engines(int& passed)
             }
         }
         std::cout << "[PASS] Test 587: Trace du calcul (empreinte des données, script conservé, enregistrée, citée)" << std::endl;
+        ++passed;
+    }
+
+
+    // -------------------------------------------------------------------------
+    // TEST 589 (BUG-155) : frontières d'exception — une exception d'un moteur, d'OCCT ou de la mémoire devient un message,
+    // jamais une fermeture brutale (std::terminate dans un thread, exception traversant l'interface)
+    // -------------------------------------------------------------------------
+    {
+        auto textOf = [](auto&& thrower) {
+            try
+            {
+                thrower();
+            }
+            catch (...)
+            {
+                return TSA::Core::currentExceptionText();
+            }
+            return std::string();
+        };
+        TEST_CHECK(textOf([] { throw std::runtime_error("valeur hors domaine"); }) == "valeur hors domaine" &&
+                       textOf([] { throw std::bad_alloc(); }).find("mémoire insuffisante") != std::string::npos &&
+                       textOf([] { gp_Vec v(0, 0, 0); v.Normalize(); }).size() > 0 && textOf([] { throw 42; }) == "exception d'un type inconnu",
+                   "Test 589: texte des exceptions (std::exception, mémoire, OCCT, type inconnu)");
+
+        // Essai E du registre : coordonnées non finies (Fem3DError, gp_Vec::Normalize) — préparation et calcul rendent la main
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        int engines = 0;
+        for (const char* engineId : { "opensees", "fem3d", "custom2d" })
+        {
+            const AnalysisEngine* engine = reg.engine(engineId);
+            if (!engine || !engine->availability().available) continue;
+            ++engines;
+            Model m;
+            GridManager gm;
+            const double nan = std::numeric_limits<double>::quiet_NaN();
+            const int a = m.addNode(0, 0, 0), b = m.addNode(nan, 0, 3), c = m.addNode(4, 0, 3);
+            m.getNode(a)->setSupport(SupportDefinition::fixed());
+            m.getNode(c)->setSupport(SupportDefinition::pinned());
+            m.addColumn(a, b, Section::heb(200), Material::steelS235());
+            m.addBar(b, c, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+            const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+            m.loadManager().addNodalLoad(NodalLoad(0, b, lc, 5.0, 0.0, -10.0));
+            m.loadManager().setActiveLoadCaseId(lc);
+            AnalysisManager mgr(reg);
+            AnalysisContext ctx;
+            ctx.engineId = engineId;
+            ctx.common.includeSelfWeight = false;
+            bool escaped = false;
+            AnalysisRunResult run;
+            try
+            {
+                run = mgr.run(ctx, mgr.prepare(m, &gm, ctx));
+            }
+            catch (...)
+            {
+                escaped = true;
+            }
+            TEST_CHECK(!escaped && !run.success && !run.message.empty(),
+                       "Test 589: " << engineId << " — coordonnées non finies : calcul refusé avec un message, aucune exception ne s'échappe ("
+                                    << run.message.substr(0, 120) << ")");
+        }
+        TEST_CHECK(engines >= 1, "Test 589: au moins un moteur essayé");
+
+        // Exception réellement levée dans la préparation (validate) puis dans le calcul (run, OCCT) : message, aucune fuite
+        AnalysisEngineRegistry throwing;
+        throwing.registerEngine(std::make_unique<ThrowingEngine>(true));
+        throwing.registerEngine(std::make_unique<ThrowingEngine>(false));
+        Model simple;
+        GridManager sgm;
+        const int sa = simple.addNode(0, 0, 0), sb = simple.addNode(4, 0, 0);
+        simple.getNode(sa)->setSupport(SupportDefinition::fixed());
+        simple.addBar(sa, sb, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        AnalysisManager tm(throwing);
+        for (const char* engineId : { "throw-validate", "throw-run" })
+        {
+            AnalysisContext ctx;
+            ctx.engineId = engineId;
+            bool escaped = false;
+            PreparedAnalysis prepared;
+            AnalysisRunResult run;
+            try
+            {
+                prepared = tm.prepare(simple, &sgm, ctx);
+                run = tm.run(ctx, prepared);
+            }
+            catch (...)
+            {
+                escaped = true;
+            }
+            const bool validateCase = std::string(engineId) == "throw-validate";
+            const auto errors = prepared.validation.texts(ValidationSeverity::Error);
+            const bool reported = validateCase ? (!errors.empty() && textHas(errors.front(), "défaillance simulée"))
+                                               : (!run.success && textHas(run.message, "erreur interne"));
+            TEST_CHECK(!escaped && reported && !run.success,
+                       "Test 589: exception levée dans " << (validateCase ? "la préparation" : "le calcul") << " — convertie en message ("
+                                                         << (validateCase ? (errors.empty() ? std::string() : errors.front()) : run.message).substr(0, 140) << ")");
+        }
+        std::cout << "[PASS] Test 589: Frontières d'exception (préparation, calcul, threads)" << std::endl;
+        ++passed;
+    }
+
+
+    // -------------------------------------------------------------------------
+    // TEST 590 (BUG-156) : poids propre — règle unique sur les trois moteurs (Model/Load/SelfWeightRule.h). Table de l'essai A du
+    // registre : IPE 300 de 8 m, w·L = 3,315 kN. Avant : cas seul et combinaison suivaient des règles opposées, coefficient ignoré.
+    // -------------------------------------------------------------------------
+    {
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        struct Row
+        {
+            const char* label;
+            bool combination;
+            int caseId;            // cas calculé seul (1 = G marqué, 2 = Q)
+            bool gFlag;            // G marqué « poids propre »
+            double gFactor;
+            bool calcSwitch;       // case « Inclure le poids propre »
+            double expectedFactor; // × w·L
+        };
+        const Row rows[] = {
+            { "cas G seul, marqué, coefficient 1,5", false, 1, true, 1.5, true, 1.5 },
+            { "cas Q seul (non marqué), case cochée", false, 2, true, 1.0, true, 0.0 },
+            { "cas G seul, case décochée", false, 1, true, 1.0, false, 0.0 },
+            { "combinaison 1,35 G, case décochée", true, 0, true, 1.0, false, 0.0 },
+            { "combinaison 1,35 G, case cochée", true, 0, true, 1.0, true, 1.35 },
+            { "combinaison 1,35 G, coefficient 1,5", true, 0, true, 1.5, true, 1.35 * 1.5 },
+            { "ancien projet (aucun cas marqué), cas seul", false, 1, false, 1.0, true, 1.0 },
+            { "ancien projet (aucun cas marqué), combinaison", true, 0, false, 1.0, true, 0.0 },
+        };
+        int engines = 0;
+        for (const char* engineId : { "opensees", "fem3d", "custom2d" })
+        {
+            const AnalysisEngine* engine = reg.engine(engineId);
+            if (!engine || !engine->availability().available) continue;
+            ++engines;
+            for (const Row& row : rows)
+            {
+                Model m;
+                GridManager gm;
+                const int a = m.addNode(0, 0, 0), b = m.addNode(8, 0, 0);
+                m.getNode(a)->setSupport(SupportDefinition::fixed());
+                m.getNode(b)->setSupport(SupportDefinition::pinned());
+                const int bar = m.addBar(a, b, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+                auto& lm = m.loadManager();
+                lm.getLoadCase(1)->setSelfWeightIncluded(row.gFlag);
+                lm.getLoadCase(1)->setSelfWeightFactor(row.gFactor);
+                const int combo = lm.addCombination(LoadCombination(0, "1.35 G", LoadCombinationType::ULS_Fundamental, { { 1, 1.35 } }));
+                const auto& el = m.beams().at(bar);
+                const double wL = el.section().area() * el.material().density * 9.81 * 8.0 / 1000.0;   // kN
+                AnalysisManager mgr(reg);
+                AnalysisContext ctx;
+                ctx.engineId = engineId;
+                ctx.common.includeSelfWeight = row.calcSwitch;
+                if (row.combination) ctx.combinationId = combo;
+                else ctx.loadCaseIds = { row.caseId };
+                if (std::string(engineId) == "custom2d")
+                {
+                    ctx.dimension = AnalysisDimension::Plane2D;
+                    ctx.scope.type = ScopeType::ModelPlane;
+                }
+                const auto run = mgr.run(ctx, mgr.prepare(m, &gm, ctx));
+                double rz = 0.0;
+                for (const auto& [id, r] : run.results.allReactions()) rz += r.rz;
+                rz *= run.results.units().forceToKiloNewtons();
+                const double expected = row.expectedFactor * wL;
+                TEST_CHECK(run.success && std::abs(rz - expected) <= 1e-3 * std::max(1.0, expected),
+                           "Test 590: " << engineId << " — " << row.label << " : ΣRz = " << rz << " kN (attendu " << expected << ")");
+            }
+        }
+        TEST_CHECK(engines >= 2, "Test 590: au moins deux moteurs comparés");
+        std::cout << "[PASS] Test 590: Poids propre — règle unique sur tous les moteurs" << std::endl;
         ++passed;
     }
 

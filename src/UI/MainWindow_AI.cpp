@@ -260,6 +260,8 @@ void MainWindow::setAutomationActive(bool active)
 
 void MainWindow::setDocumentForeground(bool foreground)
 {
+    // Annexe nationale du projet au premier plan : celle des vérifications EC2 / EC3 (BUG-111)
+    if (foreground && m_analysis) m_analysis->applyNationalAnnex();
     if (!foreground)
     {
         m_backgroundHidden.clear();
