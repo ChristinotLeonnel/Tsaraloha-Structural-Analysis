@@ -215,6 +215,8 @@ set(UI_DIALOGS_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/ShortcutEditorDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/LanguageDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/LanguageDialog.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/PasswordPromptDialog.h
+    ${TSA_ROOT}/src/UI/Dialogs/PasswordPromptDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.h
     ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.cpp
     ${TSA_ROOT}/src/UI/Dialogs/IfcDialogs.h

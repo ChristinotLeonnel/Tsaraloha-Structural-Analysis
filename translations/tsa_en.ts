@@ -23908,6 +23908,17 @@ Do you want to select it rather than create a duplicate?</translation>
     </message>
 </context>
 <context>
+    <name>TSA::UI::PasswordPromptDialog</name>
+    <message>
+        <source>Afficher le mot de passe</source>
+        <translation>Show password</translation>
+    </message>
+    <message>
+        <source>Montre le texte saisi : à éviter si quelqu'un peut voir l'écran</source>
+        <translation>Shows the typed text: avoid this if someone can see the screen</translation>
+    </message>
+</context>
+<context>
     <name>TSA::UI::PointSelector</name>
     <message>
         <source>(X, Y, Z) ou N&lt;id&gt;</source>

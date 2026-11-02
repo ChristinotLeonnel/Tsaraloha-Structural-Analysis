@@ -173,7 +173,7 @@ Application ─► AppShell (seule fenêtre top-level, sans cadre système)
 - Protection par mot de passe (BUG-167, *Fichier › Protection par mot de passe*, `MainWindow::onActionProjectPassword`) :
   facultative. « Aucun mot de passe » ou mot de passe confirmé d'au moins 8 caractères, retenu en mémoire pour la session
   (`ProjectManager`) et appliqué à l'enregistrement suivant ; demandé (et redemandé s'il est refusé) à l'ouverture dans
-  `MainWindow::loadFile`. Aucun aperçu du Start Center pour un projet protégé. Format : `docs/TSA_FILE_FORMAT.md` § 6.
+  `MainWindow::loadFile`. Saisie masquée par défaut, case « Afficher le mot de passe » (`PasswordPromptDialog`, test 601). Aucun aperçu du Start Center pour un projet protégé. Format : `docs/TSA_FILE_FORMAT.md` § 6.
 
 ## Espace de travail central : 3D / Blueprint / partagé (`src/UI/Workspace`)
 
