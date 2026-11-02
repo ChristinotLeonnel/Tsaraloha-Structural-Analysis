@@ -52,7 +52,7 @@ Last Updated: 2026-11-02 soir. Avant : 2026-11-01. Uniquement des tâches réell
 - [ ] Essai manuel dans TSA.exe : récupération d'un projet protégé après un plantage.
 - [x] Nouvel accueil (branche feature/home-welcome-screen) : tests 602-603, essai réel avec captures.
 - [x] Résultats multiples, coupe 2D du plan, textes, déformée filaire, couleurs par type de charge (tests 604-607).
-- [ ] Diagrammes perpendiculaires au plan vu : les rabattre dans le plan (My en plan XY : ligne seule, valeurs lisibles).
+- [x] Diagrammes perpendiculaires au plan vu rabattus dans le plan (test 609).
 - [ ] Coupe 2D : rendre sélectionnables les coupes (poteau cliqué en plan) ; résultats des coques non filtrés.
 - [ ] Accueil : unités et norme à la création d'un projet (absentes de NewProjectDialog ; décision à prendre) ; essai Linux.
 - [ ] Linux : compiler avec OpenSSL et exécuter le test 599.

@@ -278,6 +278,9 @@ private:
         TSA::Geometry::DiagramType type = TSA::Geometry::DiagramType::None;
     };
     void updateLeaders(const std::vector<Handle(AIS_TextLabel)>& shownLabels);
+    bool m_diagramsFolded = false;     ///< diagrammes construits pour une vue 2D : rabattus dans son plan
+    gp_Dir m_foldNormal;
+    bool m_anyDiagramFolded = false;   ///< au moins un diagramme est réellement rabattu (annoncé dans la légende)
     std::map<TSA::Geometry::DiagramType, Handle(AIS_Shape)> m_leaderShapes;   ///< une ligne par valeur, regroupées par grandeur
     std::vector<std::pair<gp_Pnt, gp_Pnt>> m_leaderSegments;
     std::map<const AIS_TextLabel*, LabelAnchor> m_labelAnchors;

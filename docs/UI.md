@@ -166,7 +166,8 @@ Application ─► AppShell (seule fenêtre top-level, sans cadre système)
   `Display/planeViewMode`. Les textes de résultats sont au-dessus de la structure, à la taille de *Style des charges*, placés
   hors de la section et sur le côté de l'élément quand leur décalage est vu de bout ; ceux qui se chevauchent à l'écran sont masqués. Chaque
   valeur (extrémités de l'élément, puis extrêmes intérieurs) est reliée à son point de courbe par une ligne de rappel de la
-  couleur du diagramme (`updateLeaders`).
+  couleur du diagramme (`updateLeaders`). En vue 2D, un diagramme à plus de 60° du plan est rabattu dans le plan, son sens conservé
+  (`DiagramGeometry::foldOffsetIntoPlane`), et la légende l'annonce.
 - Accueil (`src/UI/Home/StartCenter`, organisation inspirée de la page d'accueil des logiciels BIM, sans en reprendre les
   éléments graphiques) : colonne de gauche (logo, Nouveau projet, Ouvrir un projet, Ouvrir un projet récent, Parcourir les
   projets, navigation, langue, version) et quatre pages. *Accueil* : projets ouverts (boutons de retour) et 8 derniers projets.

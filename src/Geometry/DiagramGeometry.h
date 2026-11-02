@@ -87,8 +87,14 @@ public:
         const std::vector<TSA::Analysis::StationForces>& stations,
         DiagramType type,
         double scaleFactor,
-        bool showHatching = true
+        bool showHatching = true,
+        const gp_Vec* offsetDirection = nullptr   ///< direction de tracé imposée (diagramme rabattu) ; nul : direction de la grandeur
     );
+
+    /// Direction d'un diagramme regardé dans un plan : s'il est tracé presque perpendiculairement au plan (de plus de 60°), on
+    /// ne le verrait que par la tranche ; il est rabattu dans le plan, perpendiculairement à la barre, en gardant son sens. Une
+    /// direction déjà lisible, ou une barre perpendiculaire au plan, est rendue telle quelle.
+    static gp_Vec foldOffsetIntoPlane(const gp_Pnt& p1, const gp_Pnt& p2, const gp_Vec& offset, const gp_Dir& planeNormal);
 };
 
 } // namespace TSA::Geometry
