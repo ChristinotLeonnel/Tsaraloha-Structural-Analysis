@@ -161,8 +161,13 @@ Application ─► AppShell (seule fenêtre top-level, sans cadre système)
   (`<clé>.tsa` + `<clé>.json` : chemin d'origine, titre, date) ; jamais dans le fichier de l'utilisateur. Chaque
   session tient un verrou (`QLockFile`) sur sa clé : une copie dont le verrou n'est tenu par aucun processus vivant
   est orpheline (fermeture inattendue). Au lancement, `AppShell::offerRecovery` propose Récupérer / Supprimer les
-  copies / Plus tard ; un projet récupéré reprend son chemin d'origine et reste « à enregistrer ». La copie est
-  supprimée à l'enregistrement et à la fermeture normale.
+  copies / Plus tard ; un projet récupéré reprend son chemin d'origine, son nom et son auteur, et reste « à enregistrer ».
+  La copie est supprimée à l'enregistrement et à la fermeture normale. Projet protégé par mot de passe : copie chiffrée,
+  fiche sans le nom du projet, mot de passe demandé à la récupération.
+- Protection par mot de passe (BUG-167, *Fichier › Protection par mot de passe*, `MainWindow::onActionProjectPassword`) :
+  facultative. « Aucun mot de passe » ou mot de passe confirmé d'au moins 8 caractères, retenu en mémoire pour la session
+  (`ProjectManager`) et appliqué à l'enregistrement suivant ; demandé (et redemandé s'il est refusé) à l'ouverture dans
+  `MainWindow::loadFile`. Aucun aperçu du Start Center pour un projet protégé. Format : `docs/TSA_FILE_FORMAT.md` § 6.
 
 ## Espace de travail central : 3D / Blueprint / partagé (`src/UI/Workspace`)
 
@@ -204,7 +209,9 @@ MainWindow (central widget)
 - **AltGr** (Ctrl+Alt sous Windows) : dans un champ de saisie, une touche qui produit un autre caractère que celui de la
   touche (« ~ », « # » en AZERTY) est saisie et ne déclenche pas Ctrl+Alt+chiffre (`ShortcutInputGuard`) ; hors champ,
   ou au clavier US, le raccourci agit. Vérifié dans TSA.exe sous les deux dispositions.
-- **Ctrl+Z dans le Blueprint** : Annuler du **projet** (modèle structurel) ; l'historique du graphe a ses propres boutons.
+- **Ctrl+Z / Ctrl+Y dans le Blueprint** : quand le canevas a le focus, Annuler / Rétablir du **graphe** (BUG-140, test 598 ;
+  touches prises par la vue avant les raccourcis de la fenêtre, comme Ctrl+C / Ctrl+V) ; ailleurs (vue 3D, panneaux),
+  Annuler / Rétablir du **projet**. L'exécution d'un Blueprint reste une entrée Annuler du projet.
 - **Ruban** : onglet *Blueprint* (Fichier, Exécution, Navigation du graphe) ; panneau *Espace de travail* dans
   *Affichage* ; les trois modes dans l'accès rapide. Chaque commande a une image propre (test 462).
 - **Préférences** (application, pas le projet) : `QSettings` groupe `Workspace` — `mode`, `orientation`, `splitSizes`,

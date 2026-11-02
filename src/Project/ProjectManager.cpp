@@ -83,6 +83,7 @@ void ProjectManager::newProject(TSA::Model::Model& model, TSA::Grid::GridManager
     m_currentFilePath.clear();
     m_projectName.clear();
     m_author.clear();
+    setPassword(QString());
 
     model.markSaved();   // point d'enregistrement de l'historique (BUG-074)
     setModified(false);
@@ -91,23 +92,44 @@ void ProjectManager::newProject(TSA::Model::Model& model, TSA::Grid::GridManager
     emit projectTitleChanged(windowTitle());
 }
 
+void ProjectManager::setPassword(const QString& password)
+{
+    if (password == m_password) return;
+    const bool was = hasPassword();
+    m_password = password;
+    if (was != hasPassword()) emit protectionChanged(hasPassword());
+}
+
 bool ProjectManager::openProject(const QString& filePath,
                                  TSA::Model::Model& model,
                                  TSA::Grid::GridManager* gridManager,
                                  QString* outError)
 {
+    return openProject(filePath, model, gridManager, QString(), outError) == TSA::IO::TSAProjectIO::OpenStatus::Ok;
+}
+
+TSA::IO::TSAProjectIO::OpenStatus ProjectManager::openProject(const QString& filePath,
+                                                              TSA::Model::Model& model,
+                                                              TSA::Grid::GridManager* gridManager,
+                                                              const QString& password,
+                                                              QString* outError)
+{
     QString qErr;
     QImage thumbnail;
-    bool ok = TSA::IO::TSAProjectIO::loadProject(filePath, model, gridManager,
-                                                 &m_projectName, &m_author, &thumbnail, &qErr);
-    if (!ok)
+    QString name, author;
+    const auto status = TSA::IO::TSAProjectIO::loadProtectedProject(filePath, model, gridManager, password, &name, &author, &thumbnail, &qErr);
+    if (status != TSA::IO::TSAProjectIO::OpenStatus::Ok)
     {
         if (outError)
         {
             *outError = qErr;
         }
-        return false;
+        return status;
     }
+    m_projectName = name;
+    m_author = author;
+    // Mot de passe retenu seulement pour un projet protégé (un mot de passe donné pour un projet en clair est sans objet)
+    setPassword(TSA::IO::TSAProjectIO::isPasswordProtected(filePath) ? password : QString());
 
     // Repère reconstruit depuis la grille active ; niveaux fixes des anciennes versions remplacés par ceux de la grille
     TSA::Grid::reconcileProject(model, gridManager);
@@ -123,7 +145,7 @@ bool ProjectManager::openProject(const QString& filePath,
 
     emit projectOpened(filePath);
     emit projectTitleChanged(windowTitle());
-    return true;
+    return TSA::IO::TSAProjectIO::OpenStatus::Ok;
 }
 
 bool ProjectManager::saveProject(const QString& filePath,
@@ -135,8 +157,9 @@ bool ProjectManager::saveProject(const QString& filePath,
     // Nom et auteur du projet réécrits dans le chunk PROJ : auparavant une chaîne vide était
     // enregistrée, et le nom saisi dans « Nouveau projet » était perdu à la réouverture.
     QString err;
-    bool ok = TSA::IO::TSAProjectIO::saveProject(filePath, model, gridManager, m_projectName, m_author,
-                                                 true, thumbnail, &err);
+    // Projet protégé : fichier chiffré (BUG-167) ; sinon en clair, comme avant
+    bool ok = TSA::IO::TSAProjectIO::saveProtectedProject(filePath, model, gridManager, m_projectName, m_author, m_password,
+                                                          thumbnail, &err);
     if (!ok)
     {
         if (outError)

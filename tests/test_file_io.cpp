@@ -1,6 +1,7 @@
 #include "test_common.h"
 #include "App/ProductInfo.h"
 #include "IO/Tsa3d/Tsa3d.h"
+#include "IO/TSAEncryption.h"
 #include "Analysis/Engine/AnalysisContext.h"
 #include "Analysis/Engine/AnalysisEngineRegistry.h"
 #include "Analysis/Engine/AnalysisManager.h"
@@ -16,6 +17,7 @@
 #include <QTemporaryDir>
 #include "Standards/ModelValidator.h"
 #include <QJsonDocument>
+#include <algorithm>
 #include <cstring>
 #include <functional>
 
@@ -1478,6 +1480,198 @@ bool runSuite_FileIO(int& passed)
         TEST_CHECK(pm.hasFilePath() && pm.currentFilePath() == "C:/Projets/Pont.tsa", "Test 592: projet récupéré rattaché à son fichier");
         TEST_CHECK(RecoveryStore::intervalMinutes() >= 0, "Test 592: intervalle de sauvegarde automatique lu");
         std::cout << "[PASS] Test 592: Copies de récupération (sauvegarde automatique, fermeture brutale)" << std::endl;
+        ++passed;
+    }
+
+    // TEST 599 (BUG-167, BUG-166) : projets protégés par mot de passe — AES-256-GCM authentifié (clé PBKDF2), mot de passe
+    // demandé / refusé, contenu illisible sans lui, modification détectée, anciens fichiers XOR toujours lus, copie de
+    // récupération chiffrée ; somme de contrôle toujours vérifiée (un CRC à 0 ne désactive plus le contrôle)
+    {
+        using namespace TSA::IO;
+        using OpenStatus = TSAProjectIO::OpenStatus;
+        TEST_CHECK(Crypto::available(), "Test 599: chiffrement disponible (" << Crypto::backendName() << ")");
+
+        // a) Bloc chiffré : aller-retour, mauvais mot de passe, altérations, aléa (sel et nonce)
+        const std::string secret = "Données de calcul confidentielles — 42 kN";
+        const auto* plain = reinterpret_cast<const uint8_t*>(secret.data());
+        std::vector<uint8_t> block, block2, back;
+        TEST_CHECK(Crypto::encrypt(plain, secret.size(), "correct horse", block, Crypto::kMinIterations) == Crypto::Status::Ok
+                       && block.size() == secret.size() + Crypto::kHeaderSize + Crypto::kTagSize && Crypto::looksEncrypted(block.data(), block.size()),
+                   "Test 599: bloc chiffré (en-tête, contenu, étiquette)");
+        TEST_CHECK(Crypto::decrypt(block.data(), block.size(), "correct horse", back) == Crypto::Status::Ok
+                       && std::string(back.begin(), back.end()) == secret,
+                   "Test 599: déchiffré à l'identique");
+        back.clear();
+        TEST_CHECK(Crypto::decrypt(block.data(), block.size(), "correct horsE", back) == Crypto::Status::WrongPassword && back.empty(),
+                   "Test 599: mauvais mot de passe refusé, rien rendu");
+        TEST_CHECK(std::search(block.begin(), block.end(), secret.begin(), secret.end()) == block.end(), "Test 599: contenu absent du bloc");
+        Crypto::encrypt(plain, secret.size(), "correct horse", block2, Crypto::kMinIterations);
+        TEST_CHECK(block2 != block, "Test 599: deux chiffrements du même contenu diffèrent (sel et nonce aléatoires)");
+        auto altered = block;
+        altered[Crypto::kHeaderSize + 3] ^= 0x01;
+        TEST_CHECK(Crypto::decrypt(altered.data(), altered.size(), "correct horse", back) == Crypto::Status::WrongPassword,
+                   "Test 599: un bit du contenu modifié — refusé (authentifié)");
+        altered = block;
+        altered[12] ^= 0x01;   // sel : paramètre authentifié
+        TEST_CHECK(Crypto::decrypt(altered.data(), altered.size(), "correct horse", back) != Crypto::Status::Ok, "Test 599: sel modifié — refusé");
+        altered = block;
+        altered[8] = 0xFF; altered[9] = 0xFF; altered[10] = 0xFF; altered[11] = 0xFF;   // itérations démesurées
+        TEST_CHECK(Crypto::decrypt(altered.data(), altered.size(), "correct horse", back) == Crypto::Status::Corrupt,
+                   "Test 599: itérations hors bornes — refusé sans calcul");
+        TEST_CHECK(Crypto::decrypt(block.data(), 20, "correct horse", back) == Crypto::Status::Corrupt, "Test 599: bloc tronqué refusé");
+
+        // b) Projet protégé : en-tête sans nom, contenu illisible, mot de passe demandé puis refusé puis accepté
+        QTemporaryDir dir;
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(7, 0, 0);
+        m.addBar(a, b, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        const QString file = dir.filePath("Protege.tsa");
+        const QString password = QStringLiteral("Pont-%1té-2026").arg(QChar(0x00E9));   // « é » précomposé
+        QString qerr;
+        TEST_CHECK(TSAProjectIO::saveProtectedProject(file, m, nullptr, QStringLiteral("Pont Secret XYZ"), QStringLiteral("Bureau Alpha"), password,
+                                                      QImage(), &qerr),
+                   "Test 599: projet protégé enregistré (" << qerr.toStdString() << ")");
+        TSAFileHeader h;
+        TEST_CHECK(TSAFileReader::readHeader(file.toStdString(), h) && (h.flags & FLAG_ENCRYPTED) && (h.flags & FLAG_ENCRYPTED_AEAD)
+                       && (h.requiredFeatures & FEATURE_ENCRYPTION_AEAD) && h.projectName[0] == '\0' && h.author[0] == '\0'
+                       && !(h.flags & FLAG_HAS_PREVIEW_BLOCK),
+                   "Test 599: en-tête — chiffrement annoncé, ni nom ni auteur en clair, aucun aperçu");
+        QFile raw(file);
+        raw.open(QIODevice::ReadOnly);
+        QByteArray bytes = raw.readAll();
+        raw.close();
+        TEST_CHECK(!bytes.contains("Pont Secret XYZ") && !bytes.contains("Bureau Alpha") && !bytes.contains("IPE"),
+                   "Test 599: nom, auteur et sections absents du fichier");
+        TEST_CHECK(TSAProjectIO::isPasswordProtected(file), "Test 599: projet reconnu protégé sans le déchiffrer");
+        Model r1;
+        TEST_CHECK(TSAProjectIO::loadProtectedProject(file, r1, nullptr, QString()) == OpenStatus::PasswordRequired && r1.nodes().empty(),
+                   "Test 599: sans mot de passe — demandé, rien chargé");
+        TEST_CHECK(TSAProjectIO::loadProtectedProject(file, r1, nullptr, QStringLiteral("pont-été-2026")) == OpenStatus::WrongPassword && r1.nodes().empty(),
+                   "Test 599: mauvais mot de passe — refusé, rien chargé");
+        QString name;
+        const QString decomposed = QStringLiteral("Pont-e%1t%2-2026").arg(QChar(0x0301)).arg(QStringLiteral("e") + QChar(0x0301));
+        TEST_CHECK(TSAProjectIO::loadProtectedProject(file, r1, nullptr, decomposed, &name) == OpenStatus::Ok && r1.nodes().size() == 2
+                       && r1.beams().size() == 1 && name == "Pont Secret XYZ",
+                   "Test 599: bon mot de passe (saisi en caractères décomposés, normalisé NFC) — projet relu");
+        Model r0;
+        TEST_CHECK(!TSAProjectIO::loadProject(file, r0) && r0.nodes().empty(), "Test 599: ancienne API sans mot de passe — refus");
+        QImage thumb;
+        TEST_CHECK(!TSAProjectIO::extractThumbnail(file, thumb), "Test 599: aucune miniature lue sans mot de passe");
+
+        // c) Altérations du fichier : contenu chiffré modifié (CRC recalculé) → refusé ; CRC faux ou nul → refusé (BUG-166)
+        auto rewrite = [&](const QString& path, const QByteArray& data) {
+            QFile f(path);
+            f.open(QIODevice::WriteOnly | QIODevice::Truncate);
+            f.write(data);
+            f.close();
+        };
+        auto withCrc = [&](QByteArray data, bool recompute, uint32_t forced = 0) {
+            TSAFileHeader hd;
+            std::memcpy(&hd, data.constData(), sizeof(hd));
+            hd.checksumCRC32 = recompute ? computeCRC32(reinterpret_cast<const uint8_t*>(data.constData()) + hd.payloadOffset,
+                                                        static_cast<size_t>(hd.fileSize - hd.payloadOffset))
+                                         : forced;
+            std::memcpy(data.data(), &hd, sizeof(hd));
+            return data;
+        };
+        QByteArray tampered = bytes;
+        tampered[int(h.payloadOffset) + 60] = char(tampered[int(h.payloadOffset) + 60] ^ 0x10);
+        const QString bad = dir.filePath("Altere.tsa");
+        rewrite(bad, withCrc(tampered, true));
+        Model r2;
+        TEST_CHECK(TSAProjectIO::loadProtectedProject(bad, r2, nullptr, password) == OpenStatus::WrongPassword && r2.nodes().empty(),
+                   "Test 599: contenu chiffré modifié (CRC recalculé) — refusé par l'authentification");
+        rewrite(bad, withCrc(tampered, false, h.checksumCRC32));
+        QString crcErr;
+        TEST_CHECK(TSAProjectIO::loadProtectedProject(bad, r2, nullptr, password, nullptr, nullptr, nullptr, &crcErr) == OpenStatus::Failed
+                       && crcErr.contains("CRC32"),
+                   "Test 599: somme de contrôle fausse — refusée");
+        // CRC nul (BUG-166) : fichier en clair altéré, champ mis à 0 pour contourner le contrôle
+        const QString plainFile = dir.filePath("Clair.tsa");
+        TEST_CHECK(TSAProjectIO::saveProject(plainFile, m), "Test 599: projet en clair enregistré");
+        QFile pf(plainFile);
+        pf.open(QIODevice::ReadOnly);
+        QByteArray plainBytes = pf.readAll();
+        pf.close();
+        TEST_CHECK(!TSAProjectIO::isPasswordProtected(plainFile), "Test 599: projet en clair non protégé");
+        TSAFileHeader hp;
+        std::memcpy(&hp, plainBytes.constData(), sizeof(hp));
+        TEST_CHECK(!(hp.requiredFeatures & FEATURE_ENCRYPTION_AEAD), "Test 599: projet en clair lisible par les versions 3.0 / 3.1 (aucun bit de chiffrement)");
+        QByteArray zeroCrc = plainBytes;
+        zeroCrc[int(hp.payloadOffset) + 40] = char(zeroCrc[int(hp.payloadOffset) + 40] ^ 0x5A);
+        rewrite(bad, withCrc(zeroCrc, false, 0));
+        crcErr.clear();
+        TEST_CHECK(TSAProjectIO::loadProtectedProject(bad, r2, nullptr, QString(), nullptr, nullptr, nullptr, &crcErr) == OpenStatus::Failed
+                       && crcErr.contains("CRC32") && r2.nodes().empty(),
+                   "Test 599: CRC mis à 0 — contrôle toujours fait, fichier altéré refusé (BUG-166)");
+
+        // d) Ancien fichier « chiffré » par XOR (antérieur à 3.2) : toujours lu avec son mot de passe, jamais réécrit ainsi
+        {
+            TSAFileHeader hl;
+            std::memcpy(&hl, plainBytes.constData(), sizeof(hl));
+            const auto* payload = reinterpret_cast<const uint8_t*>(plainBytes.constData()) + hl.payloadOffset;
+            const size_t payloadSize = static_cast<size_t>(hl.fileSize - hl.payloadOffset);
+            std::vector<uint8_t> xored;
+            StandardEncryptionProvider().encrypt(payload, payloadSize, xored, "ancien");
+            hl.flags = (hl.flags | FLAG_ENCRYPTED) & ~uint32_t(FLAG_HAS_PREVIEW_BLOCK);
+            hl.fileSize = hl.payloadOffset + xored.size();
+            hl.checksumCRC32 = computeCRC32(xored.data(), xored.size());
+            QByteArray legacy(reinterpret_cast<const char*>(&hl), sizeof(hl));
+            legacy.append(reinterpret_cast<const char*>(xored.data()), static_cast<qsizetype>(xored.size()));
+            const QString legacyFile = dir.filePath("AncienXor.tsa");
+            rewrite(legacyFile, legacy);
+            Model r3;
+            TEST_CHECK(TSAProjectIO::loadProtectedProject(legacyFile, r3, nullptr, QString()) == OpenStatus::PasswordRequired,
+                       "Test 599: ancien fichier XOR — mot de passe demandé");
+            TEST_CHECK(TSAProjectIO::loadProtectedProject(legacyFile, r3, nullptr, QStringLiteral("faux")) == OpenStatus::WrongPassword,
+                       "Test 599: ancien fichier XOR — mauvais mot de passe refusé");
+            TEST_CHECK(TSAProjectIO::loadProtectedProject(legacyFile, r3, nullptr, QStringLiteral("ancien")) == OpenStatus::Ok && r3.nodes().size() == 2,
+                       "Test 599: ancien fichier XOR — relu avec son mot de passe");
+        }
+
+        // e) Gestionnaire du projet : mot de passe retenu, réenregistré protégé, protection retirée
+        {
+            using TSA::Project::ProjectManager;
+            ProjectManager pm;
+            Model r4;
+            TEST_CHECK(pm.openProject(file, r4, nullptr, password, nullptr) == OpenStatus::Ok && pm.hasPassword(),
+                       "Test 599: projet protégé ouvert — mot de passe retenu pour la session");
+            const QString again = dir.filePath("Encore.tsa");
+            TEST_CHECK(pm.saveProject(again, r4, nullptr) && TSAProjectIO::isPasswordProtected(again), "Test 599: réenregistré protégé");
+            pm.setPassword(QString());
+            TEST_CHECK(pm.saveProject(again, r4, nullptr) && !TSAProjectIO::isPasswordProtected(again), "Test 599: protection retirée — fichier en clair");
+            Model r5;
+            TEST_CHECK(pm.openProject(again, r5, nullptr, QStringLiteral("inutile"), nullptr) == OpenStatus::Ok && !pm.hasPassword(),
+                       "Test 599: projet en clair — aucun mot de passe retenu");
+        }
+
+        // f) Copie de récupération d'un projet protégé : chiffrée, jamais en clair
+        {
+            const TSA::Project::RecoveryStore store(dir.filePath("recovery"));
+            QString err;
+            const QString copy = QDir(store.directory()).filePath("doc-p.tsa");
+            TEST_CHECK(store.write(QStringLiteral("doc-p"), m, nullptr, file, QStringLiteral("Pont Secret XYZ"), &err, password, QStringLiteral("Bureau Alpha"))
+                           && TSAProjectIO::isPasswordProtected(copy),
+                       "Test 599: copie de récupération chiffrée (" << err.toStdString() << ")");
+            QFile sidecar(QDir(store.directory()).filePath("doc-p.json"));
+            sidecar.open(QIODevice::ReadOnly);
+            TEST_CHECK(!sidecar.readAll().contains("Pont Secret XYZ"), "Test 599: fiche de récupération sans le nom du projet protégé");
+            const auto orphans = store.orphans();
+            TEST_CHECK(orphans.size() == 1 && orphans.front().title.isEmpty() && orphans.front().originalPath == file,
+                       "Test 599: copie proposée d'après le fichier d'origine");
+            Model r6;
+            QString nameBack, authorBack;
+            TEST_CHECK(TSAProjectIO::loadProtectedProject(copy, r6, nullptr, password, &nameBack, &authorBack) == OpenStatus::Ok
+                           && nameBack == "Pont Secret XYZ" && authorBack == "Bureau Alpha",
+                       "Test 599: nom et auteur retrouvés dans la copie récupérée");
+            // Projet non protégé : nom et auteur gardés aussi (ils étaient perdus à la récupération)
+            Model r7;
+            TEST_CHECK(store.write(QStringLiteral("doc-c"), m, nullptr, QString(), QStringLiteral("Pont"), &err, QString(), QStringLiteral("Bureau"))
+                           && TSAProjectIO::loadProject(QDir(store.directory()).filePath("doc-c.tsa"), r7, nullptr, &nameBack, &authorBack)
+                           && nameBack == "Pont" && authorBack == "Bureau",
+                       "Test 599: copie en clair — nom et auteur gardés");
+        }
+        std::cout << "[PASS] Test 599: Projets protégés par mot de passe (AES-256-GCM) ; CRC toujours vérifié" << std::endl;
         ++passed;
     }
 

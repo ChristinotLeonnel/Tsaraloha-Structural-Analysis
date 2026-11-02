@@ -1217,8 +1217,8 @@ bool runSuite_Engines(int& passed)
         TEST_CHECK(!c.supportsTruss && !c.supportsCable && !c.supportsShell && !c.supportsModal && !c.supportsMesh,
                    "Test 476: rien de plus que le périmètre qualifié");
         TEST_CHECK(fem->info().version == "0.3.0" && fem->availability().available, "Test 476: version réelle de la bibliothèque");
-        TEST_CHECK(fem->defaultSettings().value("mode").toString() == "fem3d" && fem->defaultSettings().value("fallback").toString() == "none",
-                   "Test 476: par défaut, Fem3D seul et aucun secours");
+        TEST_CHECK(fem->defaultSettings().value("mode").toString() == "fem3d" && !fem->defaultSettings().contains("fallback"),
+                   "Test 476: par défaut, Fem3D seul ; aucune option de secours (BUG-144)");
         std::cout << "[PASS] Test 476: Moteur Fem3D enregistré" << std::endl;
         ++passed;
     }
@@ -1353,22 +1353,15 @@ bool runSuite_Engines(int& passed)
                        return e.find("Hors du périmètre de Fem3D") != std::string::npos && e.find("treillis") != std::string::npos;
                    }),
                    "Test 478: refus explicite, raison donnée");
-        TEST_CHECK(!fem->run(c, prepared.model, {}).success, "Test 478: aucun calcul sans secours choisi");
+        TEST_CHECK(!fem->run(c, prepared.model, {}).success, "Test 478: aucun calcul");
 
+        // Ancien projet qui avait choisi le secours OpenSees : clé ignorée, même refus (BUG-144), jamais un calcul OpenSees
         c.engineSettings["fem3d"] = QJsonObject { { "mode", "fem3d" }, { "fallback", "opensees" } };
-        const ValidationResult withFallback = fem->validate(c, prepared.model);
-        const auto warnings = withFallback.texts(ValidationSeverity::Warning);
-        TEST_CHECK(withFallback.isValid() && std::any_of(warnings.begin(), warnings.end(), [](const std::string& w) {
-                       return w.find("Calcul confié à OpenSees") != std::string::npos;
-                   }),
-                   "Test 478: secours annoncé avant le calcul");
+        const ValidationResult legacy = fem->validate(c, prepared.model);
         const auto run = fem->run(c, prepared.model, {});
-        TEST_CHECK(run.success && run.producedBy && run.producedBy->id == "opensees" && run.results.executionMetadata().solverEngine == "OpenSees",
-                   "Test 478: résultats étiquetés OpenSees, jamais Fem3D (" << (run.producedBy ? run.producedBy->id : std::string("?")) << ")");
-        const auto& w = run.results.executionMetadata().warnings;
-        TEST_CHECK(std::any_of(w.begin(), w.end(), [](const std::string& x) { return x.find("secours de Fem3D") != std::string::npos; }),
-                   "Test 478: raison du secours dans la traçabilité");
-        std::cout << "[PASS] Test 478: Hors périmètre : refus ou secours OpenSees explicite" << std::endl;
+        TEST_CHECK(!legacy.isValid() && !run.success && !run.results.hasResults() && !run.producedBy,
+                   "Test 478: ancien réglage « fallback » ignoré : refus, aucun résultat");
+        std::cout << "[PASS] Test 478: Hors périmètre : refus explicite, jamais d'autre moteur" << std::endl;
         ++passed;
     }
     {
@@ -1535,7 +1528,7 @@ bool runSuite_Engines(int& passed)
         c.common.supportRestraints = SupportRestraintMode::None;
         c.scope.type = ScopeType::SelectedElements;
         c.scope.columns = { column };
-        c.engineSettings["fem3d"] = QJsonObject { { "mode", "fem3d" }, { "fallback", "opensees" } };
+        c.engineSettings["fem3d"] = QJsonObject { { "mode", "fem3d" } };
         const auto prep = mgr.prepare(m, &gm, c);
         const auto run = prep.canRun() ? mgr.run(c, prep) : AnalysisRunResult {};
         std::string prepErrors;
@@ -1554,7 +1547,8 @@ bool runSuite_Engines(int& passed)
         std::unique_ptr<TSA::UI::AnalysisEngineOptionsWidget> panel(options.create("fem3d", nullptr));
         panel->loadSettings(QJsonObject { { "mode", "compare" }, { "fallback", "opensees" } });
         const QJsonObject back = panel->saveSettings();
-        TEST_CHECK(back.value("mode").toString() == "compare" && back.value("fallback").toString() == "opensees", "Test 480: réglages relus");
+        TEST_CHECK(back.value("mode").toString() == "compare" && !back.contains("fallback"),
+                   "Test 480: réglages relus, ancienne clé « fallback » non réécrite (BUG-144)");
         panel->loadSettings({});
         TEST_CHECK(panel->saveSettings() == Fem3DEngine::settingsToJson({}), "Test 480: valeurs par défaut du moteur");
         std::cout << "[PASS] Test 480: Options Fem3D" << std::endl;

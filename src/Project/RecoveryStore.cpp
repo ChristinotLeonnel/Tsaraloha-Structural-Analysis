@@ -37,24 +37,25 @@ std::unique_ptr<QLockFile> RecoveryStore::lock(const QString& key) const
 }
 
 bool RecoveryStore::write(const QString& key, const TSA::Model::Model& model, const TSA::Grid::GridManager* grids, const QString& originalPath,
-                          const QString& title, QString* error) const
+                          const QString& title, QString* error, const QString& password, const QString& author) const
 {
     if (key.isEmpty() || !QDir().mkpath(m_dir))
     {
         if (error) *error = QStringLiteral("dossier de récupération inaccessible : %1").arg(m_dir);
         return false;
     }
-    std::string err;
-    // Écriture atomique (QSaveFile dans TSAProjectIO) : une copie interrompue ne remplace jamais la précédente
-    if (!TSA::IO::TSAProjectIO::saveToFile(path(key, ".tsa"), model, grids, &err))
+    QString err;
+    // Écriture atomique (QSaveFile dans TSAProjectIO) : une copie interrompue ne remplace jamais la précédente. Projet
+    // protégé : copie chiffrée avec le même mot de passe, demandé à la récupération comme à l'ouverture.
+    if (!TSA::IO::TSAProjectIO::saveProtectedProject(path(key, ".tsa"), model, grids, title, author, password, QImage(), &err))
     {
-        if (error) *error = QString::fromStdString(err);
+        if (error) *error = err;
         return false;
     }
     QSaveFile info(path(key, ".json"));
     if (!info.open(QIODevice::WriteOnly)) return false;
     info.write(QJsonDocument(QJsonObject { { "originalPath", originalPath },
-                                           { "title", title },
+                                           { "title", password.isEmpty() ? title : QString() },
                                            { "savedAt", QDateTime::currentDateTimeUtc().toString(Qt::ISODate) } })
                    .toJson(QJsonDocument::Compact));
     return info.commit();

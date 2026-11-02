@@ -61,8 +61,9 @@ using namespace TSA::Blueprint;
 namespace
 {
 /// Vue : molette = zoom autour du curseur, bouton du milieu = déplacement, cadre = sélection. Les touches de l'éditeur
-/// (copier, coller, dupliquer, commentaire, documentation) sont prises par la vue quand elle a le focus, avant les
-/// raccourcis de la fenêtre (Ctrl+C / Ctrl+V de la fenêtre de TSA) : sinon le raccourci serait ambigu.
+/// (copier, coller, dupliquer, commentaire, documentation, annuler / rétablir le graphe) sont prises par la vue quand elle
+/// a le focus, avant les raccourcis de la fenêtre (Ctrl+C / Ctrl+V / Ctrl+Z de la fenêtre de TSA) : sinon le raccourci
+/// serait ambigu.
 class BlueprintView : public QGraphicsView
 {
 public:
@@ -391,7 +392,8 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     bar->addSeparator();
     m_actUndo = bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/undo.svg")), tr("Annuler (graphe)"), this, &BlueprintEditor::undo);
     m_actRedo = bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/redo.svg")), tr("Rétablir (graphe)"), this, &BlueprintEditor::redo);
-    m_actUndo->setToolTip(tr("Annuler la dernière modification du Blueprint (l'historique du projet est distinct)"));
+    m_actUndo->setToolTip(tr("Annuler la dernière modification du Blueprint (Ctrl+Z dans le graphe ; l'historique du projet est distinct)"));
+    m_actRedo->setToolTip(tr("Rétablir la modification du Blueprint (Ctrl+Y dans le graphe ; l'historique du projet est distinct)"));
     bar->addAction(tr("Supprimer"), this, [this] { m_scene->deleteSelection(); });
     // Touches traitées par la vue du graphe (BlueprintView), pas par des raccourcis : voir la classe
     auto shortcutAction = [&](const QString& text, const QKeySequence& key, auto slot, const QString& tip) {
@@ -608,13 +610,20 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     auto* view = new BlueprintView(m_scene, split);
     view->handles = [](QKeyEvent* k) {
         const auto mods = k->modifiers() & ~Qt::KeypadModifier;
-        return k->matches(QKeySequence::Copy) || k->matches(QKeySequence::Paste) || (k->key() == Qt::Key_D && mods == Qt::ControlModifier)
+        // Ctrl+Z / Ctrl+Y (et Ctrl+Maj+Z) : historique du GRAPHE quand le canevas a le focus (BUG-140 : annulaient le projet) ;
+        // hors du canevas, ils restent l'Annuler du projet
+        return k->matches(QKeySequence::Undo) || k->matches(QKeySequence::Redo)
+               || (k->key() == Qt::Key_Y && mods == Qt::ControlModifier)
+               || k->matches(QKeySequence::Copy) || k->matches(QKeySequence::Paste) || (k->key() == Qt::Key_D && mods == Qt::ControlModifier)
                || (k->key() == Qt::Key_C && mods == Qt::NoModifier) || (k->key() == Qt::Key_F1 && mods == Qt::NoModifier)
                || (k->key() == Qt::Key_F && mods == Qt::NoModifier) || (k->key() == Qt::Key_Home && mods == Qt::NoModifier)
                || k->matches(QKeySequence::Find);
     };
     view->onKey = [this](QKeyEvent* k) {
-        if (k->matches(QKeySequence::Copy)) copySelection();
+        const auto mods = k->modifiers() & ~Qt::KeypadModifier;
+        if (k->matches(QKeySequence::Undo)) undo();
+        else if (k->matches(QKeySequence::Redo) || (k->key() == Qt::Key_Y && mods == Qt::ControlModifier)) redo();
+        else if (k->matches(QKeySequence::Copy)) copySelection();
         else if (k->matches(QKeySequence::Paste)) paste();
         else if (k->matches(QKeySequence::Find)) focusNodeSearch();
         else if (k->key() == Qt::Key_D) duplicateSelection();

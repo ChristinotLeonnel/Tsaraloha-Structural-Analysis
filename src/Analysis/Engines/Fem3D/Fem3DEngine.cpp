@@ -45,14 +45,12 @@ Fem3DEngine::Settings Fem3DEngine::settingsFromContext(const AnalysisContext& co
     const QJsonObject s = context.settingsFor(kId);
     Settings out;
     out.mode = s.value("mode").toString() == QLatin1String("compare") ? Mode::Compare : Mode::Fem3D;
-    out.fallback = s.value("fallback").toString() == QLatin1String("opensees") ? Fallback::OpenSees : Fallback::None;
-    return out;
+    return out;   // « fallback » des anciens projets ignoré (BUG-144)
 }
 
 QJsonObject Fem3DEngine::settingsToJson(const Settings& settings)
 {
-    return QJsonObject { { "mode", settings.mode == Mode::Compare ? "compare" : "fem3d" },
-                         { "fallback", settings.fallback == Fallback::OpenSees ? "opensees" : "none" } };
+    return QJsonObject { { "mode", settings.mode == Mode::Compare ? "compare" : "fem3d" } };
 }
 
 EngineInfo Fem3DEngine::info() const
@@ -100,16 +98,11 @@ ValidationResult Fem3DEngine::validate(const AnalysisContext& context, const Ana
     for (const auto& e : c.errors) v.addError(cat, e);
     for (const auto& n : c.notes) v.addInfo(cat, n);
 
-    const bool openSeesNeeded = (!c.outOfScope.empty() && s.fallback == Fallback::OpenSees) || (c.outOfScope.empty() && s.mode == Mode::Compare);
+    const bool openSeesNeeded = c.outOfScope.empty() && s.mode == Mode::Compare;
     if (!c.outOfScope.empty())
     {
         const std::string reasons = joined(c.outOfScope);
-        if (s.fallback == Fallback::OpenSees)
-            v.addWarning(cat, tr("Hors du périmètre de Fem3D : %1. Calcul confié à OpenSees (secours choisi dans les options de "
-                                 "Fem3D) : les résultats porteront l'identité d'OpenSees.").arg(QString::fromStdString(reasons)).toStdString());
-        else
-            v.addError(cat, tr("Hors du périmètre de Fem3D : %1. Choisir le moteur OpenSees, ou activer le secours OpenSees dans "
-                               "les options de Fem3D.").arg(QString::fromStdString(reasons)).toStdString());
+        v.addError(cat, tr("Hors du périmètre de Fem3D : %1. Choisir le moteur OpenSees.").arg(QString::fromStdString(reasons)).toStdString());
         if (s.mode == Mode::Compare)
             v.addWarning(cat, tr("Comparaison impossible : Fem3D ne peut pas calculer ce modèle.").toStdString());
     }
@@ -118,7 +111,7 @@ ValidationResult Fem3DEngine::validate(const AnalysisContext& context, const Ana
         const EngineAvailability os = m_openSees->availability();
         if (!os.available)
             v.addError(cat, tr("OpenSees est requis (%1) mais indisponible : %2")
-                                .arg(s.mode == Mode::Compare ? tr("comparaison") : tr("secours"), QString::fromStdString(os.message))
+                                .arg(tr("comparaison"), QString::fromStdString(os.message))
                                 .toStdString());
         else
             v.merge(m_openSees->validate(context, model));
@@ -142,25 +135,8 @@ AnalysisRunResult Fem3DEngine::run(const AnalysisContext& context, const Analysi
     }
     if (!c.outOfScope.empty())
     {
-        const std::string reasons = joined(c.outOfScope);
-        if (s.fallback != Fallback::OpenSees)
-        {
-            r.message = tr("Hors du périmètre de Fem3D : %1. Aucun calcul n'a été fait.").arg(QString::fromStdString(reasons)).toStdString();
-            return r;
-        }
-        // Secours EXPLICITE : raisons consignées, résultats étiquetés OpenSees.
-        const std::string why = tr("Calcul fait par OpenSees (secours de Fem3D) — hors du périmètre de Fem3D : %1").arg(QString::fromStdString(reasons)).toStdString();
-        log("[Fem3D] " + why);
-        r = m_openSees->run(context, model, callbacks);
-        r.producedBy = m_openSees->info();
-        if (r.success)
-        {
-            auto meta = r.results.executionMetadata();
-            meta.warnings.push_back(why);
-            r.results.setExecutionMetadata(meta);
-            r.results.appendLog("\n[AVERTISSEMENT] " + why + "\n");
-            r.message = tr("Calcul OpenSees terminé (secours de Fem3D).").toStdString();
-        }
+        // Refus, jamais de calcul par un autre moteur (BUG-144 : secours OpenSees retiré)
+        r.message = tr("Hors du périmètre de Fem3D : %1. Aucun calcul n'a été fait.").arg(QString::fromStdString(joined(c.outOfScope))).toStdString();
         return r;
     }
     if (callbacks.cancelRequested && callbacks.cancelRequested())

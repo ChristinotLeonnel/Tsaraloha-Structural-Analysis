@@ -3,13 +3,14 @@
 // Moteur « fem3d » : moteur EF 3D de TSA (dépôt voisin TSA-3D-FEM-Engine), MOTEUR SECONDAIRE. OpenSees reste le moteur
 // 3D par défaut tant que la qualification de Fem3D dans TSA n'est pas complète (docs/ANALYSIS_ENGINES.md).
 //
-// Logique de secours (réglages du moteur, jamais implicite) :
-//  - mode « fem3d » (défaut) : Fem3D seul ; un modèle hors de son périmètre est REFUSÉ, avec la liste des raisons ;
-//  - secours « opensees » : un modèle hors périmètre est calculé par OpenSees ; la validation l'annonce avant le calcul
-//    et les résultats portent l'identité d'OpenSees (AnalysisRunResult::producedBy) ;
-//  - mode « compare » : Fem3D ET OpenSees ; résultats affichés = Fem3D, écarts dans une table et les avertissements,
+// Modes (réglages du moteur) :
+//  - « fem3d » (défaut) : Fem3D seul ; un modèle hors de son périmètre est REFUSÉ, avec la liste des raisons (choisir
+//    alors le moteur OpenSees) ;
+//  - « compare » : Fem3D ET OpenSees ; résultats affichés = Fem3D, écarts dans une table et les avertissements,
 //    aucune fusion des deux jeux de résultats.
-// Un mécanisme ou une donnée invalide n'est jamais une raison de secours : c'est une propriété du modèle.
+// Plus de secours OpenSees (BUG-144) : depuis Fem3D 0.3.0, les seuls modèles hors périmètre (treillis, câbles, coques)
+// sont refusés avant par AnalysisManager ; l'option n'avait plus d'effet. La clé « fallback » des anciens projets est
+// ignorée.
 
 #include "../../Engine/AnalysisEngine.h"
 
@@ -26,11 +27,9 @@ public:
     static constexpr const char* kId = "fem3d";
 
     enum class Mode { Fem3D, Compare };
-    enum class Fallback { None, OpenSees };
     struct Settings
     {
         Mode mode = Mode::Fem3D;
-        Fallback fallback = Fallback::None;
     };
     static Settings settingsFromContext(const AnalysisContext& context);
     static QJsonObject settingsToJson(const Settings& settings);
@@ -53,7 +52,7 @@ public:
     void cancel() override;
 
 private:
-    std::unique_ptr<OpenSeesEngine> m_openSees;   ///< secours et comparaison (même exécutable que le moteur OpenSees)
+    std::unique_ptr<OpenSeesEngine> m_openSees;   ///< comparaison (même exécutable que le moteur OpenSees)
 };
 
 /// Comparaison de deux jeux de résultats (déplacements, réactions, efforts aux extrémités des barres) : table ajoutée

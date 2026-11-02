@@ -44,6 +44,8 @@ public:
     virtual bool decrypt(const uint8_t* inData, size_t inSize, std::vector<uint8_t>& outData, const std::string& key) = 0;
 };
 
+/// Ancien « chiffrement » par XOR avec le mot de passe : LECTURE des fichiers antérieurs à 3.2 seulement, jamais écrit
+/// (BUG-167 : mot de passe retrouvé à partir d'octets connus, aucune authentification). Écriture : TSAEncryption.h.
 class StandardEncryptionProvider : public IEncryptionProvider
 {
 public:
@@ -63,12 +65,13 @@ public:
     void setCompressionEnabled(bool enabled) { m_useCompression = enabled; }
     void setCompressionProvider(std::shared_ptr<ICompressionProvider> provider) { m_compressor = provider; }
 
+    /// Protection par mot de passe (UTF-8, non vide) : contenu chiffré AES-256-GCM, clé dérivée PBKDF2-HMAC-SHA-256
+    /// (TSAEncryption.h). Chiffrement impossible : l'enregistrement échoue, jamais un fichier écrit en clair.
     void setEncryptionEnabled(bool enabled, const std::string& password = "")
     {
         m_useEncryption = enabled;
         m_password = password;
     }
-    void setEncryptionProvider(std::shared_ptr<IEncryptionProvider> provider) { m_encryptor = provider; }
 
     void setThumbnail(const QImage& thumbnail) { m_thumbnail = thumbnail; }
 
@@ -116,7 +119,16 @@ private:
     std::string m_password;
     QImage m_thumbnail;
     std::shared_ptr<ICompressionProvider> m_compressor;
-    std::shared_ptr<IEncryptionProvider> m_encryptor;
+};
+
+/// Raison d'un échec de lecture utile à l'interface (demander ou redemander le mot de passe).
+enum class LoadFailure
+{
+    None,
+    PasswordRequired,        ///< projet protégé, aucun mot de passe donné
+    WrongPassword,           ///< mot de passe refusé (ou contenu chiffré modifié : indiscernable, par construction)
+    EncryptionUnavailable,   ///< projet protégé, chiffrement indisponible sur ce poste
+    Other
 };
 
 // -----------------------------------------------------------------------------
@@ -129,7 +141,10 @@ public:
     ~TSAFileReader() = default;
 
     void setCompressionProvider(std::shared_ptr<ICompressionProvider> provider) { m_compressor = provider; }
-    void setEncryptionProvider(std::shared_ptr<IEncryptionProvider> provider) { m_encryptor = provider; }
+    void setEncryptionProvider(std::shared_ptr<IEncryptionProvider> provider) { m_encryptor = provider; }   ///< ancien XOR (lecture)
+
+    /// Raison du dernier échec de loadFromFile (None après un succès).
+    LoadFailure lastFailure() const { return m_lastFailure; }
 
     bool loadFromFile(const std::string& filePath,
                       TSA::Model::Model& model,
@@ -177,6 +192,7 @@ private:
 private:
     std::shared_ptr<ICompressionProvider> m_compressor;
     std::shared_ptr<IEncryptionProvider> m_encryptor;
+    LoadFailure m_lastFailure = LoadFailure::None;
     uint16_t m_formatMajor = 0;   ///< version majeure du fichier en cours de lecture (1 : sections migrées)
 };
 
@@ -234,6 +250,36 @@ public:
                                  QString* errorMessage = nullptr);
 
     static bool isTSAFile(const QString& filePath);
+
+    // --- Projets protégés par mot de passe (BUG-167, format 3.2) ---------------------------------------------------
+    enum class OpenStatus { Ok, PasswordRequired, WrongPassword, Failed };
+
+    /// Le fichier est protégé par mot de passe (en-tête lu, rien déchiffré).
+    static bool isPasswordProtected(const QString& filePath);
+    /// Chiffrement authentifié disponible sur ce poste (Windows : toujours ; ailleurs : OpenSSL trouvé à la compilation).
+    static bool encryptionAvailable();
+    /// Octets du mot de passe : UTF-8 de la forme normalisée NFC (même mot de passe quelle que soit la saisie des accents).
+    static std::string passwordBytes(const QString& password);
+
+    /// Enregistre ; `password` vide : fichier non protégé (comme saveProject).
+    static bool saveProtectedProject(const QString& filePath,
+                                     const TSA::Model::Model& model,
+                                     const TSA::Grid::GridManager* gridManager,
+                                     const QString& projectName,
+                                     const QString& author,
+                                     const QString& password,
+                                     const QImage& thumbnail = QImage(),
+                                     QString* errorMessage = nullptr);
+
+    /// Ouvre ; projet protégé : `password` exigé (PasswordRequired s'il est vide, WrongPassword s'il est refusé).
+    static OpenStatus loadProtectedProject(const QString& filePath,
+                                           TSA::Model::Model& model,
+                                           TSA::Grid::GridManager* gridManager,
+                                           const QString& password,
+                                           QString* outProjectName = nullptr,
+                                           QString* outAuthor = nullptr,
+                                           QImage* outThumbnail = nullptr,
+                                           QString* errorMessage = nullptr);
 };
 
 } // namespace TSA::IO
