@@ -2,6 +2,11 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — Diagrammes rabattus dans le plan en vue 2D (branche feature/diagrams-folded-2d)
+
+- `DiagramGeometry::foldOffsetIntoPlane` : diagramme à plus de 60° du plan regardé rabattu perpendiculairement à la barre, sens
+  conservé ; retracé à l'entrée et à la sortie du 2D et au changement de plan (`applyIsolation`) ; annoncé dans la légende. Test 609.
+
 ## 2026-11-02 — Résultats multiples, coupe 2D du plan, textes, déformée filaire, couleurs par type de charge (branche feature/results-multi-section-view)
 
 - ResultsVisualManager : couches de diagrammes (échelle et couleur propres), `setDiagramVisible`, boutons cochables, `setDiagramType`

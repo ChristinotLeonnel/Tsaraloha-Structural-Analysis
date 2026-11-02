@@ -1133,6 +1133,57 @@ bool runSuite_Display(int& passed)
         std::cout << "[PASS] Test 608: Valeurs des extrémités, lignes de rappel vers la courbe" << std::endl;
         ++passed;
 
+        // 609 : en vue 2D, un diagramme perpendiculaire au plan est rabattu dans le plan, son sens conservé
+        {
+            using G = TSA::Geometry::DiagramGeometry;
+            const gp_Pnt a(0, 0, 0), b(6, 0, 0);
+            const gp_Vec up(0, 0, 1), down(0, 0, -1), inPlane(0, 1, 0);
+            TEST_CHECK(G::foldOffsetIntoPlane(a, b, up, gp_Dir(0, 0, 1)).IsEqual(gp_Vec(0, 1, 0), 1e-9, 1e-9), "Test 609: perpendiculaire au plan : rabattu");
+            TEST_CHECK(G::foldOffsetIntoPlane(a, b, down, gp_Dir(0, 0, 1)).IsEqual(gp_Vec(0, -1, 0), 1e-9, 1e-9), "Test 609: sens conservé");
+            TEST_CHECK(G::foldOffsetIntoPlane(a, b, inPlane, gp_Dir(0, 0, 1)).IsEqual(inPlane, 1e-9, 1e-9), "Test 609: déjà dans le plan : inchangé");
+            TEST_CHECK(G::foldOffsetIntoPlane(a, gp_Pnt(0, 0, 3), up, gp_Dir(0, 0, 1)).IsEqual(up, 1e-9, 1e-9), "Test 609: barre perpendiculaire au plan : inchangé");
+        }
+        planeAt(3.0);
+        rv->setDiagramTypes({ DT::BendingMy });
+        pump();
+        view.setMode2D(true);
+        pump();
+        rv->layoutLabels();
+        pump();
+        capture("res_6_diagramme_rabattu");
+        const auto folded = rv->leaderSegments();
+        int inThePlane = 0, positiveSide = 0, negativeSide = 0;
+        for (const auto& [curve, text] : folded)
+        {
+            inThePlane += std::abs(curve.Z() - n1->z()) < 1e-6;
+            positiveSide += curve.Y() > 1e-3;
+            negativeSide += curve.Y() < -1e-3;
+        }
+        TEST_CHECK(!folded.empty() && inThePlane == int(folded.size()), "Test 609: en plan, courbe dans le plan (" << inThePlane << " / " << folded.size() << ")");
+        TEST_CHECK(positiveSide > 0 && negativeSide > 0, "Test 609: valeurs positives et négatives de part et d'autre de la poutre (" << positiveSide << ", " << negativeSide << ")");
+        TEST_CHECK(rv->legendSummaryText().contains(QStringLiteral("rabattus")), "Test 609: rabattement annoncé dans la légende");
+        view.setMode2D(false);
+        pump();
+        rv->layoutLabels();
+        int outOfPlane = 0;
+        for (const auto& [curve, text] : rv->leaderSegments()) outOfPlane += std::abs(curve.Z() - n1->z()) > 1e-3;
+        TEST_CHECK(outOfPlane > 0 && !rv->legendSummaryText().contains(QStringLiteral("rabattus")), "Test 609: retour en 3D : direction réelle du diagramme");
+        // Élévation du portique : My est déjà dans le plan, rien n'est rabattu
+        view.setActiveWorkPlane(WorkPlane(WorkPlaneType::GlobalXZ, "File 1", 0.0));
+        view.setMode2D(true);
+        pump();
+        rv->layoutLabels();
+        int inElevation = 0;
+        for (const auto& [curve, text] : rv->leaderSegments()) inElevation += std::abs(curve.Y()) < 1e-6;
+        TEST_CHECK(inElevation == int(rv->leaderSegments().size()) && !rv->leaderSegments().empty() && !rv->legendSummaryText().contains(QStringLiteral("rabattus")),
+                   "Test 609: élévation : My déjà dans le plan, rien de rabattu");
+        view.setMode2D(false);
+        planeAt(0.0);
+        rv->setDiagramType(DT::None);
+        pump();
+        std::cout << "[PASS] Test 609: Diagrammes rabattus dans le plan en vue 2D" << std::endl;
+        ++passed;
+
         // 607 : déformée filaire ; couleurs par type de charge
         rv->setDiagramType(DT::None);
         rv->setReactionsVisible(false);

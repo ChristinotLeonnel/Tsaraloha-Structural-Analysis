@@ -512,6 +512,8 @@ QString ResultsVisualManager::legendSummaryText() const
                         .arg(layer.scale > 0.0 ? 1.0 / layer.scale : 0.0, 0, 'g', 4)
                         .arg(std::abs(m_diagramMultiplier - 1.0) < 1e-12 ? tr(" (échelle automatique)") : tr(" (automatique ×%1)").arg(m_diagramMultiplier, 0, 'g', 3));
     }
+    if (m_anyDiagramFolded)
+        text += tr("Vue en plan : diagrammes perpendiculaires au plan rabattus dans le plan\n");
     if (!m_layers.empty() && m_hiddenDiagramLabels > 0)
         text += tr("%1 étiquette(s) superposée(s) non affichée(s) (valeur égale ou inférieure à une étiquette voisine)\n").arg(m_hiddenDiagramLabels);
     return text;
@@ -839,6 +841,14 @@ void ResultsVisualManager::applyIsolation()
 {
     auto ctx = context();
     if (ctx.IsNull() || !m_occView) return;
+    // Vue 2D ouverte, fermée ou plan changé : les diagrammes sont retracés pour ce plan (cette passe suit tous ces changements)
+    const bool fold = m_occView->isMode2D();
+    if (!m_layers.empty() && (fold != m_diagramsFolded || (fold && !m_occView->activeWorkPlane().normal().IsEqual(m_foldNormal, 1e-9))))
+    {
+        updateDiagramShapes();   // rappelle cette fonction, état à jour
+        updateLegend();
+        return;
+    }
     auto setShown = [&](const Handle(AIS_InteractiveObject)& object, bool visible) {
         if (object.IsNull() || visible == ctx->IsDisplayed(object)) return;
         if (visible) ctx->Display(object, false);
@@ -1067,6 +1077,9 @@ void ResultsVisualManager::updateDiagramShapes()
     if (!ctx) return;
 
     clearDiagramShapes();
+    m_diagramsFolded = m_occView && m_occView->isMode2D();
+    if (m_diagramsFolded) m_foldNormal = m_occView->activeWorkPlane().normal();
+    m_anyDiagramFolded = false;
 
     if (m_layers.empty() || !m_results || !m_results->isValid() || !m_model)
     {
@@ -1150,8 +1163,18 @@ void ResultsVisualManager::updateDiagramShapes()
         }
 
         const DiagramKey shapeKey { diagramType, elKey };
+        // Vue 2D : un diagramme perpendiculaire au plan est rabattu dans le plan, sinon on ne le verrait que par la tranche
+        gp_Vec drawDirection = TSA::Geometry::DiagramGeometry::getDiagramOffsetDirection(p1, p2, rot, diagramType);
+        if (m_diagramsFolded)
+        {
+            const gp_Vec natural = drawDirection;
+            drawDirection = TSA::Geometry::DiagramGeometry::foldOffsetIntoPlane(p1, p2, natural, m_foldNormal);
+            if (drawDirection.Magnitude() > 1e-9 && natural.Magnitude() > 1e-9 && m_occView->isResultElementVisible(elKey)
+                && drawDirection.Normalized().Dot(natural.Normalized()) < 0.999)
+                m_anyDiagramFolded = true;
+        }
         TopoDS_Shape dShape = TSA::Geometry::DiagramGeometry::createDiagramShape(
-            p1, p2, rot, stations, diagramType, layer.scale, true
+            p1, p2, rot, stations, diagramType, layer.scale, true, &drawDirection
         );
 
         if (!dShape.IsNull())
@@ -1178,7 +1201,7 @@ void ResultsVisualManager::updateDiagramShapes()
                 if (v < minVal) { minVal = v; minIdx = s; }
             }
 
-            gp_Vec offsetDir = TSA::Geometry::DiagramGeometry::getDiagramOffsetDirection(p1, p2, rot, diagramType);
+            gp_Vec offsetDir = drawDirection;
             if (offsetDir.Magnitude() < 1e-6) continue;
             offsetDir.Normalize();
             gp_Vec vAB(p1, p2);

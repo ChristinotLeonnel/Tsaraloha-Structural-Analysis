@@ -131,6 +131,18 @@ gp_Vec DiagramGeometry::getDiagramOffsetDirection(
     }
 }
 
+gp_Vec DiagramGeometry::foldOffsetIntoPlane(const gp_Pnt& p1, const gp_Pnt& p2, const gp_Vec& offset, const gp_Dir& planeNormal)
+{
+    if (offset.Magnitude() < 1e-12) return offset;
+    const gp_Vec normal(planeNormal);
+    const double outOfPlane = offset.Normalized().Dot(normal);
+    if (std::abs(outOfPlane) < 0.5) return offset;
+    gp_Vec side = normal.Crossed(gp_Vec(p1, p2));
+    if (side.Magnitude() < 1e-9) return offset;
+    side.Normalize();
+    return outOfPlane < 0.0 ? -side : side;
+}
+
 TopoDS_Shape DiagramGeometry::createDiagramShape(
     const gp_Pnt& p1,
     const gp_Pnt& p2,
@@ -138,7 +150,8 @@ TopoDS_Shape DiagramGeometry::createDiagramShape(
     const std::vector<TSA::Analysis::StationForces>& stations,
     DiagramType type,
     double scaleFactor,
-    bool showHatching)
+    bool showHatching,
+    const gp_Vec* offsetDirection)
 {
     if (type == DiagramType::None || stations.size() < 2)
     {
@@ -154,7 +167,7 @@ TopoDS_Shape DiagramGeometry::createDiagramShape(
     double length = vAB.Magnitude();
     if (length < 1e-5) return TopoDS_Shape();
 
-    gp_Vec offsetDir = getDiagramOffsetDirection(p1, p2, rotationDeg, type);
+    gp_Vec offsetDir = offsetDirection ? *offsetDirection : getDiagramOffsetDirection(p1, p2, rotationDeg, type);
     if (offsetDir.Magnitude() < 1e-6) return TopoDS_Shape();
     offsetDir.Normalize();
 
