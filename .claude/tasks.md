@@ -45,6 +45,8 @@ Last Updated: 2026-11-02 soir. Avant : 2026-11-01. Uniquement des tâches réell
 - [x] Commit, fusion et push des deux branches (accord du 2026-11-02 ; TSA fe5ca79, TSALab 774bc55).
 - [x] Décisions BUG-144 (retrait), BUG-140 (Ctrl+Z du graphe), BUG-167 (AES-GCM facultatif) ; BUG-166 terminé — branche
       fix/file-protection-fem3d-blueprint-undo, tests 598-599.
+- [x] Une seule fenêtre de TSA (ADR-028), test 600, essai réel de TSA.exe sur bureau masqué ; branche feature/single-instance-documents.
+- [ ] Essai manuel dans TSA.exe : double-clic et sélection multiple depuis le vrai Explorateur (premier plan de la fenêtre).
 - [ ] Essai manuel dans TSA.exe : protéger, enregistrer, rouvrir (mot de passe faux puis bon), récupération d'un projet protégé.
 - [ ] Linux : compiler avec OpenSSL et exécuter le test 599.
 - [ ] Restent ouverts, hors portée d'une correction ici : voir known-issues.md (décisions : aucune en attente ; autres dépôts :

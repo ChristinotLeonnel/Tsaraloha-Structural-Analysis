@@ -335,3 +335,17 @@ Consequences: un fichier protégé n'expose que son nom de fichier, ses dates et
 projet. Sa fiche de récupération garde le chemin d'origine, en clair (nécessaire pour la proposer). Chaque enregistrement, copie
 de récupération comprise, dérive la clé (durée non mesurée). Linux non vérifié.
 Status: ACTIVE
+
+## ADR-028
+Title: Une seule fenêtre de TSA, tous les projets dans ses onglets (comme AutoCAD)
+Decision: (2026-11-02, demande de l'utilisateur)
+- `TSA::Platform::SingleInstance` : élection par QLockFile (libéré si le processus disparaît), canal QLocalServer réservé au compte,
+  nom propre au produit, à l'utilisateur et à la session Windows, dans un fil à part (une instance occupée acquitte quand même).
+- `TSA::Platform::OpenFileQueue` : fichiers ouverts un par un, retour à la boucle d'événements entre deux, attente des boîtes
+  modales (une ouverture ne démarre jamais au milieu d'une autre). `AppShell::openProjectFiles`.
+- Lancement sans fichier : fenêtre existante au premier plan. Instance figée (aucune réponse en 15 s) : le lancement fonctionne
+  seul plutôt que de perdre les fichiers. `--new-instance` : seconde fenêtre explicite.
+- TSA seul : TSALab a son propre main et n'est pas modifié ; les deux classes lui sont réutilisables.
+Consequences: l'Explorateur lance un processus par fichier sélectionné (jusqu'à 15, limite de Windows pour la commande Ouvrir) :
+ils se terminent aussitôt. Deux installations de TSA partagent la même instance (--new-instance pour comparer).
+Status: ACTIVE

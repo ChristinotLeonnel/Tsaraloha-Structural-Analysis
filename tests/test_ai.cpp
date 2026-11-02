@@ -13,6 +13,10 @@
 #include "AI/Providers/MockAIProvider.h"
 #include "AI/Providers/AIProviderRouter.h"
 #include "AI/RAG/EngineeringKnowledgeBase.h"
+#include <QFile>
+#include <QFileInfo>
+#include <QTemporaryDir>
+#include <cmath>
 #include "AI/Tools/AIToolRegistry.h"
 #include "Model/Load/LoadCase.h"
 #include "Model/Load/NodalLoad.h"
@@ -325,6 +329,28 @@ bool runSuite_AI(int& passed)
         TEST_CHECK(!hits.empty() && hits.front().chunk->heading == "Flèches" && hits.front().chunk->source == "docs/ANALYSIS.md", "Test 122: extrait pertinent et sourcé");
         TEST_CHECK(kb.search("béton précontraint fluage").empty(), "Test 122: aucune source → aucun extrait");
         TEST_CHECK(EngineeringKnowledgeBase::tokenize("Flèche ÉLEVÉE").contains("fleche"), "Test 122: normalisation des accents");
+        {
+            // Indexation d'un dossier : statistiques calculées une fois, mêmes résultats que document par document
+            QTemporaryDir dir;
+            auto write = [&](const QString& name, const QByteArray& text) {
+                QFile f(dir.filePath(name));
+                f.open(QIODevice::WriteOnly);
+                f.write(text);
+            };
+            const QByteArray a = "# Flèches\nLe critère de flèche d'un plancher courant est L/250, selon l'annexe nationale du projet.";
+            const QByteArray b = "# Ruban\nLe ruban contient les onglets Accueil, Modèle et Résultats de l'application TSA.";
+            write("a.md", a);
+            write("b.md", b);
+            EngineeringKnowledgeBase folder, oneByOne;
+            const QString name = QFileInfo(dir.path()).fileName();
+            TEST_CHECK(folder.indexDirectories({ dir.path() }) == 2, "Test 122: dossier indexé (" << folder.chunkCount() << " extraits)");
+            oneByOne.addDocument(name + "/a.md", QString::fromUtf8(a));
+            oneByOne.addDocument(name + "/b.md", QString::fromUtf8(b));
+            const auto x = folder.search("critère de flèche plancher"), y = oneByOne.search("critère de flèche plancher");
+            TEST_CHECK(!x.empty() && x.size() == y.size() && x.front().chunk->source == y.front().chunk->source
+                           && std::abs(x.front().score - y.front().score) < 1e-12,
+                       "Test 122: dossier indexé — mêmes résultats et mêmes scores que document par document");
+        }
         std::cout << "[PASS] Test 122: Base de connaissances (BM25)" << std::endl;
         ++passed;
     }

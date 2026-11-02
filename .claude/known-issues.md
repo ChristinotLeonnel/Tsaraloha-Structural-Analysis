@@ -6,6 +6,13 @@ Last Updated: 2026-11-02 nuit (BUG-166 terminé — CRC toujours vérifié, la p
 
 Audit technique du 2026-10-31 : détail, reproduction et correction de BUG-148 à BUG-168 dans docs/audit/2026-10-31/TSA_BUG_REGISTER.md.
 
+## BUG-180
+Status: OPEN (LOW, cosmétique, constaté le 2026-11-02) — un plantage laisse un fichier <clé>.lock (63 octets) dans
+<AppLocalData>/recovery quand aucune copie n'avait été écrite : RecoveryStore::orphans ne le liste pas et rien ne le supprime
+(12 fichiers après 6 essais d'arrêt brutal). Aucun effet sur la récupération. Piste : balayer les verrous périmés sans copie à
+l'appel de orphans().
+Related files: src/Project/RecoveryStore.cpp
+
 ## BUG-170
 Status: OPEN (LOW, vu une fois le 2026-10-31, non reproduit) — suite `surfaces` : 12 tests réussis, ligne RESULTS écrite, puis processus
 bloqué jusqu'au délai de 600 s (DÉLAI DÉPASSÉ, 622 s au lieu de 10 s), sur le bureau masqué, branche feature/coordinate-axis-gizmos. Blocage à

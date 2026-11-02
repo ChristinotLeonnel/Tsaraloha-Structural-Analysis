@@ -10,7 +10,7 @@ int main(int argc, char* argv[])
     QString executable;
     {
         Application app(argc, argv);
-        if (!app.init()) return -1;
+        if (!app.init()) return app.forwardedToRunningInstance() ? 0 : -1;
         code = app.exec();
         restart = app.restartRequested();
         projects = app.restartProjectFiles();

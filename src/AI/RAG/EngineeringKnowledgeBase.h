@@ -43,6 +43,7 @@ public:
     static QStringList tokenize(const QString& text);
 
 private:
+    void appendChunks(const QString& source, const QString& content);
     void rebuildStatistics();
 
     std::vector<KnowledgeChunk> m_chunks;

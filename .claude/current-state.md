@@ -5,6 +5,11 @@ revues depuis le 2026-10-07 : voir l'audit du 2026-10-31 (TSA_CODE_QUALITY_AUDIT
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
+## Une seule fenêtre de TSA (2026-11-02, branche feature/single-instance-documents, ADR-028)
+Status: IMPLEMENTED (Windows) / UNKNOWN (Linux : code portable, jamais exécuté) — SingleInstance + OpenFileQueue, un onglet par
+projet, Ouvrir et glisser-déposer multiples, --new-instance. Test 600 et essai réel de TSA.exe sur bureau masqué. Non vérifié :
+premier plan de la fenêtre et sélection multiple depuis le vrai Explorateur.
+
 ## Projets protégés par mot de passe (2026-11-02, branche fix/file-protection-fem3d-blueprint-undo, ADR-027)
 Status: IMPLEMENTED (Windows) / UNKNOWN (Linux, OpenSSL : jamais compilé) — facultatif, Fichier › Protection par mot de passe ;
 AES-256-GCM, PBKDF2-HMAC-SHA-256 (src/IO/TSAEncryption), format 3.2 ; mot de passe demandé à l'ouverture ; copie de récupération

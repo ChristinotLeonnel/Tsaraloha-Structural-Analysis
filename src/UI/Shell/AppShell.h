@@ -30,6 +30,7 @@ class QMenu;
 class QShortcut;
 class QStackedWidget;
 class QTabBar;
+namespace TSA::Platform { class OpenFileQueue; }
 class QVBoxLayout;
 
 namespace TSA::UI
@@ -62,6 +63,10 @@ public:
     void openProject();
     /// Ouvre un fichier projet du produit (projets récents, glisser-déposer, ligne de commande).
     bool openProjectFile(const QString& path);
+    /// Ouvre plusieurs projets dans cette fenêtre, un onglet chacun, l'un après l'autre (TSA::Platform::OpenFileQueue).
+    void openProjectFiles(const QStringList& paths);
+    /// Met la fenêtre au premier plan (lancement d'une autre instance, fichier ouvert depuis l'Explorateur).
+    void bringToFront();
     /// Copies de récupération laissées par une fermeture brutale (BUG-157) : proposées à l'utilisateur (récupérer, supprimer,
     /// plus tard). Appelée au démarrage.
     void offerRecovery();
@@ -142,6 +147,7 @@ private:
     MainWindow* m_workspace = nullptr;          ///< document au premier plan
     QList<MainWindow*> m_documents;              ///< ordre des onglets
     QTabBar* m_docTabs = nullptr;
+    TSA::Platform::OpenFileQueue* m_openQueue = nullptr;
     QAction* m_actCloseAll = nullptr;
     QAction* m_actSaveAll = nullptr;
 

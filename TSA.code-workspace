@@ -2,6 +2,12 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../TSA-3D-FEM-Engine"
+		},
+		{
+			"path": "../Tsaraloha-Structural-Analysis-Virtual-Laboratory"
 		}
 	],
 	"settings": {}
