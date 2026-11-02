@@ -212,7 +212,8 @@ Le CPU reste le mode fiable par défaut. Aucun téléchargement de dépendance n
 
 | Prio. | Problème | Risque | Bénéfice | Difficulté, dépendances | Validation |
 |---|---|---|---|---|---|
-| P1 | Cornières : axes principaux inclinés non pris en compte | flexion déviée mal représentée | rigidité correcte des cornières | moyenne : orientation de section α = ½·atan(2Iyz/(Iz − Iy)) | intégration et catalogue (Iu, Iv) |
+| ~~P1~~ | ~~Cornières : axes principaux inclinés non pris en compte~~ — **fait le 2026-11-02 (BUG-153)** : `Section::principalInertia` ; OpenSees et Fem3D calculent la barre sur ses axes principaux (geomTransf tourné, Iu, Iv, charges locales tournées), efforts ramenés aux axes de TSA ; Custom2D (plan) : avertissement ; flambement EC3 sur u-u / v-v | — | — | — | test 586 : console L100×100×10, flexion déviée à 1 % |
+| P2 | Centre de cisaillement excentré (UPN, cornières, T) | torsion due à une charge passant par le centre de gravité ignorée | rigidité en torsion et flexion-torsion correctes | élevée : formulation couplée (docs/TORSION.md § 4) | Vlassov, cas de référence |
 | P1 | Cisaillement transverse des poutres (Timoshenko) | flèches sous-estimées des poutres courtes ou hautes | poutres-cloisons, voiles en barres | moyenne : `ElasticTimoshenkoBeam` OpenSees, aires de cisaillement | Timoshenko analytique |
 | P1 | Excentricités et offsets rigides | modélisation des liaisons poutre-poteau excentrées | modèles plus fidèles | moyenne : `-jntOffset` | portique analytique |
 | P1 | EC2 effort tranchant, ELS ; EC3 interaction N-M, déversement | vérifications incomplètes | note réglementaire complète | élevée ; textes normatifs | calculs manuels de référence |

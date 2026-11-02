@@ -97,7 +97,7 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
         warn(QCoreApplication::translate("TSA::Analysis::Custom2DAdapter", "Ressorts d'appui obliques au plan : le couplage entre les deux translations du plan est ignoré.").toStdString());
 
     // Barres
-    std::vector<std::string> unaligned;
+    std::vector<std::string> unaligned, unsymmetric;
     for (const auto& [tag, el] : snap.elements())
     {
         const auto* n1 = snap.getNode(el.startNodeId);
@@ -118,6 +118,7 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
             const LocalAxes ax = resultAxes(el, *n1, *n2);
             const double cy = dot(ax.y, pl.n), cz = dot(ax.z, pl.n);
             e.I = el.section.iy() * cy * cy + el.section.iz() * cz * cz;
+            if (el.section.principalInertia().rotated()) unsymmetric.push_back(el.key().label());
             if (std::abs(std::abs(cy) - 1.0) > kAligned && std::abs(std::abs(cz) - 1.0) > kAligned)
                 unaligned.push_back(el.key().label());
             // Rotule dans le plan : relâchement du moment autour de l'axe local parallèle à n.
@@ -132,6 +133,18 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
         std::string s;
         for (std::size_t i = 0; i < unaligned.size() && i < 6; ++i) s += (i ? ", " : "") + unaligned[i];
         warn(QCoreApplication::translate("TSA::Analysis::Custom2DAdapter", "Axes de section non alignés sur la normale au plan (%1) : inertie de flexion projetée.")
+                 .arg(QString::fromStdString(s)).toStdString());
+    }
+    if (!unsymmetric.empty())
+    {
+        // Cornière (BUG-153) : l'analyse plane fléchit la barre autour de son axe géométrique, ce qui suppose le déplacement
+        // hors plan empêché ; sans ce maintien, la flexion est déviée (axes principaux inclinés) : analyse 3D
+        std::string s;
+        for (std::size_t i = 0; i < unsymmetric.size() && i < 6; ++i) s += (i ? ", " : "") + unsymmetric[i];
+        if (unsymmetric.size() > 6) s += " (+" + std::to_string(unsymmetric.size() - 6) + ")";
+        warn(QCoreApplication::translate("TSA::Analysis::Custom2DAdapter",
+                                         "Cornières (%1) : axes principaux inclinés ; l'analyse plane suppose leur déplacement hors plan empêché. "
+                                         "Sans ce maintien, la flexion est déviée : utiliser une analyse 3D.")
                  .arg(QString::fromStdString(s)).toStdString());
     }
 

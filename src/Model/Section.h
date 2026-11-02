@@ -74,10 +74,20 @@ struct Section
     /// dos de l'âme d'un UPN, face extérieure de l'aile verticale d'une cornière) (m).
     double centroidFromBottom() const;
     double centroidFromLeft() const;
-    /// Produit d'inertie Iyz dans les axes parallèles aux côtés (m⁴) : non nul pour une cornière, dont les axes
-    /// principaux sont inclinés. Le calcul utilise Iy et Iz (axes géométriques) : couplage des flexions négligé,
-    /// signalé (docs/AUDIT_CALCULS.md).
+    /// Produit d'inertie Iyz = ∫ y·z dA dans les axes parallèles aux côtés (m⁴) : non nul pour une cornière, dont les axes
+    /// principaux sont inclinés. Le calcul se fait sur les axes principaux (principalInertia, BUG-153).
     double iyz() const;
+    /// Axes principaux d'inertie : les axes locaux (y, z) tournés d'un angle `angle` (rad, |angle| ≤ π/4) autour de x,
+    /// y' = cos·y + sin·z, z' = −sin·y + cos·z, annulent le produit d'inertie ; iy = ∫ z'² dA, iz = ∫ y'² dA (m⁴).
+    /// Section symétrique (Iyz = 0) : angle nul, iy() et iz() inchangés.
+    struct PrincipalInertia
+    {
+        double angle = 0.0;
+        double iy = 0.0;
+        double iz = 0.0;
+        bool rotated() const { return angle != 0.0; }
+    };
+    PrincipalInertia principalInertia() const;
     /// Contribution des quatre congés âme-aile d'un profil en I laminé (rayon r) : aire et inerties (m², m⁴).
     static void rolledIShapeFillets(double h, double tw, double tf, double r, double* area, double* iy, double* iz);
 

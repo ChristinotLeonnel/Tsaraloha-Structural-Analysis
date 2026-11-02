@@ -341,8 +341,10 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
             const double nu = el->material.mechanical.poissonRatio;
             const double G = E / (2.0 * (1.0 + nu));
             const double J = el->section.it();
-            const double Iy = el->section.iy();
-            const double Iz = el->section.iz();
+            // Inerties sur les axes du moteur : axes principaux pour une cornière (même repère que geomTransf), BUG-153
+            const auto principal = el->section.principalInertia();
+            const double Iy = principal.iy;
+            const double Iz = principal.iz;
             const double massDens = A * el->material.density * (params.useKiloNewtons ? 1e-3 : 1.0);
             tcl << "element elasticBeamColumn " << e.tag << " " << e.nodeI << " " << e.nodeJ << " "
                 << A << " " << E << " " << G << " " << J << " " << Iy << " " << Iz << " " << e.transfTag
@@ -875,17 +877,20 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
                     writeNodalLoad(el->endNodeId, atJ);
                     continue;
                 }
+                // Composantes locales de TSA → axes de l'élément OpenSees (axes principaux d'une cornière)
+                double wy = load.wy, wz = load.wz;
+                if (el) localYZToRotated(el->section.principalInertia().angle, wy, wz);
                 if (load.point())
                 {
                     // eleLoad -ele $tag -type -beamPoint $Py $Pz $xL $Px
                     tcl << "  eleLoad -ele " << tag << " -type -beamPoint "
-                        << load.wy << " " << load.wz << " " << load.relativePosition << " " << load.wx;
+                        << wy << " " << wz << " " << load.relativePosition << " " << load.wx;
                 }
                 else
                 {
                     // eleLoad -ele $tag -type -beamUniform $Wy $Wz $Wx
                     tcl << "  eleLoad -ele " << tag << " -type -beamUniform "
-                        << load.wy << " " << load.wz << " " << load.wx;
+                        << wy << " " << wz << " " << load.wx;
                 }
                 if (!load.comment.empty()) tcl << " ;# " << load.comment;
                 tcl << "\n";

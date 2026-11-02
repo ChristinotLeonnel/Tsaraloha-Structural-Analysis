@@ -60,7 +60,16 @@ OpenSeesModelMap OpenSeesModelMap::build(const CalculationSnapshot& snapshot, co
             const gp_Pnt p2(n2->x, n2->y, n2->z);
             // Même repère que celui transmis à geomTransf (axe z local TSA = vecxz).
             const double beta = e.isBeamColumn() ? el.rotation : 0.0;
-            const gp_Dir z = LoadResolver::computeElementLocalAxes(p1, p2, beta).Direction();
+            const gp_Ax3 frame = LoadResolver::computeElementLocalAxes(p1, p2, beta);
+            gp_Vec z(frame.Direction());
+            if (e.isBeamColumn())
+            {
+                // Cornière : barre calculée sur ses axes principaux (z' = −sin θ·y + cos θ·z), efforts ramenés au repère TSA
+                // par le lecteur des résultats, charges locales tournées à l'écriture (BUG-153)
+                e.principalAngle = el.section.principalInertia().angle;
+                if (e.principalAngle != 0.0)
+                    z = gp_Vec(frame.YDirection()) * -std::sin(e.principalAngle) + z * std::cos(e.principalAngle);
+            }
             e.vecxz = { z.X(), z.Y(), z.Z() };
             e.axes = ElementTransformation::openSeesAxes({ n1->x, n1->y, n1->z }, { n2->x, n2->y, n2->z }, e.vecxz);
         }

@@ -101,8 +101,10 @@ Conversion convert(const AnalysisContext& context, const AnalysisModel& analysis
             Fem3D::BeamSection3D s;
             s.name = "S" + tag;
             s.area = el->section.area();
-            s.inertiaY = el->section.iy();
-            s.inertiaZ = el->section.iz();
+            // Axes du moteur = axes principaux pour une cornière (même repère qu'OpenSees, OpenSeesModelMap), BUG-153
+            const auto principal = el->section.principalInertia();
+            s.inertiaY = principal.iy;
+            s.inertiaZ = principal.iz;
             s.torsionConstant = el->section.it();
             m.addSection(s);
         }
@@ -153,9 +155,17 @@ Conversion convert(const AnalysisContext& context, const AnalysisModel& analysis
         for (const auto& [tag, list] : OpenSeesAnalysisBuilder::beamElementLoads(snapshot, c.params, pattern))
         {
             const SnapshotElement* el = snapshot.getElementByTag(tag);
-            for (const auto& l : list)
+            const OpsElementEntry* entry = c.map.byTag(tag);
+            for (const auto& source : list)
             {
-                c.memberLoads[tag].push_back(l);
+                c.memberLoads[tag].push_back(source);   // repère TSA : reconstruction des efforts le long de la barre
+                // Composantes transmises à Fem3D : axes de l'élément (axes principaux d'une cornière)
+                BeamElementLoad l = source;
+                if (entry)
+                {
+                    entry->tsaToEngine(l.wy, l.wz);
+                    entry->tsaToEngine(l.wyB, l.wzB);
+                }
                 // Positions relatives de TSA → abscisses depuis le nœud i (longueur de la barre du calcul) ; une charge
                 // sur toute la longueur reste sans bornes (forme historique, mêmes résultats)
                 const double length = el ? el->length : 0.0;

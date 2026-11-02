@@ -8063,6 +8063,10 @@ Run the analysis?</translation>
         <translation>Section axes not aligned with the plane normal (%1): projected bending moment of inertia.</translation>
     </message>
     <message>
+        <source>Cornières (%1) : axes principaux inclinés ; l'analyse plane suppose leur déplacement hors plan empêché. Sans ce maintien, la flexion est déviée : utiliser une analyse 3D.</source>
+        <translation>Angles (%1): inclined principal axes; the plane analysis assumes their out-of-plane displacement is restrained. Without such restraint, bending is unsymmetric: use a 3D analysis.</translation>
+    </message>
+    <message>
         <source>%1 charge(s) sur barre de type moment réparti ou poids propre explicite ne sont pas transmises au solveur 2D.</source>
         <translation>%1 member load(s) of the distributed moment or explicit self-weight type are not transferred to the 2D solver.</translation>
     </message>

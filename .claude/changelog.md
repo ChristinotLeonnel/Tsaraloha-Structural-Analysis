@@ -2,6 +2,22 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — BUG-153 corrigé : cornières calculées sur leurs axes principaux (branche fix/angle-principal-axes)
+
+- Cause : `elasticBeamColumn` (OpenSees) et Fem3D supposent y, z principaux ; pour une cornière, Iyz (calculé) n'était transmis
+  à aucun moteur : console L100×100×10 de 3 m sous 1 kN, uz = −23,8 mm au lieu de −36,7 mm, uy = 0 au lieu de ±21,7 mm.
+- Correction : `Section::principalInertia` (angle θ, |θ| ≤ π/4, Iy', Iz' ; θ = 0 pour une section symétrique, rien ne change).
+  `OpenSeesModelMap` : `principalAngle`, geomTransf sur z' = −sin θ·y + cos θ·z (axes de TSA tournés de θ) ; OpenSees et Fem3D
+  reçoivent les inerties principales et les charges locales (eleLoad, charges Fem3D) tournées (`localYZToRotated`) ; le lecteur
+  commun (`buildElementResults`, OpenSees et Fem3D) ramène tranchants et moments aux axes de TSA (`rotatedYZToLocal`) : charges,
+  diagrammes, vérifications inchangés. Repère de l'affichage 3D vérifié : profil = axes de calcul à un demi-tour près, signe de
+  Iyz conservé. Custom2D (plan) : avertissement (déplacement hors plan supposé empêché). EC3 : `calculateFromBarGoverning` lit les
+  mêmes axes principaux. Reste (documenté, docs/AUDIT_CALCULS.md § 8) : centre de cisaillement excentré (UPN, L, T).
+- Test 586 (suite engines) : axes principaux à 45°, Iu + Iv = Iy + Iz, sections symétriques inchangées ; console sous charge nodale
+  (OpenSees) : uz et uy à 1 % de la flexion déviée calculée à la main (−36,7 / ±21,7 mm), My = 3 kN·m et Mz = 0 dans les axes de
+  TSA ; charge répartie locale z : idem (eleLoad tourné). Fem3D : non exécuté sur ce poste (absent, BUG-173). Suite complète 59/60
+  (367 : BUG-173) ; banc 1 140 vérifications réussies, 0 en échec ; check_layers 0 ; TSALab 27/27.
+
 ## 2026-11-02 — BUG-151 corrigé : câble comprimé ou détendu signalé après le calcul (branche fix/cable-compression-warning)
 
 - Cause : un câble est un `corotTruss` élastique qui résiste autant en compression qu'en traction ; aucun contrôle après calcul

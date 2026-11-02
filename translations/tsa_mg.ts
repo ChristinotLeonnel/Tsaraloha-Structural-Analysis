@@ -8063,6 +8063,10 @@ Atomboka ve ny kajy?</translation>
         <translation>Famaky ny fizarana tsy mirindra amin'ny tsipika mahitsy zoro amin'ny planina (%1): inertia amin'ny fiforetana natao projeksiona.</translation>
     </message>
     <message>
+        <source>Cornières (%1) : axes principaux inclinés ; l'analyse plane suppose leur déplacement hors plan empêché. Sans ce maintien, la flexion est déviée : utiliser une analyse 3D.</source>
+        <translation>Fizarana zoro (%1) : mitongilana ny axes fototra ; ny kajy fisaka dia mihevitra fa voasakana ny fivezivezeny ivelan'ny fisaka. Raha tsy misy izany fihazonana izany, miolaka mitongilana izy : ampiasao kajy 3D.</translation>
+    </message>
+    <message>
         <source>%1 charge(s) sur barre de type moment réparti ou poids propre explicite ne sont pas transmises au solveur 2D.</source>
         <translation>Tsy ampitaina amin'ny motera kajy 2D ny enta %1 amin'ny tsorakazo karazana momenta miparitaka na lanja manokana voalaza mazava.</translation>
     </message>

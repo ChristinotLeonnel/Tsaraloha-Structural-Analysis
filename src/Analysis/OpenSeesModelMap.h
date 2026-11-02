@@ -15,6 +15,7 @@
 #include "ElementTransformation.h"
 #include "ResultsModel.h"
 
+#include <cmath>
 #include <map>
 #include <string>
 #include <vector>
@@ -24,6 +25,23 @@ namespace TSA::Analysis
 
 struct AnalysisParameters;
 
+/// Composantes (y, z) d'un vecteur local : axes locaux de TSA → axes tournés de `angle` (rad) autour de x (axes principaux
+/// d'une cornière, Section::principalInertia), et inversement.
+inline void localYZToRotated(double angle, double& ay, double& az)
+{
+    if (angle == 0.0) return;
+    const double c = std::cos(angle), s = std::sin(angle), y = ay;
+    ay = c * y + s * az;
+    az = -s * y + c * az;
+}
+inline void rotatedYZToLocal(double angle, double& ay, double& az)
+{
+    if (angle == 0.0) return;
+    const double c = std::cos(angle), s = std::sin(angle), y = ay;
+    ay = c * y - s * az;
+    az = s * y + c * az;
+}
+
 struct OpsElementEntry
 {
     ElementKey key;
@@ -32,8 +50,14 @@ struct OpsElementEntry
     int nodeI = 0;
     int nodeJ = 0;
     int transfTag = 0;           ///< 0 si pas de geomTransf (treillis, câbles)
-    Vec3 vecxz {};               ///< vecteur transmis à geomTransf (axe z local TSA)
-    LocalAxes axes;              ///< axes locaux tels qu'OpenSees les calcule
+    Vec3 vecxz {};               ///< vecteur transmis à geomTransf (axe z local TSA, ou z' principal si principalAngle ≠ 0)
+    LocalAxes axes;              ///< axes locaux tels qu'OpenSees les calcule (repère du moteur)
+    /// Section à axes principaux inclinés (cornière, BUG-153) : le moteur calcule la barre sur ses axes principaux, ceux de
+    /// TSA tournés de cet angle (rad) autour de x (Section::principalInertia) ; 0 sinon (repère du moteur = repère TSA).
+    double principalAngle = 0.0;
+    /// Composantes (y, z) d'un vecteur local : repère TSA → repère du moteur, et inversement.
+    void tsaToEngine(double& ay, double& az) const { localYZToRotated(principalAngle, ay, az); }
+    void engineToTsa(double& ay, double& az) const { rotatedYZToLocal(principalAngle, ay, az); }
     bool isBeamColumn() const { return opsClass == "elasticBeamColumn"; }
     /// Réponse « basicStiffness » disponible dans OpenSees 3.8.0 (ElasticBeam3d, Truss).
     bool hasBasicStiffness() const { return opsClass == "elasticBeamColumn" || opsClass == "truss"; }

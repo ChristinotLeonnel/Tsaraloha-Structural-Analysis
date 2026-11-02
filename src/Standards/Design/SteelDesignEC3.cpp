@@ -263,13 +263,12 @@ EC3BucklingResult SteelDesignEC3::calculateFromBarGoverning(
 {
     double I1 = section.iy(), I2 = section.iz();
     QString a1 = QStringLiteral("y-y"), a2 = QStringLiteral("z-z");
-    const double iyz = section.iyz();
-    if (std::abs(iyz) > 1e-9 * std::max(std::abs(I1), std::abs(I2)))
+    if (const auto principal = section.principalInertia(); principal.rotated())
     {
-        // Axes géométriques non principaux (cornière) : axes principaux u (inertie maximale) et v (minimale)
-        const double mean = 0.5 * (I1 + I2), radius = std::sqrt(0.25 * (I1 - I2) * (I1 - I2) + iyz * iyz);
-        I1 = mean + radius;
-        I2 = mean - radius;
+        // Axes géométriques non principaux (cornière) : axes principaux u (inertie maximale) et v (minimale), les mêmes
+        // que ceux du calcul (BUG-153)
+        I1 = std::max(principal.iy, principal.iz);
+        I2 = std::min(principal.iy, principal.iz);
         a1 = QStringLiteral("u-u");
         a2 = QStringLiteral("v-v");
     }
