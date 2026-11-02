@@ -2,6 +2,15 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — BUG-002 clos : dalles et voiles calculés en coques (branche fix/bug-002-closed)
+
+- Constat (code et tests) : les dalles et voiles sont maillés et transmis au calcul en coques (OpenSees ShellMITC4 / ShellDKGT,
+  `CalculationSnapshot::withSurfaces`, MeshAnalysisBridge) lorsque le maillage du projet est à jour ; sinon
+  `ModelValidator::validateForAnalysis` avertit (`surfacesTransmitted`). Calcul réel vérifié par la suite surfaces (13 tests,
+  dont la note « Maillage calculé… ShellMITC4 ») et le test 131. Le bug était déjà corrigé par les travaux sur le maillage.
+- Retiré : `confirmPlanarElementsExcluded` (MainWindow_Tools.cpp), sans appelant (Grep), dont le message affirmait à tort que
+  TSA ne maille pas ces éléments. BUG-002 retiré de known-issues.
+
 ## 2026-11-02 — BUG-117 P2 corrigé : affichages des résultats indépendants de l'unité du calcul (branche fix/units-display)
 
 - Cause : OpenSees peut calculer en N (option « kN » décochée) ; plusieurs affichages écrivaient « kN » sur des valeurs en N
