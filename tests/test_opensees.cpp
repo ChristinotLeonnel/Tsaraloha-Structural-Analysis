@@ -3,6 +3,9 @@
 #include <sstream>
 
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTemporaryDir>
 
 #include "Analysis/OpenSeesManager.h"
@@ -63,20 +66,47 @@ bool runSuite_OpenSees(int& passed)
         TEST_CHECK(tmp.isValid(), "Dossier temporaire");
         TEST_CHECK(mgr.checkExecutable(tmp.filePath("absent/OpenSees")).status == S::NotFound, "Fichier absent : introuvable");
 
-        // Archive téléchargée (W-3) : une page d'erreur ou une autre archive n'a pas l'empreinte officielle → rejetée.
+        // BUG-133 : installation depuis l'application = paquets conda-forge épinglés de cmake/dependencies.json
+        // (l'archive officielle d'opensees.berkeley.edu renvoyait 404). Liste identique au manifeste, empreintes contrôlées.
         {
-            const QString fake = tmp.filePath("OpenSees.zip");
+            QFile manifestFile(QStringLiteral(TSA_SOURCE_DIR "/cmake/dependencies.json"));
+            TEST_CHECK(manifestFile.open(QIODevice::ReadOnly), "Test 491 : manifeste des dépendances lisible");
+            const QJsonObject ops = QJsonDocument::fromJson(manifestFile.readAll()).object().value("opensees").toObject();
+            const QJsonArray expected = ops.value("windows").toObject().value("packages").toArray();
+            const auto packages = OpenSeesManager::condaPackages();
+            bool same = !packages.empty() && static_cast<int>(packages.size()) == expected.size();
+            for (int i = 0; same && i < expected.size(); ++i)
+            {
+                const QJsonObject e = expected[i].toObject();
+                QStringList files;
+                for (const auto& f : e.value("files").toArray()) files << f.toString();
+                const auto& pkg = packages[static_cast<std::size_t>(i)];
+                same = pkg.file == e.value("file").toString() && pkg.sha256 == e.value("sha256").toString().toLower() && pkg.files == files;
+            }
+            TEST_CHECK(same && OpenSeesManager::condaChannelUrl() ==
+                                   ops.value("channel_url").toString() + "/" + ops.value("windows").toObject().value("subdir").toString(),
+                       "Test 491 : paquets et canal de l'application = cmake/dependencies.json (" << packages.size() << " paquets)");
+            TEST_CHECK(packages.front().files.contains("OpenSees.exe") && packages.front().sha256.size() == 64,
+                       "Test 491 : OpenSees.exe dans le premier paquet, empreinte SHA-256");
+            // Une page d'erreur ou un autre paquet n'a pas l'empreinte attendue → rejeté avant extraction
+            const QString fake = tmp.filePath("OpenSees.conda");
             QFile f(fake);
-            TEST_CHECK(f.open(QIODevice::WriteOnly) && f.write("<html>404 Not Found</html>") > 0, "Écriture de la fausse archive");
+            TEST_CHECK(f.open(QIODevice::WriteOnly) && f.write("<html>404 Not Found</html>") > 0, "Écriture du faux paquet");
             f.close();
             QString actual;
-            TEST_CHECK(!TSA::AI::ModelManager::verifySha256(fake, OpenSeesManager::officialArchiveSha256(), &actual) &&
-                       actual.size() == 64, "Archive d'empreinte inattendue : rejetée");
-            // Même empreinte que le téléchargement par CMake (TSA_OPENSEES_SHA256) : une seule archive de référence.
-            QFile cmake(QStringLiteral(TSA_SOURCE_DIR "/cmake/SetupDependencies.cmake"));
-            TEST_CHECK(cmake.open(QIODevice::ReadOnly) &&
-                       QString::fromUtf8(cmake.readAll()).contains(OpenSeesManager::officialArchiveSha256(), Qt::CaseInsensitive),
-                       "Empreinte de l'archive identique dans OpenSeesManager et SetupDependencies.cmake");
+            TEST_CHECK(!TSA::AI::ModelManager::verifySha256(fake, packages.front().sha256, &actual) && actual.size() == 64,
+                       "Test 491 : paquet d'empreinte inattendue rejeté");
+            // Installation réelle (réseau) seulement sur demande : TSA_TEST_OPENSEES_DOWNLOAD=1
+            if (qEnvironmentVariableIsSet("TSA_TEST_OPENSEES_DOWNLOAD"))
+            {
+                QTemporaryDir dest;
+                QString error;
+                const bool ok = OpenSeesManager::installFromCondaForge(dest.path(), nullptr, &error);
+                const auto check = mgr.checkExecutable(dest.filePath("bin/OpenSees.exe"), 60000);   // premier lancement : antivirus
+                TEST_CHECK(ok && check.ok() && check.version == "3.8.0",
+                           "Test 491 : installation conda-forge réelle opérationnelle (" << error.toStdString() << check.message.toStdString() << ")");
+                std::cout << "[INFO] Test 491 : installation réelle d'OpenSees " << check.version.toStdString() << " vérifiée" << std::endl;
+            }
         }
 
         // Fichier présent mais non exécutable (sans droit d'exécution ; sous Windows, .exe non PE).

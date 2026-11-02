@@ -2,6 +2,21 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — BUG-133 corrigé : OpenSees installé depuis l'application par conda-forge (branche fix/opensees-download)
+
+- Cause : `OpenSeesManager::downloadAndInstall` visait l'archive officielle d'opensees.berkeley.edu, disparue (404) ; seule
+  l'installation de développement (install_dependencies.py, SetupDependencies.cmake) utilisait les paquets conda-forge.
+- Correction : `OpenSeesManager::installFromCondaForge` installe les MÊMES 13 paquets épinglés : liste, canal et empreintes lus
+  dans `cmake/dependencies.json` à la configuration (en-tête généré `tsa_generated/OpenSeesCondaPackages.h`, file(CONFIGURE),
+  source unique) ; curl.exe (--fail), SHA-256 contrôlée avant extraction, tar.exe de Windows (bsdtar, .conda = zip de
+  pkg-*.tar.zst ; zstd requis, sinon message et install_dependencies.py), assemblage dans un dossier temporaire, copie dans
+  la destination seulement si tout a réussi, SOURCE.txt (provenance). Premier lancement de l'exécutable neuf : vérification
+  avec un délai de 60 s (`checkExecutable(path, timeoutMs)`, l'antivirus analyse l'exécutable : 5 s dépassées, constaté).
+  `officialDownloadUrl` / `officialArchiveSha256` retirés. Traductions en / mg (18 textes). docs/DEPENDENCIES.md.
+- Test 491 : paquets et canal de l'application = manifeste, faux paquet rejeté ; installation réelle avec
+  `TSA_TEST_OPENSEES_DOWNLOAD=1` : faite le 2026-11-02 sur ce poste (13 paquets, OpenSees 3.8.0 opérationnel). Suite complète
+  60/60 ; check_layers 0 ; TSALab 27/27.
+
 ## 2026-11-02 — moteur Fem3D trouvé sous son nom actuel, TSA-3D-FEM-Engine (branche build/fem3d-engine-path)
 
 - Le dépôt du moteur EF 3D s'appelle TSA-3D-FEM-Engine (cloné par l'utilisateur dans `D:\Tsaraloha Platforme\TSA-3D-FEM-Engine`) ;

@@ -32,8 +32,8 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
 - [x] BUG-151 (HIGH) : câble comprimé ou détendu signalé après le calcul, test 585.
 - [x] BUG-153 (HIGH) : cornières sur leurs axes principaux (OpenSees et Fem3D), test 586.
 - [x] Moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine (60/60 suites, banc 2 097 vérifications).
-- [ ] Suivants (HIGH) : BUG-133
-  téléchargement OpenSees ; BUG-111 traçabilité ; BUG-117 P2 ; BUG-002 dalles et voiles hors calcul.
+- [x] BUG-133 (HIGH) : OpenSees installé depuis l'application par conda-forge (installation réelle vérifiée).
+- [ ] Suivants (HIGH) : BUG-111 traçabilité ; BUG-117 P2 ; BUG-002 dalles et voiles hors calcul.
 - [ ] Traductions en / mg manquantes (88 / 107 textes, dont Style des charges, menus d'affichage) : tools/i18n.
 
 ## Affichage intelligent des charges (2026-11-01/02, branche feature/load-display-scaling)

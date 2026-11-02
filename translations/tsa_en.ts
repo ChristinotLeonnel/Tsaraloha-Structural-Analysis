@@ -8429,6 +8429,66 @@ Run the analysis?</translation>
 <context>
     <name>TSA::Analysis::OpenSeesManager</name>
     <message>
+        <source>%1 n'a pas pu être lancé.</source>
+        <translation>%1 could not be started.</translation>
+    </message>
+    <message>
+        <source>%1 : délai dépassé.</source>
+        <translation>%1: timed out.</translation>
+    </message>
+    <message>
+        <source>Installation automatique d'OpenSees disponible sous Windows uniquement : python install_dependencies.py --only opensees, ou OpenSees dans le PATH.</source>
+        <translation>Automatic OpenSees installation is only available on Windows: python install_dependencies.py --only opensees, or OpenSees in the PATH.</translation>
+    </message>
+    <message>
+        <source>Liste des paquets OpenSees vide (cmake/dependencies.json).</source>
+        <translation>Empty OpenSees package list (cmake/dependencies.json).</translation>
+    </message>
+    <message>
+        <source>Dossier d'installation non accessible en écriture : %1</source>
+        <translation>Installation folder not writable: %1</translation>
+    </message>
+    <message>
+        <source>OpenSees : paquet %1 sur %2 (%3)…</source>
+        <translation>OpenSees: package %1 of %2 (%3)…</translation>
+    </message>
+    <message>
+        <source>Téléchargement impossible : %1 (%2).</source>
+        <translation>Download failed: %1 (%2).</translation>
+    </message>
+    <message>
+        <source>Paquet %1 rejeté : empreinte SHA-256 %2, attendue %3.</source>
+        <translation>Package %1 rejected: SHA-256 fingerprint %2, expected %3.</translation>
+    </message>
+    <message>
+        <source>Extraction de %1 impossible (%2). Le tar de Windows doit lire le format zstd (Windows 11, ou Windows 10 à jour) ; sinon : python install_dependencies.py --only opensees.</source>
+        <translation>Cannot extract %1 (%2). Windows tar must read the zstd format (Windows 11, or an up-to-date Windows 10); otherwise: python install_dependencies.py --only opensees.</translation>
+    </message>
+    <message>
+        <source>%1 absent du paquet %2.</source>
+        <translation>%1 missing from package %2.</translation>
+    </message>
+    <message>
+        <source>Copie de %1 impossible.</source>
+        <translation>Cannot copy %1.</translation>
+    </message>
+    <message>
+        <source>Copie de la bibliothèque Tcl impossible.</source>
+        <translation>Cannot copy the Tcl library.</translation>
+    </message>
+    <message>
+        <source>Bibliothèque Tcl 8.6 absente des paquets OpenSees.</source>
+        <translation>Tcl 8.6 library missing from the OpenSees packages.</translation>
+    </message>
+    <message>
+        <source>Installation d'OpenSees…</source>
+        <translation>Installing OpenSees…</translation>
+    </message>
+    <message>
+        <source>Copie dans %1 impossible.</source>
+        <translation>Cannot copy into %1.</translation>
+    </message>
+    <message>
         <source>Exécutable OpenSees introuvable (ni dans %1, ni dans le PATH, ni au chemin enregistré « OpenSees/ExecutablePath »).</source>
         <translation>OpenSees executable not found (not in %1, nor in the PATH, nor at the saved path “OpenSees/ExecutablePath”).</translation>
     </message>
@@ -8465,64 +8525,16 @@ Run the analysis?</translation>
         <translation>The program does not respond like OpenSees to the check command.</translation>
     </message>
     <message>
-        <source>Téléchargement automatique d'OpenSees disponible sous Windows uniquement : installer OpenSees et le placer dans le PATH.</source>
-        <translation>Automatic OpenSees download available on Windows only: install OpenSees and put it in the PATH.</translation>
+        <source>Téléchargement d'OpenSees…</source>
+        <translation>Downloading OpenSees…</translation>
     </message>
     <message>
-        <source>Téléchargement d'OpenSees depuis %1...</source>
-        <translation>Downloading OpenSees from %1...</translation>
+        <source>Ou indiquer l'exécutable d'OpenSees dans les préférences.</source>
+        <translation>Or set the OpenSees executable in the preferences.</translation>
     </message>
     <message>
-        <source>Téléchargement d'OpenSees...</source>
-        <translation>Downloading OpenSees...</translation>
-    </message>
-    <message>
-        <source>Impossible de lancer curl pour le téléchargement.</source>
-        <translation>Cannot run curl for the download.</translation>
-    </message>
-    <message>
-        <source>Échec du lancement du téléchargement.</source>
-        <translation>Failed to start the download.</translation>
-    </message>
-    <message>
-        <source>Délai dépassé pendant le téléchargement.</source>
-        <translation>Timeout during the download.</translation>
-    </message>
-    <message>
-        <source>Délai de téléchargement dépassé.</source>
-        <translation>Download timeout exceeded.</translation>
-    </message>
-    <message>
-        <source>Téléchargement de l'archive OpenSees impossible (%1, code curl %2). Installer OpenSees manuellement et indiquer son exécutable dans les préférences.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <source>Erreur de téléchargement.</source>
-        <translation>Download error.</translation>
-    </message>
-    <message>
-        <source>Archive OpenSees rejetée : empreinte SHA-256 %1, attendue %2.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <source>Archive rejetée (empreinte inattendue).</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <source>Extraction de l'archive OpenSees...</source>
-        <translation>Extracting the OpenSees archive...</translation>
-    </message>
-    <message>
-        <source>Extraction en cours...</source>
-        <translation>Extracting...</translation>
-    </message>
-    <message>
-        <source>Erreur lors de l'extraction de l'archive.</source>
-        <translation>Error while extracting the archive.</translation>
-    </message>
-    <message>
-        <source>Échec de l'extraction.</source>
-        <translation>Extraction failed.</translation>
+        <source>Vérification d'OpenSees (premier lancement)…</source>
+        <translation>Checking OpenSees (first launch)…</translation>
     </message>
     <message>
         <source>OpenSees installé et vérifié avec succès.</source>
