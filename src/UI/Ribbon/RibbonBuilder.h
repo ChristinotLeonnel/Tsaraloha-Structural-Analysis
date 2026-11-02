@@ -138,6 +138,8 @@ struct RibbonActions
     QAction* actionLoadValuesVisible = nullptr;
     QAction* actionSurfaceLoadsVisible = nullptr;
     QMenu* loadScaleMenu = nullptr;         ///< « Échelle des charges »
+    QMenu* loadCasesMenu = nullptr;         ///< « Cas affichés » (DisplayMenus)
+    QAction* actionLoadStyle = nullptr;     ///< « Style des charges… » (DisplayMenus)
 
     // Maillage
     QAction* actionMeshGen = nullptr;

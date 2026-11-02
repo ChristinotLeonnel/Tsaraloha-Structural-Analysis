@@ -58,10 +58,23 @@ void AnnotationStyle::setDevicePixelRatio(double ratio)
     emit changed();
 }
 
+void AnnotationStyle::setViewScale(double pixelsPerMeter)
+{
+    if (!std::isfinite(pixelsPerMeter) || pixelsPerMeter <= 0.0) return;
+    // Paliers de 15 % : un petit zoom ne reconstruit pas les textes
+    const double step = std::log(1.15);
+    const double q = std::exp(step * std::round(std::log(pixelsPerMeter) / step));
+    if (std::abs(q - m_settings.pixelsPerMeter) <= 1e-9 * q) return;
+    const double before = height(AnnotationRole::NodeLabel);
+    m_settings.pixelsPerMeter = q;   // propriété de la vue, non enregistrée
+    if (m_settings.mode == AnnotationSizeMode::ModelLinked && std::abs(height(AnnotationRole::NodeLabel) - before) >= 0.5) emit changed();
+}
+
 void AnnotationStyle::reset()
 {
     AnnotationSettings s;
     s.devicePixelRatio = m_settings.devicePixelRatio;
+    s.pixelsPerMeter = m_settings.pixelsPerMeter;
     commit(s);
 }
 
@@ -95,14 +108,16 @@ double AnnotationStyle::roleFactor(AnnotationRole role)
 double AnnotationStyle::height(AnnotationRole role) const
 {
     const double f = roleFactor(role);
-    if (m_settings.mode == AnnotationSizeMode::ModelLinked) return m_settings.modelHeight * f;
-    return m_settings.basePixels * f * m_settings.devicePixelRatio;
+    double base = m_settings.basePixels;
+    if (m_settings.mode == AnnotationSizeMode::ModelLinked && m_settings.pixelsPerMeter > 0.0)
+        base = std::clamp(m_settings.modelHeight * m_settings.pixelsPerMeter, kMinPixels, kMaxPixels);
+    return base * f * m_settings.devicePixelRatio;
 }
 
 void AnnotationStyle::apply(const Handle(AIS_TextLabel)& label, AnnotationRole role) const
 {
     if (label.IsNull()) return;
-    label->SetZoomable(m_settings.mode == AnnotationSizeMode::ModelLinked);
+    label->SetZoomable(false);   // jamais « zoomable » (BUG-178) : la hauteur liée au modèle est déjà en pixels
     label->SetHeight(height(role));
 }
 

@@ -33,6 +33,7 @@
 #include "Viewer/ResultsVisualManager.h"
 #include "Viewer/AnnotationStyle.h"
 #include "Geometry/LoadDisplayScale.h"
+#include "Viewer/LoadDisplayStyle.h"
 #include "UI/Diagrams/Diagram2DWidget.h"
 
 #include <Prs3d_TextAspect.hxx>
@@ -42,7 +43,11 @@
 #include <QApplication>
 #include <QImage>
 #include <QLocale>
+#include <QSettings>
 #include <QThread>
+
+#include <set>
+#include <vector>
 
 using namespace TSA::Analysis;
 
@@ -389,10 +394,24 @@ bool runSuite_Display(int& passed)
         TEST_CHECK(lo == 8.0 && st.settings().basePixels == 32.0, "Test 373: taille bornée à [8, 32] px");
         st.setMode(AnnotationSizeMode::ModelLinked);
         st.setModelHeight(0.3);
-        TEST_CHECK(std::abs(st.height(AnnotationRole::NodeLabel) - 0.3) < 1e-12, "Test 373: taille liée au modèle en mètres");
+        st.setDevicePixelRatio(1.0);
+        int scaleChanges = 0;
+        auto scaleConn = QObject::connect(&st, &AnnotationStyle::changed, [&scaleChanges] { ++scaleChanges; });
+        st.setViewScale(40.0);   // 0,3 m × ~40 px/m ≈ 12 px
+        const double at40 = st.height(AnnotationRole::NodeLabel);
+        st.setViewScale(40.5);   // même palier de 15 % : rien
+        TEST_CHECK(scaleChanges == 1 && at40 > 10.0 && at40 < 14.0 && st.height(AnnotationRole::NodeLabel) == at40,
+                   "Test 373: taille liée au modèle — mètres × échelle de la vue, paliers de 15 % (" << at40 << " px)");
+        st.setViewScale(1.0);
+        const double distant = st.height(AnnotationRole::NodeLabel);
+        st.setViewScale(10000.0);
+        TEST_CHECK(distant == 8.0 && st.height(AnnotationRole::NodeLabel) == 32.0, "Test 373: taille liée au modèle bornée à [8, 32] px");
+        QObject::disconnect(scaleConn);
+        // BUG-178 : jamais un texte OCCT « zoomable » (OCCT ne le trace pas sous ~16 unités : 0,3 m sortait haut de ~11 m)
         Handle(AIS_TextLabel) lbl = new AIS_TextLabel();
         st.apply(lbl, AnnotationRole::LoadValue);
-        TEST_CHECK(lbl->Attributes()->TextAspect()->Aspect()->GetTextZoomable(), "Test 373: texte lié au modèle « zoomable »");
+        TEST_CHECK(!lbl->Attributes()->TextAspect()->Aspect()->GetTextZoomable() && lbl->Attributes()->TextAspect()->Height() == 32.0,
+                   "Test 373: texte lié au modèle non zoomable, hauteur en pixels");
         st.setMode(AnnotationSizeMode::ScreenConstant);
         st.apply(lbl, AnnotationRole::LoadValue);
         TEST_CHECK(!lbl->Attributes()->TextAspect()->Aspect()->GetTextZoomable(), "Test 373: texte constant à l'écran non zoomable");
@@ -417,9 +436,28 @@ bool runSuite_Display(int& passed)
         st.setMode(AnnotationSizeMode::ModelLinked);
         pump();
         TEST_CHECK(changes == 1 && displayedObjects(view) == before, "Test 373: mode changé — textes reconstruits sans cumul (" << displayedObjects(view) << " / " << before << ")");
-        view.view()->SetZoom(3.0);
+        st.setMode(AnnotationSizeMode::ScreenConstant);
         pump();
-        TEST_CHECK(changes == 1 && displayedObjects(view) == before, "Test 373: zoom sans reconstruction");
+        view.view()->SetZoom(3.0);
+        view.zoomIn(1.0);
+        pump(40);
+        TEST_CHECK(changes == 2 && displayedObjects(view) == before, "Test 373: taille constante — zoom sans reconstruction");
+        st.setMode(AnnotationSizeMode::ModelLinked);
+        // hauteur de 10 px à l'échelle actuelle : 30 px après un zoom × 3 (sous le plafond de 32 px)
+        st.setModelHeight(10.0 * view.devicePixelRatioF() / std::max(1e-6, view.viewPixelsPerMeter()));
+        pump();
+        const int beforeZoom = changes;
+        const double heightBeforeZoom = st.height(AnnotationRole::NodeLabel);
+        const double scaleBeforeZoom = view.viewPixelsPerMeter();
+        view.zoomIn(3.0);
+        pump(40);
+        const int afterZoom = changes;
+        TEST_CHECK(afterZoom == beforeZoom + 1 && st.height(AnnotationRole::NodeLabel) > heightBeforeZoom &&
+                       view.viewPixelsPerMeter() > 2.0 * scaleBeforeZoom &&
+                       displayedObjects(view) == before,
+                   "Test 373: taille liée au modèle — zoom arrêté : textes agrandis une fois, zoom conservé, sans cumul (" << changes - beforeZoom << " reconstruction(s), avant " << heightBeforeZoom << " px, " << displayedObjects(view) << " / " << before << " objets, " << view.viewPixelsPerMeter() << " px/m, " << st.height(AnnotationRole::NodeLabel) << " px)");
+        pump(40);
+        TEST_CHECK(changes == afterZoom, "Test 373: caméra immobile — aucune reconstruction");
         st.setMode(saved.mode);
         st.setBasePixels(saved.basePixels);
         st.setModelHeight(saved.modelHeight);
@@ -486,6 +524,191 @@ bool runSuite_Display(int& passed)
         view.setModel(nullptr);
         view.hide();
         std::cout << "[PASS] Test 374: Échelle des charges par famille (proportionnelle, automatique, normalisée)" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 583 : affichage intelligent des charges (2026-11-01) — longueur des flèches d'après la structure et jamais le
+    // zoom, échelle robuste (charge hors norme), cas affichés sans toucher au modèle, couleurs et texte (style des charges)
+    // -------------------------------------------------------------------------
+    {
+        using namespace TSA::Geometry;
+        using TSA::Viewer::LoadDisplayStyle;
+        const QString savedOrg = QCoreApplication::organizationName(), savedApp = QCoreApplication::applicationName();
+        QCoreApplication::setOrganizationName(QStringLiteral("TSA_TestSuite_Isolated"));
+        QCoreApplication::setApplicationName(QStringLiteral("loads%1").arg(QCoreApplication::applicationPid()));
+        auto& style = LoadDisplayStyle::instance();
+        const TSA::Viewer::LoadDisplaySettings savedStyle = style.settings();
+        style.reset();
+
+        // Portique de deux étages de 3 m, travées de 6 m : longueur de référence = 35 % de la hauteur d'étage
+        Model m;
+        std::vector<int> base, l1, l2;
+        for (double x : { 0.0, 6.0, 12.0 })
+        {
+            base.push_back(m.addNode(x, 0, 0));
+            l1.push_back(m.addNode(x, 0, 3));
+            l2.push_back(m.addNode(x, 0, 6));
+        }
+        std::vector<int> beams;
+        for (std::size_t i = 0; i < 3; ++i)
+        {
+            m.addBar(base[i], l1[i], Section::ipe(300), Material::steelS235(), BarRole::Column);
+            m.addBar(l1[i], l2[i], Section::ipe(300), Material::steelS235(), BarRole::Column);
+        }
+        for (std::size_t i = 0; i < 2; ++i)
+        {
+            beams.push_back(m.addBar(l1[i], l1[i + 1], Section::ipe(300), Material::steelS235(), BarRole::Beam));
+            beams.push_back(m.addBar(l2[i], l2[i + 1], Section::ipe(300), Material::steelS235(), BarRole::Beam));
+        }
+        const double ref = structureLoadReferenceLength(m);
+        TEST_CHECK(std::abs(ref - 1.05) < 1e-9, "Test 583: longueur de référence = 0,35 × 3 m d'étage (" << ref << " m)");
+        TEST_CHECK(ref < 3.0 * 0.5, "Test 583: la flèche maximale tient sous le plancher supérieur");
+
+        // Échelle robuste : dix charges de 10 kN et une de 1 000 kN
+        Model r;
+        const int lcR = r.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        for (int i = 0; i < 10; ++i) r.loadManager().addNodalLoad(NodalLoad(0, r.addNode(i, 0, 0), lcR, 0, 0, -10.0));
+        r.loadManager().addNodalLoad(NodalLoad(0, r.addNode(20, 0, 0), lcR, 0, 0, -1000.0));
+        const auto robust = loadFamilyMaxima(r.loadManager());
+        TEST_CHECK(robust.of(LoadFamily::Force) == 1000.0 && robust.scaleOf(LoadFamily::Force) == 30.0,
+                   "Test 583: charge hors norme — échelle sur 3 × 90e centile (" << robust.scaleOf(LoadFamily::Force) << ")");
+        LoadScaleSettings automatic;
+        TEST_CHECK(loadArrowLength(10, robust.scaleOf(LoadFamily::Force), 1.0, automatic) > 0.33 &&
+                       loadArrowLength(1000, robust.scaleOf(LoadFamily::Force), 1.0, automatic) == 1.0,
+                   "Test 583: les charges courantes ne sont plus écrasées (1/3 au lieu du minimum), la charge hors norme plafonnée");
+
+        // Cas affichés : deux cas, le cas actif seul par défaut
+        auto& lm = m.loadManager();
+        const int g = lm.addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead));
+        const int q = lm.addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        for (int b : beams)
+        {
+            lm.addMemberLoad(MemberLoad::uniform(b, g, -15.0, LoadDirection::GlobalZ));
+            lm.addMemberLoad(MemberLoad::uniform(b, q, -8.0, LoadDirection::GlobalZ));
+        }
+        lm.setActiveLoadCaseId(g);
+        m.markSaved();
+        const auto revision = m.revision();
+        OccView view;
+        view.resize(640, 480);
+        view.show();
+        pump(20);
+        view.setModel(&m);
+        view.updateAllLoadShapes();
+        pump();
+        const std::size_t onlyG = view.displayedLoadObjectCount();
+        TEST_CHECK(onlyG > 0 && view.loadCaseDisplayed(g) && !view.loadCaseDisplayed(q), "Test 583: cas actif seul affiché (" << onlyG << " objets)");
+        TEST_CHECK(view.loadScaleLegendText().contains("Cas affiché : G") && view.loadScaleLegendText().contains("masqué"),
+                   "Test 583: légende — cas affiché et cas masqués annoncés");
+        view.setDisplayedLoadCase(q);
+        pump();
+        TEST_CHECK(lm.activeLoadCaseId() == q && view.loadCaseDisplayed(q) && !view.loadCaseDisplayed(g) && view.displayedLoadObjectCount() == onlyG,
+                   "Test 583: autre cas affiché (même nombre d'objets)");
+        TEST_CHECK(m.revision() == revision && !m.isModified(), "Test 583: changer de cas affiché ne touche ni la révision (résultats) ni « modifié »");
+        auto s = style.settings();
+        s.cases = TSA::Viewer::LoadCaseFilter::AllCases;
+        style.setSettings(s);
+        pump();
+        TEST_CHECK(view.displayedLoadObjectCount() == 2 * onlyG, "Test 583: tous les cas superposés (" << view.displayedLoadObjectCount() << " objets)");
+
+        // Indépendance au zoom : mêmes flèches et mêmes objets après un zoom
+        const double before = view.loadArrowLengthFor(15.0, LoadFamily::LineForce);
+        const std::size_t objects = view.displayedLoadObjectCount();
+        view.zoomIn(3.0);
+        pump();
+        TEST_CHECK(view.loadArrowLengthFor(15.0, LoadFamily::LineForce) == before && view.displayedLoadObjectCount() == objects &&
+                       std::abs(view.loadReferenceLength() - ref) < 1e-9,
+                   "Test 583: zoom sans effet sur la longueur des flèches (" << before << " m)");
+
+        // Texte des valeurs (BUG-177) : jamais un texte OCCT « zoomable » (une valeur de 0,25 m sortait haute de ~11 m et
+        // recouvrait la structure) ; hauteur en mètres convertie en pixels à l'échelle de la vue, bornée [9, 16] px
+        const double dpr = TSA::Viewer::AnnotationStyle::instance().settings().devicePixelRatio;
+        TEST_CHECK(std::abs(style.labelPixels(10.0, ref) - 9.0) < 1e-9 && std::abs(style.labelPixels(40.0, ref) - 0.25 * ref * 40.0) < 1e-9 &&
+                       std::abs(style.labelPixels(1000.0, ref) - 16.0) < 1e-9 && std::abs(style.labelPixels(40.0, ref, 2.0) - 18.0) < 1e-9 &&
+                       std::abs(style.labelPixels(1000.0, ref, 2.0) - 32.0) < 1e-9,
+                   "Test 583: hauteur à l'écran = 0,25 × réf. × px/m, bornée à [9, 16] px × facteur d'écran");
+        view.fitAll();
+        view.layoutLoadLabels();
+        const auto fitted = view.loadLabelLayoutStats();
+        TEST_CHECK(fitted.labels == static_cast<int>(2 * beams.size()) && !fitted.anyZoomable && fitted.minPixels >= 9.0 * dpr - 0.5 &&
+                       fitted.maxPixels <= 16.0 * dpr + 0.5,
+                   "Test 583: valeurs non zoomables, " << fitted.minPixels << " à " << fitted.maxPixels << " px (bornes 9–16 px × " << dpr << ")");
+        view.zoomIn(4.0);
+        view.layoutLoadLabels();
+        TEST_CHECK(view.loadLabelLayoutStats().maxPixels >= fitted.maxPixels && view.loadLabelLayoutStats().maxPixels <= 16.0 * dpr + 0.5,
+                   "Test 583: en zoomant, le texte grandit sans dépasser le plafond (" << view.loadLabelLayoutStats().maxPixels << " px)");
+        auto screen = style.settings();
+        screen.textSize = TSA::Viewer::LoadTextSize::ScreenConstant;
+        style.setSettings(screen);
+        pump();
+        TEST_CHECK(std::abs(view.loadLabelLayoutStats().minPixels - std::round(12.0 * dpr)) < 0.5 &&
+                       std::abs(view.loadLabelLayoutStats().maxPixels - std::round(12.0 * dpr)) < 0.5 && !view.loadLabelLayoutStats().anyZoomable,
+                   "Test 583: texte constant à l'écran (12 px)");
+        screen.textSize = TSA::Viewer::LoadTextSize::ModelLinked;
+        style.setSettings(screen);
+        pump();
+
+        // Valeurs superposées (R+7 entièrement chargé, vue d'ensemble) : la plus forte reste, les autres sont masquées
+        // dans la vue (sans être détruites) et la légende l'annonce ; en zoomant, elles réapparaissent
+        {
+            Model d;
+            const int lcD = d.loadManager().addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead));
+            for (int i = 0; i < 40; ++i) d.loadManager().addNodalLoad(NodalLoad(0, d.addNode(0.05 * i, 0, 0), lcD, 0, 0, -1.0 - i));
+            d.addNode(60.0, 0, 30.0);   // grande scène : les 40 valeurs tiennent dans quelques pixels
+            d.addNode(-60.0, 0, -30.0);
+            OccView dv;
+            dv.resize(640, 480);
+            dv.show();
+            pump(20);
+            dv.setModel(&d);
+            dv.updateAllLoadShapes();
+            dv.fitAll();
+            dv.layoutLoadLabels();
+            pump();
+            const auto dense = dv.loadLabelLayoutStats();
+            TEST_CHECK(dense.labels == 40 && dense.hidden >= 30 && dv.displayedLoadObjectCount() >= 40 &&
+                           dv.loadScaleLegendText().contains(QStringLiteral("masquée")),
+                       "Test 583: valeurs superposées masquées (" << dense.hidden << " / " << dense.labels << "), légende");
+            auto off = style.settings();
+            off.declutter = false;
+            style.setSettings(off);
+            pump();
+            dv.layoutLoadLabels();
+            TEST_CHECK(dv.loadLabelLayoutStats().hidden == 0, "Test 583: masquage désactivable (style des charges)");
+            off.declutter = true;
+            style.setSettings(off);
+            pump();
+            dv.setModel(nullptr);
+            dv.hide();
+        }
+
+        // Couleurs et texte
+        std::set<QRgb> colors;
+        for (int i = 0; i < 10; ++i) colors.insert(LoadDisplayStyle::caseColor(i).rgb());
+        TEST_CHECK(colors.size() == 10 && LoadDisplayStyle::intensityColor(0.0) != LoadDisplayStyle::intensityColor(1.0),
+                   "Test 583: dix couleurs de cas distinctes, dégradé d'intensité");
+        TEST_CHECK(style.formatValue("q", -12.5, "kN/m", "Q") == "q = -12.50 kN/m", "Test 583: texte par défaut (" << style.formatValue("q", -12.5, "kN/m", "Q").toStdString() << ")");
+        s = style.settings();
+        s.decimals = 1;
+        s.showSymbol = false;
+        s.showCaseName = true;
+        style.setSettings(s);
+        TEST_CHECK(style.formatValue("q", -12.5, "kN/m", "Q") == "-12.5 kN/m [Q]", "Test 583: texte réglé (décimales, sans symbole, nom du cas)");
+        TEST_CHECK(std::abs(style.modelTextHeight(ref) - 0.25 * ref) < 1e-12, "Test 583: hauteur du texte automatique liée à la structure");
+        s = style.settings();
+        s.textMinPixels = 20.0;
+        s.textMaxPixels = 10.0;
+        style.setSettings(s);
+        TEST_CHECK(style.settings().textMinPixels == 20.0 && style.settings().textMaxPixels == 20.0, "Test 583: bornes à l'écran ordonnées (max ≥ min)");
+
+        view.setModel(nullptr);
+        view.hide();
+        style.setSettings(savedStyle);
+        QSettings().clear();
+        QCoreApplication::setOrganizationName(savedOrg);
+        QCoreApplication::setApplicationName(savedApp);
+        std::cout << "[PASS] Test 583: Affichage des charges — échelle d'après la structure (sans zoom), robuste, cas affichés, couleurs, "
+                     "texte borné à l'écran et valeurs superposées masquées" << std::endl;
         ++passed;
     }
     // -------------------------------------------------------------------------

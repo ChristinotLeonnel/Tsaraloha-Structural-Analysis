@@ -13,6 +13,12 @@ repli s'il est verrouillé). Sur ce poste, le déplacement a été refusé (doss
 Vérifié (Windows, 2026-11-01) : build-ninja-release reconfigurée par le preset modifié et recompilée (311 étapes, 0 erreur, DLL déployées),
 60/60 suites réussies (bureau masqué) ; TSALab configuré (dossier neuf). Détail : docs/DEPENDENCIES.md § 6.
 
+## Affichage intelligent des charges (2026-11-01/02, branche feature/load-display-scaling, fusionnée dans main le 2026-11-02)
+Flèches d'après la structure (35 % de l'étage), jamais le zoom ; échelle robuste ; cas affiché (cas actif) ; couleurs par cas ;
+Style des charges (LoadStyleDialog). Valeurs : jamais un texte OCCT zoomable (BUG-177), hauteur en mètres convertie en pixels
+bornés [9, 16] et valeurs superposées masquées (OccView::layoutLoadLabels). Test 583. docs/DISPLAY_SCALES.md § 4.
+Annotations en taille liée au modèle : même principe (AnnotationStyle::setViewScale, BUG-178), caméra conservée. Test 373.
+
 ## Repères locaux, rotation de section et axes des charges (2026-10-31, branche refactor/load-axes-section-rotation, fusionnée dans main le 2026-11-01)
 Status: IMPLEMENTED — convention de Robot Structural Analysis 2024 mesurée par son API : barre verticale (écart horizontal / L < 1e-3)
 y = +Y à γ = 0 ; γ de la copie recalculé en rotation, symétrie, inversion (CopyTransform::barRotationImage). Charges : axes seuls

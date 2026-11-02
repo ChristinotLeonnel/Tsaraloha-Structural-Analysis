@@ -521,9 +521,34 @@ public:
     const TSA::Geometry::LoadScaleSettings& loadScaleSettings() const { return m_loadScaleSettings; }
     void setLoadScaleSettings(const TSA::Geometry::LoadScaleSettings& s);
     const TSA::Geometry::LoadFamilyMaxima& loadFamilyMaxima() const { return m_loadMaxima; }
-    /// Longueur graphique (m) de la flèche d'une charge d'intensité donnée dans sa famille, à la vue courante.
+    /// Longueur graphique (m) de la flèche d'une charge d'intensité donnée dans sa famille (échelle d'après la structure,
+    /// indépendante du zoom).
     double loadArrowLengthFor(double intensity, TSA::Geometry::LoadFamily family) const;
     QString loadScaleLegendText() const;
+    /// Longueur de référence des flèches d'après la structure, facteur d'affichage compris (jamais le zoom).
+    double loadReferenceLength() const { return memberLoadArrowLength(); }
+    /// Le cas caseId est-il dessiné (style des charges : cas actif du projet, ou tous les cas) ?
+    bool loadCaseDisplayed(int caseId) const;
+    /// Cas de charge affiché (cas actif du projet, enregistré dans le .tsa) : charges redessinées, SANS changer la révision du
+    /// modèle (Model::notifyLoadCaseChanged invaliderait les résultats) ni marquer le document modifié — choix d'affichage.
+    void setDisplayedLoadCase(int caseId);
+    /// Objets de charges dessinés (flèches et textes) : contrôle et tests.
+    std::size_t displayedLoadObjectCount() const;
+    /// Mise en page des valeurs des charges (après chaque reconstruction, et 80 ms après un mouvement de caméra) : hauteur
+    /// à l'écran d'après la hauteur en mètres et l'échelle de la vue, bornée (LoadDisplayStyle::labelPixels) ; valeurs qui
+    /// se chevauchent masquées dans cette vue, la plus forte restant visible (réglage « declutter »). Aucun objet recréé.
+    void layoutLoadLabels();
+    struct LoadLabelLayoutStats
+    {
+        int labels = 0;             ///< valeurs dessinées (cas affichés, valeurs visibles)
+        int hidden = 0;             ///< masquées par chevauchement
+        double minPixels = 0;       ///< hauteur à l'écran (px physiques)
+        double maxPixels = 0;
+        bool anyZoomable = false;   ///< texte OCCT « zoomable » (interdit : BUG-177)
+    };
+    const LoadLabelLayoutStats& loadLabelLayoutStats() const { return m_loadLabelStats; }
+    /// Échelle de la vue au centre de visée (px physiques par mètre) ; 0 si la vue n'est pas prête.
+    double viewPixelsPerMeter() const;
     /// Diagnostic d'affichage (développeur) : objets de la scène, objets de résultats, échelles graphiques en vigueur
     /// (caméra, déformée, diagrammes, annotations, charges) ; aucune ne modifie les valeurs du modèle ou des résultats.
     QString displayDiagnosticsText() const;
@@ -772,11 +797,19 @@ private:
     std::map<int, Handle(AIS_TextLabel)> m_nodalLoadLabels;
     std::map<int, std::vector<Handle(AIS_Shape)>> m_memberLoadShapes;
     std::map<int, Handle(AIS_TextLabel)> m_memberLoadLabels;
-    /// Longueur des flèches de charges réparties au dernier rendu (palier de zoom).
-    double m_memberLoadArrowLength = 0.0;
+    /// Longueur de référence des flèches d'après la structure (structureLoadReferenceLength), relevée avec les maxima.
+    double m_structureLoadReference = 1.0;
     double memberLoadArrowLength() const;
-    /// Caméra modifiée : charges réparties redessinées seulement si le palier de zoom change.
-    void updateMemberLoadZoomScale();
+    // Style des charges (LoadDisplayStyle) : rang et nom du cas, couleur d'une charge, texte d'une valeur
+    int loadCaseRank(int caseId) const;
+    QString loadCaseName(int caseId) const;
+    Quantity_Color loadDisplayColor(int caseId, double intensity, TSA::Geometry::LoadFamily family) const;
+    /// priority = |intensité| / maximum de la famille : en cas de chevauchement, la valeur la plus forte reste affichée.
+    void styleLoadValueLabel(const Handle(AIS_TextLabel)& label, const Quantity_Color& color, double priority);
+    double loadIntensityRatio(double intensity, TSA::Geometry::LoadFamily family) const;
+    std::map<const Standard_Transient*, double> m_loadLabelPriority;
+    LoadLabelLayoutStats m_loadLabelStats;
+    QTimer* m_loadLabelLayoutTimer = nullptr;
     bool m_loadsVisible = true;
     bool m_surfaceLoadsVisible = true;
     std::vector<Handle(AIS_InteractiveObject)> m_surfaceLoadShapes;

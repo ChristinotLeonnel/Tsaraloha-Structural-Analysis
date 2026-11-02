@@ -200,7 +200,8 @@ void RibbonBuilder::buildLoadsTab(RibbonBar* bar, const RibbonActions& a)
     PanelBuilder(tab, tr("Cas et combinaisons")).large({ a.actionLoadCases });
     PanelBuilder(tab, tr("Affichage des charges")).large({ a.actionLoadsVisible })
         .small({ a.actionForcesVisible, a.actionMomentsVisible, a.actionLoadValuesVisible })
-        .small({ a.actionSurfaceLoadsVisible })
+        .small({ a.actionSurfaceLoadsVisible, a.actionLoadStyle })
+        .menu(tr("Cas affichés"), QStringLiteral(":/icons/load_point.svg"), a.loadCasesMenu)
         .menu(tr("Échelle des charges"), QStringLiteral(":/icons/load_point.svg"), a.loadScaleMenu);
 }
 

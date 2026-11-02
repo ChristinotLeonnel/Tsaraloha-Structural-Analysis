@@ -1,6 +1,7 @@
 #include "OccView.h"
 #include "../Coordinate/AxisColorConfig.h"
 #include "AnnotationStyle.h"
+#include "LoadDisplayStyle.h"
 #include "BimGeometryRenderer.h"
 #include "DimensionRenderer.h"
 #include "DisplayModeRenderers.h"
@@ -88,7 +89,23 @@ OccView::OccView(QWidget* parent)
     // Repères de grille : une seule logique de visibilité pour toutes les vues (GridLabelLayout).
     connect(this, &OccView::viewCameraChanged, this, &OccView::updateGridLabelView);
     connect(this, &OccView::viewCameraChanged, this, &OccView::refreshWorkPlaneGrid);
-    connect(this, &OccView::viewCameraChanged, this, &OccView::updateMemberLoadZoomScale);
+    // Charges : aucune adaptation au zoom (échelle d'après la structure) ; style des charges : tout est redessiné.
+    connect(&TSA::Viewer::LoadDisplayStyle::instance(), &TSA::Viewer::LoadDisplayStyle::changed, this, [this]() {
+        if (m_context.IsNull() || !m_model) return;
+        updateAllLoadShapes();
+        if (!m_view.IsNull()) m_view->Redraw();
+    });
+    // Valeurs des charges : hauteur à l'écran et chevauchements recalculés quand la caméra s'arrête (flèches inchangées)
+    m_loadLabelLayoutTimer = new QTimer(this);
+    m_loadLabelLayoutTimer->setSingleShot(true);
+    m_loadLabelLayoutTimer->setInterval(80);
+    connect(m_loadLabelLayoutTimer, &QTimer::timeout, this, [this]() {
+        // Annotations liées au modèle : échelle de la vue (reconstruction des textes seulement si leur hauteur change)
+        TSA::Viewer::AnnotationStyle::instance().setViewScale(viewPixelsPerMeter() / std::max(1e-6, devicePixelRatioF()));
+        layoutLoadLabels();
+        if (!m_context.IsNull()) m_context->UpdateCurrentViewer();
+    });
+    connect(this, &OccView::viewCameraChanged, m_loadLabelLayoutTimer, qOverload<>(&QTimer::start));
 
     if (m_interactionManager)
     {
@@ -333,9 +350,23 @@ void OccView::initOcc()
     TSA::Viewer::AnnotationStyle::instance().setDevicePixelRatio(devicePixelRatioF());
     connect(&TSA::Viewer::AnnotationStyle::instance(), &TSA::Viewer::AnnotationStyle::changed, this, [this]() {
         if (m_context.IsNull()) return;
+        // Caméra conservée : rebuildAllShapes() recadre la vue (fitAll), ce qui annulait le zoom de l'utilisateur à chaque
+        // réglage d'annotation et, en taille liée au modèle, à chaque arrêt de la caméra (BUG-178)
+        Handle(Graphic3d_Camera) camera;
+        if (!m_view.IsNull() && !m_view->Camera().IsNull())
+        {
+            camera = new Graphic3d_Camera();
+            camera->Copy(m_view->Camera());
+        }
         rebuildAllShapes();
         rebuildGrid();
         if (m_resultsVisual) m_resultsVisual->updateAllVisuals();
+        if (!camera.IsNull())
+        {
+            m_view->Camera()->Copy(camera);
+            m_view->Redraw();
+            emit viewCameraChanged();
+        }
     });
     // Rendu réellement obtenu, journalisé (diagnostic des postes sans accélération matérielle)
     TSA_LOG_INFO("Viewer", "OpenGLRenderer", renderingInfo().summary().toStdString());
