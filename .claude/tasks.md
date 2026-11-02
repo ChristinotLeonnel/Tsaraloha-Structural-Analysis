@@ -34,7 +34,8 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
 - [x] Moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine (60/60 suites, banc 2 097 vérifications).
 - [x] BUG-133 (HIGH) : OpenSees installé depuis l'application par conda-forge (installation réelle vérifiée).
 - [x] BUG-111 étapes 1-2 : trace du calcul (empreinte, script conservé, .tsa, notes), test 587.
-- [ ] Suivants (HIGH) : BUG-117 P2 ; BUG-002 dalles et voiles hors calcul ; BUG-111 reste (annexe figée dans le projet).
+- [x] BUG-117 P2 : affichages des résultats en kN quelle que soit l'unité du calcul, test 492 complété.
+- [ ] Suivants (HIGH) : BUG-002 dalles et voiles hors calcul ; BUG-111 reste (annexe figée dans le projet) ; BUG-117 P3.
 - [ ] Traductions en / mg manquantes (88 / 107 textes, dont Style des charges, menus d'affichage) : tools/i18n.
 
 ## Affichage intelligent des charges (2026-11-01/02, branche feature/load-display-scaling)

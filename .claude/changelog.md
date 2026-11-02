@@ -2,6 +2,16 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — BUG-117 P2 corrigé : affichages des résultats indépendants de l'unité du calcul (branche fix/units-display)
+
+- Cause : OpenSees peut calculer en N (option « kN » décochée) ; plusieurs affichages écrivaient « kN » sur des valeurs en N
+  (facteur 1000) : résumé de fin de calcul (console, barre d'état), dock Résultats, réactions du panneau du nœud, flèches et textes
+  des réactions 3D (longueur aussi), unité des diagrammes (diagramUnit jamais renseigné).
+- Correction : valeurs converties en kN (`UnitSystem::forceToKiloNewtons`) là où le libellé est « kN » (aucun nouveau texte à
+  traduire) ; unité des diagrammes (vue 3D, légende, dock, courbes 2D) = unité réelle du calcul, les valeurs tracées étant brutes.
+- Test 492 complété (suite ndc) : dock Résultats et panneau du nœud identiques en kN pour un calcul en kN et en N (aucun
+  « 252900 »), unité des diagrammes. Suite complète 60/60 ; check_layers 0 ; TSALab 27/27. Reste : BUG-117 P3.
+
 ## 2026-11-02 — BUG-111 (étapes 1-2) : trace du calcul (branche fix/calculation-traceability)
 
 - Manquait : aucune empreinte des données d'entrée ; script OpenSees détruit avec le dossier temporaire.
