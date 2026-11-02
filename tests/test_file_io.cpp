@@ -8,8 +8,11 @@
 #include "Analysis/ResultsModel.h"
 #include "Project/ProjectDiagnostics.h"
 #include "Project/ProjectManifest.h"
+#include "Project/ProjectManager.h"
+#include "Project/RecoveryStore.h"
 #include <QDir>
 #include <QFile>
+#include <QSysInfo>
 #include <QTemporaryDir>
 #include "Standards/ModelValidator.h"
 #include <QJsonDocument>
@@ -1425,6 +1428,56 @@ bool runSuite_FileIO(int& passed)
                       << std::endl;
         }
         std::cout << "[PASS] Test 588: Fichier à références pendantes refusé, aucun plantage au calcul" << std::endl;
+        ++passed;
+    }
+
+
+    // TEST 592 (BUG-157) : copies de récupération — écrites hors du projet, verrouillées tant que le document est ouvert,
+    // proposées après une fermeture brutale (verrou d'un processus disparu), relues à l'identique, effacées
+    {
+        using namespace TSA::Project;
+        QTemporaryDir dir;
+        const RecoveryStore store(dir.filePath("recovery"));
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(6, 0, 0);
+        m.addBar(a, b, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        const QString key = QStringLiteral("doc-1");
+        auto held = store.lock(key);
+        QString err;
+        TEST_CHECK(held && store.write(key, m, nullptr, QStringLiteral("C:/Projets/Pont.tsa"), QStringLiteral("Pont"), &err),
+                   "Test 592: copie de récupération écrite (" << err.toStdString() << ")");
+        TEST_CHECK(store.orphans().empty(), "Test 592: document encore ouvert (verrou tenu) : copie non proposée");
+        held.reset();   // fermeture du document sans effacement (cas d'un arrêt) : verrou libéré
+        auto orphans = store.orphans();
+        TEST_CHECK(orphans.size() == 1 && orphans.front().originalPath == "C:/Projets/Pont.tsa" && orphans.front().title == "Pont" &&
+                       orphans.front().savedAt.isValid(),
+                   "Test 592: copie orpheline proposée avec son fichier d'origine");
+        Model back;
+        TEST_CHECK(TSAProjectIO::loadFromFile(orphans.front().file, back) && back.nodes().size() == 2 && back.beams().size() == 1,
+                   "Test 592: copie relue à l'identique");
+        store.remove(key);
+        TEST_CHECK(store.orphans().empty() && !QFile::exists(orphans.front().file), "Test 592: copie effacée");
+
+        // Fermeture brutale : verrou laissé par un processus disparu → copie proposée ; processus vivant → non proposée
+        const QString key2 = QStringLiteral("doc-2");
+        TEST_CHECK(store.write(key2, m, nullptr, QString(), QStringLiteral("Sans titre"), &err), "Test 592: deuxième copie écrite");
+        {
+            QFile stale(QDir(store.directory()).filePath(key2 + ".lock"));
+            TEST_CHECK(stale.open(QIODevice::WriteOnly), "Test 592: verrou périmé simulé");
+            stale.write(QStringLiteral("2147483600\nTSA\n%1\n").arg(QSysInfo::machineHostName()).toUtf8());
+        }
+        TEST_CHECK(store.orphans().size() == 1 && store.orphans().front().originalPath.isEmpty(),
+                   "Test 592: verrou d'un processus disparu : copie proposée (projet jamais enregistré)");
+        auto live = store.lock(QStringLiteral("doc-3"));
+        TEST_CHECK(live && store.write(QStringLiteral("doc-3"), m, nullptr, QString(), QString(), &err) && store.orphans().size() == 1,
+                   "Test 592: copie d'un document ouvert (processus vivant) jamais proposée");
+
+        // Projet récupéré rattaché à son fichier d'origine
+        ProjectManager pm;
+        pm.adoptFilePath(QStringLiteral("C:/Projets/Pont.tsa"));
+        TEST_CHECK(pm.hasFilePath() && pm.currentFilePath() == "C:/Projets/Pont.tsa", "Test 592: projet récupéré rattaché à son fichier");
+        TEST_CHECK(RecoveryStore::intervalMinutes() >= 0, "Test 592: intervalle de sauvegarde automatique lu");
+        std::cout << "[PASS] Test 592: Copies de récupération (sauvegarde automatique, fermeture brutale)" << std::endl;
         ++passed;
     }
 

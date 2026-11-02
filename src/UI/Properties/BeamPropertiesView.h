@@ -78,6 +78,7 @@ private:
     QDoubleSpinBox* m_spinWidth = nullptr;
     QDoubleSpinBox* m_spinHeight = nullptr;
     QDoubleSpinBox* m_spinRadius = nullptr;
+    class QFormLayout* m_formSection = nullptr;
     QDoubleSpinBox* m_spinFlangeWidth = nullptr;
     QDoubleSpinBox* m_spinFlangeThick = nullptr;
     QDoubleSpinBox* m_spinWebThick = nullptr;

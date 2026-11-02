@@ -60,6 +60,22 @@ int displayedObjects(OccView& v)
     return list.Extent();
 }
 
+/// Objets affichés une fois la vue stabilisée : une partie des repères (grilles, plan de travail) est affichée par des
+/// minuteries différées ; un compte pris trop tôt les voyait apparaître ensuite (test 371 intermittent, BUG-174).
+int settledDisplayedObjects(OccView& v)
+{
+    int last = displayedObjects(v), stable = 0;
+    for (int k = 0; k < 600 && stable < 15; ++k)
+    {
+        QApplication::processEvents();
+        QThread::msleep(5);
+        const int now = displayedObjects(v);
+        stable = now == last ? stable + 1 : 0;
+        last = now;
+    }
+    return last;
+}
+
 void pump(int n = 10)
 {
     for (int k = 0; k < n; ++k)
@@ -236,20 +252,20 @@ bool runSuite_Display(int& passed)
         pump(20);
         view.setModel(&m);
         pump();
-        const int empty = displayedObjects(view);
+        const int empty = settledDisplayedObjects(view);
         auto results = portalResults(m);
         TEST_CHECK(results && results->isValid(), "Test 371: calcul du portique");
         view.rebuildAllShapes();
         pump();
-        const int withModel = displayedObjects(view);
+        const int withModel = settledDisplayedObjects(view);   // vue stabilisée (BUG-174)
         auto* rv = view.resultsVisual();
         view.setResultsModel(results);
         rv->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
         rv->setDeformedVisible(true);
         rv->setReactionsVisible(true);
         pump();
+        const int shown = settledDisplayedObjects(view);
         const auto d1 = rv->diagnostics();
-        const int shown = displayedObjects(view);
         std::cout << "  scène : vide " << empty << ", modèle " << withModel << ", résultats " << shown << " (diagrammes " << d1.diagrams << ", déformées " << d1.deformed
                   << ", réactions " << d1.reactions << ", étiquettes " << d1.diagramLabels + d1.reactionLabels << ")" << std::endl;
         TEST_CHECK(d1.diagrams == 3 && d1.deformed >= 3, "Test 371: un diagramme et une déformée par barre (poutre 1 et poteau 1 distincts) : " << d1.diagrams << " diagrammes");

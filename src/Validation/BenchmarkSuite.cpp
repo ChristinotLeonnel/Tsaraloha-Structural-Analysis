@@ -792,8 +792,11 @@ std::string engineVersion(const std::string& engine)
 {
     if (engine == "opensees")
     {
-        // Version lue sur l'exécutable ; jamais une valeur par défaut présentée comme constatée
-        const auto v = TSA::Analysis::OpenSeesManager::instance().versionInfo().versionString.toStdString();
+        // Version lue sur l'exécutable ; jamais une valeur par défaut présentée comme constatée. Disponibilité vérifiée d'abord :
+        // elle lit et retient la version (BUG-165 : « version non lue » au premier cas d'un lot)
+        auto& ops = TSA::Analysis::OpenSeesManager::instance();
+        ops.isAvailable();
+        const auto v = ops.versionInfo().versionString.toStdString();
         return "OpenSees " + (v.empty() ? std::string("(version non lue)") : v);
     }
     return engine == "custom2d" ? "Custom2D (TSALab MetDeDeplacement)" : engine;

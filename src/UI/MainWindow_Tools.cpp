@@ -830,7 +830,7 @@ void MainWindow::onAnalysisResultsChanged()
     // inchangée (setUnsavedFlag : les résultats restent valides). Résultats relus du fichier : rien à enregistrer.
     if (m_resultsModel && m_resultsModel->hasResults() && !m_restoringProjectState && m_model)
     {
-        m_model->setUnsavedFlag(true);
+        m_model->setProjectStateUnsaved(true);   // distinct du drapeau du modèle : Annuler ne le lève pas (BUG-176)
         updateWindowTitle();
     }
     emit resultsChanged();

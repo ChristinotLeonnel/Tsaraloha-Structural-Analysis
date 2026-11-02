@@ -339,6 +339,17 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
         m_results.setValid(false);
         return false;
     }
+    // Le script écrit « TSA_OPS_SUCCESS » à la fin de l'analyse : absent, le script s'est arrêté avant (erreur Tcl), même avec
+    // le code 0 que rend OpenSees (BUG-164 : jamais contrôlé)
+    if (!fullLog.contains(QStringLiteral("TSA_OPS_SUCCESS")))
+    {
+        const QString tail = stdErrLog.trimmed().right(400);
+        if (errorMessage)
+            *errorMessage = tr("OpenSees n'a pas terminé le script de calcul (marqueur de fin absent : erreur dans le script).%1")
+                                .arg(tail.isEmpty() ? QString() : QStringLiteral("\n") + tail);
+        m_results.setValid(false);
+        return false;
+    }
 
     // 4. Extraction et désérialisation des résultats
     std::string readErr;

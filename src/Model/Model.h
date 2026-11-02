@@ -454,12 +454,20 @@ public:
     /// Notifie les vues (ids vides = toutes) ; document modifié, révision inchangée (résultats conservés).
     void notifyDimensionsChanged(const std::vector<int>& ids);
 
-    bool isModified() const { return m_isModified; }
+    /// Document à enregistrer : modèle modifié depuis l'enregistrement, OU nouveaux résultats de calcul pas encore dans le fichier.
+    bool isModified() const { return m_isModified || m_resultsUnsaved; }
     void setModified(bool modified)
     {
         m_isModified = modified;
+        if (!modified) m_resultsUnsaved = false;
         if (modified) bumpRevision();
     }
+    /// Données du projet hors modèle changées (résultats de calcul, diagnostics, fichiers liés… : blocs d'état du .tsa) :
+    /// document à enregistrer, révision inchangée. Distinct du drapeau du modèle : Annuler / Rétablir jusqu'à l'état
+    /// enregistré ne rend plus le document « non modifié » tant qu'elles ne sont pas dans le fichier (BUG-176). Effacé par
+    /// markSaved.
+    void setProjectStateUnsaved(bool unsaved) noexcept { m_resultsUnsaved = unsaved; }
+    bool hasUnsavedProjectState() const noexcept { return m_resultsUnsaved; }
     /// Enregistrement, ouverture ou nouveau projet : non modifié, et l'état actuel devient le point d'enregistrement
     /// de l'historique (un Annuler / Rétablir qui y ramène rend le document non modifié, BUG-074).
     void markSaved();
@@ -543,6 +551,7 @@ private:
     std::unique_ptr<TSA::Coordinate::WorkPlaneManager> m_workPlaneManager;
     TSA::Grid::GridManager* m_gridManager = nullptr; ///< non possédé (voir setGridManager)
     bool m_isModified = false;
+    bool m_resultsUnsaved = false;   ///< BUG-176
     NamedViewSet m_namedViews;
     std::array<std::string, static_cast<size_t>(ProjectStateBlock::Count)> m_projectState; ///< blocs d'état (UIST…PMAN)
     std::string m_analysisSettingsJson;

@@ -156,6 +156,13 @@ Application ─► AppShell (seule fenêtre top-level, sans cadre système)
   sans géométrie quand la fenêtre principale est embarquée).
 - Taille minimale du workspace : 960 × 560 px logiques (les minima cumulés des panneaux dépassaient la largeur d'un
   écran 1920 px à 125 %).
+- Sauvegarde automatique et récupération (BUG-157, `src/Project/RecoveryStore`) : toutes les N minutes (QSettings
+  `Project/autosaveMinutes`, 5 par défaut, 0 = désactivée), un projet modifié est copié dans `<AppLocalData>/recovery`
+  (`<clé>.tsa` + `<clé>.json` : chemin d'origine, titre, date) ; jamais dans le fichier de l'utilisateur. Chaque
+  session tient un verrou (`QLockFile`) sur sa clé : une copie dont le verrou n'est tenu par aucun processus vivant
+  est orpheline (fermeture inattendue). Au lancement, `AppShell::offerRecovery` propose Récupérer / Supprimer les
+  copies / Plus tard ; un projet récupéré reprend son chemin d'origine et reste « à enregistrer ». La copie est
+  supprimée à l'enregistrement et à la fermeture normale.
 
 ## Espace de travail central : 3D / Blueprint / partagé (`src/UI/Workspace`)
 

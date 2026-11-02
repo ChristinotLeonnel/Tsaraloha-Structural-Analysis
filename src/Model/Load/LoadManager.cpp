@@ -1,4 +1,5 @@
 #include "LoadManager.h"
+#include "../../Core/Units.h"
 #include "../Model.h"
 
 #include <algorithm>
@@ -6,7 +7,7 @@
 namespace TSA::Model
 {
 
-static constexpr double STANDARD_GRAVITY = 9.80665; // m/s²
+static constexpr double STANDARD_GRAVITY = TSA::Units::kGravity; // m/s², même g que les moteurs (BUG-117 P3)
 
 LoadManager::LoadManager()
 {

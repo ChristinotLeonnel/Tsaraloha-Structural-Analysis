@@ -3,6 +3,7 @@
 // teintant le grain du matériau ; panneau Propriétés n'imposant plus de couleur par défaut.
 
 #include "test_common.h"
+#include <QFormLayout>
 #include <QComboBox>
 #include <QMessageBox>
 
@@ -382,5 +383,51 @@ bool runSuite_Appearance(int& passed)
         std::cout << "[PASS] Test 222: Conformité globale au Standard UI/UX TSA (Tailles, En-têtes, Sémantique)" << std::endl;
         ++passed;
     }
+
+    // -------------------------------------------------------------------------
+    // TEST 596 (BUG-115, BUG-121 (2)) : poteau — « Tube » produit un vrai tube (épaisseur de paroi), un tube existant est
+    // modifiable et conservé ; les lignes masquées le sont entières (libellé compris)
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(0, 0, 3);
+        const int col = m.addColumn(a, b, Section::rectangular(0.3, 0.4), Material::steelS235());
+        TSA::UI::ColumnPropertiesView view(&m);
+        view.setElementId(col);
+        auto* combo = view.findChildren<QComboBox*>().front();
+        for (auto* c : view.findChildren<QComboBox*>())
+            if (c->findData(static_cast<int>(SectionShape::BoxHollow)) >= 0) combo = c;
+        combo->setCurrentIndex(combo->findData(static_cast<int>(SectionShape::BoxHollow)));
+        view.applyChanges();
+        const Section tube = m.getColumn(col)->section();
+        TEST_CHECK(tube.shape == SectionShape::BoxHollow && tube.tw > 0.0 && tube.area() < 0.3 * 0.4 - 1e-6,
+                   "Test 596: « Tube » → tube creux (épaisseur " << tube.tw << " m, A = " << tube.area() << " m² < aire pleine)");
+        // Tube existant : relu, conservé à la validation (n'est plus remplacé par un rectangle plein)
+        {
+            TSA::UI::ColumnPropertiesView again(&m);
+            again.setElementId(col);
+            again.applyChanges();
+        }
+        const Section kept = m.getColumn(col)->section();
+        TEST_CHECK(kept.shape == SectionShape::BoxHollow && std::abs(kept.tw - tube.tw) < 1e-12 && std::abs(kept.area() - tube.area()) < 1e-12,
+                   "Test 596: tube existant conservé à la validation du panneau");
+        // Lignes masquées : aucun libellé visible sans son champ (section rectangulaire : pas de « Rayon du cercle » ni d'épaisseur)
+        combo->setCurrentIndex(combo->findData(static_cast<int>(SectionShape::Rectangular)));
+        view.show();
+        QApplication::processEvents();
+        int orphanLabels = 0;
+        for (auto* form : view.findChildren<QFormLayout*>())
+            for (int r = 0; r < form->rowCount(); ++r)
+            {
+                QLayoutItem* label = form->itemAt(r, QFormLayout::LabelRole);
+                QLayoutItem* field = form->itemAt(r, QFormLayout::FieldRole);
+                if (label && label->widget() && field && field->widget() && label->widget()->isVisible() && !field->widget()->isVisible()) ++orphanLabels;
+            }
+        TEST_CHECK(orphanLabels == 0, "Test 596: aucun libellé affiché sans son champ (" << orphanLabels << ")");
+        view.hide();
+        std::cout << "[PASS] Test 596: Poteau en tube creux (épaisseur), lignes masquées entières" << std::endl;
+        ++passed;
+    }
+
     return true;
 }

@@ -1,4 +1,5 @@
 #include "DiagramGeometry.h"
+#include <QCoreApplication>
 #include "../Coordinate/CoordinateTransformationService.h"
 
 #include <BRepBuilderAPI_MakePolygon.hxx>
@@ -13,24 +14,25 @@ namespace TSA::Geometry
 
 QString DiagramGeometry::diagramTypeName(DiagramType type)
 {
+    // Libellés traduits (BUG-147 : infobulles et libellés 3D restaient en français en anglais / malgache)
     switch (type)
     {
-    case DiagramType::AxialForceN:  return QStringLiteral("Effort Normal (N)");
-    case DiagramType::ShearForceVy: return QStringLiteral("Effort Tranchant (Vy)");
-    case DiagramType::ShearForceVz: return QStringLiteral("Effort Tranchant (Vz)");
-    case DiagramType::TorsionMx:    return QStringLiteral("Moment de Torsion (Mx)");
-    case DiagramType::BendingMy:    return QStringLiteral("Moment Fléchissant (My)");
-    case DiagramType::BendingMz:    return QStringLiteral("Moment Fléchissant (Mz)");
-    case DiagramType::DeflectionUx: return QStringLiteral("Déplacement Axial (UX)");
-    case DiagramType::DeflectionUy: return QStringLiteral("Flèche Horizontale (UY)");
-    case DiagramType::DeflectionUz: return QStringLiteral("Flèche Verticale (UZ)");
-    case DiagramType::DeflectionUres: return QStringLiteral("Flèche Résultante (U)");
-    case DiagramType::RotationRx:   return QStringLiteral("Rotation de Torsion (RX)");
-    case DiagramType::RotationRy:   return QStringLiteral("Rotation Flexion (RY)");
-    case DiagramType::RotationRz:   return QStringLiteral("Rotation Flexion (RZ)");
-    case DiagramType::StressSigma:  return QStringLiteral("Contrainte normale de fibre extrême (σ = N/A ± M/W)");
+    case DiagramType::AxialForceN:  return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Effort Normal (N)");
+    case DiagramType::ShearForceVy: return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Effort Tranchant (Vy)");
+    case DiagramType::ShearForceVz: return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Effort Tranchant (Vz)");
+    case DiagramType::TorsionMx:    return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Moment de Torsion (Mx)");
+    case DiagramType::BendingMy:    return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Moment Fléchissant (My)");
+    case DiagramType::BendingMz:    return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Moment Fléchissant (Mz)");
+    case DiagramType::DeflectionUx: return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Déplacement Axial (UX)");
+    case DiagramType::DeflectionUy: return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Flèche Horizontale (UY)");
+    case DiagramType::DeflectionUz: return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Flèche Verticale (UZ)");
+    case DiagramType::DeflectionUres: return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Flèche Résultante (U)");
+    case DiagramType::RotationRx:   return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Rotation de Torsion (RX)");
+    case DiagramType::RotationRy:   return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Rotation Flexion (RY)");
+    case DiagramType::RotationRz:   return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Rotation Flexion (RZ)");
+    case DiagramType::StressSigma:  return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Contrainte normale de fibre extrême (σ = N/A ± M/W)");
     case DiagramType::None:
-    default:                        return QStringLiteral("Aucun");
+    default:                        return QCoreApplication::translate("TSA::Geometry::DiagramGeometry", "Aucun");
     }
 }
 

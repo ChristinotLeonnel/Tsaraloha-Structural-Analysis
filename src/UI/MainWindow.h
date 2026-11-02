@@ -89,6 +89,7 @@ class QActionGroup;
 class QToolButton;
 class QMenu;
 class QTimer;
+class QLockFile;
 class QPlainTextEdit;
 class QStatusBar;
 class QLabel;
@@ -135,6 +136,12 @@ public:
     bool closeProject();
     /// Fermeture de l'application : enregistrement éventuel, aperçu et disposition des panneaux.
     bool prepareToClose();
+    /// Sauvegarde automatique (BUG-157) : copie de récupération du document s'il est modifié ; vrai si une copie a été écrite.
+    bool autosaveNow();
+    /// Identifiant de ce document pour les copies de récupération.
+    const QString& recoveryKey() const noexcept { return m_recoveryKey; }
+    /// Projet ouvert depuis une copie de récupération : rattaché à son fichier d'origine et marqué « à enregistrer ».
+    void adoptRecoveredProject(const QString& originalPath, const QString& title);
     /// Faux (avec un message) si un calcul tourne : le projet ne peut alors être ni remplacé ni
     /// fermé, ses résultats seraient publiés sur un autre modèle. action : « quitter », « ouvrir un
     /// autre projet »…
@@ -575,6 +582,10 @@ private:
     /// Remet le workspace sur un projet vierge (modèle, grille selon le gabarit, résultats, vues).
     void resetWorkspace(TSA::UI::ProjectTemplate projectTemplate);
     QTimer* m_previewTimer = nullptr;
+    // Sauvegarde automatique et récupération (BUG-157, Project/RecoveryStore)
+    QTimer* m_autosaveTimer = nullptr;
+    QString m_recoveryKey;
+    std::unique_ptr<QLockFile> m_recoveryLock;
     QAction* m_actionCloseProject = nullptr;
     quint64 m_lastPolledRevision = 0;
 

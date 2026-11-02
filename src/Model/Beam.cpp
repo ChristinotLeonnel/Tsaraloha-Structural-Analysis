@@ -1,4 +1,5 @@
 #include "Beam.h"
+#include "../Core/Units.h"
 #include "Model.h"
 #include <cmath>
 #include <iomanip>
@@ -113,7 +114,7 @@ double Beam::weight(const Model& model) const
     double len = length(model);
     double area = m_section.area();
     double rho = m_material.density > 0.0 ? m_material.density : 7850.0;
-    return area * rho * 9.80665 * len;
+    return area * rho * TSA::Units::kGravity * len;   // même g que les moteurs (BUG-117 P3)
 }
 
 } // namespace TSA::Model

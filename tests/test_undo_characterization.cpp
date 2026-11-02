@@ -9,6 +9,7 @@
 #include "test_common.h"
 #include "undo_characterization.h"
 
+#include <functional>
 #include <algorithm>
 
 #include "AI/Tools/AIToolRegistry.h"
@@ -1617,5 +1618,78 @@ bool runSuite_UndoCharacterization(int& passed)
         std::cout << "[PASS] Test 573: « * » et demande d'enregistrement levés après Ctrl+S ; Annuler / Rétablir suivent l'état enregistré (BUG-074)" << std::endl;
         ++passed;
     }
+
+    // -------------------------------------------------------------------------
+    // TEST 594 (BUG-175) : contenu comparé par Annuler complet — deux états qui ne diffèrent que par une charge surfacique, une
+    // ouverture, un appui de bord ou un rayon de congé sont DIFFÉRENTS (avant : données écrites à part, absentes de la
+    // comparaison : une transaction qui ne changeait qu'elles pouvait être jugée sans effet, aucune entrée Annuler)
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        const int n1 = m.addNode(0, 0, 3), n2 = m.addNode(6, 0, 3), n3 = m.addNode(6, 4, 3), n4 = m.addNode(0, 4, 3);
+        const int sid = m.addSlab({ n1, n2, n3, n4 }, 0.2, "Dalle");
+        const int bid = m.addBar(n1, n2, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        SurfaceLoad q;
+        q.surfaceId = sid;
+        q.loadCaseId = lc;
+        q.value = -2.5;
+        const int lid = m.loadManager().addSurfaceLoad(q);
+        const auto base = m.createSnapshot("base");
+        TEST_CHECK(TSA::UndoRedo::UndoManager::sameContent(base, m.createSnapshot("même")), "Test 594: état identique jugé identique");
+
+        auto differs = [&](const char* what, const std::function<void(Model::ModelStateSnapshot&)>& change) {
+            auto other = base;
+            change(other);
+            TEST_CHECK(!TSA::UndoRedo::UndoManager::sameContent(base, other), "Test 594: " << what << " → états différents");
+        };
+        differs("valeur d'une charge surfacique", [&](auto& sn) { sn.loadSnapshot.surfaceLoads.at(lid).value = -3.0; });
+        differs("ouverture de dalle", [&](auto& sn) {
+            SlabOpening o;
+            o.polygon = { { 1, 1 }, { 2, 1 }, { 2, 2 } };
+            sn.slabs.at(sid).setOpenings({ o });
+        });
+        differs("appui de bord de dalle", [&](auto& sn) {
+            SurfaceEdgeSupport e;
+            e.edge = 1;
+            e.fixed = { true, true, true, false, false, false };
+            sn.slabs.at(sid).setEdgeSupports({ e });
+        });
+        differs("formulation de la dalle", [&](auto& sn) { sn.slabs.at(sid).setFormulation(SurfaceFormulation::Plate); });
+        differs("rayon de congé de la section", [&](auto& sn) {
+            Section sec = sn.beams.at(bid).section();
+            sec.filletRadius = sec.rootRadius() + 0.004;
+            sn.beams.at(bid).setSection(sec);
+        });
+        std::cout << "[PASS] Test 594: Contenu comparé par Annuler complet (surfaces, ouvertures, appuis de bord, sections)" << std::endl;
+        ++passed;
+    }
+
+
+    // -------------------------------------------------------------------------
+    // TEST 597 (BUG-176) : données du projet hors modèle (résultats, diagnostics, fichiers liés) non enregistrées — le document
+    // reste « à enregistrer » après Annuler jusqu'à l'état enregistré (avant : l'historique ne comparait que le modèle)
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        const int n = m.addNode(0, 0, 0);
+        m.markSaved();
+        TEST_CHECK(!m.isModified(), "Test 597: projet enregistré, non modifié");
+        m.pushUndoState("Déplacer");
+        m.getNode(n)->setCoordinates(1, 0, 0);
+        m.notifyNodeModified(n);
+        m.setProjectStateUnsaved(true);   // nouveaux résultats de calcul (bloc RSLT), comme MainWindow::onAnalysisResultsChanged
+        m.undo();
+        TEST_CHECK(m.isModified() && m.hasUnsavedProjectState(),
+                   "Test 597: Annuler jusqu'à l'état enregistré — document toujours à enregistrer (résultats hors du fichier)");
+        m.markSaved();
+        TEST_CHECK(!m.isModified() && !m.hasUnsavedProjectState(), "Test 597: enregistré : non modifié");
+        m.setProjectStateUnsaved(true);
+        m.setModified(false);   // nouveau projet / ouverture
+        TEST_CHECK(!m.isModified(), "Test 597: ouverture d'un projet : état remis à zéro");
+        std::cout << "[PASS] Test 597: Données du projet hors modèle gardées « à enregistrer » malgré Annuler" << std::endl;
+        ++passed;
+    }
+
     return true;
 }

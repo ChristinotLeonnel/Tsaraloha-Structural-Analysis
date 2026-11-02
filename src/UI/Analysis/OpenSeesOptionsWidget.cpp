@@ -1,9 +1,16 @@
 #include "OpenSeesOptionsWidget.h"
 
 #include "../../Analysis/Engines/OpenSees/OpenSeesEngine.h"
+#include "../../Analysis/OpenSeesManager.h"
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDir>
+#include <QFileDialog>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QMessageBox>
+#include <QPushButton>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QSpinBox>
@@ -60,7 +67,56 @@ OpenSeesOptionsWidget::OpenSeesOptionsWidget(QWidget* parent)
     formSys->addRow(QString(), m_kiloNewtons);
     lay->addWidget(groupSystem);
 
+    // Exécutable OpenSees : réglage de l'application, hors réglages du projet (BUG-102 : seule la clé QSettings
+    // OpenSees/ExecutablePath permettait de l'imposer, à la main)
+    auto* groupExe = new QGroupBox(tr("Exécutable OpenSees"), this);
+    auto* exeLayout = new QVBoxLayout(groupExe);
+    m_executable = new QLabel(groupExe);
+    m_executable->setWordWrap(true);
+    m_executable->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    exeLayout->addWidget(m_executable);
+    auto* buttons = new QHBoxLayout;
+    auto* choose = new QPushButton(tr("Choisir…"), groupExe);
+    auto* reset = new QPushButton(tr("Par défaut"), groupExe);
+    reset->setToolTip(tr("Emplacement par défaut : dossier de l'application, puis PATH"));
+    buttons->addWidget(choose);
+    buttons->addWidget(reset);
+    buttons->addStretch(1);
+    exeLayout->addLayout(buttons);
+    lay->addWidget(groupExe);
+    connect(choose, &QPushButton::clicked, this, [this] {
+        const QString path = QFileDialog::getOpenFileName(this, tr("Exécutable OpenSees"), QString(),
+#ifdef Q_OS_WIN
+                                                          tr("Programmes (*.exe)")
+#else
+                                                          QString()
+#endif
+        );
+        if (path.isEmpty()) return;
+        // Vérifié avant d'être retenu : commande de contrôle exécutée (interpréteur Tcl et commandes OpenSees)
+        const auto check = OpenSeesManager::instance().checkExecutable(path);
+        if (!check.ok())
+        {
+            QMessageBox::warning(this, tr("Exécutable OpenSees"), tr("Ce programme n'est pas un OpenSees opérationnel :\n%1").arg(check.message));
+            return;
+        }
+        OpenSeesManager::instance().setCustomExecutablePath(path);
+        refreshExecutable();
+    });
+    connect(reset, &QPushButton::clicked, this, [this] {
+        OpenSeesManager::instance().resetToDefaultPath();
+        refreshExecutable();
+    });
+    refreshExecutable();
+
     loadSettings(OpenSeesEngine::settingsFromParameters(AnalysisParameters{}));
+}
+
+void OpenSeesOptionsWidget::refreshExecutable()
+{
+    if (!m_executable) return;
+    const QString path = OpenSeesManager::instance().executablePath();
+    m_executable->setText(path.isEmpty() ? tr("Aucun exécutable trouvé (dossier de l'application, PATH).") : QDir::toNativeSeparators(path));
 }
 
 void OpenSeesOptionsWidget::loadSettings(const QJsonObject& settings)

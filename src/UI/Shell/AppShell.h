@@ -62,6 +62,11 @@ public:
     void openProject();
     /// Ouvre un fichier projet du produit (projets récents, glisser-déposer, ligne de commande).
     bool openProjectFile(const QString& path);
+    /// Copies de récupération laissées par une fermeture brutale (BUG-157) : proposées à l'utilisateur (récupérer, supprimer,
+    /// plus tard). Appelée au démarrage.
+    void offerRecovery();
+    /// Ouvre une copie de récupération dans un nouvel onglet, rattachée à son fichier d'origine, puis efface la copie.
+    bool recoverProject(const QString& recoveryFile, const QString& key, const QString& originalPath, const QString& title);
     /// Ferme le document au premier plan (confirmation si modifié).
     bool closeProject();
     bool closeAllProjects();

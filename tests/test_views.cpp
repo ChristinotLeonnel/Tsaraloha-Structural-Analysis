@@ -1473,5 +1473,56 @@ bool runSuite_Views(int& passed)
                   << ", " << view.renderingInfo().device.toStdString() << ")" << std::endl;
         ++passed;
     }
+
+    // -------------------------------------------------------------------------
+    // TEST 595 (BUG-075) : clic sur un nœud situé sur une ligne de grille — le nœud est retenu (élément du modèle détecté au
+    // même endroit qu'un objet hors modèle). Avant : seules les cotations cédaient la place ; la sélection était vidée.
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        // Hors de l'origine (poignée d'origine du plan de travail, prioritaire par choix)
+        const int a = m.addNode(2, 1, 0), b = m.addNode(7, 1, 0), c = m.addNode(7, 5, 0);
+        m.addBar(a, b, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        m.addBar(b, c, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        TSA::Viewer::SelectionManager selection;   // détruit après la vue (comme dans la fenêtre principale)
+        ViewHarness h(m);
+        OccView& view = h.view;
+        view.setSelectionManager(&selection);
+        view.rebuildAllShapes();
+        TSA::Grid::GridManager gm;
+        TSA::Grid::GridDefinition def("Axes", TSA::Grid::GridType::Cartesian);
+        def.setXPositions({ 2.0, 7.0 });
+        def.setXLabels({ "1", "2" });
+        def.setYPositions({ 1.0, 5.0 });
+        def.setYLabels({ "A", "B" });
+        def.setZLevels({ 0.0 });
+        def.setZLabels({ "RDC" });
+        gm.clearAllGrids();
+        gm.addGrid(def);
+        view.setGridManager(&gm, nullptr);
+        view.rebuildAllShapes();
+        view.viewTop();
+        view.fitAll();
+        pump(5);
+        int hits = 0;
+        for (int id : { a, b, c })
+        {
+            const auto* n = m.getNode(id);
+            int px = 0, py = 0;
+            view.view()->Convert(n->x(), n->y(), n->z(), px, py);
+            view.context()->MoveTo(px, py, view.view(), false);
+            const Handle(AIS_InteractiveObject) picked = view.detectedPreferringModel();
+            const int nodeId = view.selectionManager() ? view.selectionManager()->getNodeId(picked) : 0;
+            const bool modelObject = view.selectionManager() && view.selectionManager()->isModelObject(picked);
+            hits += nodeId == id ? 1 : 0;
+            TEST_CHECK(modelObject, "Test 595: clic sur le nœud " << id << " (croisement de la grille) → élément du modèle retenu (nœud " << nodeId << ")");
+        }
+        TEST_CHECK(hits == 3, "Test 595: nœuds désignés au clic (" << hits << " / 3)");
+        view.setGridManager(nullptr, nullptr);
+        view.setSelectionManager(nullptr);
+        std::cout << "[PASS] Test 595: Clic sur un nœud situé sur la grille — nœud retenu" << std::endl;
+        ++passed;
+    }
+
     return true;
 }

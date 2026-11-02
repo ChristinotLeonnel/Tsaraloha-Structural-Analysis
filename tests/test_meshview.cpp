@@ -162,6 +162,23 @@ int displayedCount(const Handle(AIS_InteractiveContext)& ctx)
     return list.Extent();
 }
 
+/// Nombre d'objets affichés une fois la vue stabilisée : la vue affiche une partie de ses repères (grilles, plan de travail)
+/// par des minuteries différées ; un compte pris trop tôt les voyait apparaître ensuite (tests 343, 346 intermittents sur un
+/// poste chargé, BUG-179). Attend que le compte ne change plus pendant 15 tours (au plus ~3 s).
+int settledDisplayedCount(const Handle(AIS_InteractiveContext)& ctx)
+{
+    int last = displayedCount(ctx), stable = 0;
+    for (int k = 0; k < 600 && stable < 15; ++k)
+    {
+        QApplication::processEvents();
+        QThread::msleep(5);
+        const int now = displayedCount(ctx);
+        stable = now == last ? stable + 1 : 0;
+        last = now;
+    }
+    return last;
+}
+
 double ms(std::chrono::steady_clock::time_point t0)
 {
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
@@ -569,7 +586,7 @@ bool runSuite_MeshView(int& passed)
         view.show();
         pump();
         const Handle(AIS_InteractiveContext)& ctx = view.context();
-        const int baseline = displayedCount(ctx);
+        const int baseline = settledDisplayedCount(ctx);   // vue stabilisée (BUG-179)
         TSA::Viewer::MeshVisual visual(ctx, view.view());
         const FeMesh m = mixedMesh();
         visual.show(m, TSA::Viewer::MeshVisual::Mode::Generated);
@@ -778,7 +795,7 @@ bool runSuite_MeshView(int& passed)
         view.show();
         pump();
         const Handle(AIS_InteractiveContext)& ctx = view.context();
-        const int baseline = displayedCount(ctx);
+        const int baseline = settledDisplayedCount(ctx);   // vue stabilisée (BUG-179)
         bool ok = true;
         for (int cycle = 0; cycle < 15 && ok; ++cycle)
         {

@@ -1,9 +1,18 @@
 # Current State
 
-Last Updated: 2026-10-31 — repères locaux et axes des charges (branche refactor/load-axes-section-rotation) ; avant : analyse non linéaire retirée (ADR-025 ; commits a7b163e et c3cf5f6, fusion dans main demandée). Sections non
+Last Updated: 2026-11-02 soir — corrections de known-issues (branche fix/autosave-recovery, non commitée). Avant : 2026-10-31 — repères locaux et axes des charges (branche refactor/load-axes-section-rotation) ; avant : analyse non linéaire retirée (ADR-025 ; commits a7b163e et c3cf5f6, fusion dans main demandée). Sections non
 revues depuis le 2026-10-07 : voir l'audit du 2026-10-31 (TSA_CODE_QUALITY_AUDIT.md, § Documentation).
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
+
+## Sauvegarde automatique et récupération (2026-11-02, branche fix/autosave-recovery, non commitée)
+Status: IMPLEMENTED — RecoveryStore (src/Project) : copie périodique du projet modifié dans <AppLocalData>/recovery (QSettings
+Project/autosaveMinutes, 5 par défaut, 0 = désactivée), verrou par session (QLockFile), copies orphelines proposées au lancement
+(AppShell::offerRecovery), copie supprimée à l'enregistrement et à la fermeture normale. Test 592 (écriture, relecture, verrou,
+orphelins). Non vérifié : plantage réel de TSA.exe suivi d'une récupération (interface).
+Même branche : symétrie sans copie des dalles (BUG-171), contenu comparé par Annuler complet (BUG-175), clic sur un nœud (BUG-075),
+tube creux du poteau (BUG-115), état « à enregistrer » des résultats (BUG-176), chemin d'OpenSees choisi dans la fenêtre Calcul
+(BUG-102), g = 9,81 partout (BUG-117 P3), décompression plafonnée (BUG-166), succès d'OpenSees prouvé par son marqueur (BUG-164).
 
 ## Dépendances installées en une fois, disposition thirdparty/ (2026-11-01, branche build/auto-dependencies, fusionnée dans main et poussée)
 Status: IMPLEMENTED (Windows vérifié) / UNKNOWN (Linux, jamais exécuté) — `install_dependencies.py` (racine) installe toutes les

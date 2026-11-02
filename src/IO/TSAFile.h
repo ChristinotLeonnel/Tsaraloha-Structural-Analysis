@@ -82,6 +82,10 @@ public:
     /// Contenu persistant d'un instantané (éléments, charges, BIM, références de calcul), octet pour octet comme dans
     /// le fichier, sans en-tête ni compression : comparaison EXACTE de deux états (UndoManager, BUG-127).
     std::vector<uint8_t> snapshotContentBytes(const TSA::Model::Model::ModelStateSnapshot& snapshot);
+    /// Contenu comparé par l'historique (UndoManager::sameContent) : snapshotContentBytes, plus les données écrites à part
+    /// (ouvertures, surfaces, charges surfaciques, appuis de bord, propriétés des sections), BUG-175. L'empreinte des
+    /// résultats (TSAProjectIO::modelFingerprint) n'en dépend pas : les résultats déjà enregistrés restent valides.
+    std::vector<uint8_t> undoContentBytes(const TSA::Model::Model::ModelStateSnapshot& snapshot);
 
 private:
     void writeProjectChunk(std::vector<uint8_t>& buffer, const std::string& projectName, const std::string& author);

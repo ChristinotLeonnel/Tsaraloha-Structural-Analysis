@@ -379,8 +379,8 @@ QString AIOrchestrator::runtimeLabel() const
         return cloudConfigured() && m_cloudProvider->locality() == ProviderLocality::Local ? QStringLiteral("LOCAL (Ollama)") : QStringLiteral("CLOUD");
     if (m_server->state() == LocalLlamaServer::State::Stopped || m_server->state() == LocalLlamaServer::State::Failed)
     {
-        if (resolvedModelPath().isEmpty()) return QStringLiteral("IA non configurée");
-        return QStringLiteral("LOCAL (arrêtée)");
+        if (resolvedModelPath().isEmpty()) return tr("IA non configurée");   // traduit (BUG-121 (3))
+        return tr("LOCAL (arrêtée)");
     }
     const QString dev = m_server->config().deviceId;
     if (dev.isEmpty() || m_server->config().gpuLayers == 0) return QStringLiteral("LOCAL CPU");

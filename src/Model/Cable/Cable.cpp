@@ -1,4 +1,5 @@
 #include "Cable.h"
+#include "../../Core/Units.h"
 #include "../Model.h"
 #include "../Node.h"
 #include <cmath>
@@ -214,7 +215,7 @@ double Cable::weight(const Model& model) const
         double rho = m_material.density > 0.0 ? m_material.density : 7850.0;
         linMass = area * rho;
     }
-    return linMass * 9.80665 * len;
+    return linMass * TSA::Units::kGravity * len;   // même g que les moteurs (BUG-117 P3)
 }
 
 } // namespace TSA::Model

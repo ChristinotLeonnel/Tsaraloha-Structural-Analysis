@@ -64,6 +64,7 @@ void Model::clearUndoRedo()
 void Model::markSaved()
 {
     m_isModified = false;
+    m_resultsUnsaved = false;
     if (m_undoManager)
     {
         m_undoManager->markClean(*this);
@@ -331,6 +332,7 @@ void Model::clear()
     m_nextCableId = 1;
     m_loadManager.resetToDefaults();
     m_isModified = false;
+    m_resultsUnsaved = false;
     clearUndoRedo();
 
     if (m_workPlaneManager)

@@ -37,6 +37,8 @@ public:
 
     bool isModified() const noexcept { return m_isModified; }
     void setModified(bool modified);
+    /// Projet récupéré d'une copie de récupération (BUG-157) : rattaché à son fichier d'origine (vide : jamais enregistré).
+    void adoptFilePath(const QString& path);
 
     // Métadonnées projet
     const QString& projectName() const noexcept { return m_projectName; }

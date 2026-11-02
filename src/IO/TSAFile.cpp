@@ -101,7 +101,8 @@ std::string elementVisualsJson(const TSA::Model::Model& model)
 
 /// JSON du chunk SECP (format 2.0) : pour chaque élément linéaire en I, rayon de congé et propriétés calculées (A, Iy,
 /// Iz, It) — empreinte relue et comparée à l'ouverture ; version des formules (Section::kSectionModel).
-std::string sectionPropertiesJson(const TSA::Model::Model& model)
+std::string sectionPropertiesJsonOf(const std::map<int, TSA::Model::Beam>& beams, const std::map<int, TSA::Model::Column>& columns,
+                                   const std::map<int, TSA::Model::TrussMember>& trusses)
 {
     auto collect = [](const auto& elements) {
         QJsonObject out;
@@ -114,9 +115,14 @@ std::string sectionPropertiesJson(const TSA::Model::Model& model)
         }
         return out;
     };
-    const QJsonObject root { { "schema", 1 }, { "sectionModel", TSA::Model::Section::kSectionModel }, { "beams", collect(model.beams()) },
-                             { "columns", collect(model.columns()) }, { "trusses", collect(model.trussMembers()) } };
+    const QJsonObject root { { "schema", 1 }, { "sectionModel", TSA::Model::Section::kSectionModel }, { "beams", collect(beams) },
+                             { "columns", collect(columns) }, { "trusses", collect(trusses) } };
     return QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString();
+}
+
+std::string sectionPropertiesJson(const TSA::Model::Model& model)
+{
+    return sectionPropertiesJsonOf(model.beams(), model.columns(), model.trussMembers());
 }
 
 /// Applique le chunk SECP aux éléments lus. Format ≥ 2.0 : le rayon enregistré fait foi ; une entrée absente, illisible,
@@ -249,7 +255,7 @@ void completeCalculationSnapshots(const std::map<int, TSA::Model::Beam>& beams, 
 }
 
 // Chunks OPNG et SURF : enregistrement ET empreinte du modèle (TSAProjectIO::modelFingerprint) ; chaîne vide : rien à écrire.
-std::string openingsChunkJson(const TSA::Model::Model& model)
+std::string openingsChunkJsonOf(const std::map<int, TSA::Model::Slab>& slabMap, const std::map<int, TSA::Model::Wall>& wallMap)
 {
     // Facultatif (format ≥ 1.8) : ouvertures des dalles (1.10 : et des voiles), dans le repère local de chaque surface.
     auto openingsJson = [](const std::vector<TSA::Model::SlabOpening>& openings) {
@@ -263,9 +269,9 @@ std::string openingsChunkJson(const TSA::Model::Model& model)
         return list;
     };
     QJsonObject slabs, walls;
-    for (const auto& [id, slab] : model.slabs())
+    for (const auto& [id, slab] : slabMap)
         if (!slab.openings().empty()) slabs.insert(QString::number(id), openingsJson(slab.openings()));
-    for (const auto& [id, wall] : model.walls())
+    for (const auto& [id, wall] : wallMap)
         if (!wall.openings().empty()) walls.insert(QString::number(id), openingsJson(wall.openings()));
     if (!slabs.isEmpty() || !walls.isEmpty())
     {
@@ -276,16 +282,22 @@ std::string openingsChunkJson(const TSA::Model::Model& model)
     return {};
 }
 
-std::string surfacesChunkJson(const TSA::Model::Model& model)
+std::string openingsChunkJson(const TSA::Model::Model& model)
+{
+    return openingsChunkJsonOf(model.slabs(), model.walls());
+}
+
+std::string surfacesChunkJsonOf(const std::map<int, TSA::Model::Slab>& slabMap, const std::map<int, TSA::Model::Wall>& wallMap,
+                                const std::map<int, TSA::Model::SurfaceLoad>& surfaceLoads)
 {
     // Facultatif (format ≥ 1.10) : formulation des surfaces (si différente de « coque ») et charges surfaciques.
     QJsonObject slabs, walls;
-    for (const auto& [id, s] : model.slabs())
+    for (const auto& [id, s] : slabMap)
         if (s.formulation() != TSA::Model::SurfaceFormulation::Shell) slabs.insert(QString::number(id), TSA::Model::surfaceFormulationKey(s.formulation()));
-    for (const auto& [id, w] : model.walls())
+    for (const auto& [id, w] : wallMap)
         if (w.formulation() != TSA::Model::SurfaceFormulation::Shell) walls.insert(QString::number(id), TSA::Model::surfaceFormulationKey(w.formulation()));
     QJsonArray loads;
-    for (const auto& [id, l] : model.loadManager().surfaceLoads())
+    for (const auto& [id, l] : surfaceLoads)
         loads.append(QJsonObject { { "id", id },
                                    { "target", l.targetKind == TSA::Model::SurfaceTargetKind::Slab ? "slab" : "wall" },
                                    { "surface", l.surfaceId },
@@ -311,9 +323,9 @@ std::string surfacesChunkJson(const TSA::Model::Model& model)
         return a;
     };
     QJsonObject slabSupports, wallSupports;
-    for (const auto& [id, s] : model.slabs())
+    for (const auto& [id, s] : slabMap)
         if (!s.edgeSupports().empty()) slabSupports.insert(QString::number(id), supportsJson(s.edgeSupports()));
-    for (const auto& [id, w] : model.walls())
+    for (const auto& [id, w] : wallMap)
         if (!w.edgeSupports().empty()) wallSupports.insert(QString::number(id), supportsJson(w.edgeSupports()));
     if (!slabs.isEmpty() || !walls.isEmpty() || !loads.isEmpty() || !slabSupports.isEmpty() || !wallSupports.isEmpty())
     {
@@ -323,6 +335,11 @@ std::string surfacesChunkJson(const TSA::Model::Model& model)
         return QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString();
     }
     return {};
+}
+
+std::string surfacesChunkJson(const TSA::Model::Model& model)
+{
+    return surfacesChunkJsonOf(model.slabs(), model.walls(), model.loadManager().surfaceLoads());
 }
 } // namespace TSA::IO::Detail
 
@@ -354,6 +371,13 @@ bool QtZlibCompressionProvider::decompress(const uint8_t* inData, size_t inSize,
     {
         outData.clear();
         return true;
+    }
+    // qCompress préfixe la taille décompressée (4 octets, gros-boutiste) : au-delà de 2 Gio, fichier refusé avant toute
+    // allocation (BUG-166 : un fichier fabriqué pouvait faire réserver une mémoire démesurée)
+    if (inSize >= 4)
+    {
+        const quint64 announced = (quint64(inData[0]) << 24) | (quint64(inData[1]) << 16) | (quint64(inData[2]) << 8) | quint64(inData[3]);
+        if (announced > (quint64(2) << 30)) return false;
     }
     QByteArray compressed(reinterpret_cast<const char*>(inData), static_cast<qsizetype>(inSize));
     QByteArray uncompressed = qUncompress(compressed);
@@ -421,12 +445,30 @@ std::vector<uint8_t> TSAFileWriter::snapshotContentBytes(const TSA::Model::Model
     return payload;
 }
 
+std::vector<uint8_t> TSAFileWriter::undoContentBytes(const TSA::Model::Model::ModelStateSnapshot& snapshot)
+{
+    // Contenu des chunks écrits à part (OPNG, SURF, SECP), calculé sur l'instantané : ouvertures, formulations, charges
+    // surfaciques et appuis de bord des surfaces, propriétés des sections (BUG-175 : absents, une transaction qui ne changeait
+    // qu'eux pouvait être jugée sans effet). Chaque partie est précédée de sa longueur.
+    std::vector<uint8_t> bytes = snapshotContentBytes(snapshot);
+    for (const std::string& part : { Detail::openingsChunkJsonOf(snapshot.slabs, snapshot.walls),
+                                     Detail::surfacesChunkJsonOf(snapshot.slabs, snapshot.walls, snapshot.loadSnapshot.surfaceLoads),
+                                     Detail::sectionPropertiesJsonOf(snapshot.beams, snapshot.columns, snapshot.trussMembers) })
+    {
+        const std::uint64_t n = part.size();
+        const auto* len = reinterpret_cast<const uint8_t*>(&n);
+        bytes.insert(bytes.end(), len, len + sizeof(n));
+        bytes.insert(bytes.end(), part.begin(), part.end());
+    }
+    return bytes;
+}
+
 // Comparaison exacte des états par l'historique (UndoManager::sameContent, BUG-127), fournie au noyau à
 // l'initialisation du programme : le noyau ne dépend pas de la couche IO (même principe que InstalledCatalogs).
 [[maybe_unused]] const bool kUndoContentEncoderProvided = [] {
     TSA::UndoRedo::UndoManager::setContentEncoder([](const TSA::Model::Model::ModelStateSnapshot& snapshot) {
         TSAFileWriter writer;
-        return writer.snapshotContentBytes(snapshot);
+        return writer.undoContentBytes(snapshot);
     });
     return true;
 }();
@@ -875,6 +917,12 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
         if (!m_compressor->decompress(decryptedData.data(), decryptedData.size(), uncompressedData))
         {
             if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Échec de décompression du payload .tsa (flux zlib corrompu).").toStdString();
+            return false;
+        }
+        // Taille annoncée par l'en-tête contrôlée (BUG-166 : ignorée à la lecture)
+        if (header.uncompressedSize != 0 && uncompressedData.size() != header.uncompressedSize)
+        {
+            if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Taille décompressée incohérente avec l'en-tête : fichier altéré.").toStdString();
             return false;
         }
     }

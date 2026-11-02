@@ -11,6 +11,8 @@
 //   557  options du presse-papier, cas de charge homonymes, collage dans un autre projet.
 
 #include "test_common.h"
+#include <gp_Trsf.hxx>
+#include <gp_Ax2.hxx>
 
 #include "Analysis/LoadResolver.h"
 #include "Coordinate/CoordinateTransformationService.h"
@@ -744,6 +746,78 @@ bool runSuite_CopyPaste(int& passed)
         TEST_CHECK(again.complete && again.createdLoadCaseIds.empty() && other.loadManager().loadCases().size() == otherCases + 1, "Test 557: second collage, cas rapproché par son nom");
         TEST_CHECK(other.loadManager().memberLoads().size() == 2 && referencesValid(other), "Test 557: autre projet, charge rattachée");
         std::cout << "[PASS] Test 557: Options, cas homonymes, autre projet" << std::endl;
+        ++passed;
+    }
+
+
+    // -------------------------------------------------------------------------
+    // TEST 593 (BUG-171) : symétrie SANS copie d'une dalle — ouverture, appui de bord et charge surfacique ponctuelle suivent la
+    // dalle (position réelle = image miroir de la position d'avant). Avant : ils restaient en (u, v) de l'ancien repère local.
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        const int n1 = m.addNode(0, 0, 3), n2 = m.addNode(6, 0, 3), n3 = m.addNode(6, 4, 3), n4 = m.addNode(0, 4, 3);
+        const int sid = m.addSlab({ n1, n2, n3, n4 }, 0.2, "Dalle");
+        Slab* slab = m.getSlab(sid);
+        SlabOpening opening;
+        opening.polygon = { { 1.0, 0.5 }, { 2.0, 0.5 }, { 2.0, 1.5 }, { 1.0, 1.5 } };   // près d'un coin : dissymétrique
+        slab->setOpenings({ opening });
+        SurfaceEdgeSupport support;
+        support.edge = 0;   // bord n1 → n2 (y = 0)
+        support.fixed = { true, true, true, false, false, false };
+        slab->setEdgeSupports({ support });
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        SurfaceLoad point;
+        point.surfaceId = sid;
+        point.loadCaseId = lc;
+        point.distribution = SurfaceLoadDistribution::Point;
+        point.value = -10.0;
+        point.u = 5.0;
+        point.v = 1.0;
+        const int lid = m.loadManager().addSurfaceLoad(point);
+
+        auto frameOf = [&](const Slab& sl) {
+            std::vector<TSA::Mesh::P3> c;
+            for (int id : sl.nodeIds())
+                if (const Node* n = m.getNode(id)) c.push_back({ n->x(), n->y(), n->z() });
+            return TSA::Mesh::slabFrame(c);
+        };
+        auto global = [](const TSA::Mesh::PlaneFrame& f, double u, double v) {
+            const auto p = f.toGlobal(u, v);
+            return gp_Pnt(p.x, p.y, p.z);
+        };
+        // Plan de symétrie x = 10 (dalle déplacée de l'autre côté)
+        gp_Trsf mirror;
+        mirror.SetMirror(gp_Ax2(gp_Pnt(10, 0, 0), gp_Dir(1, 0, 0)));
+        const auto f0 = frameOf(*m.getSlab(sid));
+        std::vector<gp_Pnt> openingBefore;
+        for (const auto& [u, v] : m.getSlab(sid)->openings().front().polygon) openingBefore.push_back(global(f0, u, v).Transformed(mirror));
+        const gp_Pnt loadBefore = global(f0, point.u, point.v).Transformed(mirror);
+        const gp_Pnt edgeMidBefore = gp_Pnt(3, 0, 3).Transformed(mirror);   // milieu du bord n1 → n2
+
+        m.mirrorElements({}, {}, {}, { sid }, gp_Pnt(10, 0, 0), gp_Dir(1, 0, 0), false);
+
+        const Slab& after = *m.getSlab(sid);
+        const auto f1 = frameOf(after);
+        double openingGap = 0.0;
+        const auto& poly = after.openings().front().polygon;
+        for (const gp_Pnt& expected : openingBefore)
+        {
+            double best = 1e30;
+            for (const auto& [u, v] : poly) best = std::min(best, global(f1, u, v).Distance(expected));
+            openingGap = std::max(openingGap, best);
+        }
+        const SurfaceLoad* moved = m.loadManager().getSurfaceLoad(lid);
+        const double loadGap = moved ? global(f1, moved->u, moved->v).Distance(loadBefore) : 1e30;
+        const int edge = after.edgeSupports().front().edge;
+        const int count = static_cast<int>(after.nodeIds().size());
+        const Node* ea = m.getNode(after.nodeIds()[edge]);
+        const Node* eb = m.getNode(after.nodeIds()[(edge + 1) % count]);
+        const gp_Pnt edgeMid((ea->x() + eb->x()) / 2, (ea->y() + eb->y()) / 2, (ea->z() + eb->z()) / 2);
+        TEST_CHECK(openingGap < 1e-9 && loadGap < 1e-9 && edgeMid.Distance(edgeMidBefore) < 1e-9,
+                   "Test 593: ouverture (" << openingGap << " m), charge (" << loadGap << " m) et appui de bord ("
+                                           << edgeMid.Distance(edgeMidBefore) << " m) à l'image miroir de leur position");
+        std::cout << "[PASS] Test 593: Symétrie sans copie — ouvertures, appuis de bord et charges de la dalle suivent" << std::endl;
         ++passed;
     }
 
