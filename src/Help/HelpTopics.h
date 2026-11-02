@@ -17,6 +17,7 @@
 // Qt Core uniquement (testable sans interface) ; l'ouverture du navigateur est dans
 // src/UI/HelpLauncher.
 
+#include <QList>
 #include <QString>
 #include <QUrl>
 
@@ -68,5 +69,17 @@ HelpUrl buildHelpUrl(const QString& baseUrl, const QString& topicId, const QStri
 
 /// Même chose avec l'adresse officielle et la version du produit compilé (ProductIdentity.h).
 HelpUrl officialHelpUrl(const QString& topicId, const QString& language = QStringLiteral("fr"));
+
+/// Ressource de l'accueil : une page de la documentation (`topic`) ou une adresse externe (`url`), jamais les deux.
+struct HomeResource
+{
+    QString id;      ///< identifiant stable (« documentation », « github »…) ; libellés traduits par l'interface
+    QString topic;
+    QUrl url;
+};
+
+/// Ressources réellement disponibles : celles de la documentation seulement si `docsBaseUrl` est valide, celles du code
+/// source seulement si `repositoryUrl` l'est (HTTPS). Une ressource sans destination n'est jamais proposée.
+QList<HomeResource> homeResources(const QString& docsBaseUrl, const QString& repositoryUrl);
 
 } // namespace TSA::Help

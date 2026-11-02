@@ -156,6 +156,15 @@ Application ─► AppShell (seule fenêtre top-level, sans cadre système)
   sans géométrie quand la fenêtre principale est embarquée).
 - Taille minimale du workspace : 960 × 560 px logiques (les minima cumulés des panneaux dépassaient la largeur d'un
   écran 1920 px à 125 %).
+- Accueil (`src/UI/Home/StartCenter`, organisation inspirée de la page d'accueil des logiciels BIM, sans en reprendre les
+  éléments graphiques) : colonne de gauche (logo, Nouveau projet, Ouvrir un projet, Ouvrir un projet récent, Parcourir les
+  projets, navigation, langue, version) et quatre pages. *Accueil* : projets ouverts (boutons de retour) et 8 derniers projets.
+  *Projets* : projets `.tsa` d'un dossier (QSettings `Home/projectsFolder`, par défaut `NewProjectDialog::defaultDirectory`).
+  *Fichiers récents* : liste détaillée, recherche et tri (`UI/Common/RecentFilesView`). *Ressources* : pages de la
+  documentation en ligne et dépôt GitHub (`TSA::Help::homeResources`, seules les ressources configurées). Cartes :
+  `UI/Common/ProjectCardGrid` (nom enregistré, fichier, chemin, date, type, aperçu, Ouvrir, Retirer) ; nom et type lus dans
+  l'en-tête hors du fil de l'interface (`Project/ProjectFileSummary`). Commande *Accueil* (`AppShell::showHome`, barre de
+  titre et menu TSA) : les projets restent ouverts, leurs panneaux flottants sont masqués, retour par *Projets ouverts*.
 - Une seule fenêtre, comme AutoCAD (`src/Platform/SingleInstance`, ADR-028) : un seul TSA par utilisateur et session Windows.
   Un lancement suivant (double-clic, sélection multiple dans l'Explorateur, raccourci) confie ses fichiers à l'instance en
   cours et se termine sans fenêtre ; lancé sans fichier, il la met au premier plan. Canal local dans un fil à part : une

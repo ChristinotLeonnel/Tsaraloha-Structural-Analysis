@@ -172,6 +172,11 @@
         <file alias="common/theme_dark.svg">icons/common/theme_dark.svg</file>
         <file alias="common/theme_light.svg">icons/common/theme_light.svg</file>
         <file alias="common/help.svg">icons/common/help.svg</file>
+        <file alias="common/home.svg">icons/common/home.svg</file>
+        <file alias="common/projects.svg">icons/common/projects.svg</file>
+        <file alias="common/recent.svg">icons/common/recent.svg</file>
+        <file alias="common/resources.svg">icons/common/resources.svg</file>
+        <file alias="common/remove.svg">icons/common/remove.svg</file>
         <file alias="common/language.svg">icons/common/language.svg</file>
         <file alias="common/search.svg">icons/common/search.svg</file>
         <file alias="palette.json">icons/palette.json</file>

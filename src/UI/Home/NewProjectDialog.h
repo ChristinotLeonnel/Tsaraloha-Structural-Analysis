@@ -42,11 +42,13 @@ public:
 
     void accept() override;
 
+    /// Dernier dossier de création, sinon Documents/<produit> (aussi le dossier par défaut de la page Projets de l'accueil).
+    static QString defaultDirectory();
+
 private:
     void browse();
     void validate();
     void updateTemplateInfo();
-    static QString defaultDirectory();
     static QString uniqueName(const QString& directory);
 
 private:

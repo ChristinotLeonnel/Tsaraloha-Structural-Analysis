@@ -7520,14 +7520,6 @@ Tsy ao amin'ity solosaina ity ny loharano (fonosana nozaraina): jereo ny tahirin
         <translation>Tsy afaka nosokafana ny mpizaha tranonkala.</translation>
     </message>
     <message>
-        <source>Aucun aperçu</source>
-        <translation>Tsy misy topimaso</translation>
-    </message>
-    <message>
-        <source>Aperçu indisponible</source>
-        <translation>Tsy misy ny topimaso</translation>
-    </message>
-    <message>
         <source>… %1 autre(s), voir la console.</source>
         <translation>… %1 hafa, jereo ny console.</translation>
     </message>
@@ -16173,6 +16165,14 @@ Voatanisa alohan'ny kajy ny fanakanana tsirairay ary ambara raha mitondra hery i
         <translation>Hidio ny tetikasa rehetra</translation>
     </message>
     <message>
+        <source>Accueil</source>
+        <translation>Fandraisana</translation>
+    </message>
+    <message>
+        <source>Revenir à l'accueil : les projets restent ouverts</source>
+        <translation>Hiverina amin'ny fandraisana : mijanona misokatra ny tetikasa</translation>
+    </message>
+    <message>
         <source>Enregistrer tous les projets</source>
         <translation>Tehirizo ny tetikasa rehetra</translation>
     </message>
@@ -23960,10 +23960,26 @@ Tianao ho fidiana ve izy toy izay hamorona dika mitovy?</translation>
 <context>
     <name>TSA::UI::ProjectCard</name>
     <message>
+        <source>Projet %1</source>
+        <translation>Tetikasa %1</translation>
+    </message>
+    <message>
+        <source>Projet %1 %2.%3</source>
+        <translation>Tetikasa %1 %2.%3</translation>
+    </message>
+    <message>
+        <source>%1 · protégé</source>
+        <translation>%1 · voaaro</translation>
+    </message>
+    <message>
         <source>%1
 Double-clic pour ouvrir</source>
         <translation>%1
 Tsindrio indroa raha hanokatra</translation>
+    </message>
+    <message>
+        <source>Aucun aperçu</source>
+        <translation>Tsy misy topimaso</translation>
     </message>
     <message>
         <source>Ouvert %1  ·  %2</source>
@@ -23972,6 +23988,26 @@ Tsindrio indroa raha hanokatra</translation>
     <message>
         <source>Modifié le %1</source>
         <translation>Novaina tamin'ny %1</translation>
+    </message>
+    <message>
+        <source>Ouvrir</source>
+        <translation>Sokafy</translation>
+    </message>
+    <message>
+        <source>Ouvrir ce projet</source>
+        <translation>Sokafy ity tetikasa ity</translation>
+    </message>
+    <message>
+        <source>Retirer de la liste (le fichier n'est pas supprimé)</source>
+        <translation>Esory amin'ny lisitra (tsy voafafa ny rakitra)</translation>
+    </message>
+    <message>
+        <source>Retirer de la liste</source>
+        <translation>Esory amin'ny lisitra</translation>
+    </message>
+    <message>
+        <source>Projet protégé par mot de passe</source>
+        <translation>Tetikasa voaaro amin'ny teny miafina</translation>
     </message>
 </context>
 <context>
@@ -24301,6 +24337,51 @@ Tsindrio indroa raha hanokatra</translation>
     <message>
         <source>Les champs modifiés ici sont appliqués aux %1 éléments sélectionnés de ce type (nom et géométrie exceptés). Annuler (Ctrl+Z) les rétablit tous.</source>
         <translation>Ampiharina amin'ireo singa voafidy %1 amin'ity karazana ity ny saha ovaina eto (afa-tsy ny anarana sy ny joometria). Ny Foano (Ctrl+Z) dia mamerina azy rehetra.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::UI::RecentFilesView</name>
+    <message>
+        <source>Nom du projet</source>
+        <translation>Anaran'ny tetikasa</translation>
+    </message>
+    <message>
+        <source>Fichier</source>
+        <translation>Rakitra</translation>
+    </message>
+    <message>
+        <source>Emplacement</source>
+        <translation>Toerana</translation>
+    </message>
+    <message>
+        <source>Dernière ouverture</source>
+        <translation>Fanokafana farany</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Karazana</translation>
+    </message>
+    <message>
+        <source>%1
+Double-clic pour ouvrir</source>
+        <translation>%1
+Tsindrio indroa hanokafana</translation>
+    </message>
+    <message>
+        <source>Ouvrir</source>
+        <translation>Sokafy</translation>
+    </message>
+    <message>
+        <source>Ouvrir ce projet</source>
+        <translation>Sokafy ity tetikasa ity</translation>
+    </message>
+    <message>
+        <source>Retirer de la liste (le fichier n'est pas supprimé)</source>
+        <translation>Esory amin'ny lisitra (tsy voafafa ny rakitra)</translation>
+    </message>
+    <message>
+        <source>Retirer de la liste</source>
+        <translation>Esory amin'ny lisitra</translation>
     </message>
 </context>
 <context>
@@ -26091,6 +26172,10 @@ Raha tsy izany, tsindrio ny 'Ampiharo'.</translation>
         <translation>Alaharo ny tetikasa vao haingana</translation>
     </message>
     <message>
+        <source>Présentation, téléchargements et nouveautés</source>
+        <translation>Famelabelarana, fampidinana ary zava-baovao</translation>
+    </message>
+    <message>
         <source>(%1)</source>
         <translation>(%1)</translation>
     </message>
@@ -26105,8 +26190,116 @@ Créez un nouveau projet ou ouvrez un fichier %1 : son aperçu apparaîtra ici.<
 Mamorona tetikasa vaovao na sokafy rakitra %1: eto no hiseho ny topimasony.</translation>
     </message>
     <message>
+        <source>Ouvrir un projet récent</source>
+        <translation>Sokafy ny tetikasa vao haingana</translation>
+    </message>
+    <message>
+        <source>Choisir dans la liste des projets récents</source>
+        <translation>Safidio ao amin'ny lisitry ny tetikasa vao haingana</translation>
+    </message>
+    <message>
+        <source>Parcourir les projets</source>
+        <translation>Jereo ny tetikasa</translation>
+    </message>
+    <message>
+        <source>Voir les projets d'un dossier</source>
+        <translation>Jereo ny tetikasa ao amin'ny lahatahiry iray</translation>
+    </message>
+    <message>
+        <source>Accueil</source>
+        <translation>Fandraisana</translation>
+    </message>
+    <message>
+        <source>Projets</source>
+        <translation>Tetikasa</translation>
+    </message>
+    <message>
+        <source>Fichiers récents</source>
+        <translation>Rakitra vao haingana</translation>
+    </message>
+    <message>
+        <source>Ressources</source>
+        <translation>Loharano</translation>
+    </message>
+    <message>
+        <source>Version %1</source>
+        <translation>Dikan-teny %1</translation>
+    </message>
+    <message>
+        <source>Projets ouverts</source>
+        <translation>Tetikasa misokatra</translation>
+    </message>
+    <message>
+        <source>Tout afficher</source>
+        <translation>Asehoy daholo</translation>
+    </message>
+    <message>
+        <source>Changer de dossier…</source>
+        <translation>Hanova lahatahiry…</translation>
+    </message>
+    <message>
+        <source>Rechercher dans ce dossier…</source>
+        <translation>Karohy ao amin'ity lahatahiry ity…</translation>
+    </message>
+    <message>
+        <source>Documentation %1</source>
+        <translation>Antontan-taratasy %1</translation>
+    </message>
+    <message>
+        <source>Modélisation, charges, calcul et résultats, page par page</source>
+        <translation>Modely, enta, kajy ary vokatra, pejy isaky ny pejy</translation>
+    </message>
+    <message>
+        <source>Tutoriels</source>
+        <translation>Fampianarana</translation>
+    </message>
+    <message>
+        <source>Premiers pas : créer un projet, étape par étape</source>
+        <translation>Dingana voalohany : mamorona tetikasa, dingana tsirairay</translation>
+    </message>
+    <message>
+        <source>Guide utilisateur</source>
+        <translation>Torolalana ho an'ny mpampiasa</translation>
+    </message>
+    <message>
+        <source>L'interface et les commandes de %1</source>
+        <translation>Ny fitaovana sy ny baikon'ny %1</translation>
+    </message>
+    <message>
+        <source>Site officiel %1</source>
+        <translation>Tranonkala ofisialin'ny %1</translation>
+    </message>
+    <message>
+        <source>GitHub %1</source>
+        <translation>GitHub %1</translation>
+    </message>
+    <message>
+        <source>Code source et suivi du développement</source>
+        <translation>Kaody loharano sy fanarahana ny fampandrosoana</translation>
+    </message>
+    <message>
+        <source>Documentation technique</source>
+        <translation>Antontan-taratasy teknika</translation>
+    </message>
+    <message>
+        <source>Architecture, formats de fichier et calculs, pour les développeurs</source>
+        <translation>Rafitra, endrika rakitra ary kajy, ho an'ny mpamorona</translation>
+    </message>
+    <message>
         <source>Aucun projet ne correspond à « %1 ».</source>
         <translation>Tsy misy tetikasa mifanaraka amin'ny « %1 ».</translation>
+    </message>
+    <message>
+        <source>Aucun projet %1 dans ce dossier.</source>
+        <translation>Tsy misy tetikasa %1 ao amin'ity lahatahiry ity.</translation>
+    </message>
+    <message>
+        <source>Dossier de projets</source>
+        <translation>Lahatahirin'ny tetikasa</translation>
+    </message>
+    <message>
+        <source>Revenir à ce projet</source>
+        <translation>Hiverina amin'ity tetikasa ity</translation>
     </message>
     <message>
         <source>Ouvrir</source>

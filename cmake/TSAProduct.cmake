@@ -917,6 +917,8 @@ set(PROJECT_SOURCES
     ${TSA_ROOT}/src/Project/ProjectTemplates.cpp
     ${TSA_ROOT}/src/Project/RecentProjects.h
     ${TSA_ROOT}/src/Project/RecentProjects.cpp
+    ${TSA_ROOT}/src/Project/ProjectFileSummary.h
+    ${TSA_ROOT}/src/Project/ProjectFileSummary.cpp
     ${TSA_ROOT}/src/Project/RecoveryStore.h
     ${TSA_ROOT}/src/Project/RecoveryStore.cpp
     ${TSA_ROOT}/src/Project/ModelPreviewCache.h
@@ -1249,6 +1251,10 @@ set(UI_AI_SOURCES
     ${TSA_ROOT}/src/UI/MainWindow_Preview.cpp
     ${TSA_ROOT}/src/UI/Home/StartCenter.h
     ${TSA_ROOT}/src/UI/Home/StartCenter.cpp
+    ${TSA_ROOT}/src/UI/Common/ProjectCardGrid.h
+    ${TSA_ROOT}/src/UI/Common/ProjectCardGrid.cpp
+    ${TSA_ROOT}/src/UI/Common/RecentFilesView.h
+    ${TSA_ROOT}/src/UI/Common/RecentFilesView.cpp
     ${TSA_ROOT}/src/UI/Home/NewProjectDialog.h
     ${TSA_ROOT}/src/UI/Home/NewProjectDialog.cpp
     ${TSA_ROOT}/src/UI/Home/SaveProjectTemplateDialog.h

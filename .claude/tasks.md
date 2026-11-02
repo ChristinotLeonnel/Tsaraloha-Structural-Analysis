@@ -50,6 +50,8 @@ Last Updated: 2026-11-02 soir. Avant : 2026-11-01. Uniquement des tâches réell
 - [x] Case « Afficher le mot de passe », test 601.
 - [x] Essai manuel dans TSA.exe (confirmé par l'utilisateur, 2026-11-02) : protéger, enregistrer, rouvrir (mot de passe faux puis bon).
 - [ ] Essai manuel dans TSA.exe : récupération d'un projet protégé après un plantage.
+- [x] Nouvel accueil (branche feature/home-welcome-screen) : tests 602-603, essai réel avec captures.
+- [ ] Accueil : unités et norme à la création d'un projet (absentes de NewProjectDialog ; décision à prendre) ; essai Linux.
 - [ ] Linux : compiler avec OpenSSL et exécuter le test 599.
 - [ ] Restent ouverts, hors portée d'une correction ici : voir known-issues.md (décisions : aucune en attente ; autres dépôts :
       BUG-161, 158, 076 ; environnement : BUG-012, 021, 023, 033, 036, 168, 137 Linux ; tests intermittents : BUG-079, 123, 170 ;
