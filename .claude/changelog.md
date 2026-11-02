@@ -2,6 +2,21 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — Une seule fenêtre de TSA, comme AutoCAD (branche feature/single-instance-documents, ADR-028)
+
+- `Platform/SingleInstance` et `Platform/OpenFileQueue` : un lancement suivant confie ses fichiers à l'instance en cours et se
+  termine sans fenêtre ; 12 lancements simultanés : un principal, 11 confiés, aucun fichier perdu ni en double. Test 600.
+- Application::init : tous les fichiers de la ligne de commande (seul le premier était ouvert, y compris au redémarrage pour
+  changer de langue) ; `--new-instance`. AppShell : Ouvrir en sélection multiple, glisser-déposer de plusieurs fichiers,
+  bringToFront.
+- Lenteur corrigée, antérieure à cette branche : chaque onglet réindexait docs/ pour l'IA avec des statistiques recalculées à
+  chaque document (coût quadratique, ~10 s par onglet sur ce poste, bloquant). Mesuré avec des traces temporaires retirées :
+  createAIComponents. EngineeringKnowledgeBase::indexDirectories calcule une fois. Test 122 complété.
+- Essai réel de TSA.exe sur bureau masqué (réglages sauvegardés puis restaurés) : 4 lancements simultanés → 1 processus, 3 sorties
+  code 0 en 0,2-0,4 s, 4 projets ouverts en 6 s (43 s avant la correction de l'index) ; sans fichier et 5e fichier : même
+  processus ; fermeture propre ; arrêt brutal : le lancement suivant reprend. Premier lancement après compilation : 24,5 s une
+  fois, non reproduit (cause non établie).
+
 ## 2026-11-02 (nuit) — BUG-166 terminé, BUG-144, BUG-140, BUG-167 (branche fix/file-protection-fem3d-blueprint-undo)
 
 Décisions de l'utilisateur : 144 → retirer l'option ; 140 → Ctrl+Z du canevas = graphe ; 167 → vrai chiffrement, protection

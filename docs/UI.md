@@ -156,6 +156,12 @@ Application ─► AppShell (seule fenêtre top-level, sans cadre système)
   sans géométrie quand la fenêtre principale est embarquée).
 - Taille minimale du workspace : 960 × 560 px logiques (les minima cumulés des panneaux dépassaient la largeur d'un
   écran 1920 px à 125 %).
+- Une seule fenêtre, comme AutoCAD (`src/Platform/SingleInstance`, ADR-028) : un seul TSA par utilisateur et session Windows.
+  Un lancement suivant (double-clic, sélection multiple dans l'Explorateur, raccourci) confie ses fichiers à l'instance en
+  cours et se termine sans fenêtre ; lancé sans fichier, il la met au premier plan. Canal local dans un fil à part : une
+  instance occupée acquitte quand même. Fichiers ouverts un par un (`OpenFileQueue`, `AppShell::openProjectFiles`), un onglet
+  chacun, jamais pendant une boîte de dialogue modale ; projet déjà ouvert : onglet activé. *Ouvrir* et le glisser-déposer
+  acceptent plusieurs fichiers. `TSA.exe --new-instance` : seconde fenêtre explicite (essais, comparaison de versions).
 - Sauvegarde automatique et récupération (BUG-157, `src/Project/RecoveryStore`) : toutes les N minutes (QSettings
   `Project/autosaveMinutes`, 5 par défaut, 0 = désactivée), un projet modifié est copié dans `<AppLocalData>/recovery`
   (`<clé>.tsa` + `<clé>.json` : chemin d'origine, titre, date) ; jamais dans le fichier de l'utilisateur. Chaque

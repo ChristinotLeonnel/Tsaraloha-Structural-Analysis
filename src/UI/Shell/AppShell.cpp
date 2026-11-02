@@ -23,6 +23,7 @@
 #include "../../Project/ProjectManager.h"
 #include "../../Project/RecentProjects.h"
 #include "../../Project/RecoveryStore.h"
+#include "../../Platform/OpenFileQueue.h"
 
 #include <QLocale>
 #include <QPushButton>
@@ -64,12 +65,13 @@ namespace
 const char* kGeometryKey = "Shell/geometry";
 constexpr QSize kWorkspaceMinimumSize(960, 560);
 
-QString firstTsaUrl(const QMimeData* mime)
+QStringList projectFilesIn(const QMimeData* mime)
 {
-    if (!mime || !mime->hasUrls()) return QString();
+    QStringList files;
+    if (!mime || !mime->hasUrls()) return files;
     for (const QUrl& url : mime->urls())
-        if (TSA::Product::isOpenableProjectFile(url.toLocalFile())) return url.toLocalFile();
-    return QString();
+        if (TSA::Product::isOpenableProjectFile(url.toLocalFile())) files << url.toLocalFile();
+    return files;
 }
 
 QIcon themeIcon(bool dark)
@@ -541,10 +543,28 @@ void AppShell::openProject()
     QString initialDir;
     const auto recent = TSA::Project::RecentProjects().list(false);
     if (!recent.isEmpty()) initialDir = QFileInfo(recent.first().path).absolutePath();
-    const QString path = QFileDialog::getOpenFileName(this, tr("Ouvrir un projet %1").arg(TSA::Product::name()), initialDir,
-                                                      TSA::Product::openFileFilter());
-    if (path.isEmpty()) return;
-    openProjectFile(path);
+    // Sélection multiple : un onglet par projet, comme AutoCAD
+    openProjectFiles(QFileDialog::getOpenFileNames(this, tr("Ouvrir un projet %1").arg(TSA::Product::name()), initialDir,
+                                                   TSA::Product::openFileFilter()));
+}
+
+void AppShell::openProjectFiles(const QStringList& paths)
+{
+    if (!m_openQueue)
+        m_openQueue = new TSA::Platform::OpenFileQueue([this](const QString& path) { openProjectFile(path); },
+                                                       [] { return QApplication::activeModalWidget() != nullptr; }, this);
+    m_openQueue->enqueue(paths);
+}
+
+void AppShell::bringToFront()
+{
+    setWindowState(windowState() & ~Qt::WindowMinimized);   // agrandie ou plein écran : conservé
+    show();
+    raise();
+    activateWindow();
+#ifdef _WIN32
+    SetForegroundWindow(reinterpret_cast<HWND>(winId()));   // droit accordé par le lancement qui nous confie ses fichiers
+#endif
 }
 
 bool AppShell::openProjectFile(const QString& path)
@@ -723,6 +743,7 @@ void AppShell::closeEvent(QCloseEvent* event)
             if (const auto* pm = d->projectManager(); pm && pm->hasFilePath()) files << pm->currentFilePath();
         if (auto* app = qobject_cast<EcosystemApplication*>(QCoreApplication::instance())) app->requestRestart(files);
     }
+    if (m_openQueue) m_openQueue->clear();   // fenêtre fermée : aucun projet ouvert après coup
     event->accept();
 }
 
@@ -743,7 +764,7 @@ void AppShell::saveShellGeometry() const
 
 void AppShell::dragEnterEvent(QDragEnterEvent* event)
 {
-    if (!firstTsaUrl(event->mimeData()).isEmpty())
+    if (!projectFilesIn(event->mimeData()).isEmpty())
     {
         event->acceptProposedAction();
         return;
@@ -753,14 +774,14 @@ void AppShell::dragEnterEvent(QDragEnterEvent* event)
 
 void AppShell::dropEvent(QDropEvent* event)
 {
-    const QString path = firstTsaUrl(event->mimeData());
-    if (path.isEmpty())
+    const QStringList paths = projectFilesIn(event->mimeData());
+    if (paths.isEmpty())
     {
         QWidget::dropEvent(event);
         return;
     }
     event->acceptProposedAction();
-    openProjectFile(path);
+    openProjectFiles(paths);
 }
 
 void AppShell::changeEvent(QEvent* event)

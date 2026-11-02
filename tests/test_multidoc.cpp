@@ -52,6 +52,17 @@
 #include <cmath>
 #include <filesystem>
 #include <QProcess>
+#include <QSysInfo>
+#include <QElapsedTimer>
+#include <QLocalSocket>
+#include <QTemporaryDir>
+#include <atomic>
+#include <functional>
+#include <memory>
+#include <thread>
+#include <vector>
+#include "Platform/OpenFileQueue.h"
+#include "Platform/SingleInstance.h"
 #include <QSettings>
 #include <QApplication>
 #include <QAction>
@@ -844,6 +855,150 @@ bool runSuite_MultiDoc(int& passed)
         TEST_CHECK(applyDocumentViewState(other, future).size() == 1 && captureDocumentViewState(other) == before,
                    "Test 575: version inconnue — signalée, rien appliqué");
         std::cout << "[PASS] Test 575: État de vue du document (bloc VSTA) — affichage, niveau, caméra restaurés à l'identique" << std::endl;
+        ++passed;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------
+    // TEST 600 : une seule instance de TSA — lancements simultanés (l'Explorateur lance un processus par fichier sélectionné) :
+    // une seule instance principale, aucun fichier perdu ni en double ; instance plantée sans effet ; ouverture en file
+    // ------------------------------------------------------------------------------------------------------------------
+    {
+        using TSA::Platform::OpenFileQueue;
+        using TSA::Platform::SingleInstance;
+        using Role = SingleInstance::Role;
+        QTemporaryDir dir;
+        const QString name = QStringLiteral("tsaraloha-test-instance-%1").arg(QCoreApplication::applicationPid());
+        auto waitForFiles = [](const QStringList& received, int count) {
+            QElapsedTimer t;
+            t.start();
+            while (received.size() < count && t.elapsed() < 5000) QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+        };
+
+        // a) Deuxième lancement : fichiers (chemins relatifs rendus absolus) confiés à la première instance, qui ne tourne
+        //    aucune boucle pendant ce temps (instance occupée) ; lancement sans fichier = simple demande de premier plan
+        QStringList received;
+        int activations = 0;
+        {
+            SingleInstance first(name, dir.path());
+            QObject::connect(&first, &SingleInstance::filesReceived, [&](const QStringList& files) {
+                received << files;
+                ++activations;
+            });
+            TEST_CHECK(first.acquire({}) == Role::Primary, "Test 600: première instance principale");
+            SingleInstance second(name, dir.path());
+            TEST_CHECK(second.acquire({ QStringLiteral("relatif/Pont.tsa"), QStringLiteral("C:/Projets/Tour.tsa") }, 3000) == Role::Forwarded,
+                       "Test 600: deuxième lancement confié, sans boucle d'événements dans l'instance en cours");
+            waitForFiles(received, 2);
+            TEST_CHECK(received.size() == 2 && received[0] == QFileInfo(QStringLiteral("relatif/Pont.tsa")).absoluteFilePath()
+                           && received[1] == QStringLiteral("C:/Projets/Tour.tsa"),
+                       "Test 600: fichiers reçus, chemins absolus");
+            SingleInstance third(name, dir.path());
+            TEST_CHECK(third.acquire({}, 3000) == Role::Forwarded, "Test 600: lancement sans fichier confié aussi (aucune seconde fenêtre)");
+            QElapsedTimer t;
+            t.start();
+            while (activations < 2 && t.elapsed() < 5000) QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+            TEST_CHECK(activations == 2 && received.size() == 2, "Test 600: demande de premier plan reçue, liste vide");
+
+            // Canal réservé au protocole : message illisible ignoré, l'instance continue
+            QLocalSocket junk;
+            junk.connectToServer(name);
+            junk.waitForConnected(1000);
+            junk.write("pas du JSON\n");
+            junk.waitForBytesWritten(1000);
+            junk.waitForDisconnected(1000);
+            SingleInstance fourth(name, dir.path());
+            TEST_CHECK(fourth.acquire({}, 3000) == Role::Forwarded, "Test 600: message illisible sans effet sur l'instance en cours");
+        }
+
+        // b) Fermeture de l'instance : le lancement suivant prend sa place
+        {
+            SingleInstance next(name, dir.path());
+            TEST_CHECK(next.acquire({}, 3000) == Role::Primary, "Test 600: instance fermée — le lancement suivant devient principal");
+        }
+
+        // c) Lancements simultanés, comme une sélection multiple dans l'Explorateur : un seul principal, tout arrive une fois
+        {
+            constexpr int kLaunches = 12;
+            std::vector<std::unique_ptr<SingleInstance>> launches;
+            QStringList got;
+            for (int i = 0; i < kLaunches; ++i)
+            {
+                launches.push_back(std::make_unique<SingleInstance>(name, dir.path()));
+                QObject::connect(launches.back().get(), &SingleInstance::filesReceived, [&got](const QStringList& files) { got << files; });
+            }
+            std::vector<std::thread> threads;
+            std::atomic<int> primaries { 0 }, forwarded { 0 }, standalone { 0 };
+            std::atomic<int> primaryIndex { -1 };
+            for (int i = 0; i < kLaunches; ++i)
+                threads.emplace_back([&, i] {
+                    const Role role = launches[static_cast<size_t>(i)]->acquire({ QStringLiteral("C:/Projets/P%1.tsa").arg(i) }, 10000);
+                    if (role == Role::Primary)
+                    {
+                        ++primaries;
+                        primaryIndex = i;
+                    }
+                    else if (role == Role::Forwarded) ++forwarded;
+                    else ++standalone;
+                });
+            for (auto& t : threads) t.join();
+            TEST_CHECK(primaries == 1 && forwarded == kLaunches - 1 && standalone == 0,
+                       "Test 600: 12 lancements simultanés — un principal, 11 confiés (" << primaries << ", " << forwarded << ", " << standalone << ")");
+            waitForFiles(got, kLaunches - 1);
+            got.removeDuplicates();
+            TEST_CHECK(got.size() == kLaunches - 1 && !got.contains(QStringLiteral("C:/Projets/P%1.tsa").arg(primaryIndex.load())),
+                       "Test 600: 11 fichiers reçus, aucun en double (" << got.size() << ")");
+        }
+
+        // d) Instance plantée : verrou d'un processus disparu sans effet sur le lancement suivant
+        {
+            QFile stale(QDir(dir.path()).filePath(name + ".instance.lock"));
+            TEST_CHECK(stale.open(QIODevice::WriteOnly), "Test 600: verrou d'une instance plantée posé");
+            stale.write(QStringLiteral("2147483600\nTSA\n%1\n").arg(QSysInfo::machineHostName()).toUtf8());
+            stale.close();
+            SingleInstance afterCrash(name, dir.path());
+            TEST_CHECK(afterCrash.acquire({}, 3000) == Role::Primary, "Test 600: après un plantage — le lancement devient principal");
+        }
+
+        // e) File d'ouverture : ordre, doublons, attente d'une boîte de dialogue, arrivée pendant une ouverture
+        {
+            QStringList opened;
+            bool busy = false;
+            std::function<void(const QString&)> during;
+            OpenFileQueue queue([&](const QString& file) {
+                opened << file;
+                if (during) during(file);
+            }, [&] { return busy; });
+            auto drain = [&] {
+                QElapsedTimer t;
+                t.start();
+                while (queue.pendingCount() && t.elapsed() < 3000) QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+            };
+            queue.enqueue({ "a.tsa", "b.tsa", "A.TSA" });
+            TEST_CHECK(opened == QStringList({ "a.tsa" }) && queue.pendingCount() == 1, "Test 600: un fichier à la fois, l'interface reprend la main");
+            drain();
+            TEST_CHECK(opened == QStringList({ "a.tsa", "b.tsa" }), "Test 600: fichiers ouverts dans l'ordre, doublon de la file ignoré");
+            busy = true;
+            queue.enqueue({ "c.tsa" });
+            TEST_CHECK(opened.size() == 2 && queue.pendingCount() == 1, "Test 600: boîte de dialogue ouverte — rien ne s'ouvre");
+            busy = false;
+            drain();
+            TEST_CHECK(opened.size() == 3 && opened.last() == "c.tsa", "Test 600: boîte de dialogue fermée — fichier en attente ouvert");
+            // Arrivée pendant une ouverture (boucle imbriquée d'une demande de mot de passe) : pas d'ouverture imbriquée
+            int depth = 0, deepest = 0;
+            during = [&](const QString& file) {
+                deepest = std::max(deepest, ++depth);
+                if (file == "d.tsa") queue.enqueue({ "e.tsa" });
+                --depth;
+            };
+            queue.enqueue({ "d.tsa" });
+            drain();
+            TEST_CHECK(opened.last() == "e.tsa" && deepest == 1 && queue.pendingCount() == 0, "Test 600: fichier arrivé pendant une ouverture — ouvert après elle");
+            queue.enqueue({ "f.tsa", "g.tsa" });
+            queue.clear();
+            for (int k = 0; k < 10; ++k) QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
+            TEST_CHECK(opened.last() == "f.tsa" && queue.pendingCount() == 0, "Test 600: fermeture — fichiers en attente abandonnés");
+        }
+        std::cout << "[PASS] Test 600: Une seule instance de TSA (lancements simultanés, plantage, file d'ouverture)" << std::endl;
         ++passed;
     }
 

@@ -58,6 +58,12 @@ void EngineeringKnowledgeBase::clear()
 
 void EngineeringKnowledgeBase::addDocument(const QString& source, const QString& content)
 {
+    appendChunks(source, content);
+    rebuildStatistics();
+}
+
+void EngineeringKnowledgeBase::appendChunks(const QString& source, const QString& content)
+{
     // Découpage par titres Markdown, puis par paragraphes jusqu'à ~900 caractères.
     QString heading = QFileInfo(source).completeBaseName();
     QString buffer;
@@ -79,7 +85,6 @@ void EngineeringKnowledgeBase::addDocument(const QString& source, const QString&
         buffer += line + '\n';
     }
     flush();
-    rebuildStatistics();
 }
 
 int EngineeringKnowledgeBase::indexDirectories(const QStringList& directories)
@@ -94,9 +99,12 @@ int EngineeringKnowledgeBase::indexDirectories(const QStringList& directories)
             const QString path = it.next();
             QFile f(path);
             if (!f.open(QIODevice::ReadOnly | QIODevice::Text) || f.size() > 2 * 1024 * 1024) continue;
-            addDocument(QFileInfo(dir).fileName() + "/" + base.relativeFilePath(path), QString::fromUtf8(f.readAll()));
+            appendChunks(QFileInfo(dir).fileName() + "/" + base.relativeFilePath(path), QString::fromUtf8(f.readAll()));
         }
     }
+    // Statistiques calculées une fois, tout le corpus lu : par document, elles retokenisaient tout à chaque ajout (coût
+    // quadratique, ~10 s pour docs/ à la création de CHAQUE onglet)
+    rebuildStatistics();
     return chunkCount();
 }
 

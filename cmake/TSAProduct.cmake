@@ -1014,6 +1014,10 @@ set(STANDARDS_SOURCES
 set(PLATFORM_SOURCES
     ${TSA_ROOT}/src/Platform/WindowsAssociation.h
     ${TSA_ROOT}/src/Platform/WindowsAssociation.cpp
+    ${TSA_ROOT}/src/Platform/SingleInstance.h
+    ${TSA_ROOT}/src/Platform/SingleInstance.cpp
+    ${TSA_ROOT}/src/Platform/OpenFileQueue.h
+    ${TSA_ROOT}/src/Platform/OpenFileQueue.cpp
 )
 
 # --- Ressources (icônes, .rc Windows) -----------------------------------------
@@ -1313,6 +1317,7 @@ set(OCCT_LIBS
 set(TSA_NO_PCH_SOURCES
     ${TSA_ROOT}/src/Diagnostics/CrashHandler.cpp
     ${TSA_ROOT}/src/Platform/WindowsAssociation.cpp
+    ${TSA_ROOT}/src/Platform/SingleInstance.cpp
     ${TSA_ROOT}/src/AI/Hardware/HardwareProfiler.cpp
     ${TSA_ROOT}/src/AI/Core/SecretStore.cpp
     ${TSA_ROOT}/src/IO/TSAEncryption.cpp
