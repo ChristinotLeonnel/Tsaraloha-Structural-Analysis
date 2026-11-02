@@ -2,6 +2,12 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — known-issues : bugs des fonctionnalités retirées supprimés (branche docs/known-issues-removed-features)
+
+- BUG-149 (efforts du non linéaire, λ = 0,5) et BUG-150 (P-Delta / corotationnel en statique linéaire) retirés : l'analyse non
+  linéaire est retirée (ADR-025) ; ils reviendront avec elle. Mentions du retrait allégées dans BUG-151 (câble comprimé, toujours
+  ouvert en linéaire) et BUG-169. Règle ajoutée en tête du fichier. Les 52 autres entrées visent du code présent (vérifié par Grep).
+
 ## 2026-11-01 — affichage intelligent des charges (branche feature/load-display-scaling)
 
 - Supprimé : adaptation des flèches au zoom (OccView::memberLoadArrowLength ≈ 8 % de la vue par paliers,

@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-11-02 (BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert.
+Last Updated: 2026-11-02 (BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
 
 ## Ouverts
 
@@ -54,27 +54,12 @@ la sortie du processus, après les tests. 10 autres exécutions dont 6 répété
 Status: OPEN (LOW, reproduit le 2026-10-31) — test 457 (suite i18n) : seuil de 50 ms non tenu en Debug (pire recherche dans un
 index synthétique de 6 000 entrées : 347 à 410 ms, sans autre charge ; 18 ms en Release). L'arrêt au premier échec (BUG-104)
 empêche ensuite les tests 458 à 463 de tourner en Debug. Correction : seuil dépendant du type de compilation, ou mesure en
-Release seulement. Sans lien avec le retrait du non linéaire (code mesuré non modifié).
-
-## BUG-149
-Status: CLOSED — fonctionnalité retirée (2026-10-31, ADR-025 ; défaut historique conservé). Était : OPEN (CRITICAL, reproduit) —
-statique non linéaire, réglages par défaut : efforts le long des barres avec λ = 0,5 (OpenSeesResultsReader.cpp:553 contre
-OpenSeesAnalysisBuilder.cpp:905). M = 107,7 au lieu de 54 kN·m. Réactions justes.
-Après retrait : plus de type statique non linéaire, d'historique des pas ni de facteur de charge dans le lecteur ; un ancien projet
-`nonlinear_static` est refusé avec un message (tests 532, 535) ; NLIN-uniforme / NLIN-trapeze refusés à la lecture du banc.
-Non « corrigé » : réintroduire le non linéaire exigerait de reprendre ce cas.
-
-## BUG-150
-Status: CLOSED — fonctionnalité retirée (2026-10-31, ADR-025 ; défaut historique conservé). Était : OPEN (HIGH, reproduit) — P-Delta
-ou corotationnel accepté en statique linéaire : ni premier ni second ordre, sans alerte.
-Après retrait : option et transformations retirées (geomTransf Linear seul) ; ancien réglage geomTransf 1/2 ou trussFormulation 1/3
-refusé avant calcul (OpenSeesEngine::unsupportedSettings, tests 533, 537) ; PDELTA-LIN : « faux sans alerte » → « calcul refusé ».
+Release seulement.
 
 ## BUG-151
-Status: OPEN (HIGH, reproduit) — câble comprimé accepté (N = −20,2 kN), aucun avertissement du calcul. Revérifié le 2026-10-31 après
-retrait du non linéaire : inchangé. Les cases « Traction seule (Non-linéarité géométrique) » / « Tension-only », sans effet sur le
-calcul, ont été retirées de l'interface (donnée tensionOnly conservée). Limite liée, documentée : corotTruss précontraint résolu en un
-pas (raideur de précontrainte incluse, effort recalculé sur la géométrie déformée, résidu en (u/L)²), docs/cable-system/analysis.md.
+Status: OPEN (HIGH, reproduit, revérifié le 2026-10-31) — câble comprimé accepté (N = −20,2 kN), aucun avertissement du calcul.
+Limite liée, documentée : corotTruss précontraint résolu en un pas (raideur de précontrainte incluse, effort recalculé sur la
+géométrie déformée, résidu en (u/L)²), docs/cable-system/analysis.md.
 
 ## BUG-152
 Status: OPEN (HIGH, reproduit) — note Legacy, disposition par défaut : flambement sur l'axe fort seul, Lcr = L, verdict CONFORME
