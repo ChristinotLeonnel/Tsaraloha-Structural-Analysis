@@ -45,28 +45,6 @@
 // Outils Métier & Ingénierie des Structures
 // =========================================================================
 
-namespace
-{
-/// Dalles et voiles ne sont pas maillés : ils ne sont pas transmis à OpenSees (BUG-002).
-/// L'utilisateur doit le savoir avant de lancer un calcul. Retourne false s'il annule.
-bool confirmPlanarElementsExcluded(QWidget* parent, const TSA::Model::Model& model)
-{
-    const size_t slabs = model.slabs().size();
-    const size_t walls = model.walls().size();
-    if (slabs == 0 && walls == 0)
-        return true;
-    const auto reply = QMessageBox::warning(parent,
-        QObject::tr("Dalles et voiles non calculés"),
-        QObject::tr("Le modèle contient %1 dalle(s) et %2 voile(s).\n\n"
-                    "TSA ne maille pas encore ces éléments : ils ne sont PAS transmis à OpenSees "
-                    "(ni leur rigidité, ni leurs charges). Seuls les éléments filaires (poutres, "
-                    "poteaux, treillis, câbles) sont calculés.\n\n"
-                    "Lancer quand même le calcul ?").arg(slabs).arg(walls),
-        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
-    return reply == QMessageBox::Yes;
-}
-
-} // namespace
 
 void MainWindow::onActionWall()
 {

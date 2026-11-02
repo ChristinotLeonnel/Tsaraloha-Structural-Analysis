@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-11-02 (BUG-117 P2 corrigé ; BUG-111 étapes 1-2 faites, test 587 ; BUG-133 corrigé et retiré : installation d'OpenSees depuis l'application par conda-forge ; BUG-173 : moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine ; BUG-153 corrigé et retiré, test 586 — reste documenté : centre de cisaillement, docs/AUDIT_CALCULS.md § 8 ; BUG-151 corrigé et retiré, test 585 ; BUG-152 corrigé et retiré, test 584 ; BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
+Last Updated: 2026-11-02 (BUG-002 retiré : dalles et voiles calculés en coques depuis le maillage du projet, suite surfaces ; BUG-117 P2 corrigé ; BUG-111 étapes 1-2 faites, test 587 ; BUG-133 corrigé et retiré : installation d'OpenSees depuis l'application par conda-forge ; BUG-173 : moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine ; BUG-153 corrigé et retiré, test 586 — reste documenté : centre de cisaillement, docs/AUDIT_CALCULS.md § 8 ; BUG-151 corrigé et retiré, test 585 ; BUG-152 corrigé et retiré, test 584 ; BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
 
 ## Ouverts
 
@@ -359,17 +359,6 @@ Impact: MEDIUM (sélection des nœuds à la souris)
 Status: OPEN — constaté le 2026-10-10 pendant la vérification des cotations ; piste : étendre
 `OccView::detectedPreferringModel` à tout objet détecté non enregistré.
 Related files: src/Viewer/OccView_Events.cpp, src/Viewer/OccView_Shapes.cpp
-
-## BUG-002
-Area: Calculation
-Problem: Dalles et voiles ne sont pas transmis au calcul (`CalculationSnapshot` /
-`OpenSeesAnalysisBuilder` ne traitent que barres, treillis, câbles, appuis) ; aucun maillage EF.
-Reproduction: modèle avec dalle chargée → la dalle n'apparaît pas dans le script Tcl.
-Impact: HIGH (limitation fonctionnelle à signaler à l'utilisateur)
-Status: OPEN — mitigé le 2026-10-04 : avertissement `ModelValidator::validateForAnalysis`, confirmation
-avant calcul (`confirmPlanarElementsExcluded`, MainWindow_Tools.cpp), et
-`onActionMeshGen` n'affirme plus avoir généré un maillage (il ne fait qu'une estimation).
-Related files: src/Analysis/CalculationSnapshot.cpp, src/Analysis/OpenSeesAnalysisBuilder.cpp
 
 ## BUG-006
 Area: Undo/Redo
