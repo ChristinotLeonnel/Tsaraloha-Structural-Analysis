@@ -196,6 +196,8 @@ NDCDocument NDCGenerator::generate(
                 : QStringLiteral("non vérifié par le moteur")});
             for (const auto& m : meta.preparationMessages)
                 sMeta.keyValues.push_back({QStringLiteral("Validation avant calcul"), QString::fromStdString(m)});
+            for (const auto& w : meta.warnings)
+                sMeta.keyValues.push_back({QStringLiteral("Point à vérifier après calcul"), QString::fromStdString(w)});
             ch.sections.push_back(sMeta);
         }
 
