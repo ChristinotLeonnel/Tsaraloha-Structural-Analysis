@@ -8,6 +8,7 @@
 #include "../Analysis/FiberStress.h"
 #include "../Model/Beam.h"
 #include "../Model/Cable/Cable.h"
+#include "../Model/Load/SelfWeightRule.h"
 #include "../Model/Column.h"
 #include "../Model/Load/LoadManager.h"
 #include "../Model/Model.h"
@@ -777,6 +778,12 @@ void chapterChecks(Ctx& x, NDCDocument& doc, int& issues)
         const auto& lm = x.model.loadManager();
         const auto sums = loadsByCase(x.model);
         const double sw = selfWeightKN(x.model) + surfaceSelfWeightKN(x);
+        bool selfWeightSwitch = true;
+        if (const auto& json = x.results->analysisTrace().contextJson; !json.empty())
+        {
+            const QJsonObject common = QJsonDocument::fromJson(QByteArray::fromStdString(json)).object().value("common").toObject();
+            if (common.contains("includeSelfWeight")) selfWeightSwitch = common.value("includeSelfWeight").toBool(true);
+        }
         double surfaceLoads = 0.0;   // charges surfaciques verticales (uniformes : q × aire nette ; ponctuelles : P)
         std::map<int, double> surfaceByCase;
         for (const auto& [id, l] : x.model.loadManager().surfaceLoads())
@@ -816,7 +823,10 @@ void chapterChecks(Ctx& x, NDCDocument& doc, int& issues)
                     expected += fac * (it->second.lineSum + it->second.nodalFz);
                     complete = complete && it->second.otherLoads == 0;
                 }
-                if (lc->isSelfWeightIncluded()) expected += fac * lc->selfWeightFactor() * sw;
+                // Poids propre : règle unique (BUG-156), interrupteur du calcul lu dans sa trace (anciens résultats : actif)
+                const double swFactor = combId ? TSA::Model::combinationCaseSelfWeightFactor(lm.loadCases(), selfWeightSwitch, cid)
+                                               : TSA::Model::loadCasesSelfWeightFactor(lm.loadCases(), selfWeightSwitch, { cid });
+                expected += fac * swFactor * sw;
                 expected += fac * surfaceByCase[cid];
             }
             complete = complete && surfaceLoads == 0.0;

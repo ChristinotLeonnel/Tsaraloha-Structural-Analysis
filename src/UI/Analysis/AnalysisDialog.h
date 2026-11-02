@@ -101,6 +101,7 @@ private:
     QComboBox* m_levelCombo = nullptr;
     QComboBox* m_loadCombo = nullptr;
     QCheckBox* m_selfWeight = nullptr;
+    QComboBox* m_annexCombo = nullptr;
     QFormLayout* m_commonForm = nullptr;
     QSpinBox* m_modeCount = nullptr;          ///< analyse modale : nombre de modes
     QListWidget* m_massCases = nullptr;       ///< analyse modale : cas convertis en masses (m = F/g)

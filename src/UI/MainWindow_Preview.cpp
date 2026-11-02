@@ -83,7 +83,15 @@ void MainWindow::capturePreview(bool synchronousWrite)
         cache.store(image, meta);
         return;
     }
-    QThread* worker = QThread::create([image, meta] { TSA::Project::ModelPreviewCache().store(image, meta); });
+    QThread* worker = QThread::create([image, meta] {
+        try
+        {
+            TSA::Project::ModelPreviewCache().store(image, meta);
+        }
+        catch (...)   // aperçu non enregistré : sans conséquence (frontière du thread, BUG-155)
+        {
+        }
+    });
     connect(worker, &QThread::finished, worker, &QObject::deleteLater);
     worker->start(QThread::LowPriority);
 }

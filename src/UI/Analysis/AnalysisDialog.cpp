@@ -137,7 +137,16 @@ void AnalysisDialog::buildUi()
     m_loadCombo = new QComboBox(groupCommon);
     fc->addRow(tr("Chargement :"), m_loadCombo);
     m_selfWeight = new QCheckBox(tr("Inclure le poids propre"), groupCommon);
+    m_selfWeight->setToolTip(tr("Interrupteur général du poids propre. Coché, il est porté par le cas marqué « poids propre » "
+                                "(G), avec son coefficient ; un cas calculé seul qui n'est pas marqué ne le reçoit pas."));
     fc->addRow(QString(), m_selfWeight);
+    m_annexCombo = new QComboBox(groupCommon);
+    m_annexCombo->addItem(tr("France (NF EN /NA)"), QStringLiteral("FR"));
+    m_annexCombo->addItem(tr("Recommandations du CEN"), QStringLiteral("CEN"));
+    m_annexCombo->addItem(tr("Allemagne (DIN EN /NA)"), QStringLiteral("DE"));
+    m_annexCombo->addItem(tr("Royaume-Uni (BS EN /NA)"), QStringLiteral("UK"));
+    m_annexCombo->setToolTip(tr("Annexe nationale des vérifications EC2 / EC3 (γ, ψ), enregistrée avec le projet."));
+    fc->addRow(tr("Annexe nationale :"), m_annexCombo);
     m_modeCount = new QSpinBox(groupCommon);
     m_modeCount->setRange(1, 200);
     m_modeCount->setValue(6);
@@ -340,6 +349,7 @@ void AnalysisDialog::setContext(const AnalysisContext& context)
     }
     m_loadCombo->setCurrentIndex(lo);
     m_selfWeight->setChecked(m_context.common.includeSelfWeight);
+    m_annexCombo->setCurrentIndex(std::max(0, m_annexCombo->findData(QString::fromStdString(m_context.common.nationalAnnex))));
     m_modeCount->setValue(m_context.common.modeCount);
     for (int i = 0; i < m_massCases->count(); ++i)
     {
@@ -454,6 +464,7 @@ AnalysisContext AnalysisDialog::context() const
         for (const auto& id : lk.mid(6).split(',', Qt::SkipEmptyParts)) c.loadCaseIds.push_back(id.toInt());
 
     c.common.includeSelfWeight = m_selfWeight->isChecked();
+    c.common.nationalAnnex = m_annexCombo->currentData().toString().toStdString();
     c.common.modeCount = m_modeCount->value();
     c.common.modalMassCaseIds.clear();
     for (int i = 0; i < m_massCases->count(); ++i)

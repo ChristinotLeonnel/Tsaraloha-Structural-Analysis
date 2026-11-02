@@ -565,6 +565,7 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
             auto dirOf = [&](const SnapshotElement* e) {
                 const auto* a = snap.getNode(e->startNodeId);
                 const auto* b = snap.getNode(e->endNodeId);
+                if (!a || !b) return gp_Vec();   // nœud absent (BUG-154) : signalé ailleurs, jamais déréférencé
                 gp_Vec d(b->x - a->x, b->y - a->y, b->z - a->z);
                 return d.Magnitude() > 1e-12 ? d.Normalized() : gp_Vec();
             };

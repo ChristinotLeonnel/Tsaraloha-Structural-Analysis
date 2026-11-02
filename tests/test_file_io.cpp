@@ -2,6 +2,9 @@
 #include "App/ProductInfo.h"
 #include "IO/Tsa3d/Tsa3d.h"
 #include "Analysis/Engine/AnalysisContext.h"
+#include "Analysis/Engine/AnalysisEngineRegistry.h"
+#include "Analysis/Engine/AnalysisManager.h"
+#include "Grid/GridManager.h"
 #include "Analysis/ResultsModel.h"
 #include "Project/ProjectDiagnostics.h"
 #include "Project/ProjectManifest.h"
@@ -1366,6 +1369,62 @@ bool runSuite_FileIO(int& passed)
                        fromFile.fromJson(reread.projectStateBlock(Model::ProjectStateBlock::Manifest), &err) && fromFile == m,
                    "Test 579: manifeste relu du .tsa à l'identique (" << err << ")");
         std::cout << "[PASS] Test 579: Manifeste du projet (bloc PMAN) — fichiers liés, bibliothèques, enregistrements" << std::endl;
+        ++passed;
+    }
+
+
+    // TEST 588 (BUG-154) : .tsa à références pendantes — refusé à l'ouverture (projet ouvert intact), aucun plantage au calcul.
+    // Avant : un fichier dont une barre désigne un nœud absent s'ouvrait, puis le calcul faisait une violation d'accès.
+    {
+        using namespace TSA::Analysis;
+        QTemporaryDir dir;
+        std::string err;
+        // Fichier fabriqué : poutre dont un nœud a été retiré de l'instantané
+        Model source;
+        const int a = source.addNode(0, 0, 0), b = source.addNode(5, 0, 0);
+        source.addBar(a, b, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        auto snap = source.createSnapshot("test");
+        snap.nodes.erase(b);
+        Model broken;
+        broken.restoreSnapshot(snap);
+        const QString file = dir.filePath("pendant.tsa");
+        TEST_CHECK(TSAProjectIO::saveToFile(file, broken, nullptr, &err), "Test 588: fichier fabriqué écrit (" << err << ")");
+        Model victim;
+        victim.addNode(1, 2, 3);
+        err.clear();
+        const bool opened = TSAProjectIO::loadFromFile(file, victim, nullptr, &err);
+        TEST_CHECK(!opened && err.find("nœud") != std::string::npos && err.find("poutre") != std::string::npos,
+                   "Test 588: fichier à référence pendante refusé avec un message précis (" << err << ")");
+        TEST_CHECK(victim.nodes().size() == 1 && victim.beams().empty(), "Test 588: projet ouvert intact après le refus");
+
+        // Fichiers du fuzzing de l'audit (docs/audit/2026-10-31/preuves/fuzz) : ouverture refusée, ou calcul sans plantage
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        for (const char* name : { "analyse_ACCESS_VIOLATION_00216.tsa", "analyse_STACK_BUFFER_OVERRUN_00245.tsa" })
+        {
+            const QString path = QStringLiteral(TSA_SOURCE_DIR "/docs/audit/2026-10-31/preuves/fuzz/") + QString::fromLatin1(name);
+            if (!QFile::exists(path))
+            {
+                std::cout << "[SKIP] Test 588: " << name << " absent" << std::endl;
+                continue;
+            }
+            Model fuzzed;
+            TSA::Grid::GridManager gm;
+            err.clear();
+            if (!TSAProjectIO::loadFromFile(path, fuzzed, &gm, &err))
+            {
+                std::cout << "[INFO] Test 588: " << name << " refusé : " << err << std::endl;
+                continue;
+            }
+            AnalysisManager mgr(reg);
+            AnalysisContext c;
+            c.engineId = "opensees";
+            const auto prepared = mgr.prepare(fuzzed, &gm, c);
+            const auto run = mgr.run(c, prepared);
+            std::cout << "[INFO] Test 588: " << name << " ouvert ; calcul " << (run.success ? "réussi" : "refusé : " + run.message.substr(0, 160))
+                      << std::endl;
+        }
+        std::cout << "[PASS] Test 588: Fichier à références pendantes refusé, aucun plantage au calcul" << std::endl;
         ++passed;
     }
 

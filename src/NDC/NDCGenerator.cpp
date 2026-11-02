@@ -1,6 +1,9 @@
 #include "NDCPlanarCurves.h"
 #include "App/ProductInfo.h"
 #include "NDCGenerator.h"
+
+#include <QJsonDocument>
+#include <QJsonObject>
 #include "NDCProjectNote.h"
 #include "NormativeReferenceDetector.h"
 #include "ResultAnalyzer.h"
@@ -108,6 +111,16 @@ NDCDocument NDCGenerator::generate(
     const ReportConfiguration& config,
     const SnapshotProvider& snapshotProvider)
 {
+    // Annexe nationale du projet (réglages du calcul enregistrés dans le .tsa) : celle des vérifications de la note (BUG-111)
+    {
+        std::string annex = "FR";
+        if (!model.analysisSettingsJson().empty())
+        {
+            const QJsonObject common = QJsonDocument::fromJson(QByteArray::fromStdString(model.analysisSettingsJson())).object().value("common").toObject();
+            annex = common.value("nationalAnnex").toString(QStringLiteral("FR")).toStdString();
+        }
+        TSA::Standards::NationalAnnexConfig::instance().setAnnex(TSA::Standards::nationalAnnexFromKey(annex));
+    }
     if (config.noteLayout != NoteLayout::Legacy) return NDCProjectNote::build(model, results, config, snapshotProvider);
 
     NDCDocument doc;
@@ -186,7 +199,7 @@ NDCDocument NDCGenerator::generate(
             sMeta.keyValues.push_back({QStringLiteral("Annexe nationale du calcul"), meta.nationalAnnex.empty()
                 ? QStringLiteral("aucune (coefficients des combinaisons saisis dans le modèle)") : QString::fromStdString(meta.nationalAnnex)});
             sMeta.keyValues.push_back({QStringLiteral("Annexe nationale des vérifications EC2 / EC3 de cette note"),
-                                       TSA::Standards::NationalAnnexConfig::instance().annexName() + QStringLiteral(" (lue à la génération de la note)")});
+                                       TSA::Standards::NationalAnnexConfig::instance().annexName() + QStringLiteral(" (réglage du projet, Calcul › Paramètres)")});
             if (!meta.normativeFramework.empty())
                 sMeta.keyValues.push_back({QStringLiteral("Référentiel appliqué par le moteur"), QString::fromStdString(meta.normativeFramework)});
             sMeta.keyValues.push_back({QStringLiteral("Date / Heure de calcul"), QString::fromStdString(meta.executionTimestamp.empty() ? results->timestamp() : meta.executionTimestamp)});

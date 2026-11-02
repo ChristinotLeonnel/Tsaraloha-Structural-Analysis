@@ -1,4 +1,5 @@
 #include "AIOrchestrator.h"
+#include "../../Core/ExceptionText.h"
 #include "App/ProductInfo.h"
 
 #include "AILog.h"
@@ -162,7 +163,15 @@ void AIOrchestrator::probeHardwareAsync()
     const QString exe = HardwareProfiler::findLlamaServer(m_settings.llamaServerPath);
     QPointer<AIOrchestrator> self(this);
     QThread* worker = QThread::create([self, exe] {
-        AIHardwareProfile profile = HardwareProfiler::probe(exe);
+        AIHardwareProfile profile;
+        try
+        {
+            profile = HardwareProfiler::probe(exe);
+        }
+        catch (...)   // frontière du thread (BUG-155) : profil vide, recommandation prudente
+        {
+            profile = AIHardwareProfile{};
+        }
         QMetaObject::invokeMethod(qApp, [self, profile] {
             if (!self) return;
             self->m_hardware = profile;

@@ -1,4 +1,5 @@
 #include "OpenSeesManager.h"
+#include "../Core/ExceptionText.h"
 #include "../Core/AppPaths.h"
 #include "AI/Models/ModelManager.h"
 #include "App/ProductInfo.h"
@@ -488,9 +489,17 @@ void OpenSeesManager::downloadAndInstallAsync()
 
     QThread* thread = QThread::create([this]() {
         QString err;
-        downloadAndInstall([this](int pct, const QString& status) {
-            emit downloadProgress(pct, status);
-        }, &err);
+        try
+        {
+            downloadAndInstall([this](int pct, const QString& status) {
+                emit downloadProgress(pct, status);
+            }, &err);
+        }
+        catch (...)   // frontière du thread (BUG-155)
+        {
+            emit downloadCompleted(false, QString(), tr("Installation interrompue par une erreur interne (%1).")
+                                                         .arg(QString::fromStdString(TSA::Core::currentExceptionText())));
+        }
         m_isDownloading = false;
     });
 

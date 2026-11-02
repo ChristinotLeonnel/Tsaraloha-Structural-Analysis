@@ -118,7 +118,8 @@ QJsonObject AnalysisContext::toJson() const
         { "combinationId", combinationId },
         { "common", QJsonObject{ { "includeSelfWeight", common.includeSelfWeight }, { "useGeneratedMesh", common.useGeneratedMesh },
                                  { "pinnedSupports", QString::fromLatin1(keyFromEnum(common.supportRestraints, kSupportModes)) },
-                                 { "modeCount", common.modeCount }, { "modalMassCases", massCases } } },
+                                 { "modeCount", common.modeCount }, { "modalMassCases", massCases },
+                                 { "nationalAnnex", QString::fromStdString(common.nationalAnnex) } } },
         { "engineSettings", engines },
     };
 }
@@ -165,6 +166,7 @@ AnalysisContext AnalysisContext::fromJson(const QJsonObject& json, bool* ok)
                                      : SupportRestraintMode::Legacy;
     c.common.modeCount = std::max(1, common.value("modeCount").toInt(6));
     for (const auto& v : common.value("modalMassCases").toArray()) c.common.modalMassCaseIds.push_back(v.toInt());
+    c.common.nationalAnnex = common.value("nationalAnnex").toString(QStringLiteral("FR")).toStdString();
 
     const QJsonObject engines = json.value("engineSettings").toObject();
     for (auto it = engines.begin(); it != engines.end(); ++it)

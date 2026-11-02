@@ -852,6 +852,10 @@ RunResult runOnce(const BenchmarkCase& c, const std::string& engine, double mesh
             return rr;
         }
         ctx.loadCaseIds = { it->second };
+        // « selfWeight » du cas de référence : le chargement calculé comprend le poids propre. Règle unique de TSA (BUG-156) : il
+        // est porté par le cas marqué « poids propre » → le cas calculé le porte (coefficient 1)
+        if (ctx.common.includeSelfWeight)
+            if (auto* lc = model.loadManager().getLoadCase(it->second)) lc->setSelfWeightIncluded(true);
     }
     // Barres subdivisées (masses réparties en modal, stations de résultats) : n sous-éléments égaux
     if (const int n = c.analysis.value("subdivide").toInt(0); n > 1)

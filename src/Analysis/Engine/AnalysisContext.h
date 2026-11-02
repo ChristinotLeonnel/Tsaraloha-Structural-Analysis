@@ -88,6 +88,9 @@ struct CommonAnalysisSettings
     /// Analyse modale : cas de charge dont les charges verticales descendantes sont converties en masses (m = F/g,
     /// translations X, Y, Z ; méthode explicite, docs/SURFACES.md). Vide = masses propres des éléments seulement.
     std::vector<int> modalMassCaseIds;
+    /// Annexe nationale des vérifications EC2 / EC3 du projet (« CEN », « FR », « DE », « UK »), enregistrée avec le projet
+    /// (BUG-111) ; projet antérieur (clé absente) : « FR », l'annexe appliquée jusque-là.
+    std::string nationalAnnex = "FR";
 };
 
 struct AnalysisContext

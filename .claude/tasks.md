@@ -36,7 +36,8 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
 - [x] BUG-111 étapes 1-2 : trace du calcul (empreinte, script conservé, .tsa, notes), test 587.
 - [x] BUG-117 P2 : affichages des résultats en kN quelle que soit l'unité du calcul, test 492 complété.
 - [x] BUG-002 clos (déjà corrigé par le maillage ; fonction morte retirée).
-- [ ] Suivants : BUG-111 reste (annexe figée dans le projet) ; BUG-117 P3.
+- [x] BUG-154, BUG-155, BUG-156 corrigés ; BUG-111 terminé (annexe du projet), tests 588-591.
+- [ ] Suivants : BUG-157 sauvegarde automatique ; BUG-171 symétrie sans copie ; BUG-175 ; BUG-117 P3.
 - [ ] Traductions en / mg manquantes (88 / 107 textes, dont Style des charges, menus d'affichage) : tools/i18n.
 
 ## Affichage intelligent des charges (2026-11-01/02, branche feature/load-display-scaling)

@@ -7448,22 +7448,6 @@ Tsy ao amin'ity solosaina ity ny loharano (fonosana nozaraina): jereo ny tahirin
         <translation>… %1 hafa, jereo ny console.</translation>
     </message>
     <message>
-        <source>Dalles et voiles non calculés</source>
-        <translation>Takelaka sy rindrina tsy nokajina</translation>
-    </message>
-    <message>
-        <source>Le modèle contient %1 dalle(s) et %2 voile(s).
-
-TSA ne maille pas encore ces éléments : ils ne sont PAS transmis à OpenSees (ni leur rigidité, ni leurs charges). Seuls les éléments filaires (poutres, poteaux, treillis, câbles) sont calculés.
-
-Lancer quand même le calcul ?</source>
-        <translation>Misy takelaka %1 sy rindrina %2 ao amin'ny modely.
-
-Mbola tsy manao harato ireo singa ireo ny TSA: TSY alefa any amin'ny OpenSees izy ireo (na ny hamafiny na ny entany). Ny singa tsipika ihany (andry mitsivalana, andry, rafitra makarakara, tariby) no kajiana.
-
-Atomboka ihany ve ny kajy?</translation>
-    </message>
-    <message>
         <source>… et %1 autre(s)</source>
         <translation>… sy %1 hafa</translation>
     </message>
@@ -7615,6 +7599,10 @@ Atomboka ve ny kajy?</translation>
 </context>
 <context>
     <name>TSA::Analysis::AnalysisController</name>
+    <message>
+        <source>Calcul interrompu par une erreur interne (%1).</source>
+        <translation>Najanona noho ny hadisoana anatiny ny kajy (%1).</translation>
+    </message>
     <message>
         <source>Un calcul est déjà en cours.</source>
         <translation>Efa misy kajy mandeha.</translation>
@@ -7814,6 +7802,14 @@ Atomboka ve ny kajy?</translation>
         <translation>Enta manan-kery.</translation>
     </message>
     <message>
+        <source>Poids propre : aucun cas n'est marqué « poids propre » ; appliqué avec le coefficient 1 au calcul d'un cas (règle des anciens projets), pas aux combinaisons. Marquer le cas G pour l'inclure aussi dans les combinaisons.</source>
+        <translation>Lanja manokana : tsy misy tranga enta voamarika « lanja manokana » ; ampiharina amin'ny coefficient 1 rehefa kajiana tranga iray (fitsipiky ny tetikasa taloha), fa tsy amin'ny fitambarana. Mariho ny tranga G mba hampidirana azy amin'ny fitambarana koa.</translation>
+    </message>
+    <message>
+        <source>Poids propre : le(s) cas calculé(s) ne le portent pas (il est porté par le cas marqué « poids propre », G en général) ; il n'est donc pas appliqué.</source>
+        <translation>Lanja manokana : tsy entin'ny tranga kajiana izy (entin'ny tranga voamarika « lanja manokana », G matetika) ; tsy ampiharina àry izy.</translation>
+    </message>
+    <message>
         <source>%1 charge(s) appliquée(s) hors portée ne sont pas transmises.</source>
         <translation>Tsy ampitaina ny enta %1 apetraka ivelan'ny sehatra.</translation>
     </message>
@@ -7828,6 +7824,14 @@ Atomboka ve ny kajy?</translation>
     <message>
         <source>Ce projet demande une fonctionnalité qui n'est plus prise en charge : %1. TSA prend actuellement en charge l'analyse structurale linéaire : ce calcul n'est pas lancé à la place d'un autre. Choisissez une analyse linéaire dans les paramètres d'analyse. Les autres données du projet sont conservées.</source>
         <translation>Mangataka asa tsy zakaina intsony ity tetikasa ity: %1. Ny kajy ara-drafitra tsipika ihany no zakain'i TSA amin'izao fotoana izao: tsy misy kajy hafa atao ho solony. Mifidiana kajy tsipika ao amin'ny fikirana ny kajy. Voatahiry ny angon-drakitra hafa ao amin'ny tetikasa.</translation>
+    </message>
+    <message>
+        <source>Préparation du calcul</source>
+        <translation>Fanomanana ny kajy</translation>
+    </message>
+    <message>
+        <source>erreur interne pendant la préparation du modèle de calcul (%1). Le calcul n'est pas lancé ; vérifier les données du modèle (coordonnées, sections, barres de longueur nulle).</source>
+        <translation>hadisoana anatiny nandritra ny fanomanana ny modely kajiana (%1). Tsy natomboka ny kajy ; hamarino ny angon'ny modely (koordinata, fizarana, tsorakazo tsy misy halavany).</translation>
     </message>
     <message>
         <source>Moteur d'analyse inconnu : « %1 ».</source>
@@ -7884,6 +7888,10 @@ Atomboka ve ny kajy?</translation>
     <message>
         <source>Dalles et voiles non maillés : ni leur rigidité ni leurs charges ne sont calculées. Générer le maillage (Analyse &gt; Maillage) pour les transmettre en coques.</source>
         <translation>Takelaka sy rindrina tsy voaharato: tsy kajiana na ny hahenjany na ny entany. Mamokara ny harato (Kajy &gt; Harato) mba hampitana azy ho akorandriaka.</translation>
+    </message>
+    <message>
+        <source>Calcul interrompu par une erreur interne (%1). Aucun résultat n'a été produit ; le projet n'est pas modifié.</source>
+        <translation>Najanona noho ny hadisoana anatiny ny kajy (%1). Tsy nisy valiny novokarina ; tsy niova ny tetikasa.</translation>
     </message>
     <message>
         <source>Le modèle d'analyse n'est pas valide :</source>
@@ -8552,6 +8560,10 @@ Atomboka ve ny kajy?</translation>
         <source>Vérification échouée après extraction.</source>
         <translation>Tsy nety ny fanamarinana taorian'ny famoahana.</translation>
     </message>
+    <message>
+        <source>Installation interrompue par une erreur interne (%1).</source>
+        <translation>Najanona noho ny hadisoana anatiny ny fametrahana (%1).</translation>
+    </message>
 </context>
 <context>
     <name>TSA::Analysis::OpenSeesModelMap</name>
@@ -8694,6 +8706,10 @@ Atomboka ve ny kajy?</translation>
     <message>
         <source>Initialisation de l'analyse asynchrone...</source>
         <translation>Manomana ny kajy tsy miandry...</translation>
+    </message>
+    <message>
+        <source>Calcul interrompu par une erreur interne (%1).</source>
+        <translation>Najanona noho ny hadisoana anatiny ny kajy (%1).</translation>
     </message>
     <message>
         <source>Calcul terminé avec succès.</source>
@@ -10853,6 +10869,10 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
     <message>
         <source>Version des formules de section %1 (schéma %2) inconnue de cette version de %3 (formules %4) : le projet n'est pas ouvert.</source>
         <translation type="unfinished" />
+    </message>
+    <message>
+        <source>Fichier incohérent (endommagé ou modifié hors de TSA) : %1 élément(s) désignent un nœud absent (%2). Projet non ouvert.</source>
+        <translation>Rakitra tsy mirindra (simba na novaina ivelan'ny TSA) : singa %1 manondro fihaonana tsy misy (%2). Tsy nosokafana ny tetikasa.</translation>
     </message>
     <message>
         <source>Nombre de nœuds anormalement élevé dans le fichier.</source>
@@ -15548,6 +15568,34 @@ Venty: %10%11</translation>
     <message>
         <source>Inclure le poids propre</source>
         <translation>Ampidiro ny lanja manokana</translation>
+    </message>
+    <message>
+        <source>Interrupteur général du poids propre. Coché, il est porté par le cas marqué « poids propre » (G), avec son coefficient ; un cas calculé seul qui n'est pas marqué ne le reçoit pas.</source>
+        <translation>Fanalana sy fampandehanana ankapobeny ny lanja manokana. Raha voamarika, entin'ny tranga voamarika « lanja manokana » (G) izy, miaraka amin'ny coefficient-ny ; tsy mahazo azy ny tranga kajiana irery tsy voamarika.</translation>
+    </message>
+    <message>
+        <source>France (NF EN /NA)</source>
+        <translation>Frantsa (NF EN /NA)</translation>
+    </message>
+    <message>
+        <source>Recommandations du CEN</source>
+        <translation>Tolo-kevitry ny CEN</translation>
+    </message>
+    <message>
+        <source>Allemagne (DIN EN /NA)</source>
+        <translation>Alemaina (DIN EN /NA)</translation>
+    </message>
+    <message>
+        <source>Royaume-Uni (BS EN /NA)</source>
+        <translation>Angletera (BS EN /NA)</translation>
+    </message>
+    <message>
+        <source>Annexe nationale des vérifications EC2 / EC3 (γ, ψ), enregistrée avec le projet.</source>
+        <translation>Fanampiny nasionaly amin'ny fanamarinana EC2 / EC3 (γ, ψ), voatahiry miaraka amin'ny tetikasa.</translation>
+    </message>
+    <message>
+        <source>Annexe nationale :</source>
+        <translation>Fanampiny nasionaly :</translation>
     </message>
     <message>
         <source>Nombre de modes propres calculés (valeurs propres les plus basses).</source>
@@ -21715,6 +21763,10 @@ Mitazona ny fikirany ireo zavatra hafa.</translation>
 </context>
 <context>
     <name>TSA::UI::MeshController</name>
+    <message>
+        <source>erreur interne du mailleur (%1)</source>
+        <translation>hadisoana anatiny amin'ny mpamorona harato (%1)</translation>
+    </message>
     <message>
         <source>%1 nœuds, %2 éléments (1D : %3, 2D : %4, 3D : %5) en %6 ms</source>
         <translation>Fihaonana %1, singa %2 (1D: %3, 2D: %4, 3D: %5) tao anatin'ny %6 ms</translation>

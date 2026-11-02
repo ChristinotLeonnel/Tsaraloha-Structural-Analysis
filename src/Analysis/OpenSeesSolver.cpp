@@ -1,4 +1,5 @@
 #include "OpenSeesSolver.h"
+#include "../Core/ExceptionText.h"
 #include "OpenSeesResultsReader.h"
 #include "../Model/Model.h"
 #include "../Standards/ModelValidator.h"
@@ -145,7 +146,15 @@ void OpenSeesSolver::solveAsync(const TSA::Model::Model& model,
 
     QThread* worker = QThread::create([this, snapshot, params]() {
         QString err;
-        bool ok = executeWorkflow(snapshot, params, &err);
+        bool ok = false;
+        try
+        {
+            ok = executeWorkflow(snapshot, params, &err);
+        }
+        catch (...)   // frontière du thread (BUG-155)
+        {
+            err = tr("Calcul interrompu par une erreur interne (%1).").arg(QString::fromStdString(TSA::Core::currentExceptionText()));
+        }
         m_isRunning = false;
         emit analysisFinished(ok, ok ? tr("Calcul terminé avec succès.") : err);
     });

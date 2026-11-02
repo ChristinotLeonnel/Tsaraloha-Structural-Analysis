@@ -1,10 +1,16 @@
 # Known Issues
 
-Last Updated: 2026-11-02 (BUG-002 retiré : dalles et voiles calculés en coques depuis le maillage du projet, suite surfaces ; BUG-117 P2 corrigé ; BUG-111 étapes 1-2 faites, test 587 ; BUG-133 corrigé et retiré : installation d'OpenSees depuis l'application par conda-forge ; BUG-173 : moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine ; BUG-153 corrigé et retiré, test 586 — reste documenté : centre de cisaillement, docs/AUDIT_CALCULS.md § 8 ; BUG-151 corrigé et retiré, test 585 ; BUG-152 corrigé et retiré, test 584 ; BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
+Last Updated: 2026-11-02 (BUG-179 ajouté, test 343 intermittent ; BUG-154, BUG-155, BUG-156 corrigés et retirés, tests 588-590 ; BUG-111 terminé et retiré, annexe nationale du projet, test 591 ; BUG-002 retiré : dalles et voiles calculés en coques depuis le maillage du projet, suite surfaces ; BUG-117 P2 corrigé ; BUG-111 étapes 1-2 faites, test 587 ; BUG-133 corrigé et retiré : installation d'OpenSees depuis l'application par conda-forge ; BUG-173 : moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine ; BUG-153 corrigé et retiré, test 586 — reste documenté : centre de cisaillement, docs/AUDIT_CALCULS.md § 8 ; BUG-151 corrigé et retiré, test 585 ; BUG-152 corrigé et retiré, test 584 ; BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
 
 ## Ouverts
 
 Audit technique du 2026-10-31 : détail, reproduction et correction de BUG-148 à BUG-168 dans docs/audit/2026-10-31/TSA_BUG_REGISTER.md.
+
+## BUG-179
+Status: OPEN (LOW, intermittent, vu une fois le 2026-11-02) — suite `meshview`, test 343 (« effacement : contexte revenu à l'état
+initial ») : un objet affiché de trop après l'effacement de la vue de maillage, pendant une suite complète (Release, branche
+fix/dangling-references, poste chargé : suite terminée en 1,5 s au lieu de 7,7 s). Relancée seule 4 fois : 12/12. Même famille que
+BUG-174 (test 371). Code non modifié par la branche. À surveiller : capturer la sortie complète si cela se reproduit.
 
 ## BUG-175
 Status: OPEN (MEDIUM, à vérifier, relu dans le code le 2026-11-01, non reproduit) — contenu comparé par Annuler incomplet :
@@ -57,17 +63,6 @@ Status: OPEN (LOW, reproduit le 2026-10-31) — test 457 (suite i18n) : seuil de
 index synthétique de 6 000 entrées : 347 à 410 ms, sans autre charge ; 18 ms en Release). L'arrêt au premier échec (BUG-104)
 empêche ensuite les tests 458 à 463 de tourner en Debug. Correction : seuil dépendant du type de compilation, ou mesure en
 Release seulement.
-
-## BUG-154
-Status: OPEN (MEDIUM, reproduit) — .tsa à références pendantes accepté, violation d'accès au calcul (ModelValidator.cpp:576-578).
-
-## BUG-155
-Status: OPEN (MEDIUM, reproduit) — exceptions non contenues : prepare() (Fem3DError, Standard_ConstructionError) et 8 corps de
-QThread::create sur 9 sans try.
-
-## BUG-156
-Status: OPEN (MEDIUM, reproduit) — poids propre : drapeau du cas ignoré en cas seul, case du calcul ignorée en combinaison,
-selfWeightFactor ignoré par les trois moteurs.
 
 ## BUG-157
 Status: OPEN (MEDIUM, code) — aucune sauvegarde automatique ni récupération après plantage.
@@ -253,24 +248,6 @@ inspection : octets en trop, doublons de casse, noms réservés Windows, point /
 découverte : le premier dossier (livré) l'emporte, conflit dans discoveryWarnings() ; import de dossier réservé au mode
 développeur ; commentaire « signé » retiré. Test 505. RESTE : E1 (registre qualifié, provenance SNAP), E2 (magasin
 versionné, journal, reprise, retour arrière), E3 (minisign/libsodium), E4, E5.
-
-## BUG-111
-Area: Traçabilité des calculs (ResultsModel, OpenSeesSolver, NDC, NationalAnnexConfig)
-Problem: version de moteur inventée par défaut (ResultsModel.h:197-198 « OpenSees 3.8.0 », OpenSeesSolver.cpp:421), aucune
-empreinte de l'entrée, script Tcl détruit (QTemporaryDir), chunk RSLT déclaré mais jamais écrit, annexe nationale et γ/ψ non
-figés dans le projet (singleton), NDC historique qui lit la version OpenSees du jour (NDCGenerator.cpp:127).
-Impact: HIGH (traçabilité, NDC régénérée différente). Status: PARTIEL — étape 0 FAITE le 2026-10-26 (D2) : métadonnées
-neuves vides (plus de « OpenSees 3.8.0 » / « France NF » par défaut), aucune version de repli, annexe non attribuée au
-calcul, configuration réelle du script (BasicBuilder, RCM), horodatage UTC, messages de validation avant calcul conservés
-(preparationMessages) ; NDC : moteur et version des résultats (« version non lue » sinon), plus « certifiées », annexe des
-vérifications EC2/EC3 indiquée à part. Tests 503, 504 ; test Standards.8 adapté (il vérifiait les valeurs inventées).
-Étapes 1-2 FAITES le 2026-11-02 (test 587) : `AnalysisTrace` (ResultsModel) — empreinte SHA-256 des données d'entrée
-(`AnalysisManager::inputFingerprint` : moteur, réglages JSON, script statique de référence du modèle préparé ; tout moteur),
-script remis à OpenSees conservé (model.tcl), enregistrés dans le .tsa (RSLT, section TRAC), empreinte citée par les notes
-historique et projet. Version et annexe : déjà corrigées (étape 0 ; la note lit la version des résultats). RESTE : annexe
-nationale et γ/ψ des vérifications EC2/EC3 figées dans le projet (aujourd'hui réglage de l'application, lu à la génération de la
-note et indiqué comme tel) ; export du script conservé depuis l'interface.
-Related files: src/Analysis/ResultsModel.h, src/Analysis/OpenSeesSolver.cpp, src/NDC/NDCGenerator.cpp, src/Standards/NationalAnnexConfig.*
 
 ## BUG-115
 Area: Panneau Propriétés du poteau — « Tube Rectangulaire / Creux » (ColumnPropertiesView::getSectionFromUi)

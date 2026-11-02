@@ -122,6 +122,8 @@ struct LoadPatternSpec
     int caseId = 0;                  ///< 0 = tous les cas
     double factor = 1.0;
     bool includeSelfWeight = false;
+    /// Coefficient du poids propre du motif (Model/Load/SelfWeightRule.h, BUG-156), facteur du motif NON compris ; 0 : aucun.
+    double selfWeightFactor = 0.0;
 };
 
 /// Charge appliquée à une poutre / un poteau, en repère local, en unités du script et facteur du

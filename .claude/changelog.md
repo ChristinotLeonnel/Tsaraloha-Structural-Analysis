@@ -2,6 +2,35 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — BUG-154, BUG-155, BUG-156 corrigés ; BUG-111 terminé (branche fix/dangling-references)
+
+- BUG-154 (références pendantes) : contrôle d'intégrité en fin de lecture du .tsa (TSAFileReader::parsePayload, avant toute
+  application au modèle) : un élément (poutre, poteau, treillis, câble, voile, dalle, fondation) qui désigne un nœud absent fait
+  refuser le fichier avec un message précis, projet ouvert intact ; test de pointeur ajouté dans ModelValidator (dirOf). Charges
+  orphelines : déjà signalées par la validation, inchangées (anciens fichiers ouvrables). Test 588 (suite io) : fichier fabriqué
+  refusé, projet intact ; fichiers du fuzzing de l'audit : ACCESS_VIOLATION refusé (20 éléments), STACK_BUFFER_OVERRUN ouvert et
+  calcul refusé proprement, aucun plantage.
+- BUG-155 (exceptions) : `Core/ExceptionText.h` (currentExceptionText : std::exception, OCCT Standard_Failure — dérivée de
+  std::exception en OCCT 8 —, bad_alloc, type inconnu) ; AnalysisManager::prepare / run = frontières (corps prepareUnguarded /
+  runUnguarded) : exception → erreur de validation ou message ; try/catch dans les 8 corps de QThread::create qui n'en avaient pas
+  (AnalysisController, OpenSeesManager, OpenSeesSolver, MeshController, AIOrchestrator, BlueprintEditor, StartCenter,
+  MainWindow_Preview). Test 589 (engines) : textes d'exception ; coordonnées non finies sur les trois moteurs ; moteur de test qui
+  lève dans validate() et dans run() (gp_Vec::Normalize) : message, aucune fuite.
+- BUG-156 (poids propre) : règle unique `Model/Load/SelfWeightRule.h` — case du calcul = interrupteur général ; poids propre porté
+  par les cas marqués, avec leur coefficient (× facteur de combinaison) ; aucun cas marqué (anciens projets) : coefficient 1 au
+  calcul d'un cas, rien aux combinaisons. Appliquée par loadPatterns (OpenSees, Fem3D, surfaces, treillis), l'équilibre recalculé
+  (mêmes motifs), Custom2D (drapeaux selon l'interrupteur, poids linéique × coefficient) et la note (interrupteur lu dans la trace) ;
+  message d'information avant calcul ; infobulle de la case. Test 590 : table de l'essai A, 8 lignes × 3 moteurs.
+- BUG-111 (fin) : annexe nationale des vérifications EC2 / EC3 figée dans le projet : `CommonAnalysisSettings::nationalAnnex`
+  (« FR » par défaut et pour les anciens projets, l'annexe appliquée jusqu'ici ; .tsa : réglages du calcul, clé additive),
+  appliquée par AnalysisController (réglages relus ou validés), au premier plan du document, et par NDCGenerator::generate
+  (annexe du projet pour toute note) ; choix dans la fenêtre Calcul. Test 591 (ndc).
+- Ajustements constatés à la suite complète : le banc (BenchmarkSuite) et le test 362 calculaient un cas non marqué avec
+  « poids propre » (règle antérieure) ; le cas calculé porte désormais le poids propre (sens de « selfWeight » du banc) : banc
+  2 097 vérifications réussies, 0 en échec. Vérification d'OpenSees : délai par défaut 5 s → 15 s (dépassé une fois sur un poste
+  chargé : suite ndc). Traductions en / mg (17 textes). Suite complète 59/60 puis meshview 4 × 12/12 (test 343 intermittent :
+  BUG-179) ; check_layers 0 ; TSALab 27/27.
+
 ## 2026-11-02 — BUG-002 clos : dalles et voiles calculés en coques (branche fix/bug-002-closed)
 
 - Constat (code et tests) : les dalles et voiles sont maillés et transmis au calcul en coques (OpenSees ShellMITC4 / ShellDKGT,

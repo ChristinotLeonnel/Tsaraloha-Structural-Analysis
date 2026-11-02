@@ -466,7 +466,15 @@ void StartCenter::loadPreviewsAsync()
         TSA::Project::ModelPreviewCache cache;
         for (const QString& path : paths)
         {
-            const QImage img = cache.preview(path);
+            QImage img;
+            try
+            {
+                img = cache.preview(path);
+            }
+            catch (...)   // aperçu illisible : ignoré (frontière du thread, BUG-155)
+            {
+                continue;
+            }
             if (img.isNull()) continue;
             QMetaObject::invokeMethod(qApp, [self, path, img, generation] {
                 if (self && self->m_generation == generation) self->updatePreview(path, img);

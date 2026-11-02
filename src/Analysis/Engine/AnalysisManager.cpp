@@ -1,6 +1,8 @@
 #include "AnalysisManager.h"
 
 #include "../../Coordinate/GeometryTolerance.h"
+#include "../../Core/ExceptionText.h"
+#include "../../Model/Load/SelfWeightRule.h"
 #include "../../Model/Model.h"
 #include "../../Standards/ModelValidator.h"
 #include "../OpenSeesAnalysisBuilder.h"   // AnalysisParameters (paramètres communs de ModelValidator)
@@ -265,6 +267,20 @@ ValidationResult AnalysisManager::validateGeneric(const AnalysisContext& context
                                                         "Aucune charge dans la portée et poids propre désactivé : résultats nuls.")));
     else
         v.addInfo(catLoads, trText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager", "Charges valides.")));
+    // Poids propre (règle unique, BUG-156, Model/Load/SelfWeightRule.h) : ce que le calcul fera, annoncé avant
+    if (context.type != AnalysisType::Modal && context.common.includeSelfWeight)
+    {
+        const auto& cases = snap.loadCases();
+        if (!TSA::Model::anyCaseCarriesSelfWeight(cases))
+            v.addInfo(catLoads, trText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager",
+                                                         "Poids propre : aucun cas n'est marqué « poids propre » ; appliqué avec le coefficient 1 au "
+                                                         "calcul d'un cas (règle des anciens projets), pas aux combinaisons. Marquer le cas G pour "
+                                                         "l'inclure aussi dans les combinaisons.")));
+        else if (context.combinationId <= 0 && TSA::Model::loadCasesSelfWeightFactor(cases, true, context.loadCaseIds) == 0.0)
+            v.addInfo(catLoads, trText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager",
+                                                         "Poids propre : le(s) cas calculé(s) ne le portent pas (il est porté par le cas marqué "
+                                                         "« poids propre », G en général) ; il n'est donc pas appliqué.")));
+    }
     if (model.droppedNodalLoads + model.droppedMemberLoads > 0 && !model.entireModel)
         v.addInfo(catLoads, trArgs(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager",
                                                      "%1 charge(s) appliquée(s) hors portée ne sont pas transmises."),
@@ -298,6 +314,26 @@ std::string AnalysisManager::unsupportedFeaturesMessage(const std::vector<std::s
 PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
                                           const TSA::Grid::GridManager* grids,
                                           const AnalysisContext& context) const
+{
+    try
+    {
+        return prepareUnguarded(model, grids, context);
+    }
+    catch (...)
+    {
+        PreparedAnalysis p;
+        p.validation.addError(trText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager", "Préparation du calcul")),
+                              trArgs(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager",
+                                                       "erreur interne pendant la préparation du modèle de calcul (%1). Le calcul n'est pas "
+                                                       "lancé ; vérifier les données du modèle (coordonnées, sections, barres de longueur nulle)."),
+                                     { TSA::Core::currentExceptionText() }));
+        return p;
+    }
+}
+
+PreparedAnalysis AnalysisManager::prepareUnguarded(const TSA::Model::Model& model,
+                                                   const TSA::Grid::GridManager* grids,
+                                                   const AnalysisContext& context) const
 {
     PreparedAnalysis p;
     const AnalysisEngine* engine = m_registry.engine(context.engineId);
@@ -452,6 +488,26 @@ PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
 AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
                                        const PreparedAnalysis& prepared,
                                        const AnalysisRunCallbacks& callbacks)
+{
+    try
+    {
+        return runUnguarded(context, prepared, callbacks);
+    }
+    catch (...)
+    {
+        AnalysisRunResult r;
+        r.success = false;
+        r.message = trArgs(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisManager",
+                                             "Calcul interrompu par une erreur interne (%1). Aucun résultat n'a été produit ; le projet n'est "
+                                             "pas modifié."),
+                           { TSA::Core::currentExceptionText() });
+        return r;
+    }
+}
+
+AnalysisRunResult AnalysisManager::runUnguarded(const AnalysisContext& context,
+                                                const PreparedAnalysis& prepared,
+                                                const AnalysisRunCallbacks& callbacks)
 {
     AnalysisRunResult r;
     AnalysisEngine* engine = m_registry.engine(context.engineId);
