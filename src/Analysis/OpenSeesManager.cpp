@@ -3,6 +3,8 @@
 #include "AI/Models/ModelManager.h"
 #include "App/ProductInfo.h"
 
+#include <OpenSeesCondaPackages.h>
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -39,14 +41,167 @@ QString OpenSeesManager::defaultSearchDirectory()
     return TSA::Core::AppPaths::openSeesDir();
 }
 
-QString OpenSeesManager::officialDownloadUrl()
+QString OpenSeesManager::condaChannelUrl()
 {
-    return QStringLiteral("https://opensees.berkeley.edu/OpenSees/code/OpenSees3.8.0-x64.exe.zip");
+    return QString::fromUtf8(Generated::kOpenSeesCondaChannel);
 }
 
-QString OpenSeesManager::officialArchiveSha256()
+std::vector<OpenSeesManager::CondaPackage> OpenSeesManager::condaPackages()
 {
-    return QStringLiteral("5e37a5a95c645e31c7700ce6ec5b08c178baedc83241f7cbe10ef10cf6a4fb41");
+    std::vector<CondaPackage> out;
+    for (const char* entry : Generated::kOpenSeesCondaPackages)
+    {
+        const QStringList parts = QString::fromUtf8(entry).split(QLatin1Char('|'));
+        if (parts.size() != 3) continue;
+        out.push_back({ parts[0], parts[1].toLower(), parts[2].split(QLatin1Char(','), Qt::SkipEmptyParts) });
+    }
+    return out;
+}
+
+namespace
+{
+/// Copie récursive (fichiers remplacés) ; faux si un fichier n'a pas pu être copié.
+bool copyTree(const QString& from, const QString& to)
+{
+    QDir src(from);
+    if (!src.exists() || !QDir().mkpath(to)) return false;
+    for (const QFileInfo& fi : src.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden))
+    {
+        const QString dest = QDir(to).filePath(fi.fileName());
+        if (fi.isDir())
+        {
+            if (!copyTree(fi.absoluteFilePath(), dest)) return false;
+        }
+        else
+        {
+            QFile::remove(dest);
+            if (!QFile::copy(fi.absoluteFilePath(), dest)) return false;
+        }
+    }
+    return true;
+}
+
+/// Outil système de Windows par son chemin absolu (jamais résolu par le PATH, qu'un dossier quelconque peut précéder).
+QString systemTool(const QString& name)
+{
+    const QString system32 = QDir(qEnvironmentVariable("SystemRoot", QStringLiteral("C:/Windows"))).filePath(QStringLiteral("System32"));
+    return QDir(system32).filePath(name);
+}
+
+/// Lance un outil et attend sa fin ; faux (avec la sortie d'erreur) s'il ne démarre pas, dépasse le délai ou échoue.
+bool runTool(const QString& program, const QStringList& args, int timeoutMs, QString* output)
+{
+    QProcess p;
+    p.setProcessChannelMode(QProcess::MergedChannels);
+    p.start(program, args);
+    if (!p.waitForStarted(5000))
+    {
+        if (output) *output = QCoreApplication::translate("TSA::Analysis::OpenSeesManager", "%1 n'a pas pu être lancé.").arg(QFileInfo(program).fileName());
+        return false;
+    }
+    if (!p.waitForFinished(timeoutMs))
+    {
+        p.kill();
+        p.waitForFinished(3000);
+        if (output) *output = QCoreApplication::translate("TSA::Analysis::OpenSeesManager", "%1 : délai dépassé.").arg(QFileInfo(program).fileName());
+        return false;
+    }
+    if (output) *output = QString::fromLocal8Bit(p.readAll()).trimmed();
+    return p.exitStatus() == QProcess::NormalExit && p.exitCode() == 0;
+}
+} // namespace
+
+bool OpenSeesManager::installFromCondaForge(const QString& targetDir, const std::function<void(int, const QString&)>& progress,
+                                            QString* errorMessage)
+{
+    auto fail = [&](const QString& message) {
+        if (errorMessage) *errorMessage = message;
+        return false;
+    };
+#ifndef Q_OS_WIN
+    Q_UNUSED(targetDir);
+    Q_UNUSED(progress);
+    return fail(tr("Installation automatique d'OpenSees disponible sous Windows uniquement : python install_dependencies.py "
+                   "--only opensees, ou OpenSees dans le PATH."));
+#else
+    const auto packages = condaPackages();
+    if (packages.empty()) return fail(tr("Liste des paquets OpenSees vide (cmake/dependencies.json)."));
+    // Préparation à côté de la destination ; la destination n'est modifiée que si tout a réussi
+    const QString stage = QDir(targetDir).filePath(QStringLiteral(".opensees-install"));
+    QDir(stage).removeRecursively();
+    const QString root = QDir(stage).filePath(QStringLiteral("OpenSees"));
+    if (!QDir().mkpath(QDir(root).filePath(QStringLiteral("bin"))) || !QDir().mkpath(QDir(root).filePath(QStringLiteral("lib"))))
+        return fail(tr("Dossier d'installation non accessible en écriture : %1").arg(QDir::toNativeSeparators(targetDir)));
+    auto cleanFail = [&](const QString& message) {
+        QDir(stage).removeRecursively();
+        return fail(message);
+    };
+
+    const int count = static_cast<int>(packages.size());
+    for (int i = 0; i < count; ++i)
+    {
+        const CondaPackage& pkg = packages[static_cast<std::size_t>(i)];
+        const QString url = condaChannelUrl() + QLatin1Char('/') + pkg.file + QStringLiteral(".conda");
+        const QString archive = QDir(stage).filePath(pkg.file + QStringLiteral(".conda"));
+        if (progress) progress(5 + 85 * i / count, tr("OpenSees : paquet %1 sur %2 (%3)…").arg(i + 1).arg(count).arg(pkg.file));
+        QString out;
+        // --fail : une page d'erreur HTTP n'est jamais enregistrée comme paquet
+        if (!runTool(systemTool(QStringLiteral("curl.exe")), { QStringLiteral("-L"), QStringLiteral("--fail"), QStringLiteral("--silent"),
+                                                               QStringLiteral("--show-error"), QStringLiteral("-o"), archive, url },
+                     300000, &out))
+            return cleanFail(tr("Téléchargement impossible : %1 (%2).").arg(url, out));
+        QString actual;
+        if (!TSA::AI::ModelManager::verifySha256(archive, pkg.sha256, &actual))
+            return cleanFail(tr("Paquet %1 rejeté : empreinte SHA-256 %2, attendue %3.").arg(pkg.file, actual, pkg.sha256));
+        // .conda = zip contenant pkg-<nom>.tar.zst : tar.exe de Windows (bsdtar) lit les deux
+        const QString x = QDir(stage).filePath(pkg.file);
+        QDir().mkpath(x);
+        const QString tar = systemTool(QStringLiteral("tar.exe"));
+        if (!runTool(tar, { QStringLiteral("-xf"), archive, QStringLiteral("-C"), x }, 120000, &out) ||
+            !runTool(tar, { QStringLiteral("-xf"), QDir(x).filePath(QStringLiteral("pkg-%1.tar.zst").arg(pkg.file)), QStringLiteral("-C"), x },
+                     120000, &out))
+            return cleanFail(tr("Extraction de %1 impossible (%2). Le tar de Windows doit lire le format zstd (Windows 11, ou Windows 10 "
+                                "à jour) ; sinon : python install_dependencies.py --only opensees.").arg(pkg.file, out));
+        for (const QString& f : pkg.files)
+        {
+            const QString from = QDir(x).filePath(QStringLiteral("Library/bin/") + f);
+            const QString to = QDir(root).filePath(QStringLiteral("bin/") + f);
+            if (!QFile::exists(from)) return cleanFail(tr("%1 absent du paquet %2.").arg(f, pkg.file));
+            QFile::remove(to);
+            if (!QFile::copy(from, to)) return cleanFail(tr("Copie de %1 impossible.").arg(f));
+        }
+        // Bibliothèque de scripts Tcl et modules (.tm : msgcat, utilisé par clock, http, platform…)
+        const QString tclLib = QDir(x).filePath(QStringLiteral("Library/lib/tcl8.6"));
+        if (QFile::exists(QDir(tclLib).filePath(QStringLiteral("init.tcl"))))
+        {
+            if (!copyTree(tclLib, QDir(root).filePath(QStringLiteral("lib/tcl8.6"))) ||
+                (QDir(QDir(x).filePath(QStringLiteral("Library/lib/tcl8"))).exists() &&
+                 !copyTree(QDir(x).filePath(QStringLiteral("Library/lib/tcl8")), QDir(root).filePath(QStringLiteral("lib/tcl8")))))
+                return cleanFail(tr("Copie de la bibliothèque Tcl impossible."));
+        }
+        QDir(x).removeRecursively();
+        QFile::remove(archive);
+    }
+    if (!QFile::exists(QDir(root).filePath(QStringLiteral("lib/tcl8.6/init.tcl"))))
+        return cleanFail(tr("Bibliothèque Tcl 8.6 absente des paquets OpenSees."));
+
+    QFile source(QDir(root).filePath(QStringLiteral("SOURCE.txt")));
+    if (source.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        QStringList lines { QStringLiteral("OpenSees %1 (licence UC, docs/THIRD_PARTY_LICENSES.md), compilé par conda-forge depuis "
+                                           "https://github.com/OpenSees/OpenSees/archive/refs/tags/v3.8.0.tar.gz (recette conda-forge/opensees-feedstock).")
+                                .arg(QString::fromUtf8(Generated::kOpenSeesVersion)),
+                            QStringLiteral("Paquets (cmake/dependencies.json, opensees.windows), installés par TSA (OpenSeesManager) :") };
+        for (const auto& pkg : packages) lines << QStringLiteral("  %1|%2").arg(pkg.file, pkg.sha256);
+        source.write((lines.join(QLatin1Char('\n')) + QLatin1Char('\n')).toUtf8());
+        source.close();
+    }
+    if (progress) progress(92, tr("Installation d'OpenSees…"));
+    if (!copyTree(root, targetDir))
+        return cleanFail(tr("Copie dans %1 impossible.").arg(QDir::toNativeSeparators(targetDir)));
+    QDir(stage).removeRecursively();
+    return true;
+#endif
 }
 
 void OpenSeesManager::loadSettings()
@@ -160,7 +315,7 @@ bool OpenSeesManager::verifyExecutable(const QString& exePath, QString* errorOut
     return result.ok();
 }
 
-OpenSeesCheckResult OpenSeesManager::checkExecutable(const QString& exePath) const
+OpenSeesCheckResult OpenSeesManager::checkExecutable(const QString& exePath, int timeoutMs) const
 {
     OpenSeesCheckResult result;
     if (exePath.isEmpty())
@@ -192,7 +347,7 @@ OpenSeesCheckResult OpenSeesManager::checkExecutable(const QString& exePath) con
     process.write(testScript);
     process.closeWriteChannel();
 
-    if (!process.waitForFinished(5000))
+    if (!process.waitForFinished(timeoutMs))
     {
         process.kill();
         process.waitForFinished(1000);
@@ -291,95 +446,18 @@ OpenSeesVersionInfo OpenSeesManager::versionInfo() const
 bool OpenSeesManager::downloadAndInstall(std::function<void(int, const QString&)> progressCallback,
                                         QString* errorMessage)
 {
-#ifndef Q_OS_WIN
-    // L'archive officielle (officialDownloadUrl) ne contient que l'exécutable Windows, installé par curl.exe et PowerShell.
-    Q_UNUSED(progressCallback);
-    if (errorMessage) *errorMessage = tr("Téléchargement automatique d'OpenSees disponible sous Windows uniquement : installer OpenSees et le placer dans le PATH.");
-    emit downloadCompleted(false, "", tr("Téléchargement automatique d'OpenSees disponible sous Windows uniquement : installer OpenSees et le placer dans le PATH."));
-    return false;
-#endif
-    QString targetDir = defaultSearchDirectory();
-    QDir dir(targetDir);
-    if (!dir.exists())
+    // Paquets conda-forge épinglés (l'archive officielle d'opensees.berkeley.edu n'existe plus : 404, BUG-133)
+    const QString targetDir = defaultSearchDirectory();
+    emit downloadProgress(5, tr("Téléchargement d'OpenSees…"));
+    QString error;
+    const bool installed = installFromCondaForge(targetDir, [&](int percent, const QString& status) {
+        if (progressCallback) progressCallback(percent, status);
+        emit downloadProgress(percent, status);
+    }, &error);
+    if (!installed)
     {
-        dir.mkpath(".");
-    }
-    dir.mkpath("bin");
-    dir.mkpath("lib");
-
-    QString zipPath = targetDir + "/OpenSees.zip";
-    QString url = officialDownloadUrl();
-
-    if (progressCallback) progressCallback(5, tr("Téléchargement d'OpenSees depuis %1...").arg(url));
-    emit downloadProgress(5, tr("Téléchargement d'OpenSees..."));
-
-    // Outils système par leur chemin absolu (jamais résolus par le PATH, qu'un dossier quelconque peut précéder).
-    const QString system32 = QDir(qEnvironmentVariable("SystemRoot", QStringLiteral("C:/Windows"))).filePath(QStringLiteral("System32"));
-
-    // Téléchargement via curl Windows
-    QProcess curl;
-    // --fail : une page d'erreur HTTP (404 du serveur officiel, W-3) n'est jamais enregistrée comme archive.
-    QStringList args = {"-L", "--fail", "-o", zipPath, url};
-    curl.start(QDir(system32).filePath(QStringLiteral("curl.exe")), args);
-
-    if (!curl.waitForStarted(3000))
-    {
-        if (errorMessage) *errorMessage = tr("Impossible de lancer curl pour le téléchargement.");
-        emit downloadCompleted(false, "", tr("Échec du lancement du téléchargement."));
-        return false;
-    }
-
-    if (!curl.waitForFinished(180000)) // 3 minutes max
-    {
-        curl.kill();
-        if (errorMessage) *errorMessage = tr("Délai dépassé pendant le téléchargement.");
-        emit downloadCompleted(false, "", tr("Délai de téléchargement dépassé."));
-        return false;
-    }
-
-    if (curl.exitCode() != 0 || !QFile::exists(zipPath))
-    {
-        QFile::remove(zipPath);
-        if (errorMessage) *errorMessage = tr("Téléchargement de l'archive OpenSees impossible (%1, code curl %2). "
-                                             "Installer OpenSees manuellement et indiquer son exécutable dans les préférences.")
-                                              .arg(url).arg(curl.exitCode());
-        emit downloadCompleted(false, "", tr("Erreur de téléchargement."));
-        return false;
-    }
-
-    QString actualSha256;
-    if (!TSA::AI::ModelManager::verifySha256(zipPath, officialArchiveSha256(), &actualSha256))
-    {
-        QFile::remove(zipPath);
-        if (errorMessage) *errorMessage = tr("Archive OpenSees rejetée : empreinte SHA-256 %1, attendue %2.")
-                                              .arg(actualSha256, officialArchiveSha256());
-        emit downloadCompleted(false, "", tr("Archive rejetée (empreinte inattendue)."));
-        return false;
-    }
-
-    if (progressCallback) progressCallback(60, tr("Extraction de l'archive OpenSees..."));
-    emit downloadProgress(60, tr("Extraction en cours..."));
-
-    // Extraction PowerShell. Les chemins passent par l'environnement du processus, jamais par le texte de la
-    // commande : une apostrophe (ou « ; ») dans un nom d'utilisateur ou de dossier ne peut pas devenir du code.
-    QString tempExtract = targetDir + "/temp_extract";
-    QProcess extract;
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert(QStringLiteral("TSA_OPS_ZIP"), QDir::toNativeSeparators(zipPath));
-    env.insert(QStringLiteral("TSA_OPS_TMP"), QDir::toNativeSeparators(tempExtract));
-    env.insert(QStringLiteral("TSA_OPS_DEST"), QDir::toNativeSeparators(targetDir));
-    extract.setProcessEnvironment(env);
-    const QString script = QStringLiteral("Expand-Archive -LiteralPath $env:TSA_OPS_ZIP -DestinationPath $env:TSA_OPS_TMP -Force; "
-                                          "Copy-Item -Path (Join-Path $env:TSA_OPS_TMP 'OpenSees3.8.0/bin/*') -Destination (Join-Path $env:TSA_OPS_DEST 'bin') -Recurse -Force; "
-                                          "Copy-Item -Path (Join-Path $env:TSA_OPS_TMP 'OpenSees3.8.0/lib/*') -Destination (Join-Path $env:TSA_OPS_DEST 'lib') -Recurse -Force; "
-                                          "Remove-Item -LiteralPath $env:TSA_OPS_TMP -Recurse -Force; "
-                                          "Remove-Item -LiteralPath $env:TSA_OPS_ZIP -Force");
-    extract.start(QDir(system32).filePath(QStringLiteral("WindowsPowerShell/v1.0/powershell.exe")), QStringList() << "-NoProfile" << "-Command" << script);
-    if (!extract.waitForFinished(60000))
-    {
-        extract.kill();
-        if (errorMessage) *errorMessage = tr("Erreur lors de l'extraction de l'archive.");
-        emit downloadCompleted(false, "", tr("Échec de l'extraction."));
+        if (errorMessage) *errorMessage = error + QLatin1Char(' ') + tr("Ou indiquer l'exécutable d'OpenSees dans les préférences.");
+        emit downloadCompleted(false, "", error);
         return false;
     }
 
@@ -387,6 +465,9 @@ bool OpenSeesManager::downloadAndInstall(std::function<void(int, const QString&)
     m_cachedVersion = {};
     m_isVerified = false;
 
+    // Premier lancement de l'exécutable neuf (analyse antivirus possible) : délai long, puis vérification habituelle
+    if (progressCallback) progressCallback(95, tr("Vérification d'OpenSees (premier lancement)…"));
+    checkExecutable(QDir(targetDir).filePath(QStringLiteral("bin/OpenSees.exe")), 60000);
     if (isAvailable())
     {
         if (progressCallback) progressCallback(100, tr("OpenSees installé et vérifié avec succès."));

@@ -130,13 +130,16 @@ Statuts : VALIDÉE, NON VALIDÉE, TROUVÉE (outil sans plage de versions), ABSEN
   `lib/tcl8` sont installés dans `thirdparty/OpenSees` (≈ 70 Mo), avec `SOURCE.txt` (provenance). Un paquet
   d'empreinte différente est rejeté et rien n'est installé (assemblage dans un dossier temporaire, copie à la fin).
   Aucun exécutable téléchargé n'est lancé par la configuration. Choix : builds publiées depuis plus de 14 jours.
-- **Archive officielle** : SHA-256 `5E37A5A9…FB41` du manifeste winget, dans `TSA_OPENSEES_SHA256` (CMake) et
-  `OpenSeesManager::officialArchiveSha256()` (application) ; le test 491 vérifie que les deux sont identiques.
-  `-DTSA_OPENSEES_ARCHIVE=<OpenSees3.8.0-x64.exe.zip>` l'installe à la place de conda-forge.
+- **Archive officielle** (disparue, 404) : SHA-256 `5E37A5A9…FB41` du manifeste winget, dans `TSA_OPENSEES_SHA256` (CMake) ;
+  `-DTSA_OPENSEES_ARCHIVE=<OpenSees3.8.0-x64.exe.zip>` installe une copie locale à la place de conda-forge.
 - **Ordre de recherche** : `thirdparty/OpenSees` (`bin/OpenSees.exe` + `lib/tcl8.6`), PATH, chemin enregistré dans
   les préférences ; sinon installation ci-dessus (si `TSA_AUTO_DOWNLOAD_DEPS=ON`). Le téléchargement intégré à
-  l'application (`OpenSeesManager::downloadAndInstall`) vise encore l'archive officielle : il échoue proprement
-  (404, message explicite) tant qu'elle n'est pas republiée.
+  l'application (`OpenSeesManager::downloadAndInstall` → `installFromCondaForge`, BUG-133 corrigé le 2026-11-02) installe les
+  MÊMES paquets conda-forge : liste et empreintes lues dans `cmake/dependencies.json` à la configuration (en-tête généré
+  `tsa_generated/OpenSeesCondaPackages.h`), téléchargement par `curl.exe`, empreinte contrôlée avant toute extraction,
+  extraction par `tar.exe` de Windows (zstd requis : Windows 11 ou Windows 10 à jour ; sinon message et
+  `install_dependencies.py`), installation seulement si tout a réussi. Test 491 (liste = manifeste, faux paquet rejeté ;
+  installation réelle avec `TSA_TEST_OPENSEES_DOWNLOAD=1`).
 - **Différences avec l'archive officielle** : BLAS/LAPACK OpenBLAS, HDF5 1.14.6. **Validé le 2026-10-29** (Windows,
   MSVC 19.51) : 57/57 suites dont les 15 OpenSees, banc OpenSees 88/88 contre les références externes (tolérances
   inchangées), TSALab 27/27. Piège : `libblas.dll` / `liblapack.dll` transfèrent leurs exports à `openblas.dll`

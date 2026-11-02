@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-11-02 (BUG-173 : moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine ; BUG-153 corrigé et retiré, test 586 — reste documenté : centre de cisaillement, docs/AUDIT_CALCULS.md § 8 ; BUG-151 corrigé et retiré, test 585 ; BUG-152 corrigé et retiré, test 584 ; BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
+Last Updated: 2026-11-02 (BUG-133 corrigé et retiré : installation d'OpenSees depuis l'application par conda-forge ; BUG-173 : moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine ; BUG-153 corrigé et retiré, test 586 — reste documenté : centre de cisaillement, docs/AUDIT_CALCULS.md § 8 ; BUG-151 corrigé et retiré, test 585 ; BUG-152 corrigé et retiré, test 584 ; BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
 
 ## Ouverts
 
@@ -115,28 +115,6 @@ mesh 390 / 299), OpenSeesSolver sans délai, wait() sans délai des contrôleurs
 
 Validation Windows du 2026-10-28 (docs/reports/WINDOWS_VALIDATION_REPORT.md, identifiants W-n du rapport) :
 
-## BUG-133 (W-3)
-Area: OpenSees — téléchargement à l'exécution
-Problem: OpenSeesManager::officialDownloadUrl en 404 (opensees.berkeley.edu redirige vers peer.berkeley.edu/openseesOpenSees/…,
-défaut du serveur, constaté le 2026-10-28) ; downloadAndInstall ne vérifie pas l'empreinte (winget : 5E37A5A9…FB41).
-Impact: HIGH pour le calcul OpenSees sur un poste neuf
-Status: OPEN
-
-## BUG-133 (W-3) — mise à jour 2026-10-28
-Source officielle de l'archive Windows disparue (404). Contournement : OpenSees 3.8.0 conda-forge épinglé
-(cmake/SetupDependencies.cmake, docs/DEPENDENCIES.md §5). Status: PARTIEL — installation vérifiée, exécution NON
-validée ; OpenSeesManager::downloadAndInstall (application) vise encore l'adresse officielle.
-
-RÉSOLU 2026-10-29 (soir) : cause = libblas.dll / liblapack.dll de conda-forge ne font que TRANSFÉRER leurs exports à
-openblas.dll (paquet libopenblas), invisible pour dumpbin /dependents → 0xC0000135 au chargement. openblas.dll ajouté
-(TSA_OPENSEES_CONDA_PACKAGES). Vérifié : commande de contrôle → OPENSEES_CHECK_OK_3.8.0 ; 57/57 suites (dont les 15
-OpenSees) ; banc OpenSees 88/88 ; TSALab 27/27 sans partie ignorée. Status: FIXED (exécutable) ; OpenSeesManager::
-downloadAndInstall (application) vise encore l'adresse officielle (échec propre).
-Historique : Mise à jour 2026-10-29 : avec thirdparty/OpenSees (build conda-forge), la suite opensees échoue à
-« mgr.isAvailable() » (test_opensees.cpp:133) : le contrôle de l'exécutable (OpenSeesManager::checkExecutable) ne le
-déclare pas opérationnel. Cause NON déterminée : l'exécution directe d'OpenSees.exe pour lire sa sortie est refusée par le
-contrôle de sécurité de la session. Pistes [H] : Tcl (tcl86t.dll cherche lib/tcl8.6 à côté de l'exécutable : présent),
-DLL d'exécution, délai de 5 s du contrôle. À diagnostiquer en lançant le script de contrôle à la main.
 ## BUG-138
 Area: SDK — tsa3d_roundtrip_example
 Problem: l'exemple est produit dans <build>/sdk sans les DLL (Qt, OCCT) : lancé depuis un autre dossier courant, il échoue

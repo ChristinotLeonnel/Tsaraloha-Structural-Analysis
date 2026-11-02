@@ -8429,6 +8429,66 @@ Atomboka ve ny kajy?</translation>
 <context>
     <name>TSA::Analysis::OpenSeesManager</name>
     <message>
+        <source>%1 n'a pas pu être lancé.</source>
+        <translation>Tsy nety natomboka ny %1.</translation>
+    </message>
+    <message>
+        <source>%1 : délai dépassé.</source>
+        <translation>%1 : lany ny fotoana.</translation>
+    </message>
+    <message>
+        <source>Installation automatique d'OpenSees disponible sous Windows uniquement : python install_dependencies.py --only opensees, ou OpenSees dans le PATH.</source>
+        <translation>Amin'ny Windows ihany no misy ny fametrahana OpenSees ho azy : python install_dependencies.py --only opensees, na OpenSees ao amin'ny PATH.</translation>
+    </message>
+    <message>
+        <source>Liste des paquets OpenSees vide (cmake/dependencies.json).</source>
+        <translation>Foana ny lisitry ny fonosana OpenSees (cmake/dependencies.json).</translation>
+    </message>
+    <message>
+        <source>Dossier d'installation non accessible en écriture : %1</source>
+        <translation>Tsy azo soratana ny lahatahiry fametrahana : %1</translation>
+    </message>
+    <message>
+        <source>OpenSees : paquet %1 sur %2 (%3)…</source>
+        <translation>OpenSees : fonosana %1 amin'ny %2 (%3)…</translation>
+    </message>
+    <message>
+        <source>Téléchargement impossible : %1 (%2).</source>
+        <translation>Tsy nety ny fisintomana : %1 (%2).</translation>
+    </message>
+    <message>
+        <source>Paquet %1 rejeté : empreinte SHA-256 %2, attendue %3.</source>
+        <translation>Nolavina ny fonosana %1 : dian-tanana SHA-256 %2, nandrasana %3.</translation>
+    </message>
+    <message>
+        <source>Extraction de %1 impossible (%2). Le tar de Windows doit lire le format zstd (Windows 11, ou Windows 10 à jour) ; sinon : python install_dependencies.py --only opensees.</source>
+        <translation>Tsy azo navoaka ny %1 (%2). Tsy maintsy mahavaky ny endrika zstd ny tar an'ny Windows (Windows 11, na Windows 10 nohavaozina) ; raha tsy izany : python install_dependencies.py --only opensees.</translation>
+    </message>
+    <message>
+        <source>%1 absent du paquet %2.</source>
+        <translation>Tsy ao amin'ny fonosana %2 ny %1.</translation>
+    </message>
+    <message>
+        <source>Copie de %1 impossible.</source>
+        <translation>Tsy azo adika ny %1.</translation>
+    </message>
+    <message>
+        <source>Copie de la bibliothèque Tcl impossible.</source>
+        <translation>Tsy azo adika ny tranomboky Tcl.</translation>
+    </message>
+    <message>
+        <source>Bibliothèque Tcl 8.6 absente des paquets OpenSees.</source>
+        <translation>Tsy ao amin'ny fonosana OpenSees ny tranomboky Tcl 8.6.</translation>
+    </message>
+    <message>
+        <source>Installation d'OpenSees…</source>
+        <translation>Fametrahana OpenSees…</translation>
+    </message>
+    <message>
+        <source>Copie dans %1 impossible.</source>
+        <translation>Tsy azo adika ao amin'ny %1.</translation>
+    </message>
+    <message>
         <source>Exécutable OpenSees introuvable (ni dans %1, ni dans le PATH, ni au chemin enregistré « OpenSees/ExecutablePath »).</source>
         <translation>Tsy hita ny programa OpenSees (tsy ao amin'ny %1, tsy ao amin'ny PATH, tsy ao amin'ny lalana voatahiry « OpenSees/ExecutablePath »).</translation>
     </message>
@@ -8465,64 +8525,16 @@ Atomboka ve ny kajy?</translation>
         <translation>Tsy mamaly toy ny OpenSees ny programa amin'ny baiko fanamarinana.</translation>
     </message>
     <message>
-        <source>Téléchargement automatique d'OpenSees disponible sous Windows uniquement : installer OpenSees et le placer dans le PATH.</source>
-        <translation>Amin'ny Windows ihany no misy ny fakana ho azy ny OpenSees: apetraho ny OpenSees ary ampidiro ao amin'ny PATH.</translation>
+        <source>Téléchargement d'OpenSees…</source>
+        <translation>Fisintomana OpenSees…</translation>
     </message>
     <message>
-        <source>Téléchargement d'OpenSees depuis %1...</source>
-        <translation>Maka ny OpenSees avy amin'ny %1...</translation>
+        <source>Ou indiquer l'exécutable d'OpenSees dans les préférences.</source>
+        <translation>Na asehoy ao amin'ny safidy ny fandaharana OpenSees.</translation>
     </message>
     <message>
-        <source>Téléchargement d'OpenSees...</source>
-        <translation>Maka ny OpenSees...</translation>
-    </message>
-    <message>
-        <source>Impossible de lancer curl pour le téléchargement.</source>
-        <translation>Tsy azo alefa ny curl hakana ny rakitra.</translation>
-    </message>
-    <message>
-        <source>Échec du lancement du téléchargement.</source>
-        <translation>Tsy nety ny fanombohana ny fakana.</translation>
-    </message>
-    <message>
-        <source>Délai dépassé pendant le téléchargement.</source>
-        <translation>Lany ny fotoana nandritra ny fakana.</translation>
-    </message>
-    <message>
-        <source>Délai de téléchargement dépassé.</source>
-        <translation>Lany ny fotoana natokana ho an'ny fakana.</translation>
-    </message>
-    <message>
-        <source>Téléchargement de l'archive OpenSees impossible (%1, code curl %2). Installer OpenSees manuellement et indiquer son exécutable dans les préférences.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <source>Erreur de téléchargement.</source>
-        <translation>Hadisoana tamin'ny fakana.</translation>
-    </message>
-    <message>
-        <source>Archive OpenSees rejetée : empreinte SHA-256 %1, attendue %2.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <source>Archive rejetée (empreinte inattendue).</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <source>Extraction de l'archive OpenSees...</source>
-        <translation>Mamoaka ny arsivan'ny OpenSees...</translation>
-    </message>
-    <message>
-        <source>Extraction en cours...</source>
-        <translation>Am-pamoahana...</translation>
-    </message>
-    <message>
-        <source>Erreur lors de l'extraction de l'archive.</source>
-        <translation>Nisy hadisoana nandritra ny famoahana ny arsiva.</translation>
-    </message>
-    <message>
-        <source>Échec de l'extraction.</source>
-        <translation>Tsy nety ny famoahana.</translation>
+        <source>Vérification d'OpenSees (premier lancement)…</source>
+        <translation>Fanamarinana OpenSees (fanombohana voalohany)…</translation>
     </message>
     <message>
         <source>OpenSees installé et vérifié avec succès.</source>

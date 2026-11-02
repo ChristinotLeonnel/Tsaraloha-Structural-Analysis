@@ -58,7 +58,7 @@ EngineAvailability OpenSeesEngine::availability() const
     EngineAvailability a;
     a.available = OpenSeesManager::instance().isAvailable();
 #ifdef Q_OS_WIN
-    a.canProvision = !a.available;   // téléchargement de l'exécutable Windows officiel (OpenSeesManager::downloadAndInstall)
+    a.canProvision = !a.available;   // paquets conda-forge épinglés (OpenSeesManager::downloadAndInstall, Windows)
 #else
     a.canProvision = false;
 #endif

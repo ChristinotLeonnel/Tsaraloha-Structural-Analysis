@@ -4,6 +4,7 @@
 #include <QString>
 #include <QStringList>
 #include <functional>
+#include <vector>
 
 namespace TSA::Analysis
 {
@@ -54,10 +55,25 @@ public:
 
     // Emplacement par défaut centralisé
     static QString defaultSearchDirectory();
-    static QString officialDownloadUrl();
-    // SHA-256 de l'archive officielle (manifeste winget OpenSees.OpenSees 3.8.0, comme TSA_OPENSEES_SHA256 de
-    // cmake/SetupDependencies.cmake) : une archive d'empreinte différente n'est jamais extraite.
-    static QString officialArchiveSha256();
+
+    /// Paquet conda-forge d'OpenSees pour Windows (cmake/dependencies.json, opensees.windows ; en-tête généré par CMake) :
+    /// nom (sans « .conda »), empreinte SHA-256 publiée par anaconda.org, fichiers de Library/bin à installer.
+    struct CondaPackage
+    {
+        QString file;
+        QString sha256;
+        QStringList files;
+    };
+    /// Canal des paquets (« https://conda.anaconda.org/conda-forge/win-64 ») et liste épinglée. L'archive officielle
+    /// d'opensees.berkeley.edu n'existe plus (404, BUG-133) : OpenSees 3.8.0 compilé par conda-forge depuis l'étiquette
+    /// officielle, comme install_dependencies.py et SetupDependencies.cmake.
+    static QString condaChannelUrl();
+    static std::vector<CondaPackage> condaPackages();
+    /// Télécharge les paquets (curl.exe), vérifie chaque empreinte (un paquet différent n'est jamais extrait), extrait
+    /// avec tar.exe de Windows (.conda = zip de pkg-*.tar.zst) et installe dans <targetDir>/bin et <targetDir>/lib
+    /// (OpenSees.exe, ses DLL, bibliothèque Tcl 8.6), seulement si tout a réussi. Windows seulement.
+    static bool installFromCondaForge(const QString& targetDir, const std::function<void(int percent, const QString& status)>& progress,
+                                      QString* errorMessage);
 
     // État et chemins
     bool isAvailable() const;
@@ -74,7 +90,9 @@ public:
     /// commandes OpenSees (wipe, model) avant d'écrire « OPENSEES_CHECK_OK_<version> ». OpenSees 3.8.0 n'a pas
     /// d'option de version (seules -noHeader et -suppressOutput existent) et rend 0 même si Tcl ne s'initialise pas :
     /// seule la présence de ce marqueur prouve le fonctionnement, pas la bannière.
-    OpenSeesCheckResult checkExecutable(const QString& exePath) const;
+    /// timeoutMs : délai d'exécution (5 s ; au premier lancement d'un exécutable tout juste installé, l'antivirus peut l'analyser
+    /// plusieurs secondes : downloadAndInstall attend 60 s).
+    OpenSeesCheckResult checkExecutable(const QString& exePath, int timeoutMs = 5000) const;
     /// Classe la sortie de la commande de contrôle (sans lancer de processus).
     static OpenSeesCheckResult interpretCheckOutput(const QString& output, int exitCode, bool crashed);
     /// Plus ancienne version prise en charge par les scripts générés (OpenSeesAdapter : 3.4.0 - 3.8.0+).

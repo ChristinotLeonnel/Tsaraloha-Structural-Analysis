@@ -48,6 +48,42 @@ get_filename_component(TSALAB_ROOT_DIR "${TSALAB_ROOT_DIR}" ABSOLUTE)
 if(NOT DEFINED TSALAB_SCIENCE_TOOLS)
     set(TSALAB_SCIENCE_TOOLS OFF CACHE BOOL "Compiler tsalab-bench et les tests du cœur scientifique")
 endif()
+# Paquets conda-forge d'OpenSees pour Windows (cmake/dependencies.json, opensees.windows : source unique partagée avec
+# install_dependencies.py et SetupDependencies.cmake) : en-tête généré pour l'installation depuis l'application
+# (OpenSeesManager::installFromCondaForge, BUG-133). Réécrit seulement s'il change (file(CONFIGURE)).
+file(READ "${TSA_ROOT}/cmake/dependencies.json" _tsa_ops_manifest)
+string(JSON _tsa_ops_channel GET "${_tsa_ops_manifest}" opensees channel_url)
+string(JSON _tsa_ops_subdir GET "${_tsa_ops_manifest}" opensees windows subdir)
+string(JSON _tsa_ops_version GET "${_tsa_ops_manifest}" opensees version)
+string(JSON _tsa_ops_n LENGTH "${_tsa_ops_manifest}" opensees windows packages)
+math(EXPR _tsa_ops_last "${_tsa_ops_n} - 1")
+set(_tsa_ops_entries "")
+foreach(_i RANGE ${_tsa_ops_last})
+    string(JSON _f GET "${_tsa_ops_manifest}" opensees windows packages ${_i} file)
+    string(JSON _h GET "${_tsa_ops_manifest}" opensees windows packages ${_i} sha256)
+    string(JSON _nf LENGTH "${_tsa_ops_manifest}" opensees windows packages ${_i} files)
+    math(EXPR _lf "${_nf} - 1")
+    set(_files "")
+    foreach(_j RANGE ${_lf})
+        string(JSON _x GET "${_tsa_ops_manifest}" opensees windows packages ${_i} files ${_j})
+        list(APPEND _files "${_x}")
+    endforeach()
+    string(REPLACE ";" "," _files "${_files}")
+    string(APPEND _tsa_ops_entries "    \"${_f}|${_h}|${_files}\",\n")
+endforeach()
+file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/tsa_generated/OpenSeesCondaPackages.h" CONTENT
+"#pragma once
+// Généré par CMake depuis cmake/dependencies.json (opensees) : ne pas modifier.
+namespace TSA::Analysis::Generated
+{
+inline constexpr const char* kOpenSeesVersion = \"${_tsa_ops_version}\";
+inline constexpr const char* kOpenSeesCondaChannel = \"${_tsa_ops_channel}/${_tsa_ops_subdir}\";
+/// « paquet|sha256|fichiers de Library/bin (séparés par des virgules) »
+inline constexpr const char* kOpenSeesCondaPackages[] = {
+${_tsa_ops_entries}};
+} // namespace TSA::Analysis::Generated
+" @ONLY)
+
 # Moteur EF 3D « fem3d » (dépôt voisin TSA-3D-FEM-Engine, ancien nom de dossier 3DDesplacement) : FACULTATIF. Présent,
 # il est compilé et enregistré comme moteur secondaire (docs/ANALYSIS_ENGINES.md) ; absent, TSA se construit sans lui
 # (OpenSees reste le moteur 3D) et le signale. Emplacements cherchés : ../TSA-3D-FEM-Engine, puis ../3DDesplacement.
@@ -1400,7 +1436,7 @@ endmacro()
 function(tsa_apply_common_settings target product_dir)
     # SYSTEM : les en-têtes OCCT sont traités comme "externes" (plus rapide,
     # et supprime les milliers d'avertissements /W4 venant d'OCCT).
-    target_include_directories(${target} PRIVATE ${TSA_ROOT}/src ${ARGN} ${product_dir})
+    target_include_directories(${target} PRIVATE ${TSA_ROOT}/src ${ARGN} ${product_dir} ${CMAKE_BINARY_DIR}/tsa_generated)
     target_include_directories(${target} SYSTEM PRIVATE ${OpenCASCADE_INCLUDE_DIR})
     # Ressources de développement (Extensions/, thirdparty/OpenSees) : sources communes. Ressources d'OCCT (Shaders…) :
     # celles de l'OCCT trouvé par find_package (share/opencascade/resources sous Linux, src du SDK Windows), BUG-120.
