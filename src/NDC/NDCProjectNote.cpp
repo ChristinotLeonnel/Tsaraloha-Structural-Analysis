@@ -300,6 +300,15 @@ void chapterPresentation(Ctx& x, NDCDocument& doc)
         const auto& meta = x.results->executionMetadata();
         s.keyValues.push_back({ QStringLiteral("Date du calcul"), QString::fromStdString(meta.executionTimestamp.empty() ? x.results->timestamp() : meta.executionTimestamp) });
         s.keyValues.push_back({ QStringLiteral("Moteur"), engineLabel(meta) });
+        // Empreinte des données d'entrée (BUG-111) : désigne sans ambiguïté le calcul dont la note rend compte
+        const auto& trace = x.results->analysisTrace();
+        if (!trace.inputFingerprint.empty())
+            s.keyValues.push_back({ QStringLiteral("Empreinte des données du calcul (SHA-256)"), QString::fromStdString(trace.inputFingerprint) });
+        if (!trace.engineInput.empty())
+            s.keyValues.push_back({ QStringLiteral("Fichier d'entrée du moteur"),
+                                    QStringLiteral("%1 (%2 lignes), conservé dans le projet avec les résultats")
+                                        .arg(QString::fromStdString(trace.engineInputName))
+                                        .arg(std::count(trace.engineInput.begin(), trace.engineInput.end(), '\n')) });
     }
     s.keyValues.push_back({ QStringLiteral("Note produite le"), QDateTime::currentDateTime().toString(QStringLiteral("dd/MM/yyyy HH:mm")) });
     ch.sections.push_back(s);

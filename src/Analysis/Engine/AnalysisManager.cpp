@@ -4,6 +4,10 @@
 #include "../../Model/Model.h"
 #include "../../Standards/ModelValidator.h"
 #include "../OpenSeesAnalysisBuilder.h"   // AnalysisParameters (paramètres communs de ModelValidator)
+#include "../Engines/OpenSees/OpenSeesEngine.h"   // parametersFromContext : description de référence des données (empreinte)
+
+#include <QCryptographicHash>
+#include <QJsonDocument>
 
 #include <QCoreApplication>
 #include <QStringList>
@@ -513,6 +517,13 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
         for (const auto& m : prepared.validation.messages())
             if (m.severity == severity) meta.preparationMessages.push_back(m.category.empty() ? m.text : m.category + " : " + m.text);
 
+    // Trace du calcul (BUG-111) : empreinte des données d'entrée et réglages, pour tout moteur ; le script remis au moteur
+    // (OpenSees) est déjà conservé par le moteur lui-même
+    {
+        auto& trace = r.results.analysisTrace();
+        trace.inputFingerprint = inputFingerprint(context, prepared.model, &trace.contextJson);
+    }
+
     // Câbles comprimés ou détendus (BUG-151) : point à vérifier après calcul, quel que soit le moteur (dialogue de fin de
     // calcul, console, journal, note de calcul) ; jamais tu, les résultats restent consultables.
     if (const std::string slack = slackCableWarning(r.results); !slack.empty())
@@ -532,6 +543,21 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
     a.dofMapping &= caps.providesDofMapping;
     r.results.setAvailability(a);
     return r;
+}
+
+std::string AnalysisManager::inputFingerprint(const AnalysisContext& context, const AnalysisModel& model, std::string* contextJson)
+{
+    const QByteArray json = QJsonDocument(context.toJson()).toJson(QJsonDocument::Compact);
+    if (contextJson) *contextJson = json.toStdString();
+    // Description de référence du modèle préparé : le script statique d'OpenSees (déterministe, sans chemin ni date)
+    const std::string description = OpenSeesAnalysisBuilder::buildScript(model.snapshot, OpenSeesEngine::parametersFromContext(context));
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    hash.addData(QByteArrayLiteral("tsa-calculation-input/1\n"));
+    hash.addData(QByteArray::fromStdString(context.engineId + "\n"));
+    hash.addData(json);
+    hash.addData(QByteArrayLiteral("\n"));
+    hash.addData(QByteArray::fromStdString(description));
+    return hash.result().toHex().toStdString();
 }
 
 std::string AnalysisManager::slackCableWarning(const ResultsModel& results)

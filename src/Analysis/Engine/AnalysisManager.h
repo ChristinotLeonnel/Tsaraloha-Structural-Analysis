@@ -57,6 +57,10 @@ public:
     /// s'il n'y en a aucun (BUG-151). Un câble ne reprend pas de compression, mais le calcul linéaire le fait travailler
     /// comme une barre : run() ajoute ce texte aux points à vérifier après calcul, quel que soit le moteur.
     static std::string slackCableWarning(const ResultsModel& results);
+    /// Empreinte SHA-256 (hexadécimal) des données d'entrée d'un calcul (BUG-111) : moteur, réglages (contexte JSON
+    /// compact) et description complète du modèle préparé (script OpenSees statique de référence : nœuds, appuis, barres,
+    /// sections, matériaux, charges retenues). Indépendante du moteur effectif, de la date et du dossier de travail.
+    static std::string inputFingerprint(const AnalysisContext& context, const AnalysisModel& model, std::string* contextJson = nullptr);
 
     /// Contrôles communs déduits des capacités du moteur (public pour les tests).
     static ValidationResult validateGeneric(const AnalysisContext& context,

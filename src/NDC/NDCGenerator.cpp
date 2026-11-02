@@ -194,6 +194,13 @@ NDCDocument NDCGenerator::generate(
                 ? QStringLiteral("vérifié par le moteur (tolérance %1%2)").arg(meta.globalEquilibriumTolerance)
                       .arg(meta.relativeEquilibriumResidual > 0.0 ? QStringLiteral(", résidu relatif des forces %1").arg(meta.relativeEquilibriumResidual, 0, 'g', 3) : QString())
                 : QStringLiteral("non vérifié par le moteur")});
+            if (const auto& trace = results->analysisTrace(); !trace.inputFingerprint.empty())
+                sMeta.keyValues.push_back({QStringLiteral("Empreinte des données du calcul (SHA-256)"), QString::fromStdString(trace.inputFingerprint)});
+            if (const auto& trace = results->analysisTrace(); !trace.engineInput.empty())
+                sMeta.keyValues.push_back({QStringLiteral("Fichier d'entrée du moteur"),
+                                           QStringLiteral("%1 (%2 lignes), conservé dans le projet avec les résultats")
+                                               .arg(QString::fromStdString(trace.engineInputName))
+                                               .arg(std::count(trace.engineInput.begin(), trace.engineInput.end(), '\n'))});
             for (const auto& m : meta.preparationMessages)
                 sMeta.keyValues.push_back({QStringLiteral("Validation avant calcul"), QString::fromStdString(m)});
             for (const auto& w : meta.warnings)

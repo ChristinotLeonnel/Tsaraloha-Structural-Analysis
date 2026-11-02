@@ -102,6 +102,7 @@ void ResultsModel::clear()
     m_advanced = AdvancedResults{};
     m_availability = ResultAvailability{};
     m_engineTables.clear();
+    m_analysisTrace = AnalysisTrace{};
     m_planarCurves.clear();
     m_solverMesh = SolverMesh{};
     m_units = UnitSystem{};
