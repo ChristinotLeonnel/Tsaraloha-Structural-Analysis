@@ -53,6 +53,8 @@ public:
     /**
      * @brief Retourne le nom lisible du diagramme (ex. "Moment Fléchissant Mz").
      */
+    /// Symbole de la grandeur dans un texte (« Vy », « Mz », « N ») : plusieurs diagrammes affichés ensemble se distinguent.
+    static QString diagramShortName(DiagramType type);
     static QString diagramTypeName(DiagramType type);
 
     /**

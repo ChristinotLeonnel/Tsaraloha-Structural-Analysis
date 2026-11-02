@@ -12,6 +12,14 @@
 namespace TSA::Geometry
 {
 
+QString DiagramGeometry::diagramShortName(DiagramType type)
+{
+    // Entre parenthèses dans le nom complet : « Effort Tranchant (Vy) » → « Vy »
+    const QString name = diagramTypeName(type);
+    const int open = name.lastIndexOf(QLatin1Char('(')), close = name.lastIndexOf(QLatin1Char(')'));
+    return open >= 0 && close > open ? name.mid(open + 1, close - open - 1) : name;
+}
+
 QString DiagramGeometry::diagramTypeName(DiagramType type)
 {
     // Libellés traduits (BUG-147 : infobulles et libellés 3D restaient en français en anglais / malgache)

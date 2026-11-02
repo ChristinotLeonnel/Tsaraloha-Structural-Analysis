@@ -156,6 +156,17 @@ Application ─► AppShell (seule fenêtre top-level, sans cadre système)
   sans géométrie quand la fenêtre principale est embarquée).
 - Taille minimale du workspace : 960 × 560 px logiques (les minima cumulés des panneaux dépassaient la largeur d'un
   écran 1920 px à 125 %).
+- Résultats dans la vue 3D (`Viewer/ResultsVisualManager`) : plusieurs grandeurs ensemble (couches avec échelle et couleur
+  propres) ; les boutons du ruban restent enfoncés et s'ajoutent, *Masquer Diagrammes* les retire tous, le choix du panneau
+  Résultats remplace. Un résultat suit la visibilité de son élément (`OccView::isResultElementVisible`, `applyIsolation`).
+  Déformée en volumes ou filaire (`DeformedRepresentation`).
+- Vue du plan de travail (`OccView::PlaneViewMode`, `src/Viewer/OccView_SectionCut.cpp`) : *Coupe 2D du plan*, par défaut, ne
+  garde que les éléments contenus dans le plan et, en mode 2D, dessine la coupe de ceux qui le traversent
+  (`BRepAlgoAPI_Section`, objets non sélectionnables). Décochée : l'isolation par proximité d'origine. Réglage
+  `Display/planeViewMode`. Les textes de résultats sont au-dessus de la structure, à la taille de *Style des charges*, placés
+  hors de la section et sur le côté de l'élément quand leur décalage est vu de bout ; ceux qui se chevauchent à l'écran sont masqués. Chaque
+  valeur (extrémités de l'élément, puis extrêmes intérieurs) est reliée à son point de courbe par une ligne de rappel de la
+  couleur du diagramme (`updateLeaders`).
 - Accueil (`src/UI/Home/StartCenter`, organisation inspirée de la page d'accueil des logiciels BIM, sans en reprendre les
   éléments graphiques) : colonne de gauche (logo, Nouveau projet, Ouvrir un projet, Ouvrir un projet récent, Parcourir les
   projets, navigation, langue, version) et quatre pages. *Accueil* : projets ouverts (boutons de retour) et 8 derniers projets.

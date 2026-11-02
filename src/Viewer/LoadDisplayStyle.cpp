@@ -30,6 +30,9 @@ LoadDisplaySettings LoadDisplayStyle::bounded(LoadDisplaySettings s)
     s.decimals = std::clamp(s.decimals, 0, 4);
     s.arrowWidth = std::clamp(std::isfinite(s.arrowWidth) ? s.arrowWidth : 1.0, kMinArrowWidth, kMaxArrowWidth);
     if (!s.singleColor.isValid()) s.singleColor = QColor(0xD0, 0x30, 0x30);
+    const LoadDisplaySettings defaults;
+    for (std::size_t i = 0; i < s.categoryColors.size(); ++i)
+        if (!s.categoryColors[i].isValid()) s.categoryColors[i] = defaults.categoryColors[i];
     return s;
 }
 
@@ -96,7 +99,7 @@ QColor LoadDisplayStyle::familyColor(TSA::Geometry::LoadFamily family)
     }
 }
 
-QColor LoadDisplayStyle::loadColor(int caseRank, double ratio, TSA::Geometry::LoadFamily family) const
+QColor LoadDisplayStyle::loadColor(int caseRank, double ratio, TSA::Geometry::LoadFamily family, int category) const
 {
     switch (m_settings.colors)
     {
@@ -104,6 +107,8 @@ QColor LoadDisplayStyle::loadColor(int caseRank, double ratio, TSA::Geometry::Lo
     case LoadColorMode::ByIntensity: return intensityColor(ratio);
     case LoadColorMode::ByFamily: return familyColor(family);
     case LoadColorMode::Single: return m_settings.singleColor;
+    case LoadColorMode::ByCategory:
+        return category >= 0 && category < kLoadCategoryCount ? m_settings.categoryColors[std::size_t(category)] : m_settings.singleColor;
     }
     return m_settings.singleColor;
 }
@@ -137,8 +142,10 @@ void LoadDisplayStyle::load()
     QSettings q;
     LoadDisplaySettings s;
     s.cases = q.value("Display/Loads/allCases", false).toBool() ? LoadCaseFilter::AllCases : LoadCaseFilter::ActiveCase;
-    s.colors = static_cast<LoadColorMode>(std::clamp(q.value("Display/Loads/colorMode", 0).toInt(), 0, 3));
+    s.colors = static_cast<LoadColorMode>(std::clamp(q.value("Display/Loads/colorMode", 0).toInt(), 0, 4));
     s.singleColor = QColor(q.value("Display/Loads/singleColor", s.singleColor.name()).toString());
+    for (std::size_t i = 0; i < s.categoryColors.size(); ++i)
+        s.categoryColors[i] = QColor(q.value(QStringLiteral("Display/Loads/categoryColor%1").arg(i), s.categoryColors[i].name()).toString());
     s.textSize = q.value("Display/Loads/textScreenConstant", false).toBool() ? LoadTextSize::ScreenConstant : LoadTextSize::ModelLinked;
     s.textHeight = q.value("Display/Loads/textHeight", 0.0).toDouble();
     s.textPixels = q.value("Display/Loads/textPixels", 12.0).toDouble();
@@ -160,6 +167,8 @@ void LoadDisplayStyle::save() const
     q.setValue("Display/Loads/allCases", m_settings.cases == LoadCaseFilter::AllCases);
     q.setValue("Display/Loads/colorMode", static_cast<int>(m_settings.colors));
     q.setValue("Display/Loads/singleColor", m_settings.singleColor.name());
+    for (std::size_t i = 0; i < m_settings.categoryColors.size(); ++i)
+        q.setValue(QStringLiteral("Display/Loads/categoryColor%1").arg(i), m_settings.categoryColors[i].name());
     q.setValue("Display/Loads/textScreenConstant", m_settings.textSize == LoadTextSize::ScreenConstant);
     q.setValue("Display/Loads/textHeight", m_settings.textHeight);
     q.setValue("Display/Loads/textPixels", m_settings.textPixels);

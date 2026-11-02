@@ -73,6 +73,8 @@ namespace TSA::Grid
 
 class QTimer;
 
+namespace TSA::Analysis { struct ElementKey; }
+
 class OccView : public QWidget, public TSA::Model::IModelObserver
 {
     Q_OBJECT
@@ -341,6 +343,20 @@ public:
     {
         return (m_hiddenElementCategories & (1u << static_cast<unsigned>(category))) == 0;
     }
+
+    // Vue du plan de travail. Section (par défaut) : seuls les éléments contenus dans le plan, et en mode 2D la coupe de ceux
+    // qui le traversent, comme un plan AutoCAD. Proximity : l'isolation historique (éléments à moins de la distance
+    // d'isolation, éléments qui traversent dessinés en entier).
+    enum class PlaneViewMode { Section, Proximity };
+    PlaneViewMode planeViewMode() const noexcept { return m_planeViewMode; }
+    void setPlaneViewMode(PlaneViewMode mode);
+    static PlaneViewMode storedPlaneViewMode();
+    /// Objets de coupe dessinés (mode 2D, vue Section).
+    std::size_t sectionCutCount() const { return m_sectionCutShapes.size(); }
+
+    /// Un résultat suit son élément : même isolation, mêmes familles visibles (ResultsVisualManager::applyIsolation).
+    bool isResultElementVisible(const TSA::Analysis::ElementKey& key) const;
+    bool isResultNodeVisible(int nodeId) const;
 
     // Mode 2D CAO & Isolation Automatique du Plan de Travail
     bool isMode2D() const noexcept { return m_mode2DActive; }
@@ -640,6 +656,7 @@ signals:
     void gizmoSizeChanged(double size);
     void mouseLocalCoordinatesChanged(double xwp, double ywp);
     void mode2DChanged(bool active);
+    void planeViewModeChanged();
 
 protected:
     // IModelObserver overrides
@@ -964,6 +981,15 @@ private:
     double isolationTolerance() const noexcept;
     bool keepNodeUnderIsolation(int nodeId) const;
     bool keepLinearUnderIsolation(int startNodeId, int endNodeId) const;
+    bool keepWallUnderIsolation(int startNodeId, int endNodeId) const;
+    bool linearKeptOnPlane(int startNodeId, int endNodeId, double tol) const;
+    bool wallKeptOnPlane(int startNodeId, int endNodeId, double tol) const;
+    bool surfaceKeptOnPlane(const std::vector<int>& nodeIds, double tol) const;
+    void updateSectionCut();
+    void clearSectionCut();
+    PlaneViewMode m_planeViewMode = storedPlaneViewMode();
+    std::vector<Handle(AIS_Shape)> m_sectionCutShapes;
+    std::vector<double> m_sectionCutStamp;   ///< plan, révision et visibilité de la coupe affichée
     bool keepSurfaceUnderIsolation(const std::vector<int>& nodeIds) const;
     /// Repasse l'isolation si elle est (ou était) appliquée ; retourne vrai si une passe a eu lieu.
     bool reapplyIsolationIfActive();

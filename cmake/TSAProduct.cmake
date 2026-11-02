@@ -526,6 +526,7 @@ set(VIEWER_MAIN_SOURCES
     ${TSA_ROOT}/src/Viewer/MeshVSDataSource.cpp
     ${TSA_ROOT}/src/Viewer/OccView_DisplayMode.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Navigation.cpp
+    ${TSA_ROOT}/src/Viewer/OccView_SectionCut.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Axes.cpp
     ${TSA_ROOT}/src/Viewer/AxisTriad.h
     ${TSA_ROOT}/src/Viewer/AxisTriad.cpp

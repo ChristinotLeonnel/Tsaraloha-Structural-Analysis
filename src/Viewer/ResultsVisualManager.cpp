@@ -1,4 +1,5 @@
 #include "ResultsVisualManager.h"
+#include "LoadDisplayStyle.h"
 #include "AnnotationStyle.h"
 #include "MaterialVisual.h"
 #include "OccView.h"
@@ -22,6 +23,9 @@
 #include <BRepPrimAPI_MakeCone.hxx>
 #include <BRepPrimAPI_MakeSphere.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRepBuilderAPI_MakeVertex.hxx>
+#include <Prs3d_Drawer.hxx>
+#include <Prs3d_PointAspect.hxx>
 #include <BRep_Builder.hxx>
 #include <TopoDS_Compound.hxx>
 #include "../NDC/ResultAnalyzer.h"
@@ -89,6 +93,32 @@ static std::vector<TSA::Analysis::StationForces> displayStations(const TSA::Mode
 }
 } // namespace
 
+namespace
+{
+constexpr double kLeaderLength = 0.3;   ///< m : écart minimal entre un texte et son point de courbe (ligne de rappel lisible)
+
+/// Couleur d'une grandeur : distincte d'une grandeur à l'autre (Vy et Vz, My et Mz affichés ensemble se reconnaissent).
+Quantity_Color diagramColor(TSA::Geometry::DiagramType type)
+{
+    using T = TSA::Geometry::DiagramType;
+    switch (type)
+    {
+    case T::BendingMy: return Quantity_Color(Quantity_NOC_CORAL);
+    case T::BendingMz: return Quantity_Color(Quantity_NOC_ORANGE);
+    case T::TorsionMx: return Quantity_Color(Quantity_NOC_GOLD);
+    case T::StressSigma: return Quantity_Color(Quantity_NOC_PURPLE);
+    case T::AxialForceN: return Quantity_Color(Quantity_NOC_DODGERBLUE1);
+    case T::ShearForceVy: return Quantity_Color(Quantity_NOC_GREEN1);
+    case T::ShearForceVz: return Quantity_Color(Quantity_NOC_TURQUOISE);
+    case T::DeflectionUx:
+    case T::DeflectionUy:
+    case T::DeflectionUz:
+    case T::DeflectionUres: return Quantity_Color(Quantity_NOC_MAGENTA1);
+    default: return Quantity_Color(Quantity_NOC_YELLOW);
+    }
+}
+} // namespace
+
 namespace TSA::Viewer
 {
 
@@ -148,6 +178,15 @@ void ResultsVisualManager::setDeformedDisplayMode(DeformedDisplayMode mode)
 {
     if (m_displayMode == mode) return;
     m_displayMode = mode;
+    updateDeformedShapes();
+    redrawView();
+    emit visualStateChanged();
+}
+
+void ResultsVisualManager::setDeformedRepresentation(DeformedRepresentation representation)
+{
+    if (m_deformedRepresentation == representation) return;
+    m_deformedRepresentation = representation;
     updateDeformedShapes();
     redrawView();
     emit visualStateChanged();
@@ -285,9 +324,67 @@ void ResultsVisualManager::setDeformationScalePreset(ScalePreset preset, double 
 
 void ResultsVisualManager::setDiagramType(TSA::Geometry::DiagramType type)
 {
-    if (m_diagramType == type) return;
-    m_diagramType = type;
+    setDiagramTypes(type == TSA::Geometry::DiagramType::None ? std::vector<TSA::Geometry::DiagramType>{}
+                                                             : std::vector<TSA::Geometry::DiagramType>{ type });
+}
+
+std::vector<TSA::Geometry::DiagramType> ResultsVisualManager::diagramTypes() const
+{
+    std::vector<TSA::Geometry::DiagramType> types;
+    for (const auto& layer : m_layers) types.push_back(layer.type);
+    return types;
+}
+
+bool ResultsVisualManager::isDiagramVisible(TSA::Geometry::DiagramType type) const
+{
+    return std::any_of(m_layers.begin(), m_layers.end(), [type](const DiagramLayer& layer) { return layer.type == type; });
+}
+
+void ResultsVisualManager::setDiagramTypes(const std::vector<TSA::Geometry::DiagramType>& types)
+{
+    std::vector<TSA::Geometry::DiagramType> wanted;
+    for (const auto type : types)
+        if (type != TSA::Geometry::DiagramType::None && std::find(wanted.begin(), wanted.end(), type) == wanted.end()) wanted.push_back(type);
+    if (wanted == diagramTypes()) return;
+    m_layers.clear();
+    for (const auto type : wanted)
+    {
+        DiagramLayer layer;
+        layer.type = type;
+        m_layers.push_back(layer);
+    }
     autoComputeDiagramScale();
+    refreshDiagrams();
+}
+
+void ResultsVisualManager::setDiagramVisible(TSA::Geometry::DiagramType type, bool visible)
+{
+    auto types = diagramTypes();
+    const auto it = std::find(types.begin(), types.end(), type);
+    if (visible == (it != types.end())) return;
+    if (visible) types.push_back(type);
+    else types.erase(it);
+    setDiagramTypes(types);
+}
+
+void ResultsVisualManager::syncActiveDiagram()
+{
+    for (auto& layer : m_layers) layer.scale = layer.autoScale * m_diagramMultiplier;
+    if (m_layers.empty())
+    {
+        m_diagramType = TSA::Geometry::DiagramType::None;
+        return;
+    }
+    const DiagramLayer& active = m_layers.back();
+    m_diagramType = active.type;
+    m_diagramAutoScale = active.autoScale;
+    m_diagramScale = active.scale;
+    m_diagramMaxValue = active.maxValue;
+    m_diagramAllZero = active.allZero;
+}
+
+void ResultsVisualManager::refreshDiagrams()
+{
     updateDiagramShapes();
     updateLegend();
     redrawView();
@@ -298,11 +395,8 @@ void ResultsVisualManager::setDiagramScaleMultiplier(double multiplier)
 {
     if (!(multiplier > 0.0) || !std::isfinite(multiplier)) multiplier = 1.0;
     m_diagramMultiplier = multiplier;
-    m_diagramScale = m_diagramAutoScale * m_diagramMultiplier;
-    updateDiagramShapes();
-    updateLegend();
-    redrawView();
-    emit visualStateChanged();
+    syncActiveDiagram();
+    refreshDiagrams();
 }
 
 void ResultsVisualManager::setDiagramScale(double scale)
@@ -311,10 +405,8 @@ void ResultsVisualManager::setDiagramScale(double scale)
     if (!(scale > 0.0) || std::abs(m_diagramScale - scale) <= 1e-12 * std::max(1.0, std::abs(scale))) return;
     m_diagramScale = scale;
     m_diagramMultiplier = m_diagramAutoScale > 0.0 ? scale / m_diagramAutoScale : 1.0;
-    updateDiagramShapes();
-    updateLegend();
-    redrawView();
-    emit visualStateChanged();
+    syncActiveDiagram();
+    refreshDiagrams();
 }
 
 void ResultsVisualManager::setDiagramScalePreset(ScalePreset preset, double customVal)
@@ -406,48 +498,56 @@ QString ResultsVisualManager::legendSummaryText() const
                                                       : tr("rotation des sections masquée"));
         }
     }
-    if (m_diagramType != TSA::Geometry::DiagramType::None)
+    for (const DiagramLayer& layer : m_layers)
     {
-        const QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(m_diagramType, !m_results || m_results->units().force != "N");
-        if (m_diagramAllZero)
+        const QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(layer.type, !m_results || m_results->units().force != "N");
+        if (layer.allZero)
             text += tr("DIAGRAMME : %1 — grandeur nulle sur toute la structure (aucun diagramme)\n")
-                        .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(m_diagramType));
+                        .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(layer.type));
         else
             text += tr("DIAGRAMME : %1 (%2) | max |%3| %2 | 1 m de diagramme = %4 %2%5\n")
-                        .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(m_diagramType))
+                        .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(layer.type))
                         .arg(unit)
-                        .arg(m_diagramMaxValue, 0, 'g', 4)
-                        .arg(m_diagramScale > 0.0 ? 1.0 / m_diagramScale : 0.0, 0, 'g', 4)
+                        .arg(layer.maxValue, 0, 'g', 4)
+                        .arg(layer.scale > 0.0 ? 1.0 / layer.scale : 0.0, 0, 'g', 4)
                         .arg(std::abs(m_diagramMultiplier - 1.0) < 1e-12 ? tr(" (échelle automatique)") : tr(" (automatique ×%1)").arg(m_diagramMultiplier, 0, 'g', 3));
-        if (!m_diagramAllZero && m_hiddenDiagramLabels > 0)
-            text += tr("%1 étiquette(s) superposée(s) non affichée(s) (valeur égale ou inférieure à une étiquette voisine)\n").arg(m_hiddenDiagramLabels);
     }
+    if (!m_layers.empty() && m_hiddenDiagramLabels > 0)
+        text += tr("%1 étiquette(s) superposée(s) non affichée(s) (valeur égale ou inférieure à une étiquette voisine)\n").arg(m_hiddenDiagramLabels);
     return text;
 }
 
 void ResultsVisualManager::autoComputeDiagramScale()
 {
-    if (!m_results || !m_model || m_diagramType == TSA::Geometry::DiagramType::None) return;
+    if (!m_results || !m_model)
+    {
+        syncActiveDiagram();
+        return;
+    }
+    for (auto& layer : m_layers) computeLayerScale(layer);
+    syncActiveDiagram();
+}
 
+void ResultsVisualManager::computeLayerScale(DiagramLayer& layer) const
+{
     double maxVal = 0.0;
     const bool kN = m_results->units().force == "kN";
     for (const auto& [id, el] : m_results->allElementResults())
     {
-        auto stations = displayStations(m_model, id, el, m_diagramType, kN);
+        auto stations = displayStations(m_model, id, el, layer.type, kN);
         for (const auto& st : stations)
         {
-            double v = std::abs(TSA::Geometry::DiagramGeometry::getStationValue(st, m_diagramType));
+            double v = std::abs(TSA::Geometry::DiagramGeometry::getStationValue(st, layer.type));
             if (v > maxVal) maxVal = v;
         }
     }
 
-    m_diagramMaxValue = maxVal;
-    m_diagramAllZero = !(maxVal > 0.0);
-    if (m_diagramAllZero)
+    layer.maxValue = maxVal;
+    layer.allZero = !(maxVal > 0.0);
+    if (layer.allZero)
     {
         // Grandeur nulle partout : aucun diagramme arbitraire (message dans la légende)
-        m_diagramAutoScale = 0.0;
-        m_diagramScale = 0.0;
+        layer.autoScale = 0.0;
         return;
     }
 
@@ -472,8 +572,7 @@ void ResultsVisualManager::autoComputeDiagramScale()
         std::nth_element(lengths.begin(), lengths.begin() + lengths.size() / 2, lengths.end());
         target = std::min(target, 0.6 * lengths[lengths.size() / 2]);
     }
-    m_diagramAutoScale = target / maxVal;
-    m_diagramScale = m_diagramAutoScale * m_diagramMultiplier;
+    layer.autoScale = target / maxVal;
 }
 
 void ResultsVisualManager::setDiagramLabelsVisible(bool visible)
@@ -635,7 +734,8 @@ void ResultsVisualManager::updateDeformedShapes()
         if (!axis.valid) continue; // signalé dans la légende, jamais remplacé par une forme inventée
         TopoDS_Shape shape;
         bool solid = false;
-        if (key.kind == StructuralElementKind::Beam || key.kind == StructuralElementKind::Column)
+        const bool asWire = m_deformedRepresentation == DeformedRepresentation::Wire;
+        if (!asWire && (key.kind == StructuralElementKind::Beam || key.kind == StructuralElementKind::Column))
         {
             double rotation = 0.0;
             const TSA::Model::Section* section = memberSection(key, &rotation);
@@ -656,7 +756,7 @@ void ResultsVisualManager::updateDeformedShapes()
                     m->SetColor(Quantity_NOC_ORANGERED);
                     m->SetWidth(2.0);
                     ctx->Display(m, false);
-                    m_twistMarkerShapes.push_back(m);
+                    m_twistMarkerShapes.push_back({ key, m });
                 }
             }
         }
@@ -701,6 +801,7 @@ void ResultsVisualManager::updateDeformedShapes()
         ctx->Display(ais, false);
         replaceShape(m_deformedElementShapes, key, ais);
     }
+    applyIsolation();
 }
 
 template <typename Map, typename Key>
@@ -717,15 +818,227 @@ void ResultsVisualManager::replaceShape(Map& map, const Key& key, const Handle(A
 ResultsVisualManager::Diagnostics ResultsVisualManager::diagnostics() const
 {
     Diagnostics d;
-    d.deformed = int(m_deformedElementShapes.size() + m_deformedNodeShapes.size());
-    d.twistMarkers = int(m_twistMarkerShapes.size());
-    d.diagrams = int(m_diagramShapes.size());
-    for (const auto& [k, v] : m_diagramLabels) d.diagramLabels += int(v.size());
-    d.reactions = int(m_reactionShapes.size());
-    d.reactionLabels = int(m_reactionLabels.size());
+    // Objets réellement à l'écran : un objet masqué (plan de travail, chevauchement des textes) reste connu de ce gestionnaire
+    auto ctx = context();
+    auto shown = [&](const auto& object) { return int(!object.IsNull() && (ctx.IsNull() || ctx->IsDisplayed(object))); };
+    for (const auto& [k, v] : m_deformedElementShapes) d.deformed += shown(v);
+    for (const auto& [k, v] : m_deformedNodeShapes) d.deformed += shown(v);
+    for (const auto& [k, v] : m_twistMarkerShapes) d.twistMarkers += shown(v);
+    for (const auto& [k, v] : m_diagramShapes) d.diagrams += shown(v);
+    for (const auto& [k, v] : m_diagramLabels)
+        for (const auto& label : v) d.diagramLabels += shown(label);
+    for (const auto& [k, v] : m_reactionShapes) d.reactions += shown(v);
+    for (const auto& [k, v] : m_reactionLabels) d.reactionLabels += shown(v);
+    for (const auto& [k, v] : m_leaderShapes) d.leaders += shown(v);
     d.extremum = int(!m_extremumMarkerShape.IsNull()) + int(!m_extremumLabel.IsNull());
     d.legend = int(!m_legendLabel.IsNull());
     return d;
+}
+
+void ResultsVisualManager::applyIsolation()
+{
+    auto ctx = context();
+    if (ctx.IsNull() || !m_occView) return;
+    auto setShown = [&](const Handle(AIS_InteractiveObject)& object, bool visible) {
+        if (object.IsNull() || visible == ctx->IsDisplayed(object)) return;
+        if (visible) ctx->Display(object, false);
+        else ctx->Erase(object, false);
+    };
+    for (const auto& [key, shape] : m_deformedElementShapes) setShown(shape, m_occView->isResultElementVisible(key));
+    for (const auto& [key, shape] : m_twistMarkerShapes) setShown(shape, m_occView->isResultElementVisible(key));
+    for (const auto& [key, shape] : m_diagramShapes) setShown(shape, m_occView->isResultElementVisible(key.second));
+    for (const auto& [nodeId, shape] : m_reactionShapes) setShown(shape, m_occView->isResultNodeVisible(nodeId));
+    layoutLabels();
+}
+
+void ResultsVisualManager::layoutLabels()
+{
+    m_overlappedLabels = 0;
+    auto ctx = context();
+    if (ctx.IsNull() || !m_occView || m_occView->view().IsNull() || m_occView->view()->Window().IsNull()) return;
+    int width = 0, height = 0;
+    m_occView->view()->Window()->Size(width, height);
+    if (width <= 0 || height <= 0) return;
+    const Handle(Graphic3d_Camera)& camera = m_occView->view()->Camera();
+    const gp_Vec up(camera->Up());
+    const auto& textStyle = TSA::Viewer::LoadDisplayStyle::instance();
+    const double referenceLength = m_occView->loadReferenceLength();
+    const double dpr = TSA::Viewer::AnnotationStyle::instance().settings().devicePixelRatio;
+    auto toPixel = [&](const gp_Pnt& point, double& x, double& y) {
+        const gp_Pnt n = camera->Project(point);
+        x = (n.X() + 1.0) * 0.5 * width;
+        y = (1.0 - n.Y()) * 0.5 * height;
+    };
+
+    struct Item
+    {
+        Handle(AIS_TextLabel) label;
+        double priority = 0.0, x0 = 0.0, y0 = 0.0, x1 = 0.0, y1 = 0.0;
+    };
+    std::vector<Item> items;
+    auto collect = [&](const Handle(AIS_TextLabel)& label, bool kept) {
+        if (label.IsNull()) return;
+        if (!kept)
+        {
+            if (ctx->IsDisplayed(label)) ctx->Erase(label, false);
+            return;
+        }
+        Item it;
+        it.label = label;
+        const auto pr = m_labelPriority.find(label.get());
+        it.priority = pr != m_labelPriority.end() ? pr->second : 0.0;
+        double x = 0.0, y = 0.0, xu = 0.0, yu = 0.0;
+        toPixel(label->Position(), x, y);
+        toPixel(label->Position().Translated(up), xu, yu);
+        // Même échelle que les valeurs des charges (Style des charges) : le texte suit le zoom entre deux bornes, jamais
+        // démesuré en vue rapprochée ni illisible en vue d'ensemble
+        const double pixelsPerMeter = std::hypot(xu - x, yu - y);
+        const double em = std::round(textStyle.labelPixels(pixelsPerMeter, referenceLength, dpr));
+        bool changed = std::abs(label->Attributes()->TextAspect()->Height() - em) > 0.5;
+        if (changed) label->SetHeight(em);
+        if (const auto anchor = m_labelAnchors.find(label.get()); anchor != m_labelAnchors.end() && pixelsPerMeter > 0.0)
+        {
+            const LabelAnchor& a = anchor->second;
+            gp_Pnt position = a.position;
+            double bx = 0.0, by = 0.0, px = 0.0, py = 0.0;
+            toPixel(a.base, bx, by);
+            toPixel(a.position.Translated(-a.along), px, py);   // décalage perpendiculaire seul : le test ne dépend pas de l'écart le long de l'élément
+            gp_Vec side = gp_Vec(camera->Direction()).Crossed(gp_Vec(a.axis));
+            // Décalage vu de bout : à l'écran, le texte tomberait sur l'élément (Mz vu de face, My vu en plan)
+            if (std::hypot(px - bx, py - by) < 2.0 * em && side.Magnitude() > 1e-6)
+                position = a.base.Translated(a.along + side.Normalized() * (a.sign * (a.clearance + 1.5 * em / pixelsPerMeter)));
+            if (position.Distance(label->Position()) > 1e-6)
+            {
+                label->SetPosition(position);
+                changed = true;
+                toPixel(position, x, y);
+            }
+        }
+        if (changed && ctx->IsDisplayed(label)) ctx->Redisplay(label, false);
+        const double w = 0.6 * em * (label->Text().Length() + 1), h = 1.5 * em;   // encombrement estimé, ancrage centré en bas
+        it.x0 = x - 0.5 * w;
+        it.x1 = x + 0.5 * w;
+        it.y0 = y - h;
+        it.y1 = y;
+        items.push_back(it);
+    };
+    for (const auto& [key, labels] : m_diagramLabels)
+        for (const auto& label : labels) collect(label, m_occView->isResultElementVisible(key.second));
+    for (const auto& [nodeId, label] : m_reactionLabels) collect(label, m_occView->isResultNodeVisible(nodeId));
+
+    // Le plus fort d'abord ; un texte qui en chevauche un autre déjà gardé n'est pas affiché (grille pour rester rapide)
+    std::stable_sort(items.begin(), items.end(), [](const Item& a, const Item& b) { return a.priority > b.priority; });
+    constexpr double cell = 96.0;
+    std::map<std::pair<int, int>, std::vector<std::size_t>> grid;
+    std::vector<Handle(AIS_TextLabel)> shownLabels;
+    for (std::size_t i = 0; i < items.size(); ++i)
+    {
+        const Item& it = items[i];
+        bool overlaps = false;
+        const int cx0 = int(std::floor(it.x0 / cell)), cx1 = int(std::floor(it.x1 / cell));
+        const int cy0 = int(std::floor(it.y0 / cell)), cy1 = int(std::floor(it.y1 / cell));
+        for (int cx = cx0; cx <= cx1 && !overlaps; ++cx)
+            for (int cy = cy0; cy <= cy1 && !overlaps; ++cy)
+            {
+                const auto found = grid.find({ cx, cy });
+                if (found == grid.end()) continue;
+                for (const std::size_t j : found->second)
+                {
+                    const Item& o = items[j];
+                    if (it.x0 < o.x1 && o.x0 < it.x1 && it.y0 < o.y1 && o.y0 < it.y1)
+                    {
+                        overlaps = true;
+                        break;
+                    }
+                }
+            }
+        if (overlaps)
+        {
+            ++m_overlappedLabels;
+            if (ctx->IsDisplayed(it.label)) ctx->Erase(it.label, false);
+            continue;
+        }
+        for (int cx = cx0; cx <= cx1; ++cx)
+            for (int cy = cy0; cy <= cy1; ++cy) grid[{ cx, cy }].push_back(i);
+        if (!ctx->IsDisplayed(it.label)) ctx->Display(it.label, false);
+        shownLabels.push_back(it.label);
+    }
+    updateLeaders(shownLabels);
+}
+
+void ResultsVisualManager::updateLeaders(const std::vector<Handle(AIS_TextLabel)>& shownLabels)
+{
+    auto ctx = context();
+    if (ctx.IsNull()) return;
+    // Une ligne de rappel relie chaque valeur visible à son point de la courbe : avec plusieurs diagrammes, elle dit à quelle
+    // courbe la valeur appartient. Refaites avec les textes (zoom, chevauchements, isolation) ; aucune ligne sans son texte.
+    m_leaderSegments.clear();
+    std::map<TSA::Geometry::DiagramType, TopoDS_Compound> lines;
+    BRep_Builder builder;
+    for (const auto& label : shownLabels)
+    {
+        const auto anchor = m_labelAnchors.find(label.get());
+        if (anchor == m_labelAnchors.end()) continue;
+        const gp_Pnt& from = anchor->second.curve;
+        const gp_Pnt to = label->Position();
+        if (from.Distance(to) < 1e-4) continue;
+        auto line = lines.find(anchor->second.type);
+        if (line == lines.end())
+        {
+            line = lines.emplace(anchor->second.type, TopoDS_Compound()).first;
+            builder.MakeCompound(line->second);
+        }
+        builder.Add(line->second, BRepBuilderAPI_MakeEdge(from, to).Edge());
+        builder.Add(line->second, BRepBuilderAPI_MakeVertex(from).Vertex());   // point marqué sur la courbe
+        m_leaderSegments.push_back({ from, to });
+    }
+    for (auto it = m_leaderShapes.begin(); it != m_leaderShapes.end();)
+    {
+        if (lines.count(it->first))
+        {
+            ++it;
+            continue;
+        }
+        ctx->Remove(it->second, false);
+        it = m_leaderShapes.erase(it);
+    }
+    for (const auto& [type, compound] : lines)
+    {
+        auto& shape = m_leaderShapes[type];
+        if (shape.IsNull())
+        {
+            shape = new AIS_Shape(compound);
+            shape->SetColor(diagramColor(type));
+            shape->SetWidth(1.6);
+            shape->Attributes()->SetPointAspect(new Prs3d_PointAspect(Aspect_TOM_BALL, diagramColor(type), 2.5));
+            shape->SetZLayer(Graphic3d_ZLayerId_Topmost);   // visible devant la structure, comme son texte
+            ctx->Display(shape, AIS_WireFrame, -1, false);   // trait d'annotation : jamais sélectionnable
+        }
+        else
+        {
+            shape->SetShape(compound);
+            ctx->Redisplay(shape, false);
+        }
+    }
+}
+
+void ResultsVisualManager::styleResultLabel(const Handle(AIS_TextLabel)& label, const Quantity_Color& color) const
+{
+    if (label.IsNull()) return;
+    // Au-dessus de la structure (calque à profondeur effacée, comme les valeurs des charges) et contour contrasté : un texte
+    // n'est jamais caché dans une section, et reste lisible devant elle
+    label->SetColor(color);
+    label->SetZLayer(Graphic3d_ZLayerId_Topmost);
+    label->SetDisplayType(Aspect_TODT_DEKALE);
+    const bool dark = !m_occView || m_occView->isDarkMode();
+    label->SetColorSubTitle(dark ? Quantity_Color(0.05, 0.05, 0.05, Quantity_TOC_RGB) : Quantity_Color(1.0, 1.0, 1.0, Quantity_TOC_RGB));
+}
+
+double ResultsVisualManager::sectionClearance(const TSA::Analysis::ElementKey& key) const
+{
+    double rotation = 0.0;
+    const TSA::Model::Section* section = memberSection(key, &rotation);
+    return (section ? 0.5 * std::max(section->width, section->height) : 0.0) + 0.08;
 }
 
 void ResultsVisualManager::clearDeformedShapes()
@@ -741,7 +1054,7 @@ void ResultsVisualManager::clearDeformedShapes()
         {
             ctx->Remove(shape, false);
         }
-        for (auto& shape : m_twistMarkerShapes) ctx->Remove(shape, false);
+        for (auto& [key, shape] : m_twistMarkerShapes) ctx->Remove(shape, false);
     }
     m_deformedElementShapes.clear();
     m_deformedNodeShapes.clear();
@@ -755,24 +1068,31 @@ void ResultsVisualManager::updateDiagramShapes()
 
     clearDiagramShapes();
 
-    if (m_diagramType == TSA::Geometry::DiagramType::None || !m_results || !m_results->isValid() || !m_model || m_diagramAllZero)
+    if (m_layers.empty() || !m_results || !m_results->isValid() || !m_model)
     {
-        return;   // grandeur nulle partout : rien de dessiné, la légende l'indique
+        applyIsolation();
+        return;
     }
 
     const bool kN = m_results->units().force == "kN";
     struct PendingLabel
     {
-        TSA::Analysis::ElementKey key;
+        DiagramKey key;
         gp_Pnt position;
         double value;
+        double priority;
         QString text;
+        LabelAnchor anchor;
     };
     std::vector<PendingLabel> pending;
+    for (const DiagramLayer& layer : m_layers)
+    {
+    if (layer.allZero) continue;   // grandeur nulle partout : rien de dessiné, la légende l'indique
+    const TSA::Geometry::DiagramType diagramType = layer.type;
     for (const auto& [elKey, elemRes] : m_results->allElementResults())
     {
         const int elId = elKey.id;
-        auto stations = displayStations(m_model, elKey, elemRes, m_diagramType, kN);
+        auto stations = displayStations(m_model, elKey, elemRes, diagramType, kN);
         if (stations.empty()) continue;
 
         gp_Pnt p1, p2;
@@ -829,52 +1149,18 @@ void ResultsVisualManager::updateDiagramShapes()
             }
         }
 
+        const DiagramKey shapeKey { diagramType, elKey };
         TopoDS_Shape dShape = TSA::Geometry::DiagramGeometry::createDiagramShape(
-            p1, p2, rot, stations, m_diagramType, m_diagramScale, true
+            p1, p2, rot, stations, diagramType, layer.scale, true
         );
 
         if (!dShape.IsNull())
         {
             Handle(AIS_Shape) ais = new AIS_Shape(dShape);
-            // Couleurs par famille :
-            // Moment (M) : Coral / Orange
-            // Effort Normal (N) : Bleu
-            // Effort Tranchant (V) : Vert
-            // Flèche / Déplacement (U) : Magenta
-            // Rotation (R) : Or / Jaune
-            if (m_diagramType == TSA::Geometry::DiagramType::BendingMy ||
-                m_diagramType == TSA::Geometry::DiagramType::BendingMz ||
-                m_diagramType == TSA::Geometry::DiagramType::TorsionMx)
-            {
-                ais->SetColor(Quantity_NOC_CORAL);
-            }
-            else if (m_diagramType == TSA::Geometry::DiagramType::StressSigma)
-            {
-                ais->SetColor(Quantity_NOC_PURPLE);
-            }
-            else if (m_diagramType == TSA::Geometry::DiagramType::AxialForceN)
-            {
-                ais->SetColor(Quantity_NOC_BLUE1);
-            }
-            else if (m_diagramType == TSA::Geometry::DiagramType::ShearForceVy ||
-                     m_diagramType == TSA::Geometry::DiagramType::ShearForceVz)
-            {
-                ais->SetColor(Quantity_NOC_GREEN1);
-            }
-            else if (m_diagramType == TSA::Geometry::DiagramType::DeflectionUx ||
-                     m_diagramType == TSA::Geometry::DiagramType::DeflectionUy ||
-                     m_diagramType == TSA::Geometry::DiagramType::DeflectionUz ||
-                     m_diagramType == TSA::Geometry::DiagramType::DeflectionUres)
-            {
-                ais->SetColor(Quantity_NOC_MAGENTA1);
-            }
-            else
-            {
-                ais->SetColor(Quantity_NOC_GOLD);
-            }
+            ais->SetColor(diagramColor(diagramType));
             ais->SetTransparency(0.25);
             ctx->Display(ais, false);
-            replaceShape(m_diagramShapes, elKey, ais);
+            replaceShape(m_diagramShapes, shapeKey, ais);
         }
 
         // Étiquettes de valeurs extrêmes
@@ -887,39 +1173,71 @@ void ResultsVisualManager::updateDiagramShapes()
 
             for (size_t s = 0; s < stations.size(); ++s)
             {
-                double v = TSA::Geometry::DiagramGeometry::getStationValue(stations[s], m_diagramType);
+                double v = TSA::Geometry::DiagramGeometry::getStationValue(stations[s], diagramType);
                 if (v > maxVal) { maxVal = v; maxIdx = s; }
                 if (v < minVal) { minVal = v; minIdx = s; }
             }
 
-            gp_Vec offsetDir = TSA::Geometry::DiagramGeometry::getDiagramOffsetDirection(p1, p2, rot, m_diagramType);
+            gp_Vec offsetDir = TSA::Geometry::DiagramGeometry::getDiagramOffsetDirection(p1, p2, rot, diagramType);
             if (offsetDir.Magnitude() < 1e-6) continue;
             offsetDir.Normalize();
             gp_Vec vAB(p1, p2);
             double length = vAB.Magnitude();
-            QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(m_diagramType, m_results->units().force != "N");   // BUG-117
+            QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(diagramType, m_results->units().force != "N");   // BUG-117
+            const double clearance = sectionClearance(elKey);
 
-            auto addLabel = [&](size_t idx, double val)
+            const auto layerIndex = static_cast<double>(&layer - m_layers.data());
+            gp_Dir axis(gp_Vec(0, 0, 1));
+            if (length > 1e-6) axis = gp_Dir(vAB);
+            auto addLabel = [&](size_t idx, double val, double inward)
             {
-                if (val == 0.0) return;
+                if (std::abs(val) <= 1e-9 * layer.maxValue) return;
                 double pos = (length > 1e-6) ? (stations[idx].position / length) : 0.0;
                 gp_Pnt base = p1.Translated(vAB * pos);
-                gp_Pnt posLabel = base.Translated(offsetDir * (val * m_diagramScale + 0.08));
+                // Texte placé au-delà de la section, du côté du diagramme : jamais dans la matière de l'élément. Aux extrémités,
+                // il rentre vers le milieu de l'élément (davantage pour chaque diagramme) : la ligne de rappel dit à quelle
+                // courbe il appartient, et deux textes d'une même extrémité ne se recouvrent pas.
+                const gp_Vec along = gp_Vec(axis) * (inward * std::min(0.3 * length, 0.35 + 0.3 * layerIndex));
+                const double reach = std::abs(val * layer.scale) + clearance + kLeaderLength;
+                gp_Pnt posLabel = base.Translated(along + offsetDir * std::copysign(reach, val));
 
                 // 4 chiffres significatifs : une rotation de 0,0059 rad s'affichait « 0.0 rad » (format à 1 décimale)
-                pending.push_back({ elKey, posLabel, val, QString("%1 %2").arg(QString::number(val, 'g', 4)).arg(unit) });
+                const QString name = m_layers.size() > 1 ? TSA::Geometry::DiagramGeometry::diagramShortName(diagramType) + QStringLiteral(" = ") : QString();
+                LabelAnchor anchor;
+                anchor.base = base;
+                anchor.position = posLabel;
+                anchor.curve = base.Translated(offsetDir * (val * layer.scale));   // même point que DiagramGeometry::createDiagramShape
+                anchor.axis = axis;
+                anchor.along = along;
+                anchor.clearance = clearance;
+                anchor.sign = val < 0.0 ? -1.0 : 1.0;
+                anchor.type = diagramType;
+                pending.push_back({ shapeKey, posLabel, val, std::abs(val) / layer.maxValue,
+                                    QString("%1%2 %3").arg(name).arg(QString::number(val, 'g', 4)).arg(unit), anchor });
             };
 
-            addLabel(maxIdx, maxVal);
-            if (minIdx != maxIdx && std::abs(minVal - maxVal) > 0.1)
+            // Valeurs aux deux extrémités, puis le maximum et le minimum s'ils sont ailleurs. Valeur constante le long de
+            // l'élément (treillis, effort normal) : une seule fois.
+            const size_t last = stations.size() - 1;
+            const auto valueAt = [&](size_t idx) { return TSA::Geometry::DiagramGeometry::getStationValue(stations[idx], diagramType); };
+            const double same = 1e-6 * layer.maxValue;
+            if (maxVal - minVal <= same) addLabel(last / 2, valueAt(last / 2), 0.0);
+            else
             {
-                addLabel(minIdx, minVal);
+                addLabel(0, valueAt(0), 1.0);
+                addLabel(last, valueAt(last), -1.0);
+                const auto interior = [&](size_t idx) {
+                    return idx != 0 && idx != last && std::abs(valueAt(idx) - valueAt(0)) > same && std::abs(valueAt(idx) - valueAt(last)) > same;
+                };
+                if (interior(maxIdx)) addLabel(maxIdx, maxVal, 0.0);
+                if (minIdx != maxIdx && interior(minIdx)) addLabel(minIdx, minVal, 0.0);
             }
         }
     }
-    // Étiquettes : à un nœud partagé, la poutre et le poteau donnent la même valeur au même endroit. Une étiquette dont
-    // la position est à moins de 4 % de l'envergure d'une étiquette de plus grande valeur absolue n'est pas affichée
-    // (valeur toujours lisible par l'autre ; rien n'est perdu dans les tableaux et la note).
+    }
+    // Étiquettes : à un nœud partagé, la poutre et le poteau donnent la même valeur au même endroit. Par grandeur, une
+    // étiquette dont la position est à moins de 4 % de l'envergure d'une étiquette de plus grande valeur absolue n'est pas
+    // affichée (valeur toujours lisible par l'autre ; rien n'est perdu dans les tableaux et la note).
     double lo[3] = { 1e300, 1e300, 1e300 }, hi[3] = { -1e300, -1e300, -1e300 };
     for (const auto& [id, node] : m_model->nodes())
     {
@@ -927,11 +1245,12 @@ void ResultsVisualManager::updateDiagramShapes()
         for (int k = 0; k < 3; ++k) lo[k] = std::min(lo[k], c[k]), hi[k] = std::max(hi[k], c[k]);
     }
     const double minGap = 0.04 * std::max({ hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], 1.0 });
-    std::stable_sort(pending.begin(), pending.end(), [](const PendingLabel& a, const PendingLabel& b) { return std::abs(a.value) > std::abs(b.value); });
-    std::vector<gp_Pnt> kept;
+    std::stable_sort(pending.begin(), pending.end(), [](const PendingLabel& a, const PendingLabel& b) { return a.priority > b.priority; });
+    std::map<TSA::Geometry::DiagramType, std::vector<gp_Pnt>> keptByType;
     m_hiddenDiagramLabels = 0;
     for (const auto& pl : pending)
     {
+        auto& kept = keptByType[pl.key.first];
         const bool crowded = std::any_of(kept.begin(), kept.end(), [&](const gp_Pnt& p) { return p.Distance(pl.position) < minGap; });
         if (crowded)
         {
@@ -942,12 +1261,15 @@ void ResultsVisualManager::updateDiagramShapes()
         Handle(AIS_TextLabel) lbl = new AIS_TextLabel();
         lbl->SetPosition(pl.position);
         lbl->SetText(TCollection_ExtendedString(pl.text.toUtf8().constData(), true));
-        lbl->SetColor(Quantity_NOC_WHITE);
+        styleResultLabel(lbl, diagramColor(pl.key.first));
         TSA::Viewer::AnnotationStyle::instance().apply(lbl, TSA::Viewer::AnnotationRole::DiagramValue);
         lbl->SetFont("Arial");
         ctx->Display(lbl, false);
+        m_labelPriority[lbl.get()] = pl.priority;
+        m_labelAnchors[lbl.get()] = pl.anchor;
         m_diagramLabels[pl.key].push_back(lbl);
     }
+    applyIsolation();
 }
 
 void ResultsVisualManager::clearDiagramShapes()
@@ -969,6 +1291,12 @@ void ResultsVisualManager::clearDiagramShapes()
     }
     m_diagramShapes.clear();
     m_diagramLabels.clear();
+    if (ctx)
+        for (auto& [type, shape] : m_leaderShapes) ctx->Remove(shape, false);
+    m_leaderShapes.clear();
+    m_leaderSegments.clear();
+    m_labelPriority.clear();
+    m_labelAnchors.clear();
     m_hiddenDiagramLabels = 0;
 }
 
@@ -1030,11 +1358,12 @@ void ResultsVisualManager::updateReactionShapes()
                 .arg(react.rz, 0, 'f', 1);
         }
         lbl->SetText(TCollection_ExtendedString(lblStr.toUtf8().constData()));
-        lbl->SetColor(Quantity_NOC_LIMEGREEN);
+        styleResultLabel(lbl, Quantity_Color(Quantity_NOC_LIMEGREEN));
         TSA::Viewer::AnnotationStyle::instance().apply(lbl, TSA::Viewer::AnnotationRole::ReactionValue);
         ctx->Display(lbl, false);
         m_reactionLabels[nodeId] = lbl;
     }
+    applyIsolation();
 }
 
 void ResultsVisualManager::clearReactionShapes()

@@ -5,6 +5,8 @@
 #include "../Geometry/LoadDisplayScale.h"
 
 #include <QColor>
+
+#include <array>
 #include <QObject>
 #include <QString>
 
@@ -22,8 +24,12 @@ enum class LoadColorMode
     ByCase,        ///< une couleur par cas de charge (palette), flèches et texte assortis
     ByIntensity,   ///< dégradé bleu → rouge selon l'intensité dans la famille d'unités
     ByFamily,      ///< une couleur par famille (forces, moments, linéiques, surfaciques)
-    Single         ///< une seule couleur
+    Single,        ///< une seule couleur
+    ByCategory     ///< une couleur par type de charge (permanente, exploitation, vent, neige…), réglable
 };
+
+/// Types de charge colorés (LoadCaseCategory du modèle, dans le même ordre).
+inline constexpr int kLoadCategoryCount = 8;
 
 enum class LoadTextSize
 {
@@ -40,6 +46,9 @@ struct LoadDisplaySettings
     LoadCaseFilter cases = LoadCaseFilter::ActiveCase;
     LoadColorMode colors = LoadColorMode::ByCase;
     QColor singleColor = QColor(0xD0, 0x30, 0x30);
+    /// G, Q, W, S, E, T, A, personnalisé : teintes bien distinctes, modifiables dans Style des charges.
+    std::array<QColor, kLoadCategoryCount> categoryColors { QColor(0x55, 0x60, 0x70), QColor(0xD0, 0x30, 0x30), QColor(0x00, 0x86, 0xB3), QColor(0x4A, 0x90, 0xD9),
+                                                            QColor(0x8E, 0x44, 0xAD), QColor(0xE6, 0x7E, 0x22), QColor(0xB0, 0x1E, 0x68), QColor(0x27, 0xAE, 0x60) };
     LoadTextSize textSize = LoadTextSize::ModelLinked;
     double textHeight = 0.0;     ///< m (mode lié au modèle) ; 0 : automatique d'après la structure
     double textPixels = 12.0;    ///< px logiques (mode constant à l'écran), 8 à 32
@@ -78,8 +87,9 @@ public:
     /// Dégradé bleu (0) → vert → orange → rouge (1).
     static QColor intensityColor(double ratio);
     static QColor familyColor(TSA::Geometry::LoadFamily family);
-    /// Couleur d'une charge selon le mode : caseRank (cas), ratio = |I| / maximum de la famille, famille.
-    QColor loadColor(int caseRank, double ratio, TSA::Geometry::LoadFamily family) const;
+    /// Couleur d'une charge selon le mode : caseRank (cas), ratio = |I| / maximum de la famille, famille, type de charge
+    /// (LoadCaseCategory ; négatif : inconnu).
+    QColor loadColor(int caseRank, double ratio, TSA::Geometry::LoadFamily family, int category = -1) const;
 
     /// Texte d'une valeur : « q = -12.50 kN/m [Q] » selon les réglages (symbole, décimales, unité, nom du cas).
     QString formatValue(const QString& symbol, double value, const QString& unit, const QString& caseName = {}) const;

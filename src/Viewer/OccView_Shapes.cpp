@@ -1440,7 +1440,7 @@ void OccView::updateWallShape(int wallId, bool redrawImmediately)
         Handle(AIS_Shape) aisWall = new AIS_Shape(shape);
         stylePlanarShape(aisWall, wall->material(), wall->color(), 0.25);
 
-        const bool shown = keepLinearUnderIsolation(wall->startNodeId(), wall->endNodeId());
+        const bool shown = keepWallUnderIsolation(wall->startNodeId(), wall->endNodeId());
         if (shown)
         {
             m_context->Display(aisWall, false);
@@ -2415,7 +2415,10 @@ Quantity_Color OccView::loadDisplayColor(int caseId, double intensity, TSA::Geom
 {
     const double max = m_loadMaxima.of(family);
     const double ratio = max > 0.0 ? std::abs(intensity) / max : 0.0;
-    const QColor c = TSA::Viewer::LoadDisplayStyle::instance().loadColor(loadCaseRank(caseId), ratio, family);
+    int category = -1;
+    if (m_model)
+        if (const auto* lc = m_model->loadManager().getLoadCase(caseId)) category = static_cast<int>(lc->category());
+    const QColor c = TSA::Viewer::LoadDisplayStyle::instance().loadColor(loadCaseRank(caseId), ratio, family, category);
     // Couleur d'écran en sRVB (Quantity_Color en RVB linéaire sortirait éclaircie par le gamma, docs/AXIS_DISPLAY.md)
     return Quantity_Color(c.redF(), c.greenF(), c.blueF(), Quantity_TOC_sRGB);
 }

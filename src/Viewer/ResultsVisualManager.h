@@ -35,6 +35,14 @@ enum class DeformedDisplayMode
     Both
 };
 
+/// Représentation de la déformée : volumes (axe balayé par la section) ou lignes (axes déformés seuls, plus lisible sur un
+/// grand modèle et en plan).
+enum class DeformedRepresentation
+{
+    Solid,
+    Wire
+};
+
 enum class ScalePreset
 {
     Auto,
@@ -72,6 +80,9 @@ public:
     DeformedDisplayMode deformedDisplayMode() const { return m_displayMode; }
     void setDeformedDisplayMode(DeformedDisplayMode mode);
 
+    DeformedRepresentation deformedRepresentation() const { return m_deformedRepresentation; }
+    void setDeformedRepresentation(DeformedRepresentation representation);
+
     double deformationScale() const { return m_deformationScale; }
     void setDeformationScale(double scale);
     void autoComputeDeformationScale();
@@ -93,9 +104,16 @@ public:
     /// Nombre de barres dont les repères de torsion sont affichés (0 sans vue 3D).
     std::size_t sectionMarkerCount() const { return m_twistMarkerShapes.size(); }
 
-    // Diagrammes 3D
+    // Diagrammes 3D : plusieurs grandeurs affichées ensemble (Vy + Vz + Mx…), chacune avec sa couleur et son échelle.
+    /// Dernière grandeur activée (None : aucune) : les échelles et valeurs ci-dessous sont les siennes.
     TSA::Geometry::DiagramType diagramType() const { return m_diagramType; }
+    /// Remplace toutes les grandeurs par celle-ci (None : plus aucun diagramme).
     void setDiagramType(TSA::Geometry::DiagramType type);
+    std::vector<TSA::Geometry::DiagramType> diagramTypes() const;
+    void setDiagramTypes(const std::vector<TSA::Geometry::DiagramType>& types);
+    bool isDiagramVisible(TSA::Geometry::DiagramType type) const;
+    /// Ajoute ou retire une grandeur, sans toucher aux autres.
+    void setDiagramVisible(TSA::Geometry::DiagramType type, bool visible);
 
     /// Échelle des diagrammes (m de diagramme par unité de la grandeur) = échelle automatique × multiplicateur.
     /// Indépendante de l'amplification de la déformée, du zoom de la caméra et de la taille des textes.
@@ -139,14 +157,24 @@ public:
     /// objet orphelin, impossible à retirer).
     struct Diagnostics
     {
-        int deformed = 0, twistMarkers = 0, diagrams = 0, diagramLabels = 0, reactions = 0, reactionLabels = 0, extremum = 0, legend = 0;
-        int total() const { return deformed + twistMarkers + diagrams + diagramLabels + reactions + reactionLabels + extremum + legend; }
+        int deformed = 0, twistMarkers = 0, diagrams = 0, diagramLabels = 0, reactions = 0, reactionLabels = 0, extremum = 0, legend = 0, leaders = 0;
+        int total() const { return deformed + twistMarkers + diagrams + diagramLabels + reactions + reactionLabels + extremum + legend + leaders; }
     };
     Diagnostics diagnostics() const;
 
     // Nettoyage et actualisation
     void updateAllVisuals();
     void clearAllVisuals();
+
+    /// Applique la visibilité de la vue (plan de travail, coupe 2D, isolation par éléments) aux résultats déjà construits,
+    /// sans les recalculer : un résultat suit toujours l'élément qui le porte.
+    void applyIsolation();
+    /// Textes des résultats : ceux qui se chevauchent à l'écran sont masqués (le plus fort reste, zoomer pour lire les autres).
+    void layoutLabels();
+    /// Textes masqués par le chevauchement à la dernière mise en page.
+    int overlappedLabels() const { return m_overlappedLabels; }
+    /// Lignes de rappel affichées : (point de la courbe, position du texte), une par valeur visible.
+    const std::vector<std::pair<gp_Pnt, gp_Pnt>>& leaderSegments() const { return m_leaderSegments; }
 
 signals:
     void visualStateChanged();
@@ -159,6 +187,21 @@ private:
     void rebuildDeformedAxes();
     void applyStructureDisplay(bool deformedShown);
     const TSA::Model::Section* memberSection(const TSA::Analysis::ElementKey& key, double* rotationDeg) const;
+
+    /// Une grandeur affichée : échelle propre (chaque diagramme a la même hauteur crête, quelle que soit son unité).
+    struct DiagramLayer
+    {
+        TSA::Geometry::DiagramType type = TSA::Geometry::DiagramType::None;
+        double autoScale = 0.05;
+        double scale = 0.05;
+        double maxValue = 0.0;
+        bool allZero = false;
+    };
+    void computeLayerScale(DiagramLayer& layer) const;
+    void syncActiveDiagram();
+    void refreshDiagrams();
+    void styleResultLabel(const Handle(AIS_TextLabel)& label, const Quantity_Color& color) const;
+    double sectionClearance(const TSA::Analysis::ElementKey& key) const;
 
     void updateDiagramShapes();
     void clearDiagramShapes();
@@ -180,7 +223,9 @@ private:
     // Déformée et structure initiale atténuée : les deux restent lisibles et distinctes.
     DeformedDisplayMode m_displayMode = DeformedDisplayMode::Both;
     double m_deformationScale = 50.0;
+    DeformedRepresentation m_deformedRepresentation = DeformedRepresentation::Solid;
 
+    std::vector<DiagramLayer> m_layers;
     TSA::Geometry::DiagramType m_diagramType = TSA::Geometry::DiagramType::None;
     double m_diagramScale = 0.05;
     double m_diagramAutoScale = 0.05;
@@ -188,6 +233,7 @@ private:
     double m_diagramMaxValue = 0.0;
     bool m_diagramAllZero = false;
     int m_hiddenDiagramLabels = 0;   ///< étiquettes superposées non affichées (dédoublonnage aux nœuds)
+    int m_overlappedLabels = 0;
     bool m_diagramLabelsVisible = true;
 
     bool m_reactionsVisible = true;
@@ -215,9 +261,26 @@ private:
     // il restait à l'écran indéfiniment, y compris dans un nouveau projet (audit de l'affichage).
     std::map<TSA::Analysis::ElementKey, Handle(AIS_Shape)> m_deformedElementShapes;
     std::map<int, Handle(AIS_Shape)> m_deformedNodeShapes;
-    std::vector<Handle(AIS_Shape)> m_twistMarkerShapes;
-    std::map<TSA::Analysis::ElementKey, Handle(AIS_Shape)> m_diagramShapes;
-    std::map<TSA::Analysis::ElementKey, std::vector<Handle(AIS_TextLabel)>> m_diagramLabels;
+    std::vector<std::pair<TSA::Analysis::ElementKey, Handle(AIS_Shape)>> m_twistMarkerShapes;
+    using DiagramKey = std::pair<TSA::Geometry::DiagramType, TSA::Analysis::ElementKey>;
+    std::map<DiagramKey, Handle(AIS_Shape)> m_diagramShapes;
+    std::map<DiagramKey, std::vector<Handle(AIS_TextLabel)>> m_diagramLabels;
+    std::map<const AIS_TextLabel*, double> m_labelPriority;   ///< importance d'un texte (valeur / maximum de sa grandeur)
+    /// Point de l'élément auquel un texte se rapporte : quand son décalage est vu de bout (diagramme perpendiculaire au plan
+    /// regardé), le texte passe sur le côté de l'élément au lieu de se projeter dessus.
+    struct LabelAnchor
+    {
+        gp_Pnt base, position;
+        gp_Pnt curve;   ///< point de la courbe : extrémité de la ligne de rappel
+        gp_Dir axis;
+        gp_Vec along;   ///< décalage le long de l'élément (valeurs d'extrémité de plusieurs diagrammes écartées)
+        double clearance = 0.0, sign = 1.0;
+        TSA::Geometry::DiagramType type = TSA::Geometry::DiagramType::None;
+    };
+    void updateLeaders(const std::vector<Handle(AIS_TextLabel)>& shownLabels);
+    std::map<TSA::Geometry::DiagramType, Handle(AIS_Shape)> m_leaderShapes;   ///< une ligne par valeur, regroupées par grandeur
+    std::vector<std::pair<gp_Pnt, gp_Pnt>> m_leaderSegments;
+    std::map<const AIS_TextLabel*, LabelAnchor> m_labelAnchors;
     std::map<int, Handle(AIS_Shape)> m_reactionShapes;
     std::map<int, Handle(AIS_TextLabel)> m_reactionLabels;
     Handle(AIS_Shape) m_extremumMarkerShape;

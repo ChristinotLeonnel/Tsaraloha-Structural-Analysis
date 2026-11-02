@@ -22,6 +22,11 @@
 //        à leur vraie position, pas de graduation ; un axe par unité (deux au plus, sinon normalisée) ; poutre et
 //        poteau de même id distingués ; tableau de valeurs ; chaque courbe dessinée (superposées et empilées).
 
+#include <QDir>
+#include "Model/SelectionQuery.h"
+#include <TopExp_Explorer.hxx>
+#include <Graphic3d_ZLayerId.hxx>
+#include <AIS_TextLabel.hxx>
 #include "test_common.h"
 
 #include "Analysis/Engine/AnalysisEngineRegistry.h"
@@ -446,18 +451,23 @@ bool runSuite_Display(int& passed)
         view.setResultsModel(results);
         view.resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
         pump();
-        const int before = displayedObjects(view);
+        // Scène hors textes des résultats : leur nombre affiché suit le zoom (chevauchements masqués, test 606)
+        auto sceneObjects = [&] {
+            const auto d = view.resultsVisual()->diagnostics();
+            return displayedObjects(view) - d.diagramLabels - d.reactionLabels;
+        };
+        const int before = sceneObjects();
         int changes = 0;
         QObject::connect(&st, &AnnotationStyle::changed, [&changes] { ++changes; });
         st.setMode(AnnotationSizeMode::ModelLinked);
         pump();
-        TEST_CHECK(changes == 1 && displayedObjects(view) == before, "Test 373: mode changé — textes reconstruits sans cumul (" << displayedObjects(view) << " / " << before << ")");
+        TEST_CHECK(changes == 1 && sceneObjects() == before, "Test 373: mode changé — textes reconstruits sans cumul (" << displayedObjects(view) << " / " << before << ")");
         st.setMode(AnnotationSizeMode::ScreenConstant);
         pump();
         view.view()->SetZoom(3.0);
         view.zoomIn(1.0);
         pump(40);
-        TEST_CHECK(changes == 2 && displayedObjects(view) == before, "Test 373: taille constante — zoom sans reconstruction");
+        TEST_CHECK(changes == 2 && sceneObjects() == before, "Test 373: taille constante — zoom sans reconstruction");
         st.setMode(AnnotationSizeMode::ModelLinked);
         // hauteur de 10 px à l'échelle actuelle : 30 px après un zoom × 3 (sous le plafond de 32 px)
         st.setModelHeight(10.0 * view.devicePixelRatioF() / std::max(1e-6, view.viewPixelsPerMeter()));
@@ -470,7 +480,7 @@ bool runSuite_Display(int& passed)
         const int afterZoom = changes;
         TEST_CHECK(afterZoom == beforeZoom + 1 && st.height(AnnotationRole::NodeLabel) > heightBeforeZoom &&
                        view.viewPixelsPerMeter() > 2.0 * scaleBeforeZoom &&
-                       displayedObjects(view) == before,
+                       sceneObjects() == before,
                    "Test 373: taille liée au modèle — zoom arrêté : textes agrandis une fois, zoom conservé, sans cumul (" << changes - beforeZoom << " reconstruction(s), avant " << heightBeforeZoom << " px, " << displayedObjects(view) << " / " << before << " objets, " << view.viewPixelsPerMeter() << " px/m, " << st.height(AnnotationRole::NodeLabel) << " px)");
         pump(40);
         TEST_CHECK(changes == afterZoom, "Test 373: caméra immobile — aucune reconstruction");
@@ -890,6 +900,277 @@ bool runSuite_Display(int& passed)
         std::cout << "[PASS] Test 376: Diagnostic d'affichage (scène, résultats, échelles)" << std::endl;
         ++passed;
     }
-    
+
+    // -------------------------------------------------------------------------
+    // TESTS 604-607 : plusieurs résultats à la fois, isolation et coupe 2D du plan, textes, déformée filaire, couleurs des charges
+    // -------------------------------------------------------------------------
+    {
+        using DT = TSA::Geometry::DiagramType;
+        using PV = OccView::PlaneViewMode;
+        using TSA::Coordinate::WorkPlane;
+        using TSA::Coordinate::WorkPlaneType;
+        QSettings().remove("Display/planeViewMode");
+        Model m;
+        OccView view;
+        view.resize(640, 480);
+        view.show();
+        pump(20);
+        view.setModel(&m);
+        auto results = portalResults(m);   // portique dans le plan XZ : poteaux en X = 0 et 6, poutre à Z = 3
+        TEST_CHECK(results && results->isValid(), "Test 604: calcul du portique");
+        view.rebuildAllShapes();
+        view.setPlaneViewMode(PV::Section);
+        auto* rv = view.resultsVisual();
+        view.setResultsModel(results);
+        rv->setDeformedVisible(false);
+        rv->setReactionsVisible(true);
+        pump();
+        // Contrôle visuel : TSA_TEST_CAPTURE=<dossier> enregistre les images de la vraie vue OCCT
+        auto capture = [&](const char* name) {
+            const QString folder = qEnvironmentVariable("TSA_TEST_CAPTURE");
+            if (folder.isEmpty()) return;
+            view.resize(1100, 800);
+            pump(20);
+            view.fitModel();
+            pump(20);
+            rv->layoutLabels();
+            pump(10);
+            view.captureViewImage(1100, 800).save(QDir(folder).filePath(QString::fromLatin1(name) + QStringLiteral(".png")));
+        };
+
+        // 604 : grandeurs cumulées, chacune avec ses objets ; retirer l'une laisse les autres
+        rv->setDiagramVisible(DT::BendingMy, true);
+        rv->setDiagramVisible(DT::ShearForceVz, true);
+        rv->setDiagramVisible(DT::AxialForceN, true);
+        pump();
+        TEST_CHECK(rv->diagramTypes() == (std::vector<DT>{ DT::BendingMy, DT::ShearForceVz, DT::AxialForceN }) && rv->diagnostics().diagrams == 9,
+                   "Test 604: trois grandeurs, trois barres : 9 diagrammes (" << rv->diagnostics().diagrams << ")");
+        const QString legend = rv->legendSummaryText();
+        TEST_CHECK(legend.contains(QStringLiteral("(My)")) && legend.contains(QStringLiteral("(Vz)")) && legend.contains(QStringLiteral("(N)")),
+                   "Test 604: chaque grandeur dans la légende");
+        rv->setDiagramVisible(DT::ShearForceVz, false);
+        pump();
+        TEST_CHECK(rv->isDiagramVisible(DT::BendingMy) && !rv->isDiagramVisible(DT::ShearForceVz) && rv->diagnostics().diagrams == 6,
+                   "Test 604: grandeur retirée, les autres restent");
+        rv->setDiagramVisible(DT::BendingMy, true);
+        TEST_CHECK(rv->diagnostics().diagrams == 6, "Test 604: grandeur déjà affichée : aucun doublon");
+        rv->setDiagramType(DT::ShearForceVz);
+        pump();
+        TEST_CHECK(rv->diagramTypes() == std::vector<DT>{ DT::ShearForceVz } && rv->diagnostics().diagrams == 3, "Test 604: choix unique (panneau Résultats) conservé");
+        rv->setDiagramType(DT::None);
+        pump();
+        TEST_CHECK(rv->diagramTypes().empty() && rv->diagnostics().diagrams == 0 && rv->diagramType() == DT::None, "Test 604: Masquer les diagrammes");
+        rv->setDiagramTypes({ DT::BendingMy, DT::AxialForceN });
+        pump();
+        capture("res_1_multi_3d");
+        std::cout << "[PASS] Test 604: Plusieurs résultats affichés ensemble" << std::endl;
+        ++passed;
+
+        // 605 : le plan isole aussi les résultats ; coupe 2D par défaut, ancien mode disponible
+        auto planeAt = [&](double z) { view.setActiveWorkPlane(WorkPlane(WorkPlaneType::GlobalXY, "Niveau", z)); pump(); };
+        TEST_CHECK(OccView::storedPlaneViewMode() == PV::Section, "Test 605: coupe 2D par défaut (aucun réglage enregistré : vue en coupe)");
+        planeAt(3.0);
+        view.setWorkPlaneIsolation(true, 1.0);
+        pump();
+        TEST_CHECK(rv->diagnostics().diagrams == 2 && rv->diagnostics().reactions == 0 && view.sectionCutCount() == 0,
+                   "Test 605: plan à Z = 3 en 3D : résultats de la poutre seule, aucun résultat des poteaux ni réaction (" << rv->diagnostics().diagrams << ")");
+        view.setWorkPlaneIsolation(false, 1.0);
+        pump();
+        TEST_CHECK(rv->diagnostics().diagrams == 6, "Test 605: isolation retirée : tous les résultats reviennent");
+
+        view.setMode2D(true);
+        pump();
+        capture("res_2_plan_z3");
+        TEST_CHECK(rv->diagnostics().diagrams == 2 && view.sectionCutCount() == 2,
+                   "Test 605: plan 2D à Z = 3 : poutre dans le plan, coupe des deux poteaux (" << view.sectionCutCount() << ")");
+        view.setPlaneViewMode(PV::Proximity);
+        pump();
+        TEST_CHECK(rv->diagnostics().diagrams == 6 && view.sectionCutCount() == 0, "Test 605: ancien mode conservé : poteaux entiers, sans coupe");
+        view.setPlaneViewMode(PV::Section);
+        pump();
+        planeAt(1.5);
+        capture("res_3_coupe_mi_hauteur");
+        TEST_CHECK(rv->diagnostics().diagrams == 0 && rv->diagnostics().diagramLabels == 0 && view.sectionCutCount() == 2,
+                   "Test 605: plan à mi-hauteur : coupe des deux poteaux seule, aucun résultat superposé");
+        view.setMode2D(false);
+        pump();
+        TEST_CHECK(view.sectionCutCount() == 0, "Test 605: sortie du 2D : coupe retirée");
+        planeAt(0.0);
+        view.setWorkPlaneIsolation(true, 1.0);
+        view.setActiveWorkPlane(WorkPlane(WorkPlaneType::GlobalXZ, "File 1", 0.0));
+        pump();
+        TEST_CHECK(rv->diagnostics().diagrams == 6, "Test 605: plan XZ du portique : tous ses résultats");
+        view.setWorkPlaneIsolation(false, 1.0);
+        pump();
+        view.isolateElements([&] { TSA::Model::ElementSet s; s.beams.insert(m.beams().begin()->first); return s; }());
+        pump();
+        TEST_CHECK(rv->diagnostics().diagrams == 2, "Test 605: isolation par éléments : résultats de l'élément isolé");
+        view.showAllElements();
+        pump();
+        TEST_CHECK(rv->diagnostics().diagrams == 6, "Test 605: tout afficher");
+        std::cout << "[PASS] Test 605: Plan de travail : résultats isolés, coupe 2D par défaut, ancien mode conservé" << std::endl;
+        ++passed;
+
+        // 606 : textes des résultats au-dessus de la structure, à une taille bornée, hors de la section
+        planeAt(3.0);
+        view.setWorkPlaneIsolation(true, 1.0);
+        rv->setDiagramTypes({ DT::BendingMy });
+        pump();
+        rv->layoutLabels();
+        pump();
+        const auto& beam = m.beams().begin()->second;
+        const auto* n1 = m.getNode(beam.startNodeId());
+        const auto* n2 = m.getNode(beam.endNodeId());
+        const double dpr = TSA::Viewer::AnnotationStyle::instance().settings().devicePixelRatio;
+        const auto& textStyle = TSA::Viewer::LoadDisplayStyle::instance().settings();
+        int labels = 0, topmost = 0, sized = 0, clear = 0;
+        AIS_ListOfInteractive shown;
+        view.context()->DisplayedObjects(shown);
+        for (const auto& object : shown)
+        {
+            const Handle(AIS_TextLabel) label = Handle(AIS_TextLabel)::DownCast(object);
+            if (label.IsNull()) continue;
+            const QString text = QString::fromUtf8(TCollection_AsciiString(label->Text()).ToCString());
+            if (!text.contains(QStringLiteral("kN"))) continue;
+            // Légendes de l'écran (cartouches à deux points, sur plusieurs lignes) : ce ne sont pas des valeurs posées sur la structure
+            if (text.contains(QLatin1Char(':')) || text.contains(QLatin1Char('\n')))
+            {
+                std::cout << "  légende : " << text.left(50).toStdString() << std::endl;
+                continue;
+            }
+            ++labels;
+            topmost += label->ZLayer() == Graphic3d_ZLayerId_Topmost;
+            const double h = label->Attributes()->TextAspect()->Height();
+            sized += h >= textStyle.textMinPixels * dpr - 0.5 && h <= textStyle.textMaxPixels * dpr + 0.5;
+            // Distance à l'axe de la poutre (X entre les nœuds) : au-delà de la demi-hauteur de la section
+            const gp_Pnt p = label->Position();
+            const double u = std::clamp((p.X() - n1->x()) / (n2->x() - n1->x()), 0.0, 1.0);
+            clear += p.Distance(gp_Pnt(n1->x() + u * (n2->x() - n1->x()), n1->y(), n1->z())) >= 0.15;
+        }
+        TEST_CHECK(labels > 0 && topmost == labels, "Test 606: textes au-dessus de la structure (" << topmost << " / " << labels << ")");
+        TEST_CHECK(sized == labels, "Test 606: taille bornée (" << sized << " / " << labels << ")");
+        TEST_CHECK(clear == labels, "Test 606: textes hors de la section (" << clear << " / " << labels << ")");
+        // Plan vu de dessus : My est perpendiculaire au plan, le texte passe sur le côté de la poutre au lieu de se projeter dessus
+        view.setMode2D(true);
+        pump();
+        rv->layoutLabels();
+        pump();
+        capture("res_4_textes_en_plan");
+        AIS_ListOfInteractive inPlan;
+        view.context()->DisplayedObjects(inPlan);
+        int sideLabels = 0, valueLabels = 0;
+        for (const auto& object : inPlan)
+        {
+            const Handle(AIS_TextLabel) label = Handle(AIS_TextLabel)::DownCast(object);
+            if (label.IsNull()) continue;
+            const QString text = QString::fromUtf8(TCollection_AsciiString(label->Text()).ToCString());
+            if (!text.contains(QStringLiteral("kN")) || text.contains(QLatin1Char(':')) || text.contains(QLatin1Char('\n'))) continue;
+            ++valueLabels;
+            sideLabels += std::abs(label->Position().Y() - n1->y()) >= 0.15;
+        }
+        TEST_CHECK(valueLabels > 0 && sideLabels == valueLabels, "Test 606: en plan, textes sur le côté de la poutre (" << sideLabels << " / " << valueLabels << ")");
+        view.setMode2D(false);
+        pump();
+        view.setWorkPlaneIsolation(false, 1.0);
+        planeAt(0.0);
+        std::cout << "[PASS] Test 606: Textes des résultats : position et échelle" << std::endl;
+        ++passed;
+
+        // 608 : valeurs aux extrémités, reliées à leur point de courbe par une ligne de rappel
+        rv->setReactionsVisible(false);
+        planeAt(3.0);
+        view.setWorkPlaneIsolation(true, 1.0);
+        rv->setDiagramTypes({ DT::BendingMy });
+        pump();
+        view.fitModel();
+        pump(20);
+        rv->layoutLabels();
+        pump();
+        const auto& segments = rv->leaderSegments();
+        const double scale = rv->diagramScale();
+        int endA = 0, endB = 0, onCurve = 0;
+        for (const auto& [curve, text] : segments)
+        {
+            endA += curve.X() < n1->x() + 1e-6;
+            endB += curve.X() > n2->x() - 1e-6;
+            // Le texte à l'autre bout de la ligne donne la valeur : point de la courbe = axe + valeur × échelle
+            AIS_ListOfInteractive objects;
+            view.context()->DisplayedObjects(objects);
+            for (const auto& object : objects)
+            {
+                const Handle(AIS_TextLabel) label = Handle(AIS_TextLabel)::DownCast(object);
+                if (label.IsNull() || label->Position().Distance(text) > 1e-9) continue;
+                const double value = QString::fromUtf8(TCollection_AsciiString(label->Text()).ToCString()).section(QLatin1Char(' '), 0, 0).toDouble();
+                const double offset = std::abs(curve.Z() - n1->z());
+                onCurve += std::abs(offset - std::abs(value) * scale) <= 1e-3 * std::abs(value) * scale + 1e-9;
+            }
+        }
+        TEST_CHECK(!segments.empty() && endA == 1 && endB == 1, "Test 608: une valeur reliée à chaque extrémité de la poutre (" << endA << ", " << endB << " sur " << segments.size() << ")");
+        TEST_CHECK(onCurve == int(segments.size()), "Test 608: chaque ligne part du point de courbe de sa valeur (" << onCurve << " / " << segments.size() << ")");
+        TEST_CHECK(rv->diagnostics().leaders == 1, "Test 608: lignes regroupées par grandeur");
+        view.setWorkPlaneIsolation(false, 1.0);
+        planeAt(0.0);
+        rv->setDiagramTypes({ DT::BendingMy, DT::AxialForceN });
+        pump();
+        rv->layoutLabels();
+        pump();
+        capture("res_5_lignes_de_rappel");
+        TEST_CHECK(rv->diagnostics().leaders == 2, "Test 608: une couleur de ligne par diagramme");
+        TEST_CHECK(int(rv->leaderSegments().size()) == rv->diagnostics().diagramLabels, "Test 608: une ligne par valeur visible (" << rv->leaderSegments().size() << " / " << rv->diagnostics().diagramLabels << ")");
+        rv->setDiagramLabelsVisible(false);
+        pump();
+        TEST_CHECK(rv->leaderSegments().empty() && rv->diagnostics().leaders == 0, "Test 608: valeurs masquées : aucune ligne");
+        rv->setDiagramLabelsVisible(true);
+        planeAt(1.5);
+        view.setWorkPlaneIsolation(true, 1.0);
+        pump();
+        TEST_CHECK(rv->leaderSegments().empty(), "Test 608: plan sans élément : aucune ligne");
+        view.setWorkPlaneIsolation(false, 1.0);
+        planeAt(0.0);
+        rv->setDiagramType(DT::None);
+        pump();
+        TEST_CHECK(rv->diagnostics().leaders == 0, "Test 608: diagrammes masqués : lignes retirées");
+        std::cout << "[PASS] Test 608: Valeurs des extrémités, lignes de rappel vers la courbe" << std::endl;
+        ++passed;
+
+        // 607 : déformée filaire ; couleurs par type de charge
+        rv->setDiagramType(DT::None);
+        rv->setReactionsVisible(false);
+        rv->setDeformedVisible(true);
+        pump();
+        auto solidObjects = [&] {
+            AIS_ListOfInteractive list;
+            view.context()->DisplayedObjects(list);
+            int n = 0;
+            for (const auto& object : list)
+                if (const Handle(AIS_Shape) s = Handle(AIS_Shape)::DownCast(object); !s.IsNull() && TopExp_Explorer(s->Shape(), TopAbs_FACE).More()) ++n;
+            return n;
+        };
+        const int withSolids = solidObjects(), deformed = rv->diagnostics().deformed;
+        rv->setDeformedRepresentation(TSA::Viewer::DeformedRepresentation::Wire);
+        pump();
+        TEST_CHECK(rv->diagnostics().deformed == deformed && solidObjects() == withSolids - deformed,
+                   "Test 607: déformée filaire : mêmes barres, aucun volume (" << solidObjects() << " / " << withSolids << ")");
+        rv->setDeformedRepresentation(TSA::Viewer::DeformedRepresentation::Solid);
+        pump();
+        TEST_CHECK(solidObjects() == withSolids, "Test 607: retour aux volumes");
+
+        auto& style = TSA::Viewer::LoadDisplayStyle::instance();
+        const auto saved = style.settings();
+        auto colored = saved;
+        colored.colors = TSA::Viewer::LoadColorMode::ByCategory;
+        colored.categoryColors[1] = QColor(1, 2, 3);
+        style.setSettings(colored);
+        TEST_CHECK(style.loadColor(0, 0.5, TSA::Geometry::LoadFamily::Force, 1) == QColor(1, 2, 3), "Test 607: couleur choisie pour un type de charge");
+        TEST_CHECK(style.loadColor(0, 0.5, TSA::Geometry::LoadFamily::Force, 0) != QColor(1, 2, 3), "Test 607: un autre type garde la sienne");
+        TEST_CHECK(style.loadColor(0, 0.5, TSA::Geometry::LoadFamily::Force, -1) == colored.singleColor, "Test 607: type inconnu : couleur unique");
+        style.setSettings(saved);
+        view.setResultsModel(nullptr);
+        view.setModel(nullptr);
+        view.hide();
+        std::cout << "[PASS] Test 607: Déformée filaire, couleurs par type de charge" << std::endl;
+        ++passed;
+    }
+
     return true;
 }

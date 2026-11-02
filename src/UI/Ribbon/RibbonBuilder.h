@@ -110,6 +110,8 @@ struct RibbonActions
     QAction* actionWorkPlaneNextRef = nullptr;
     QAction* actionWorkPlanePrevRef = nullptr;
     QAction* actionWorkPlaneBack = nullptr;
+    QAction* actionPlaneSection = nullptr;
+    QAction* actionDeformedWire = nullptr;
     QAction* actionWorkPlaneNextInter = nullptr;
     QAction* actionWorkPlanePrevInter = nullptr;
     QAction* actionWorkPlaneAlignInter = nullptr;

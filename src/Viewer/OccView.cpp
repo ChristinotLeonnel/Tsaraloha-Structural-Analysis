@@ -103,6 +103,7 @@ OccView::OccView(QWidget* parent)
         // Annotations liées au modèle : échelle de la vue (reconstruction des textes seulement si leur hauteur change)
         TSA::Viewer::AnnotationStyle::instance().setViewScale(viewPixelsPerMeter() / std::max(1e-6, devicePixelRatioF()));
         layoutLoadLabels();
+        if (m_resultsVisual) m_resultsVisual->layoutLabels();   // textes des résultats : taille et chevauchements selon le zoom
         if (!m_context.IsNull()) m_context->UpdateCurrentViewer();
     });
     connect(this, &OccView::viewCameraChanged, m_loadLabelLayoutTimer, qOverload<>(&QTimer::start));
@@ -902,7 +903,7 @@ TSA::Grid::GridSnapResult OccView::computeSnap(int px, int py) const
             return false;
         case K::Wall:
             if (const auto* e = m_model->getWall(id))
-                return isElementCategoryVisible(ElementCategory::Walls) && keepLinearUnderIsolation(e->startNodeId(), e->endNodeId());
+                return isElementCategoryVisible(ElementCategory::Walls) && keepWallUnderIsolation(e->startNodeId(), e->endNodeId());
             return false;
         default: return true;
         }

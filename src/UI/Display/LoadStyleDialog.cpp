@@ -3,6 +3,7 @@
 #include <QButtonGroup>
 #include <QCheckBox>
 #include <QColorDialog>
+#include <QGridLayout>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
@@ -48,15 +49,38 @@ LoadStyleDialog::LoadStyleDialog(QWidget* parent) : QDialog(parent)
 
     // 2. Couleurs
     auto* colors = new QGroupBox(tr("Couleurs"), this);
-    auto* colorsLayout = new QHBoxLayout(colors);
+    auto* colorsColumn = new QVBoxLayout(colors);
+    auto* colorsLayout = new QHBoxLayout();
+    colorsColumn->addLayout(colorsLayout);
     m_colorMode = new QComboBox(colors);
     m_colorMode->addItem(tr("Par cas de charge"), int(LoadColorMode::ByCase));
     m_colorMode->addItem(tr("Par intensité (bleu → rouge)"), int(LoadColorMode::ByIntensity));
     m_colorMode->addItem(tr("Par famille (forces, moments, linéiques, surfaciques)"), int(LoadColorMode::ByFamily));
     m_colorMode->addItem(tr("Couleur unique"), int(LoadColorMode::Single));
+    m_colorMode->addItem(tr("Par type de charge (permanente, exploitation, vent…)"), int(LoadColorMode::ByCategory));
     m_colorButton = new QPushButton(tr("Couleur…"), colors);
     colorsLayout->addWidget(m_colorMode, 1);
     colorsLayout->addWidget(m_colorButton);
+    // Une couleur par type de charge, dans l'ordre de LoadCaseCategory
+    m_categoryPanel = new QWidget(colors);
+    auto* categories = new QGridLayout(m_categoryPanel);
+    categories->setContentsMargins(0, 4, 0, 0);
+    const QStringList names { tr("Permanente (G)"), tr("Exploitation (Q)"), tr("Vent (W)"), tr("Neige (S)"), tr("Sismique (E)"), tr("Température (T)"),
+                              tr("Accidentelle (A)"), tr("Personnalisée") };
+    for (int i = 0; i < TSA::Viewer::kLoadCategoryCount; ++i)
+    {
+        auto* button = new QPushButton(names[i], m_categoryPanel);
+        m_categoryButtons[std::size_t(i)] = button;
+        categories->addWidget(button, i / 2, i % 2);
+        connect(button, &QPushButton::clicked, this, [this, i, name = names[i]] {
+            const QColor c = QColorDialog::getColor(m_categoryColors[std::size_t(i)], this, tr("Couleur : %1").arg(name));
+            if (!c.isValid()) return;
+            m_categoryColors[std::size_t(i)] = c;
+            refreshCategoryButtons();
+            applyPreview();
+        });
+    }
+    colorsColumn->addWidget(m_categoryPanel);
     layout->addWidget(colors);
 
     // 3. Texte des valeurs
@@ -159,6 +183,8 @@ void LoadStyleDialog::loadIntoUi(const LoadDisplaySettings& s)
     (s.cases == LoadCaseFilter::AllCases ? m_allCases : m_activeCase)->setChecked(true);
     m_colorMode->setCurrentIndex(std::max(0, m_colorMode->findData(int(s.colors))));
     m_singleColor = s.singleColor;
+    m_categoryColors = s.categoryColors;
+    refreshCategoryButtons();
     (s.textSize == LoadTextSize::ScreenConstant ? m_textScreen : m_textModel)->setChecked(true);
     m_autoHeight->setChecked(!(s.textHeight > 0.0));
     m_textHeight->setValue(s.textHeight > 0.0 ? s.textHeight : 0.25);
@@ -182,6 +208,7 @@ LoadDisplaySettings LoadStyleDialog::settingsFromUi() const
     s.cases = m_allCases->isChecked() ? LoadCaseFilter::AllCases : LoadCaseFilter::ActiveCase;
     s.colors = static_cast<LoadColorMode>(m_colorMode->currentData().toInt());
     s.singleColor = m_singleColor;
+    s.categoryColors = m_categoryColors;
     s.textSize = m_textScreen->isChecked() ? LoadTextSize::ScreenConstant : LoadTextSize::ModelLinked;
     s.textHeight = m_autoHeight->isChecked() ? 0.0 : m_textHeight->value();
     s.textPixels = m_textPixels->value();
@@ -206,6 +233,17 @@ void LoadStyleDialog::updateEnabledStates()
     m_textMinPixels->setEnabled(model);
     m_textMaxPixels->setEnabled(model);
     m_colorButton->setEnabled(static_cast<LoadColorMode>(m_colorMode->currentData().toInt()) == LoadColorMode::Single);
+    m_categoryPanel->setVisible(static_cast<LoadColorMode>(m_colorMode->currentData().toInt()) == LoadColorMode::ByCategory);
+}
+
+void LoadStyleDialog::refreshCategoryButtons()
+{
+    for (std::size_t i = 0; i < m_categoryButtons.size(); ++i)
+    {
+        const QColor& c = m_categoryColors[i];
+        m_categoryButtons[i]->setStyleSheet(QStringLiteral("QPushButton { background: %1; color: %2; border-radius: 3px; padding: 4px 8px; }")
+                                                .arg(c.name(), c.lightnessF() > 0.55 ? QStringLiteral("black") : QStringLiteral("white")));
+    }
 }
 
 void LoadStyleDialog::applyPreview()

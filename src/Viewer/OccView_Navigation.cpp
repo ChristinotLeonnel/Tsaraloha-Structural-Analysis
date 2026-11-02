@@ -1388,7 +1388,8 @@ bool OccView::isIsolationActive() const noexcept
 
 double OccView::isolationTolerance() const noexcept
 {
-    return m_mode2DActive ? TSA::Coordinate::GeometryTolerance::planeMembership : m_workPlane.isolationDistance();
+    // Vue en coupe : appartenance au plan, jamais la distance d'isolation (rien de devant ni de derrière)
+    return m_mode2DActive || m_planeViewMode == PlaneViewMode::Section ? TSA::Coordinate::GeometryTolerance::planeMembership : m_workPlane.isolationDistance();
 }
 
 bool OccView::keepNodeUnderIsolation(int nodeId) const
@@ -1398,12 +1399,17 @@ bool OccView::keepNodeUnderIsolation(int nodeId) const
 
 bool OccView::keepLinearUnderIsolation(int startNodeId, int endNodeId) const
 {
-    return !isIsolationActive() || isLinearElementOnActiveWorkPlane(startNodeId, endNodeId, isolationTolerance());
+    return !isIsolationActive() || linearKeptOnPlane(startNodeId, endNodeId, isolationTolerance());
+}
+
+bool OccView::keepWallUnderIsolation(int startNodeId, int endNodeId) const
+{
+    return !isIsolationActive() || wallKeptOnPlane(startNodeId, endNodeId, isolationTolerance());
 }
 
 bool OccView::keepSurfaceUnderIsolation(const std::vector<int>& nodeIds) const
 {
-    return !isIsolationActive() || isSurfaceElementOnActiveWorkPlane(nodeIds, isolationTolerance());
+    return !isIsolationActive() || surfaceKeptOnPlane(nodeIds, isolationTolerance());
 }
 
 bool OccView::reapplyIsolationIfActive()
@@ -1575,6 +1581,8 @@ void OccView::updateElementIsolation()
     if (m_context.IsNull() || !m_model)
         return;
     scheduleDisplayModeOverlays(); // axes superposés / maillage : suivent les éléments affichés
+    updateSectionCut();
+    if (m_resultsVisual) m_resultsVisual->applyIsolation();   // les résultats suivent la visibilité de leurs éléments
 
     const bool isolate = isIsolationActive();
     const bool byElements = hasElementIsolation();
@@ -1610,7 +1618,7 @@ void OccView::updateElementIsolation()
     auto nodeUserKept = [&](int nodeId) { return userKept(isolatedNodes, m_hiddenElements.nodes, nodeId); };
 
     const double tol = isolationTolerance();
-    auto linearKept = [&](int a, int b) { return !isolate || isLinearElementOnActiveWorkPlane(a, b, tol); };
+    auto linearKept = [&](int a, int b) { return !isolate || linearKeptOnPlane(a, b, tol); };
     auto catOn = [&](ElementCategory c) { return isElementCategoryVisible(c); };
 
     auto setShapeVisibility = [&](const Handle(AIS_InteractiveObject)& shape, bool visible) {
@@ -1684,7 +1692,7 @@ void OccView::updateElementIsolation()
     {
         const auto* e = m_model->getWall(id);
         setShapeVisibility(shape, e && catOn(ElementCategory::Walls) && userKept(iso.walls, m_hiddenElements.walls, id)
-                                      && linearKept(e->startNodeId(), e->endNodeId()));
+                                      && (!isolate || wallKeptOnPlane(e->startNodeId(), e->endNodeId(), tol)));
     }
 
     // 4. Éléments surfaciques & fondations
@@ -1692,7 +1700,7 @@ void OccView::updateElementIsolation()
     {
         const auto* e = m_model->getSlab(id);
         setShapeVisibility(shape, e && catOn(ElementCategory::Slabs) && userKept(iso.slabs, m_hiddenElements.slabs, id)
-                                      && (!isolate || isSurfaceElementOnActiveWorkPlane(e->nodeIds(), tol)));
+                                      && (!isolate || surfaceKeptOnPlane(e->nodeIds(), tol)));
     }
     for (const auto& [id, shape] : m_foundationShapes)
     {

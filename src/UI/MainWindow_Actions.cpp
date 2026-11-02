@@ -337,6 +337,16 @@ void MainWindow::createActions()
     m_actionWorkPlaneAlignInter->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/intersection_align.svg")));
     m_actionWorkPlaneAlignInter->setToolTip(tr("Origine du plan de travail sur l'intersection de la grille la plus proche du curseur"));
     connect(m_actionWorkPlaneAlignInter, &QAction::triggered, this, [this] { if (m_occView) reportWorkPlaneNavigation(m_occView->alignWorkPlaneOriginToCursorIntersection()); });
+    m_actionPlaneSection = new QAction(tr("Coupe 2D du plan"), this);
+    m_actionPlaneSection->setCheckable(true);
+    m_actionPlaneSection->setChecked(OccView::storedPlaneViewMode() == OccView::PlaneViewMode::Section);
+    m_actionPlaneSection->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/plane_section.svg")));
+    m_actionPlaneSection->setToolTip(tr("Plan de travail : seuls les éléments du plan, et en 2D la coupe de ceux qui le traversent. "
+                                        "Décoché : isolation par proximité, éléments qui traversent dessinés en entier"));
+    connect(m_actionPlaneSection, &QAction::toggled, this, [this](bool section) {
+        if (m_occView) m_occView->setPlaneViewMode(section ? OccView::PlaneViewMode::Section : OccView::PlaneViewMode::Proximity);
+    });
+
     m_actionWorkPlaneBack = new QAction(tr("Revenir au plan de travail précédent"), this);
     m_actionWorkPlaneBack->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/workplane_back.svg")));
     m_actionWorkPlaneBack->setToolTip(tr("Plan de travail précédent (historique)"));
@@ -943,39 +953,55 @@ void MainWindow::createActions()
     m_actionDeformedToggle->setToolTip(tr("Activer ou masquer la vue de la structure déformée"));
     connect(m_actionDeformedToggle, &QAction::toggled, this, &MainWindow::onActionToggleDeformed);
 
+    m_actionDeformedWire = new QAction(tr("Déformée &filaire"), this);
+    m_actionDeformedWire->setCheckable(true);
+    m_actionDeformedWire->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/deformed_wire.svg")));
+    m_actionDeformedWire->setToolTip(tr("Représenter la déformée par les axes des éléments, sans leurs volumes"));
+    connect(m_actionDeformedWire, &QAction::toggled, this, [this](bool wire) {
+        if (m_occView && m_occView->resultsVisual())
+            m_occView->resultsVisual()->setDeformedRepresentation(wire ? TSA::Viewer::DeformedRepresentation::Wire : TSA::Viewer::DeformedRepresentation::Solid);
+    });
+
     m_actionDiagramMz = new QAction(tr("Moment &Mz"), this);
     m_actionDiagramMz->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_mz.svg")));
     m_actionDiagramMz->setToolTip(tr("Afficher le diagramme 3D du moment fléchissant Mz"));
+    m_actionDiagramMz->setCheckable(true);
     connect(m_actionDiagramMz, &QAction::triggered, this, &MainWindow::onActionDiagramMz);
 
     m_actionDiagramMy = new QAction(tr("Moment M&y"), this);
     m_actionDiagramMy->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_my.svg")));
     m_actionDiagramMy->setToolTip(tr("Afficher le diagramme 3D du moment fléchissant secondaire My"));
+    m_actionDiagramMy->setCheckable(true);
     connect(m_actionDiagramMy, &QAction::triggered, this, &MainWindow::onActionDiagramMy);
 
     m_actionDiagramMx = new QAction(tr("Torsion M&x"), this);
     m_actionDiagramMx->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_mx.svg")));
     m_actionDiagramMx->setToolTip(tr("Afficher le diagramme 3D du moment de torsion Mx"));
+    m_actionDiagramMx->setCheckable(true);
     connect(m_actionDiagramMx, &QAction::triggered, this, &MainWindow::onActionDiagramMx);
 
     m_actionDiagramVz = new QAction(tr("Tranchant &Vz"), this);
     m_actionDiagramVz->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_vz.svg")));
     m_actionDiagramVz->setToolTip(tr("Afficher le diagramme 3D de l'effort tranchant Vz"));
+    m_actionDiagramVz->setCheckable(true);
     connect(m_actionDiagramVz, &QAction::triggered, this, &MainWindow::onActionDiagramVz);
 
     m_actionDiagramVy = new QAction(tr("Tranchant V&y"), this);
     m_actionDiagramVy->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_vy.svg")));
     m_actionDiagramVy->setToolTip(tr("Afficher le diagramme 3D de l'effort tranchant Vy"));
+    m_actionDiagramVy->setCheckable(true);
     connect(m_actionDiagramVy, &QAction::triggered, this, &MainWindow::onActionDiagramVy);
 
     m_actionDiagramN = new QAction(tr("Effort Normal &N"), this);
     m_actionDiagramN->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_n.svg")));
     m_actionDiagramN->setToolTip(tr("Afficher le diagramme 3D de l'effort normal N"));
+    m_actionDiagramN->setCheckable(true);
     connect(m_actionDiagramN, &QAction::triggered, this, &MainWindow::onActionDiagramN);
 
     m_actionDiagramDeflection = new QAction(tr("Flèches &UZ / Ures"), this);
     m_actionDiagramDeflection->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_deflection.svg")));
     m_actionDiagramDeflection->setToolTip(tr("Afficher le diagramme 3D des flèches transversales le long des éléments"));
+    m_actionDiagramDeflection->setCheckable(true);
     connect(m_actionDiagramDeflection, &QAction::triggered, this, &MainWindow::onActionDiagramDeflection);
 
     m_actionDiagramNone = new QAction(tr("&Masquer Diagrammes"), this);
@@ -1334,6 +1360,7 @@ void MainWindow::createMenus()
     wpSub->addAction(m_actionWorkPlanePrevInter);
     wpSub->addAction(m_actionWorkPlaneAlignInter);
     wpSub->addAction(m_actionWorkPlaneBack);
+    wpSub->addAction(m_actionPlaneSection);
 
     // Isolation 3D (cmd.isolate.* du catalogue) : même passe de visibilité que le plan de travail.
     QMenu* isoSub = viewMenu->addMenu(tr("Isolation 3D"));
@@ -1704,6 +1731,8 @@ void MainWindow::createRibbon()
     acts.actionWorkPlaneNextRef = m_actionWorkPlaneNextRef;
     acts.actionWorkPlanePrevRef = m_actionWorkPlanePrevRef;
     acts.actionWorkPlaneBack = m_actionWorkPlaneBack;
+    acts.actionPlaneSection = m_actionPlaneSection;
+    acts.actionDeformedWire = m_actionDeformedWire;
     acts.actionWorkPlaneNextInter = m_actionWorkPlaneNextInter;
     acts.actionWorkPlanePrevInter = m_actionWorkPlanePrevInter;
     acts.actionWorkPlaneAlignInter = m_actionWorkPlaneAlignInter;
@@ -1894,6 +1923,7 @@ void MainWindow::createDockWindows()
         // Facteur effectif (Auto recalculé, préréglage, manuel) toujours affiché dans le panneau.
         connect(m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::visualStateChanged, m_resultsDock,
                 [this] { m_resultsDock->syncFromVisualManager(m_occView->resultsVisual()); });
+        connect(m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::visualStateChanged, this, &MainWindow::syncDiagramActions);
         connect(m_resultsDock, &TSA::UI::ResultsDockWidget::diagramTypeChanged,
                 m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setDiagramType);
         connect(m_resultsDock, &TSA::UI::ResultsDockWidget::diagramScalePresetChanged,
