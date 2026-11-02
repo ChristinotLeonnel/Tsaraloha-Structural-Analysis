@@ -48,11 +48,27 @@ get_filename_component(TSALAB_ROOT_DIR "${TSALAB_ROOT_DIR}" ABSOLUTE)
 if(NOT DEFINED TSALAB_SCIENCE_TOOLS)
     set(TSALAB_SCIENCE_TOOLS OFF CACHE BOOL "Compiler tsalab-bench et les tests du cœur scientifique")
 endif()
-# Moteur EF 3D « fem3d » (dépôt voisin 3DDesplacement, TSA-3D-FEM-Engine) : FACULTATIF. Présent, il est compilé et
-# enregistré comme moteur secondaire (docs/ANALYSIS_ENGINES.md) ; absent, TSA se construit sans lui (OpenSees reste
-# le moteur 3D) et le signale.
-set(TSA_FEM3D_DIR "${TSA_ROOT}/../3DDesplacement" CACHE PATH "Racine du dépôt du moteur EF 3D Fem3D (facultatif)")
+# Moteur EF 3D « fem3d » (dépôt voisin TSA-3D-FEM-Engine, ancien nom de dossier 3DDesplacement) : FACULTATIF. Présent,
+# il est compilé et enregistré comme moteur secondaire (docs/ANALYSIS_ENGINES.md) ; absent, TSA se construit sans lui
+# (OpenSees reste le moteur 3D) et le signale. Emplacements cherchés : ../TSA-3D-FEM-Engine, puis ../3DDesplacement.
+set(_tsa_fem3d_found "")
+foreach(_tsa_fem3d_candidate "${TSA_ROOT}/../TSA-3D-FEM-Engine" "${TSA_ROOT}/../3DDesplacement")
+    if(NOT _tsa_fem3d_found AND EXISTS "${_tsa_fem3d_candidate}/CMakeLists.txt")
+        get_filename_component(_tsa_fem3d_found "${_tsa_fem3d_candidate}" ABSOLUTE)
+    endif()
+endforeach()
+if(_tsa_fem3d_found)
+    set(_tsa_fem3d_default "${_tsa_fem3d_found}")
+else()
+    set(_tsa_fem3d_default "${TSA_ROOT}/../TSA-3D-FEM-Engine")
+endif()
+set(TSA_FEM3D_DIR "${_tsa_fem3d_default}" CACHE PATH "Racine du dépôt du moteur EF 3D Fem3D (facultatif)")
 get_filename_component(TSA_FEM3D_DIR "${TSA_FEM3D_DIR}" ABSOLUTE)
+# Emplacement en cache disparu (dossier renommé ou déplacé) et moteur trouvé ailleurs : le nouvel emplacement est retenu
+if(NOT EXISTS "${TSA_FEM3D_DIR}/CMakeLists.txt" AND _tsa_fem3d_found)
+    message(STATUS "Moteur Fem3D : ${TSA_FEM3D_DIR} introuvable, ${_tsa_fem3d_found} retenu.")
+    set(TSA_FEM3D_DIR "${_tsa_fem3d_found}" CACHE PATH "Racine du dépôt du moteur EF 3D Fem3D (facultatif)" FORCE)
+endif()
 if(EXISTS "${TSA_FEM3D_DIR}/CMakeLists.txt" AND EXISTS "${TSA_FEM3D_DIR}/include/Fem3D/Analysis/LinearStaticAnalysis.h")
     set(TSA_HAS_FEM3D ON)
 else()
@@ -1444,6 +1460,14 @@ function(tsaraloha_add_shared_libraries)
     # Moteur EF 3D Fem3D (facultatif, voir TSA_FEM3D_DIR) : bibliothèque seule, sans ses tests.
     if(TSA_HAS_FEM3D AND NOT TARGET fem3d)
         set(FEM3D_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        # Le moteur cherche par défaut Eigen et OpenSees dans ../TSA/thirdparty (nom de dossier supposé du dépôt TSA) :
+        # les dépendances de ce dépôt-ci lui sont données, quel que soit le nom de son dossier
+        if(NOT EXISTS "${FEM3D_EIGEN_DIR}/Eigen/Core" AND EXISTS "${TSA_ROOT}/thirdparty/eigen-3.4.1/include/eigen3/Eigen/Core")
+            set(FEM3D_EIGEN_DIR "${TSA_ROOT}/thirdparty/eigen-3.4.1/include/eigen3" CACHE PATH "Dossier contenant Eigen/" FORCE)
+        endif()
+        if(NOT EXISTS "${FEM3D_OPENSEES_EXE}" AND EXISTS "${TSA_ROOT}/thirdparty/OpenSees/bin/OpenSees.exe")
+            set(FEM3D_OPENSEES_EXE "${TSA_ROOT}/thirdparty/OpenSees/bin/OpenSees.exe" CACHE FILEPATH "OpenSees pour les benchmarks" FORCE)
+        endif()
         add_subdirectory(${TSA_FEM3D_DIR} ${CMAKE_BINARY_DIR}/fem3d)
     endif()
 

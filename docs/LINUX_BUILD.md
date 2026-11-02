@@ -26,7 +26,7 @@ les procédures manuelles équivalentes, toujours reconnues (`~/Qt`, `~/opt`, va
 | OpenCASCADE | **8.0.1** (même version que Windows) | sources officielles, voir §2 |
 | En-têtes système d'OCCT | freetype, OpenGL, X11 | `sudo apt install libfreetype-dev libfontconfig-dev libgl-dev libglu1-mesa-dev libx11-dev libxext-dev libxi-dev` |
 | Plugin X11 de Qt (lancement de l'interface) | — | `sudo apt install libxcb-cursor0` |
-| Dépôts voisins | — | `../TSALab` (obligatoire : cœur scientifique), `../3DDesplacement` (moteur fem3d, facultatif ; Eigen dans `thirdparty/eigen-3.4.1`) |
+| Dépôts voisins | — | `../TSALab` (obligatoire : cœur scientifique), `../TSA-3D-FEM-Engine` (moteur fem3d, facultatif ; ancien nom `../3DDesplacement` accepté ; Eigen dans `thirdparty/eigen-3.4.1`) |
 
 Dans `thirdparty/`, les dossiers Windows (`opencascade-*-vc14-64/`, `3rdparty-vc14-64/`, `boost-1.92.0`,
 `ifcopenshell-0.9.0post1`, `gmsh-*-Windows64-sdk`, `OpenSees/bin/*.exe`) contiennent des binaires **MSVC** jamais

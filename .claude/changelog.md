@@ -2,6 +2,18 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — moteur Fem3D trouvé sous son nom actuel, TSA-3D-FEM-Engine (branche build/fem3d-engine-path)
+
+- Le dépôt du moteur EF 3D s'appelle TSA-3D-FEM-Engine (cloné par l'utilisateur dans `D:\Tsaraloha Platforme\TSA-3D-FEM-Engine`) ;
+  CMake ne le cherchait que dans `../3DDesplacement` (ancien nom) : TSA et TSALab étaient construits sans le moteur fem3d.
+- `cmake/TSAProduct.cmake` : cherche `../TSA-3D-FEM-Engine` puis `../3DDesplacement` ; un `TSA_FEM3D_DIR` en cache disparu est
+  remplacé par l'emplacement trouvé (message). Le moteur cherchant Eigen et OpenSees dans `../TSA/thirdparty` (nom de dossier
+  supposé), TSA lui donne `FEM3D_EIGEN_DIR` et `FEM3D_OPENSEES_EXE` de son propre `thirdparty/` (dépôt du moteur non modifié).
+  `SetupDependencies.cmake` (Eigen requis si l'un des deux dossiers existe), `scripts/linux/check-dependencies.sh`, README,
+  docs/ANALYSIS_ENGINES.md, docs/LINUX_BUILD.md, commentaires du code : nouveau nom.
+- Vérifié (Release, reconfiguré) : fem3d.lib compilée ; suite complète 60/60 (test 367 réussi : banc 2 097 vérifications, 0 en
+  échec, 0 cas ignoré ; test 586 exécuté aussi avec Fem3D) ; TSALab reconfiguré, fem3d compilé, 27/27.
+
 ## 2026-11-02 — BUG-153 corrigé : cornières calculées sur leurs axes principaux (branche fix/angle-principal-axes)
 
 - Cause : `elasticBeamColumn` (OpenSees) et Fem3D supposent y, z principaux ; pour une cornière, Iyz (calculé) n'était transmis

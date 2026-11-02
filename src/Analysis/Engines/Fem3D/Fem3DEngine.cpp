@@ -70,7 +70,7 @@ EngineInfo Fem3DEngine::info() const
 
 AnalysisCapabilities Fem3DEngine::capabilities() const
 {
-    // Strictement le périmètre qualifié (3DDesplacement/docs/validation/QUALIFICATION.md) ; le reste est refusé.
+    // Strictement le périmètre qualifié (TSA-3D-FEM-Engine/docs/validation/QUALIFICATION.md) ; le reste est refusé.
     AnalysisCapabilities c;
     c.supports3D = true;
     c.supportsFrame = true;

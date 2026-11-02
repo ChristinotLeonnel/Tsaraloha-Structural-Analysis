@@ -482,9 +482,9 @@ function(tsa_provision_unix_dependencies)
         endif()
     endif()
 
-    # Eigen (en-têtes du moteur fem3d, si le dépôt voisin 3DDesplacement est présent)
+    # Eigen (en-têtes du moteur fem3d, si le dépôt voisin TSA-3D-FEM-Engine, ancien nom 3DDesplacement, est présent)
     tsa_manifest_get(_dir eigen dir)
-    if(EXISTS "${TSA_DEPS_ROOT}/../3DDesplacement/CMakeLists.txt"
+    if((EXISTS "${TSA_DEPS_ROOT}/../TSA-3D-FEM-Engine/CMakeLists.txt" OR EXISTS "${TSA_DEPS_ROOT}/../3DDesplacement/CMakeLists.txt")
        AND NOT EXISTS "${TSA_THIRDPARTY_DIR}/${_dir}/include/eigen3/Eigen/Core")
         list(APPEND _need eigen)
     endif()

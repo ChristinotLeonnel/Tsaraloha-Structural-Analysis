@@ -60,7 +60,7 @@
   },
   "eigen": {
     "version": "3.4.1",
-    "_comment": "En-têtes seuls (moteur fem3d de ../3DDesplacement) ; même archive que les scripts IfcOpenShell.",
+    "_comment": "En-têtes seuls (moteur fem3d de ../TSA-3D-FEM-Engine) ; même archive que les scripts IfcOpenShell.",
     "url": "https://gitlab.com/libeigen/eigen/-/archive/3.4.1/eigen-3.4.1.tar.gz",
     "sha256": "b93c667d1b69265cdb4d9f30ec21f8facbbe8b307cf34c0b9942834c6d4fdbe2",
     "dir": "eigen-3.4.1"
