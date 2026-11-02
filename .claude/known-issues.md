@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-11-02 (BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
+Last Updated: 2026-11-02 (BUG-152 corrigé et retiré, test 584 ; BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
 
 ## Ouverts
 
@@ -61,12 +61,10 @@ Status: OPEN (HIGH, reproduit, revérifié le 2026-10-31) — câble comprimé a
 Limite liée, documentée : corotTruss précontraint résolu en un pas (raideur de précontrainte incluse, effort recalculé sur la
 géométrie déformée, résidu en (u/L)²), docs/cable-system/analysis.md.
 
-## BUG-152
-Status: OPEN (HIGH, reproduit) — note Legacy, disposition par défaut : flambement sur l'axe fort seul, Lcr = L, verdict CONFORME
-(NDCGenerator.cpp:874). IPE 200, 5 m : 809 kN au lieu de 105 kN.
-
 ## BUG-153
 Status: OPEN (HIGH, reproduit) — cornières sur axes géométriques, iyz() jamais utilisé : flèche sous-estimée de 35 %.
+Le flambement EC3 des notes et du dock utilise désormais les axes principaux u-u / v-v (Iyz, 2026-11-02, BUG-152) ;
+reste ouvert : le calcul (OpenSees, Fem3D) sur les axes géométriques.
 
 ## BUG-154
 Status: OPEN (MEDIUM, reproduit) — .tsa à références pendantes accepté, violation d'accès au calcul (ModelValidator.cpp:576-578).

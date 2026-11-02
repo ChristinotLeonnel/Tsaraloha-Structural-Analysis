@@ -19,6 +19,7 @@
 #include "Model/Column.h"
 #include "Model/SupportDefinition.h"
 #include "Standards/Design/ConcreteDesignEC2.h"
+#include "Standards/Design/SteelDesignEC3.h"
 
 #include <QFile>
 #include <QDir>
@@ -414,6 +415,81 @@ bool runSuite_NDCReport(int& passed)
             for (const auto& row : t.rows)
                 if (row.size() > 4 && row[0].contains(QStringLiteral("Poutre")) && row[4].startsWith(expected)) found = true;
         TEST_CHECK(direct.valid && found, "Test 492 : ratio EC2 de la note (calcul en N) = ratio calculé directement en SI");
+        passed++;
+    }
+
+    // TEST 584 (BUG-152) : flambement EC3 vérifié sur les deux axes principaux, verdict de la note historique (« Legacy »,
+    // présentation par défaut). Avant : axe fort seul, IPE 200 de 5 m sous 300 kN déclaré CONFORME (N_b,Rd = 809 kN imprimé
+    // au lieu de 105 kN sur l'axe faible).
+    {
+        using TSA::Standards::Design::SteelDesignEC3;
+        // Calcul à la main (S355, courbe b sur z-z) : i_z = 2,24 cm, λ̄ = 2,92, χ = 0,1045, N_b,Rd = 0,1045 × 28,5 cm² × 355 MPa ≈ 106 kN
+        const auto g = SteelDesignEC3::calculateFromBarGoverning(Section::ipe(200), Material::steelS355(), 5.0, 1.0, 300e3);
+        const auto strong = SteelDesignEC3::calculateFromBar(Section::ipe(200), Material::steelS355(), 5.0, 1.0, 300e3, true);
+        TEST_CHECK(g.valid && g.axis == QStringLiteral("z-z") && g.Nb_Rd > 95e3 && g.Nb_Rd < 115e3 && !g.pass,
+                   "Test 584 : IPE 200, 5 m, 300 kN — axe déterminant z-z, N_b,Rd = " << g.Nb_Rd / 1000.0 << " kN, non conforme");
+        TEST_CHECK(strong.Nb_Rd > 700e3 && std::abs(g.Nb_Rd_otherAxis - strong.Nb_Rd) < 1.0,
+                   "Test 584 : l'autre axe (y-y, " << strong.Nb_Rd / 1000.0 << " kN) est donné, non retenu");
+        // Cornière : axes géométriques non principaux, flambement sur l'axe principal faible v-v (Iv < Iz)
+        const Section angle = Section::angle(0.1, 0.1, 0.01);
+        const auto ga = SteelDesignEC3::calculateFromBarGoverning(angle, Material::steelS235(), 2.0, 1.0, 50e3);
+        const auto za = SteelDesignEC3::calculateFromBar(angle, Material::steelS235(), 2.0, 1.0, 50e3, false);
+        TEST_CHECK(std::abs(angle.iyz()) > 0.0 && ga.valid && ga.axis == QStringLiteral("v-v") && ga.Nb_Rd < za.Nb_Rd,
+                   "Test 584 : cornière — axe v-v déterminant (" << ga.Nb_Rd / 1000.0 << " kN < " << za.Nb_Rd / 1000.0 << " kN sur z-z)");
+
+        // Note de calcul : poteau IPE 200 de 5 m comprimé à 300 kN → NON CONFORME dans la note historique et dans la note détaillée ;
+        // poteau tendu : aucun flambement vérifié
+        Model model;
+        const int a = model.addNode(0.0, 0.0, 0.0), b = model.addNode(0.0, 0.0, 5.0);
+        const int c = model.addNode(4.0, 0.0, 0.0), d = model.addNode(4.0, 0.0, 5.0);
+        const int compressed = model.addColumn(a, b), tensioned = model.addColumn(c, d);
+        for (int id : { compressed, tensioned })
+        {
+            model.getColumn(id)->setSection(Section::ipe(200));
+            model.getColumn(id)->setMaterial(Material::steelS355());
+        }
+        auto r = std::make_shared<ResultsModel>();
+        r->setUnits(UnitSystem::fromKiloNewtons(true));
+        r->setAnalysisType(AnalysisType::LinearStatic);
+        AnalysisExecutionMetadata meta;
+        meta.solverEngine = "Test";
+        meta.engineId = "test";
+        r->setExecutionMetadata(meta);
+        for (const auto& [id, n] : { std::pair<int, double>{ compressed, -300.0 }, std::pair<int, double>{ tensioned, 300.0 } })
+        {
+            ElementResults e;
+            e.elementId = id;
+            e.kind = StructuralElementKind::Column;
+            e.length = 5.0;
+            e.startForces.N = n;
+            e.endForces.N = n;
+            e.endForces.position = 5.0;
+            r->setElementResults(e);
+        }
+        r->setValid(true);
+        for (const NoteLayout layout : { NoteLayout::Legacy, NoteLayout::Detailed })
+        {
+            ReportConfiguration cfg;
+            cfg.noteLayout = layout;
+            cfg.includeEurocodeDesignChecks = true;
+            int rows = 0, nonConforming = 0, conforming = 0;
+            for (const auto& t : NDCGenerator::generate(model, r, cfg).allTables())
+            {
+                if (!t.caption.contains(QStringLiteral("EC3")) && !t.caption.contains(QStringLiteral("acier comprimées"))) continue;
+                for (const auto& row : t.rows)
+                {
+                    ++rows;
+                    const QString line = row.join(QLatin1Char(' '));
+                    if (line.contains(QStringLiteral("NON CONFORME"))) ++nonConforming;
+                    else if (line.contains(QStringLiteral("CONFORME"))) ++conforming;
+                    TEST_CHECK(line.contains(QStringLiteral("z-z")), "Test 584 : axe déterminant affiché (" << line.toStdString() << ")");
+                }
+            }
+            const char* name = layout == NoteLayout::Legacy ? "historique" : "détaillée";
+            TEST_CHECK(rows == 1 && nonConforming == 1 && conforming == 0,
+                       "Test 584 : note " << name << " — poteau comprimé NON CONFORME, poteau tendu non vérifié (" << rows << " ligne(s), "
+                                          << nonConforming << " non conforme(s), " << conforming << " conforme(s))");
+        }
         passed++;
     }
 

@@ -236,6 +236,13 @@ int SteelDesignEC3::compressionClass(const TSA::Model::Section& s, double fy)
     }
 }
 
+namespace
+{
+/// Flambement autour d'un axe d'inertie I ; strongCurve : ligne « y-y » du Tableau 6.2 (sinon « z-z »).
+EC3BucklingResult bucklingAbout(const TSA::Model::Section& section, const TSA::Model::Material& steelMat, double memberLength_m, double beta,
+                                double Ned_N, double I, bool strongCurve);
+}
+
 EC3BucklingResult SteelDesignEC3::calculateFromBar(
     const TSA::Model::Section& section,
     const TSA::Model::Material& steelMat,
@@ -244,22 +251,66 @@ EC3BucklingResult SteelDesignEC3::calculateFromBar(
     double Ned_N,
     bool strongAxis)
 {
+    return bucklingAbout(section, steelMat, memberLength_m, beta, Ned_N, strongAxis ? section.iy() : section.iz(), strongAxis);
+}
+
+EC3BucklingResult SteelDesignEC3::calculateFromBarGoverning(
+    const TSA::Model::Section& section,
+    const TSA::Model::Material& steelMat,
+    double memberLength_m,
+    double beta,
+    double Ned_N)
+{
+    double I1 = section.iy(), I2 = section.iz();
+    QString a1 = QStringLiteral("y-y"), a2 = QStringLiteral("z-z");
+    const double iyz = section.iyz();
+    if (std::abs(iyz) > 1e-9 * std::max(std::abs(I1), std::abs(I2)))
+    {
+        // Axes géométriques non principaux (cornière) : axes principaux u (inertie maximale) et v (minimale)
+        const double mean = 0.5 * (I1 + I2), radius = std::sqrt(0.25 * (I1 - I2) * (I1 - I2) + iyz * iyz);
+        I1 = mean + radius;
+        I2 = mean - radius;
+        a1 = QStringLiteral("u-u");
+        a2 = QStringLiteral("v-v");
+    }
+    EC3BucklingResult r1 = bucklingAbout(section, steelMat, memberLength_m, beta, Ned_N, I1, true);
+    EC3BucklingResult r2 = bucklingAbout(section, steelMat, memberLength_m, beta, Ned_N, I2, false);
+    r1.axis = a1;
+    r2.axis = a2;
+    if (!r1.valid) return r1;   // classe 4 ou donnée invalide : aucune conclusion
+    if (!r2.valid) return r2;
+    EC3BucklingResult governing = r2.Nb_Rd <= r1.Nb_Rd ? r2 : r1;
+    const EC3BucklingResult& other = r2.Nb_Rd <= r1.Nb_Rd ? r1 : r2;
+    governing.Nb_Rd_otherAxis = other.Nb_Rd;
+    governing.summary += QStringLiteral(" ; axe déterminant %1 (N_b,Rd = %2 kN sur %3)")
+                             .arg(governing.axis)
+                             .arg(other.Nb_Rd / 1000.0, 0, 'f', 1)
+                             .arg(other.axis);
+    return governing;
+}
+
+namespace
+{
+EC3BucklingResult bucklingAbout(const TSA::Model::Section& section, const TSA::Model::Material& steelMat, double memberLength_m, double beta,
+                                double Ned_N, double I, bool strongAxis)
+{
+    using TSA::Standards::Design::SteelDesignEC3;
     EC3BucklingInput in;
     in.Lcr = (beta > 1e-4 ? beta : 1.0) * memberLength_m;
     in.A = section.area();
-    in.I = strongAxis ? section.iy() : section.iz();
+    in.I = I;
     in.E = steelMat.mechanical.E();
     in.fy = steelMat.mechanical.fk();
     in.Ned = Ned_N;
     QString reason;
-    in.curve = bucklingCurve(section, in.fy, strongAxis, &reason);
+    in.curve = SteelDesignEC3::bucklingCurve(section, in.fy, strongAxis, &reason);
 
     auto& annex = TSA::Standards::NationalAnnexConfig::instance();
     in.gammaM1 = annex.safetyFactors().gammaM1;
 
-    EC3BucklingResult res = calculateBuckling(in);
-    res.sectionClass = compressionClass(section, in.fy);
-    res.curveReason = QStringLiteral("courbe %1 (Tableau 6.2 : %2)").arg(curveName(in.curve), reason);
+    EC3BucklingResult res = SteelDesignEC3::calculateBuckling(in);
+    res.sectionClass = SteelDesignEC3::compressionClass(section, in.fy);
+    res.curveReason = QStringLiteral("courbe %1 (Tableau 6.2 : %2)").arg(SteelDesignEC3::curveName(in.curve), reason);
     if (res.sectionClass == 4)
     {
         // Classe 4 : Nb,Rd = χ·Aeff·fy/γM1 ; Aeff (EN 1993-1-5) non calculée : aucune conclusion avec l'aire brute
@@ -271,5 +322,6 @@ EC3BucklingResult SteelDesignEC3::calculateFromBar(
         res.summary += QStringLiteral(" ; ") + res.curveReason + (res.sectionClass ? QStringLiteral(", classe %1").arg(res.sectionClass) : QStringLiteral(", classe non déterminée"));
     return res;
 }
+} // namespace
 
 } // namespace TSA::Standards::Design
