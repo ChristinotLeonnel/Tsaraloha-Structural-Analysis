@@ -852,13 +852,18 @@ NDCDocument NDCGenerator::generate(
         {
             NDCSection sEC3;
             sEC3.title = QStringLiteral("Stabilité au Flambement des Barres Acier (EN 1993-1-1 §6.3)");
-            sEC3.paragraphs.push_back(QStringLiteral("Vérification des éléments comprimés au flambement par flexion selon les courbes européennes :"));
+            // BUG-152 : les deux axes principaux sont vérifiés (l'axe fort seul déclarait conforme un IPE 200 de 5 m sous 300 kN)
+            sEC3.paragraphs.push_back(QStringLiteral("Poteaux acier comprimés : flambement par flexion (§6.3.1) vérifié sur les deux axes principaux (y-y et z-z ; "
+                                                     "cornières : u-u et v-v), l'axe déterminant (N<sub>b,Rd</sub> minimal) étant retenu. Effort de compression "
+                                                     "seul (sans interaction avec la flexion), longueur de flambement = longueur de la barre entre nœuds (β = 1, "
+                                                     "hypothèse à justifier selon les liaisons réelles). Courbe selon le Tableau 6.2, classe selon le Tableau 5.2 "
+                                                     "(classe 4 : non vérifiée). Flambement par torsion et flexion-torsion non vérifiés."));
 
             NDCTable tEC3;
             tEC3.number = tableNum++;
             tEC3.caption = QStringLiteral("Résistance au flambement des barres acier (EC3)");
-            tEC3.headers = {QStringLiteral("Barre ID"), QStringLiteral("Type"), QStringLiteral("Section"), QStringLiteral("N_Ed (kN)"), QStringLiteral("Élancement λ_bar"), QStringLiteral("Facteur χ"), QStringLiteral("N_b,Rd (kN)"), QStringLiteral("Ratio η"), QStringLiteral("Statut")};
-            tEC3.columnAlignments = {QStringLiteral("center"), QStringLiteral("left"), QStringLiteral("left"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("center"), QStringLiteral("center")};
+            tEC3.headers = {QStringLiteral("Barre ID"), QStringLiteral("Type"), QStringLiteral("Section"), QStringLiteral("N_Ed (kN)"), QStringLiteral("Axe"), QStringLiteral("Élancement λ_bar"), QStringLiteral("Facteur χ"), QStringLiteral("N_b,Rd (kN)"), QStringLiteral("Ratio η"), QStringLiteral("Statut")};
+            tEC3.columnAlignments = {QStringLiteral("center"), QStringLiteral("left"), QStringLiteral("left"), QStringLiteral("right"), QStringLiteral("center"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("center"), QStringLiteral("center")};
 
             for (const auto& [colId, col] : model.columns())
             {
@@ -866,25 +871,34 @@ NDCDocument NDCGenerator::generate(
                 const auto* elRes = results->getElementResults(TSA::Analysis::StructuralElementKind::Column, colId);
                 if (!elRes) continue;
 
-                double Ned = std::max(std::abs(elRes->minNormalForce()), std::abs(elRes->maxNormalForce())) * results->units().forceToNewtons();
+                // Compression seule (effort normal négatif) : une barre tendue ne flambe pas
+                const double toN = results->units().forceToNewtons();
+                if (elRes->minNormalForce() * toN >= -1.0) continue;
+                const double Ned = -elRes->minNormalForce() * toN;
                 const auto* n1 = model.getNode(col.startNodeId());
                 const auto* n2 = model.getNode(col.endNodeId());
-                double L = (n1 && n2) ? std::sqrt(std::pow(n2->x()-n1->x(),2) + std::pow(n2->y()-n1->y(),2) + std::pow(n2->z()-n1->z(),2)) : 3.0;
+                if (!n1 || !n2) continue;
+                const double L = std::sqrt(std::pow(n2->x()-n1->x(),2) + std::pow(n2->y()-n1->y(),2) + std::pow(n2->z()-n1->z(),2));
 
-                auto chk = TSA::Standards::Design::SteelDesignEC3::calculateFromBar(col.section(), col.material(), L, 1.0, Ned, true);
-                double eta = chk.utilizationRatio * 100.0;
-                bool ok = (eta <= 100.0 && chk.pass);
+                const auto chk = TSA::Standards::Design::SteelDesignEC3::calculateFromBarGoverning(col.section(), col.material(), L, 1.0, Ned);
+                const double eta = chk.utilizationRatio * 100.0;
+                const bool ok = chk.valid && chk.pass && eta <= 100.0;
+                const QString status = !chk.valid && chk.sectionClass == 4
+                                           ? QStringLiteral("<span class=\"badge badge-danger\">CLASSE 4 — NON VÉRIFIÉE</span>")
+                                           : (ok ? QStringLiteral("<span class=\"badge badge-success\">CONFORME</span>")
+                                                 : QStringLiteral("<span class=\"badge badge-danger\">NON CONFORME</span>"));
 
                 tEC3.rows.push_back({
                     QString("<a href=\"tsa://element?kind=column&id=%1\">Poteau #%1</a>").arg(colId),
                     QStringLiteral("Poteau"),
                     QString::fromStdString(col.section().name),
                     QString::number(Ned / 1000.0, 'f', 1),
+                    chk.axis,
                     QString::number(chk.reducedSlenderness, 'f', 2),
                     QString::number(chk.chi, 'f', 3),
                     QString::number(chk.Nb_Rd / 1000.0, 'f', 1),
                     QString("%1 %").arg(eta, 0, 'f', 1),
-                    ok ? QStringLiteral("<span class=\"badge badge-success\">CONFORME</span>") : QStringLiteral("<span class=\"badge badge-danger\">HORS TOLÉRANCE</span>")
+                    status
                 });
             }
             sEC3.tables.push_back(tEC3);

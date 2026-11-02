@@ -27,6 +27,11 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
       puis compiler et tester TSA ; chemin avec espaces, volume NTFS.
 - [x] Commit (TSA 38e7142, TSALab 938c9eb), fusion dans main (TSA 321f870, TSALab 02cf02c) et push, demandés le 2026-11-01.
 
+## Correction des bugs de known-issues, du plus critique au moins critique (2026-11-02)
+- [x] BUG-152 (HIGH, verdict non sécuritaire) : flambement EC3 sur les deux axes principaux, test 584.
+- [ ] Suivants (HIGH) : BUG-151 câble comprimé accepté ; BUG-153 cornières (calcul sur axes géométriques) ; BUG-133
+  téléchargement OpenSees ; BUG-111 traçabilité ; BUG-117 P2 ; BUG-002 dalles et voiles hors calcul.
+
 ## Affichage intelligent des charges (2026-11-01/02, branche feature/load-display-scaling)
 - [x] Échelle d'après la structure, style des charges, cas affichés, test 583.
 - [x] BUG-177 : textes démesurés (texte zoomable OCCT) — pixels bornés, valeurs superposées masquées, calque Topmost.

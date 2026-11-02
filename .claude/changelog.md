@@ -2,6 +2,20 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 — BUG-152 corrigé : flambement EC3 vérifié sur les deux axes (branche fix/ndc-legacy-buckling)
+
+- Cause : la note historique (« Legacy », présentation par défaut) appelait `calculateFromBar(..., strongAxis = true)` — axe fort
+  seul — et comptait la traction comme une compression ; IPE 200 de 5 m sous 300 kN déclaré CONFORME (N_b,Rd imprimé 809 kN au lieu
+  de 105 kN). La note projet et le dock Résultats vérifiaient toujours Iz (pas forcément l'axe faible ; cornières : ni l'un ni
+  l'autre n'est principal).
+- Correction : `SteelDesignEC3::calculateFromBarGoverning` (EN 1993-1-1 §6.3.1) — deux axes principaux (y-y / z-z ; cornière :
+  u-u / v-v d'après Iyz), N_b,Rd minimal retenu, axe et N_b,Rd de l'autre axe renseignés ; classe 4 sans conclusion. Utilisée par
+  la note historique (compression seule, colonne « Axe », statut NON CONFORME / CLASSE 4, hypothèses imprimées : β = 1 à justifier,
+  sans interaction ni flambement par torsion), la note projet (axe affiché) et le dock Résultats (compression seule).
+- Test 584 (suite ndc) : IPE 200 / 5 m / 300 kN → z-z, ≈ 106 kN (calcul à la main), non conforme ; y-y > 700 kN donné ; cornière
+  L100×100×10 → v-v plus défavorable que z-z ; notes historique et détaillée : poteau comprimé NON CONFORME, poteau tendu non
+  vérifié. Suite complète 59/60 (367 : BUG-173) ; check_layers 0 ; TSALab 27/27.
+
 ## 2026-11-02 — known-issues : bugs des fonctionnalités retirées supprimés (branche docs/known-issues-removed-features)
 
 - BUG-149 (efforts du non linéaire, λ = 0,5) et BUG-150 (P-Delta / corotationnel en statique linéaire) retirés : l'analyse non

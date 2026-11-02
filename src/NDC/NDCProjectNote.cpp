@@ -1282,7 +1282,7 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
         ch.sections.push_back(s);
     }
 
-    // 2. Acier : flambement par flexion des barres comprimées (EN 1993-1-1 §6.3.1), axe faible, L = longueur de barre
+    // 2. Acier : flambement par flexion des barres comprimées (EN 1993-1-1 §6.3.1), deux axes principaux, L = longueur de barre
     std::vector<Row> ec3;
     for (const auto& mb : x.members)
     {
@@ -1291,7 +1291,7 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
         const double toKN = x.toKN();
         if (!r || r->minNormalForce() * toKN >= -1e-3) continue;
         const double ned = -r->minNormalForce() * toKN;   // kN
-        const auto c = TSA::Standards::Design::SteelDesignEC3::calculateFromBar(*mb.section, *mb.material, mb.length, 1.0, ned * 1000.0, false);
+        const auto c = TSA::Standards::Design::SteelDesignEC3::calculateFromBarGoverning(*mb.section, *mb.material, mb.length, 1.0, ned * 1000.0);
         const bool pass = c.valid && c.pass && c.utilizationRatio <= 1.0;
         ++computedChecks;
         failedChecks += !pass;
@@ -1299,15 +1299,15 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
         ec3.push_back({ c.utilizationRatio, { QStringLiteral("%1 %2").arg(kindName(mb.kind)).arg(mb.id), QStringLiteral("%1<br><small>%2</small>").arg(mb.name, QString::fromStdString(mb.section->name)),
                                               f(ned, 1), f(mb.length, 2), f(c.reducedSlenderness, 2), f(c.chi, 3), f(c.Nb_Rd / 1000.0, 0),
                                               f(c.utilizationRatio * 100.0, 1) + QStringLiteral(" %"),
-                                              status + QStringLiteral("<br><small>%1%2</small>").arg(c.curveReason.toHtmlEscaped(), c.sectionClass ? QStringLiteral(", classe %1").arg(c.sectionClass) : QStringLiteral(", classe non déterminée")) } });
+                                              status + QStringLiteral("<br><small>axe %1 ; %2%3</small>").arg(c.axis, c.curveReason.toHtmlEscaped(), c.sectionClass ? QStringLiteral(", classe %1").arg(c.sectionClass) : QStringLiteral(", classe non déterminée")) } });
     }
     if (!ec3.empty())
     {
         std::sort(ec3.begin(), ec3.end(), [](const Row& a, const Row& b) { return a.ratio > b.ratio; });
         NDCSection s;
         s.title = QStringLiteral("Flambement par flexion des barres acier comprimées (EN 1993-1-1 §6.3.1) — calculée");
-        s.paragraphs.push_back(QStringLiteral("Effort de compression seul (sans interaction avec la flexion), axe faible, longueur de flambement = longueur de la barre "
-                                              "entre nœuds (β = 1). Courbe de flambement selon le Tableau 6.2 (h/b, t<sub>f</sub>, nuance ; profils creux de fabrication "
+        s.paragraphs.push_back(QStringLiteral("Effort de compression seul (sans interaction avec la flexion), vérifié sur les deux axes principaux (y-y et z-z ; "
+                                              "cornières : u-u et v-v), axe déterminant indiqué ; longueur de flambement = longueur de la barre entre nœuds (β = 1). Courbe de flambement selon le Tableau 6.2 (h/b, t<sub>f</sub>, nuance ; profils creux de fabrication "
                                               "non précisée : formés à froid), classe en compression selon le Tableau 5.2 (classe 4 : aire efficace non calculée, "
                                               "vérification non effectuée). Flambement par torsion et flexion-torsion non vérifiés ; f<sub>y</sub> non réduite au-delà de "
                                               "40 mm d'épaisseur. %1 barre(s) vérifiée(s).")

@@ -502,7 +502,8 @@ void ResultsDockWidget::updateSummaryText()
             else if (beam.material().type == TSA::Model::MaterialType::Steel ||
                      beam.material().type == TSA::Model::MaterialType::GalvanizedSteel)
             {
-                double Ned = std::max(std::abs(elemRes->minNormalForce()), std::abs(elemRes->maxNormalForce())) * toN;
+                if (elemRes->minNormalForce() * toN >= -1.0) continue;   // compression seule
+                const double Ned = -elemRes->minNormalForce() * toN;
                 const auto* n1 = m_model->getNode(beam.startNodeId());
                 const auto* n2 = m_model->getNode(beam.endNodeId());
                 double L = 3.0;
@@ -511,7 +512,7 @@ void ResultsDockWidget::updateSummaryText()
                     double dx = n2->x() - n1->x(), dy = n2->y() - n1->y(), dz = n2->z() - n1->z();
                     L = std::sqrt(dx * dx + dy * dy + dz * dz);
                 }
-                auto ec3 = TSA::Standards::Design::SteelDesignEC3::calculateFromBar(beam.section(), beam.material(), L, 1.0, Ned, false);
+                auto ec3 = TSA::Standards::Design::SteelDesignEC3::calculateFromBarGoverning(beam.section(), beam.material(), L, 1.0, Ned);
                 if (ec3.valid && ec3.utilizationRatio > maxEtaEC3)
                 {
                     maxEtaEC3 = ec3.utilizationRatio;
@@ -528,7 +529,8 @@ void ResultsDockWidget::updateSummaryText()
             if (col.material().type == TSA::Model::MaterialType::Steel ||
                 col.material().type == TSA::Model::MaterialType::GalvanizedSteel)
             {
-                double Ned = std::max(std::abs(elemRes->minNormalForce()), std::abs(elemRes->maxNormalForce())) * toN;
+                if (elemRes->minNormalForce() * toN >= -1.0) continue;   // compression seule
+                const double Ned = -elemRes->minNormalForce() * toN;
                 const auto* n1 = m_model->getNode(col.startNodeId());
                 const auto* n2 = m_model->getNode(col.endNodeId());
                 double L = 3.0;
@@ -537,7 +539,7 @@ void ResultsDockWidget::updateSummaryText()
                     double dx = n2->x() - n1->x(), dy = n2->y() - n1->y(), dz = n2->z() - n1->z();
                     L = std::sqrt(dx * dx + dy * dy + dz * dz);
                 }
-                auto ec3 = TSA::Standards::Design::SteelDesignEC3::calculateFromBar(col.section(), col.material(), L, 1.0, Ned, false);
+                auto ec3 = TSA::Standards::Design::SteelDesignEC3::calculateFromBarGoverning(col.section(), col.material(), L, 1.0, Ned);
                 if (ec3.valid && ec3.utilizationRatio > maxEtaEC3)
                 {
                     maxEtaEC3 = ec3.utilizationRatio;

@@ -65,6 +65,8 @@ struct EC3BucklingResult
     bool pass = false;                  ///< Vérification satisfaite si utilizationRatio <= 1.0
     int sectionClass = 0;               ///< Classe en compression (Tableau 5.2) ; 0 = non déterminée
     QString curveReason;                ///< Choix de la courbe (Tableau 6.2)
+    QString axis;                       ///< Axe de flambement déterminant (« y-y », « z-z » ; cornière : « u-u », « v-v ») ; calculateFromBarGoverning
+    double Nb_Rd_otherAxis = 0.0;       ///< N_b,Rd sur l'autre axe principal (N) ; calculateFromBarGoverning
     QString summary;                    ///< Synthèse textuelle
 };
 
@@ -125,6 +127,18 @@ public:
         double beta,
         double Ned_N,
         bool strongAxis = true
+    );
+
+    /// Flambement par flexion vérifié sur les DEUX axes principaux (EN 1993-1-1 §6.3.1, Lcr = beta·L sur chacun) : résultat
+    /// de l'axe déterminant (N_b,Rd minimal), axe et N_b,Rd de l'autre axe renseignés. Axes y-y / z-z ; cornière (Iyz ≠ 0) :
+    /// axes principaux u-u / v-v (Iu,v = (Iy + Iz)/2 ± √(((Iy − Iz)/2)² + Iyz²)), les axes géométriques n'étant pas principaux.
+    /// Section de classe 4 : résultat invalide (comme calculateFromBar). À utiliser pour tout verdict (BUG-152).
+    static EC3BucklingResult calculateFromBarGoverning(
+        const TSA::Model::Section& section,
+        const TSA::Model::Material& steelMat,
+        double memberLength_m,
+        double beta,
+        double Ned_N
     );
 };
 
