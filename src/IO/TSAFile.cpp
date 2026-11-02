@@ -1,6 +1,7 @@
 #include "../Model/LegacyBarFrames.h"
 #include "../Model/Load/LegacyLoads.h"
 #include "TSAFile.h"
+#include "TSAEncryption.h"
 #include "TSAFile_BinaryUtils.h"
 #include "TSAPreviewGenerator.h"
 #include "TSAPreviewBlock.h"
@@ -417,7 +418,6 @@ bool StandardEncryptionProvider::decrypt(const uint8_t* inData, size_t inSize, s
 // =============================================================================
 TSAFileWriter::TSAFileWriter()
     : m_compressor(std::make_shared<QtZlibCompressionProvider>())
-    , m_encryptor(std::make_shared<StandardEncryptionProvider>())
 {
 }
 
@@ -607,7 +607,7 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
         flags |= FLAG_HAS_THUMBNAIL;
         // Aperçu lisible par l'Explorateur sans décompression — jamais pour un fichier protégé par
         // mot de passe (l'image du modèle ne doit pas être lisible en clair).
-        const bool willEncrypt = m_useEncryption && !m_password.empty() && m_encryptor;
+        const bool willEncrypt = m_useEncryption && !m_password.empty();
         if (!willEncrypt && static_cast<uint64_t>(pngBytes.size()) <= TSA_PREVIEW_MAX_BYTES)
             flags |= FLAG_HAS_PREVIEW_BLOCK;
     }
@@ -629,15 +629,24 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
         processedData = payload;
     }
 
-    // 3. Traitement Protection / Chiffrement
-    if (m_useEncryption && !m_password.empty() && m_encryptor)
+    // 3. Protection par mot de passe : AES-256-GCM authentifié (BUG-167 : ancien XOR). Impossible : rien n'est écrit,
+    //    jamais un fichier en clair à la place d'un fichier protégé (l'ancien code écrivait en clair sans le dire).
+    const bool encrypted = m_useEncryption && !m_password.empty();
+    if (encrypted)
     {
         std::vector<uint8_t> encryptedData;
-        if (m_encryptor->encrypt(processedData.data(), processedData.size(), encryptedData, m_password))
+        std::string cryptoError;
+        if (Crypto::encrypt(processedData.data(), processedData.size(), m_password, encryptedData, Crypto::kDefaultIterations, &cryptoError)
+            != Crypto::Status::Ok)
         {
-            processedData = std::move(encryptedData);
-            flags |= FLAG_ENCRYPTED;
+            if (errorMessage)
+                *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Protection par mot de passe impossible (%1) : le projet n'a pas été enregistré.")
+                                    .arg(QString::fromStdString(cryptoError))
+                                    .toStdString();
+            return false;
         }
+        processedData = std::move(encryptedData);
+        flags |= FLAG_ENCRYPTED | FLAG_ENCRYPTED_AEAD;
     }
 
     // 4. Calcul de l'intégrité CRC32 sur le payload final écrit
@@ -648,7 +657,8 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     header.magic = NATIVE_FILE_MAGIC;
     header.versionMajor = TSA_FORMAT_VERSION_MAJOR;
     header.versionMinor = TSA_FORMAT_VERSION_MINOR;
-    header.requiredFeatures = KNOWN_REQUIRED_FEATURES;
+    // Bit du chiffrement seulement sur un projet protégé : un fichier en clair reste lisible par les versions 3.0 / 3.1
+    header.requiredFeatures = FEATURE_SECTION_PROPERTIES | (encrypted ? FEATURE_ENCRYPTION_AEAD : 0);
     header.appVersionMajor = TSA_APP_VERSION_MAJOR;
     header.appVersionMinor = TSA_APP_VERSION_MINOR;
     header.appVersionPatch = TSA_APP_VERSION_PATCH;
@@ -666,8 +676,9 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
         dst[n] = '\0';
     };
 
-    safeStrCopy(header.projectName, sizeof(header.projectName), projectName);
-    safeStrCopy(header.author, sizeof(header.author), author);
+    // En-tête lisible sans mot de passe : ni nom ni auteur d'un projet protégé (le chunk PROJ chiffré les porte)
+    safeStrCopy(header.projectName, sizeof(header.projectName), encrypted ? std::string() : projectName);
+    safeStrCopy(header.author, sizeof(header.author), encrypted ? std::string() : author);
 
     std::string nowStr = QDateTime::currentDateTime().toString(Qt::ISODate).toStdString();
     safeStrCopy(header.lastModifiedTimestamp, sizeof(header.lastModifiedTimestamp), nowStr);
@@ -803,6 +814,7 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
                                 QImage* outThumbnail,
                                 std::string* errorMessage)
 {
+    m_lastFailure = LoadFailure::Other;   // posé à None au succès ; raisons précises (mot de passe) posées au déchiffrement
     // 1. Ouvrir le fichier
     std::ifstream in(TSA::Core::utf8Path(filePath), std::ios::binary | std::ios::ate);
     if (!in.is_open())
@@ -877,9 +889,10 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
     }
     in.close();
 
-    // 2. Vérification intégrité CRC32
+    // 2. Vérification intégrité CRC32 — toujours : l'écrivain l'a toujours calculée, et une valeur nulle ne désactive plus
+    // le contrôle (BUG-166 : un fichier altéré passait en mettant ce champ à 0)
     uint32_t expectedCrc = computeCRC32(rawPayload.data(), rawPayload.size());
-    if (header.checksumCRC32 != 0 && header.checksumCRC32 != expectedCrc)
+    if (header.checksumCRC32 != expectedCrc)
     {
         if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Somme de contrôle CRC32 invalide. Le fichier est altéré ou corrompu.").toStdString();
         return false;
@@ -887,7 +900,36 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
 
     // 3. Déchiffrement éventuel
     std::vector<uint8_t> decryptedData;
-    if (header.flags & FLAG_ENCRYPTED)
+    const bool legacyEncrypted = (header.flags & FLAG_ENCRYPTED) && !(header.flags & FLAG_ENCRYPTED_AEAD);
+    if ((header.flags & FLAG_ENCRYPTED) && password.empty())
+    {
+        m_lastFailure = LoadFailure::PasswordRequired;
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Ce projet est protégé par mot de passe.").toStdString();
+        return false;
+    }
+    if (header.flags & FLAG_ENCRYPTED_AEAD)
+    {
+        // AES-256-GCM authentifié (BUG-167) : un mot de passe faux et un contenu modifié sont refusés de la même façon
+        switch (Crypto::decrypt(rawPayload.data(), rawPayload.size(), password, decryptedData))
+        {
+        case Crypto::Status::Ok:
+            break;
+        case Crypto::Status::WrongPassword:
+            m_lastFailure = LoadFailure::WrongPassword;
+            if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Mot de passe incorrect (ou contenu du fichier modifié).").toStdString();
+            return false;
+        case Crypto::Status::Unavailable:
+            m_lastFailure = LoadFailure::EncryptionUnavailable;
+            if (errorMessage)
+                *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Ce projet est protégé par mot de passe, mais le chiffrement n'est pas disponible "
+                                                                                "sur ce poste (bibliothèque OpenSSL absente à la compilation).").toStdString();
+            return false;
+        case Crypto::Status::Corrupt:
+            if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Bloc chiffré illisible : fichier altéré.").toStdString();
+            return false;
+        }
+    }
+    else if (header.flags & FLAG_ENCRYPTED)
     {
         if (!m_encryptor)
         {
@@ -916,6 +958,13 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
         }
         if (!m_compressor->decompress(decryptedData.data(), decryptedData.size(), uncompressedData))
         {
+            if (legacyEncrypted)
+            {
+                // Ancien XOR : aucun contrôle du mot de passe, un mot de passe faux donne un flux illisible
+                m_lastFailure = LoadFailure::WrongPassword;
+                if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Mot de passe incorrect (ou contenu du fichier modifié).").toStdString();
+                return false;
+            }
             if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Échec de décompression du payload .tsa (flux zlib corrompu).").toStdString();
             return false;
         }
@@ -936,6 +985,7 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
         return false;
     // Fichiers d'avant le format 3 : repère local des barres verticales converti, orientation physique conservée
     if (header.versionMajor < 3) TSA::Model::migrateLegacyBarFrames(model);
+    m_lastFailure = LoadFailure::None;
     return true;
 }
 
@@ -979,6 +1029,12 @@ bool TSAFileReader::extractThumbnail(const std::string& filePath, QImage& outThu
         return false;
     }
 
+    if (header.flags & FLAG_ENCRYPTED)
+    {
+        // Projet protégé : sa miniature est chiffrée avec le reste, jamais lue sans le mot de passe
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Ce projet est protégé par mot de passe.").toStdString();
+        return false;
+    }
     in.seekg(header.payloadOffset, std::ios::beg);
     size_t payloadDiskSize = static_cast<size_t>(header.fileSize - header.payloadOffset);
     if (payloadDiskSize == 0 || payloadDiskSize > MAX_SAFE_PAYLOAD_SIZE)
@@ -1470,17 +1526,15 @@ std::string TSAProjectIO::modelFingerprint(const TSA::Model::Model& model)
     return hash.result().toHex().toStdString();
 }
 
-bool TSAProjectIO::saveProject(const QString& filePath,
-                              const TSA::Model::Model& model,
-                              const TSA::Grid::GridManager* gridManager,
-                              const QString& projectName,
-                              const QString& author,
-                              bool compress,
-                              const QImage& thumbnail,
-                              QString* errorMessage)
+namespace
+{
+bool saveProjectImpl(const QString& filePath, const TSA::Model::Model& model, const TSA::Grid::GridManager* gridManager,
+                     const QString& projectName, const QString& author, bool compress, const QImage& thumbnail,
+                     const QString& password, QString* errorMessage)
 {
     TSAFileWriter writer;
     writer.setCompressionEnabled(compress);
+    if (!password.isEmpty()) writer.setEncryptionEnabled(true, TSAProjectIO::passwordBytes(password));
     if (!thumbnail.isNull())
     {
         writer.setThumbnail(thumbnail);
@@ -1499,6 +1553,74 @@ bool TSAProjectIO::saveProject(const QString& filePath,
     }
     return ok;
 }
+} // namespace
+
+bool TSAProjectIO::saveProject(const QString& filePath,
+                              const TSA::Model::Model& model,
+                              const TSA::Grid::GridManager* gridManager,
+                              const QString& projectName,
+                              const QString& author,
+                              bool compress,
+                              const QImage& thumbnail,
+                              QString* errorMessage)
+{
+    return saveProjectImpl(filePath, model, gridManager, projectName, author, compress, thumbnail, QString(), errorMessage);
+}
+
+bool TSAProjectIO::saveProtectedProject(const QString& filePath,
+                                        const TSA::Model::Model& model,
+                                        const TSA::Grid::GridManager* gridManager,
+                                        const QString& projectName,
+                                        const QString& author,
+                                        const QString& password,
+                                        const QImage& thumbnail,
+                                        QString* errorMessage)
+{
+    return saveProjectImpl(filePath, model, gridManager, projectName, author, true, thumbnail, password, errorMessage);
+}
+
+std::string TSAProjectIO::passwordBytes(const QString& password)
+{
+    return password.normalized(QString::NormalizationForm_C).toUtf8().toStdString();
+}
+
+bool TSAProjectIO::encryptionAvailable()
+{
+    return Crypto::available();
+}
+
+bool TSAProjectIO::isPasswordProtected(const QString& filePath)
+{
+    TSAFileHeader h;
+    return TSAFileReader::readHeader(filePath.toStdString(), h, nullptr) && (h.flags & FLAG_ENCRYPTED);
+}
+
+TSAProjectIO::OpenStatus TSAProjectIO::loadProtectedProject(const QString& filePath,
+                                                            TSA::Model::Model& model,
+                                                            TSA::Grid::GridManager* gridManager,
+                                                            const QString& password,
+                                                            QString* outProjectName,
+                                                            QString* outAuthor,
+                                                            QImage* outThumbnail,
+                                                            QString* errorMessage)
+{
+    TSAFileReader reader;
+    std::string pName, auth, err;
+    const bool ok = reader.loadFromFile(filePath.toStdString(), model, gridManager, passwordBytes(password), &pName, &auth, outThumbnail, &err);
+    if (ok)
+    {
+        if (outProjectName) *outProjectName = QString::fromStdString(pName);
+        if (outAuthor) *outAuthor = QString::fromStdString(auth);
+        return OpenStatus::Ok;
+    }
+    if (errorMessage) *errorMessage = QString::fromStdString(err);
+    switch (reader.lastFailure())
+    {
+    case LoadFailure::PasswordRequired: return OpenStatus::PasswordRequired;
+    case LoadFailure::WrongPassword: return OpenStatus::WrongPassword;
+    default: return OpenStatus::Failed;
+    }
+}
 
 bool TSAProjectIO::loadProject(const QString& filePath,
                               TSA::Model::Model& model,
@@ -1508,27 +1630,8 @@ bool TSAProjectIO::loadProject(const QString& filePath,
                               QImage* outThumbnail,
                               QString* errorMessage)
 {
-    TSAFileReader reader;
-    std::string pName, auth, err;
-
-    bool ok = reader.loadFromFile(filePath.toStdString(),
-                                  model,
-                                  gridManager,
-                                  "",
-                                  &pName,
-                                  &auth,
-                                  outThumbnail,
-                                  &err);
-    if (ok)
-    {
-        if (outProjectName) *outProjectName = QString::fromStdString(pName);
-        if (outAuthor) *outAuthor = QString::fromStdString(auth);
-    }
-    else
-    {
-        if (errorMessage) *errorMessage = QString::fromStdString(err);
-    }
-    return ok;
+    return loadProtectedProject(filePath, model, gridManager, QString(), outProjectName, outAuthor, outThumbnail, errorMessage)
+           == OpenStatus::Ok;
 }
 
 bool TSAProjectIO::saveToFile(const QString& filePath,

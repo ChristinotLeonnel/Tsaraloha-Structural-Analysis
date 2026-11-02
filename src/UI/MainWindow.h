@@ -373,6 +373,7 @@ private:
     std::unique_ptr<TSA::Project::ProjectDiagnostics> m_diagnostics;   // messages, erreurs, historique des calculs (DIAG)
     std::unique_ptr<TSA::Project::ProjectManifest> m_manifest;         // bibliothèques, fichiers liés, enregistrements (PMAN)
     QAction* m_actionLinkedFiles = nullptr;
+    QAction* m_actionProjectPassword = nullptr;   ///< protection du projet par mot de passe (BUG-167)
     std::string m_runLog;                  // lignes du moteur du calcul en cours (journal de repli)
     QElapsedTimer m_runTimer;              // durée du calcul en cours
     QAction* m_actionToolInputViewport = nullptr;
@@ -739,6 +740,7 @@ private:
     void registerLinkedFile(const QString& role, const QString& path);
     void reportManifestOnOpen(const QString& projectFile);
     void onActionLinkedFiles();
+    void onActionProjectPassword();
     /// Préférence D5 : chemins absolus des fichiers liés enregistrés (vrai par défaut).
     static bool storesAbsoluteLinkPaths();
     void syncDisplayActionsFromView();

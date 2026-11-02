@@ -2838,6 +2838,18 @@ Tianao hotehirizina ve ny fanovana alohan'ny hanohizana?</translation>
         <translation>hanokafana tetikasa hafa</translation>
     </message>
     <message>
+        <source>Mot de passe incorrect pour « %1 ». Réessayer :</source>
+        <translation>Diso ny teny miafina ho an'ny « %1 ». Andramo indray :</translation>
+    </message>
+    <message>
+        <source>Le projet « %1 » est protégé par mot de passe :</source>
+        <translation>Voaaro amin'ny teny miafina ny tetikasa « %1 » :</translation>
+    </message>
+    <message>
+        <source>Projet protégé</source>
+        <translation>Tetikasa voaaro</translation>
+    </message>
+    <message>
         <source>Erreur de chargement</source>
         <translation>Hadisoana tamin'ny fanokafana</translation>
     </message>
@@ -2869,7 +2881,10 @@ Tianao hotehirizina ve ny fanovana alohan'ny hanohizana?</translation>
     </message>
     <message numerus="yes">
         <source>%n anomalie(s) de validation relevée(s) au dernier enregistrement.</source>
-        <translation><numerusform>Olana %n hita tamin'ny fanamarinana tamin'ny fitahirizana farany.</numerusform></translation>
+        <translation>
+            <numerusform>Olana %n hita tamin'ny fanamarinana tamin'ny fitahirizana farany.</numerusform>
+            <numerusform />
+        </translation>
     </message>
     <message>
         <source>Résultats du dernier calcul rétablis (enregistrés avec le projet).</source>
@@ -3906,6 +3921,14 @@ Tianao hotehirizina ve ny fanovana alohan'ny hanohizana?</translation>
     <message>
         <source>Fichiers reliés au projet (imports, exports, textures, documents joints) et bibliothèques utilisées : présence et intégrité contrôlées à l'ouverture</source>
         <translation>Rakitra mifandray amin'ny tetikasa (fanafarana, fanondranana, endrika, antontan-taratasy miaraka) sy tranomboky ampiasaina : hamarinina amin'ny fanokafana ny fisiany sy ny maha-feno azy</translation>
+    </message>
+    <message>
+        <source>&amp;Protection par mot de passe...</source>
+        <translation>&amp;Fiarovana amin'ny teny miafina...</translation>
+    </message>
+    <message>
+        <source>Chiffrer le fichier du projet avec un mot de passe (AES-256), ou retirer la protection</source>
+        <translation>Afenina amin'ny teny miafina (AES-256) ny rakitry ny tetikasa, na esorina ny fiarovana</translation>
     </message>
     <message>
         <source>&amp;Exporter Rapport de Diagnostic...</source>
@@ -6605,7 +6628,10 @@ Jereo Fanampiana &gt; Môdiola.</translation>
     </message>
     <message numerus="yes">
         <source>%n fichier(s) lié(s) au projet, tous présents et inchangés.</source>
-        <translation><numerusform>Rakitra %n mifandray amin'ny tetikasa, misy avokoa ary tsy niova.</numerusform></translation>
+        <translation>
+            <numerusform>Rakitra %n mifandray amin'ny tetikasa, misy avokoa ary tsy niova.</numerusform>
+            <numerusform />
+        </translation>
     </message>
     <message>
         <source>Dernier enregistrement : %1 par %2 (%3, format %4).</source>
@@ -6614,6 +6640,54 @@ Jereo Fanampiana &gt; Môdiola.</translation>
     <message>
         <source>auteur non renseigné</source>
         <translation>tsy voalaza ny mpanoratra</translation>
+    </message>
+    <message>
+        <source>Protection par mot de passe</source>
+        <translation>Fiarovana amin'ny teny miafina</translation>
+    </message>
+    <message>
+        <source>Aucun mot de passe : le fichier s'ouvre sans demande</source>
+        <translation>Tsy misy teny miafina : misokatra tsy mangataka ny rakitra</translation>
+    </message>
+    <message>
+        <source>Protéger le fichier par un mot de passe</source>
+        <translation>Arovy amin'ny teny miafina ny rakitra</translation>
+    </message>
+    <message>
+        <source>Mot de passe :</source>
+        <translation>Teny miafina :</translation>
+    </message>
+    <message>
+        <source>Confirmation :</source>
+        <translation>Fanamafisana :</translation>
+    </message>
+    <message>
+        <source>Le contenu du fichier est chiffré (AES-256-GCM, clé dérivée du mot de passe) : sans le mot de passe, personne ne peut l'ouvrir, et %1 ne peut pas le retrouver. Le nom du fichier reste visible.</source>
+        <translation>Voaafina ny votoatin'ny rakitra (AES-256-GCM, lakile avy amin'ny teny miafina) : raha tsy misy ny teny miafina dia tsy misy afaka manokatra azy, ary tsy afaka mamerina azy ny %1. Mijanona hita ny anaran'ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Chiffrement indisponible sur ce poste (bibliothèque OpenSSL absente à la compilation).</source>
+        <translation>Tsy misy ny fanafenana amin'ity solosaina ity (tsy nisy ny tranomboky OpenSSL tamin'ny fanangonana).</translation>
+    </message>
+    <message>
+        <source>Au moins %1 caractères.</source>
+        <translation>Litera %1 farafahakeliny.</translation>
+    </message>
+    <message>
+        <source>Les deux saisies diffèrent.</source>
+        <translation>Tsy mitovy ireo soratra roa ireo.</translation>
+    </message>
+    <message>
+        <source>Champs vides : le mot de passe actuel est conservé.</source>
+        <translation>Banga ny saha : tazomina ny teny miafina ankehitriny.</translation>
+    </message>
+    <message>
+        <source>Protection par mot de passe retirée : enregistrer le projet pour l'appliquer au fichier.</source>
+        <translation>Nesorina ny fiarovana amin'ny teny miafina : tehirizo ny tetikasa mba hampiharana izany amin'ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Protection par mot de passe définie : enregistrer le projet pour chiffrer le fichier.</source>
+        <translation>Voafaritra ny fiarovana amin'ny teny miafina : tehirizo ny tetikasa mba hanafenana ny rakitra.</translation>
     </message>
     <message>
         <source>Fichiers liés et bibliothèques</source>
@@ -6986,11 +7060,17 @@ Jereo Fanampiana &gt; Môdiola.</translation>
     </message>
     <message numerus="yes">
         <source>%n autre(s) cas chargé(s) masqué(s) — Charges › Cas affichés</source>
-        <translation><numerusform>Tranga %n hafa misy enta nafenina — Enta › Tranga aseho</numerusform><numerusform>Tranga %n hafa misy enta nafenina — Enta › Tranga aseho</numerusform></translation>
+        <translation>
+            <numerusform>Tranga %n hafa misy enta nafenina — Enta › Tranga aseho</numerusform>
+            <numerusform>Tranga %n hafa misy enta nafenina — Enta › Tranga aseho</numerusform>
+        </translation>
     </message>
     <message numerus="yes">
         <source>%n valeur(s) superposée(s) masquée(s) — zoomer pour les lire</source>
-        <translation><numerusform>Sanda %n mifanindry nafenina — ahakaiky ny fijery hamakiana azy</numerusform><numerusform>Sanda %n mifanindry nafenina — ahakaiky ny fijery hamakiana azy</numerusform></translation>
+        <translation>
+            <numerusform>Sanda %n mifanindry nafenina — ahakaiky ny fijery hamakiana azy</numerusform>
+            <numerusform>Sanda %n mifanindry nafenina — ahakaiky ny fijery hamakiana azy</numerusform>
+        </translation>
     </message>
     <message>
         <source>X global</source>
@@ -8152,14 +8232,6 @@ Atomboka ve ny kajy?</translation>
         <translation>Motera singa voafetra 3D an'ny TSA (andry mitsivalana Euler–Bernoulli marina, tonona, fanohanana elastika), voamarina manoloana ny OpenSees ao anatin'ny sehatra misy azy. Motera faharoa: ny OpenSees no motera kajy ampiasaina raha tsy misy safidy hafa.</translation>
     </message>
     <message>
-        <source>Hors du périmètre de Fem3D : %1. Calcul confié à OpenSees (secours choisi dans les options de Fem3D) : les résultats porteront l'identité d'OpenSees.</source>
-        <translation>Ivelan'ny sehatry ny Fem3D: %1. Nomena ny OpenSees ny kajy (solony voafidy ao amin'ny fikirana Fem3D): hitondra ny maha-OpenSees azy ny vokatra.</translation>
-    </message>
-    <message>
-        <source>Hors du périmètre de Fem3D : %1. Choisir le moteur OpenSees, ou activer le secours OpenSees dans les options de Fem3D.</source>
-        <translation>Ivelan'ny sehatry ny Fem3D: %1. Fidio ny motera OpenSees, na alefaso ny solony OpenSees ao amin'ny fikirana Fem3D.</translation>
-    </message>
-    <message>
         <source>Comparaison impossible : Fem3D ne peut pas calculer ce modèle.</source>
         <translation>Tsy azo atao ny fampitahana: tsy afaka manao ny kajin'ity modely ity ny Fem3D.</translation>
     </message>
@@ -8170,10 +8242,6 @@ Atomboka ve ny kajy?</translation>
     <message>
         <source>comparaison</source>
         <translation>fampitahana</translation>
-    </message>
-    <message>
-        <source>secours</source>
-        <translation>solony</translation>
     </message>
     <message>
         <source>Conversion du modèle pour Fem3D…</source>
@@ -8188,12 +8256,8 @@ Atomboka ve ny kajy?</translation>
         <translation>Ivelan'ny sehatry ny Fem3D: %1. Tsy nisy kajy natao.</translation>
     </message>
     <message>
-        <source>Calcul fait par OpenSees (secours de Fem3D) — hors du périmètre de Fem3D : %1</source>
-        <translation>Kajy nataon'ny OpenSees (solon'ny Fem3D) — ivelan'ny sehatry ny Fem3D: %1</translation>
-    </message>
-    <message>
-        <source>Calcul OpenSees terminé (secours de Fem3D).</source>
-        <translation>Vita ny kajy OpenSees (solon'ny Fem3D).</translation>
+        <source>Hors du périmètre de Fem3D : %1. Choisir le moteur OpenSees.</source>
+        <translation>Ivelan'ny sehatry ny Fem3D : %1. Safidio ny motera OpenSees.</translation>
     </message>
     <message>
         <source>Calcul annulé.</source>
@@ -10853,6 +10917,10 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
         <translation>%1 nokajiana indray (%2) tsy mitovy amin'ny sanda voatahiry (%3)</translation>
     </message>
     <message>
+        <source>Protection par mot de passe impossible (%1) : le projet n'a pas été enregistré.</source>
+        <translation>Tsy azo natao ny fiarovana amin'ny teny miafina (%1) : tsy voatahiry ny tetikasa.</translation>
+    </message>
+    <message>
         <source>Impossible de créer le fichier .tsa : %1 (%2)</source>
         <translation>Tsy afaka mamorona ny rakitra .tsa: %1 (%2)</translation>
     </message>
@@ -10911,6 +10979,22 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
     <message>
         <source>Somme de contrôle CRC32 invalide. Le fichier est altéré ou corrompu.</source>
         <translation>Tsy mety ny isa fanamarinana CRC32. Niova na simba ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Ce projet est protégé par mot de passe.</source>
+        <translation>Voaaro amin'ny teny miafina ity tetikasa ity.</translation>
+    </message>
+    <message>
+        <source>Mot de passe incorrect (ou contenu du fichier modifié).</source>
+        <translation>Diso ny teny miafina (na niova ny votoatin'ny rakitra).</translation>
+    </message>
+    <message>
+        <source>Ce projet est protégé par mot de passe, mais le chiffrement n'est pas disponible sur ce poste (bibliothèque OpenSSL absente à la compilation).</source>
+        <translation>Voaaro amin'ny teny miafina ity tetikasa ity, saingy tsy misy ny fanafenana amin'ity solosaina ity (tsy nisy ny tranomboky OpenSSL tamin'ny fanangonana).</translation>
+    </message>
+    <message>
+        <source>Bloc chiffré illisible : fichier altéré.</source>
+        <translation>Tsy azo vakiana ny ampahany voaafina : simba ny rakitra.</translation>
     </message>
     <message>
         <source>Ce fichier est protégé par mot de passe mais aucun déchiffreur n'est disponible.</source>
@@ -16174,7 +16258,10 @@ Voatanisa alohan'ny kajy ny fanakanana tsirairay ary ambara raha mitondra hery i
     </message>
     <message numerus="yes">
         <source>%1 n'a pas été fermé normalement. %n projet(s) modifié(s) peuvent être récupérés depuis leur dernière copie automatique :</source>
-        <translation><numerusform>Tsy nakatona ara-dalàna ny %1. Tetikasa %n novaina azo averina avy amin'ny dika ho azy farany :</numerusform></translation>
+        <translation>
+            <numerusform>Tsy nakatona ara-dalàna ny %1. Tetikasa %n novaina azo averina avy amin'ny dika ho azy farany :</numerusform>
+            <numerusform />
+        </translation>
     </message>
     <message>
         <source>Récupérer</source>
@@ -16743,10 +16830,6 @@ Avadika ho fizarana manokana « %3 » ?</translation>
     <message>
         <source>Rétablir (graphe)</source>
         <translation>Averina (grafy)</translation>
-    </message>
-    <message>
-        <source>Annuler la dernière modification du Blueprint (l'historique du projet est distinct)</source>
-        <translation>Foano ny fanovana farany tamin'ny Blueprint (misaraka ny tantaran'ny tetikasa)</translation>
     </message>
     <message>
         <source>Supprimer</source>
@@ -17379,6 +17462,14 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
     <message>
         <source>Mini-carte : cliquer ou glisser pour déplacer la vue</source>
         <translation>Sarintany kely : tsindrio na sintony hamindrana ny fijery</translation>
+    </message>
+    <message>
+        <source>Annuler la dernière modification du Blueprint (Ctrl+Z dans le graphe ; l'historique du projet est distinct)</source>
+        <translation>Foano ny fanovana farany tamin'ny Blueprint (Ctrl+Z ao amin'ny graphe ; hafa ny tantaran'ny tetikasa)</translation>
+    </message>
+    <message>
+        <source>Rétablir la modification du Blueprint (Ctrl+Y dans le graphe ; l'historique du projet est distinct)</source>
+        <translation>Averina ny fanovana tamin'ny Blueprint (Ctrl+Y ao amin'ny graphe ; hafa ny tantaran'ny tetikasa)</translation>
     </message>
     <message>
         <source>Zoom du graphe (molette autour du curseur, bouton du milieu pour déplacer)</source>
@@ -18702,7 +18793,10 @@ Atombohy ny kajy (F5) mba hanoritana ny fiolahana.</translation>
     </message>
     <message numerus="yes">
         <source>%1 — %n charge(s)</source>
-        <translation><numerusform>%1 — enta %n</numerusform><numerusform>%1 — enta %n</numerusform></translation>
+        <translation>
+            <numerusform>%1 — enta %n</numerusform>
+            <numerusform>%1 — enta %n</numerusform>
+        </translation>
     </message>
     <message>
         <source>Applique les réglages graphiques du profil (aucune donnée du modèle ni des résultats n'est modifiée)</source>
@@ -19437,24 +19531,8 @@ Fanitarana %1 mety nahitana.</translation>
         <translation>Kajy:</translation>
     </message>
     <message>
-        <source>Refuser le calcul</source>
-        <translation>Lavina ny kajy</translation>
-    </message>
-    <message>
-        <source>Calculer par OpenSees</source>
-        <translation>Kajio amin'ny OpenSees</translation>
-    </message>
-    <message>
-        <source>Modèle hors du périmètre de Fem3D (charge ponctuelle ou partielle sur barre, moment réparti…). Un mécanisme ou une donnée invalide n'est jamais confié à un autre moteur.</source>
-        <translation>Modely ivelan'ny sehatry ny Fem3D (enta tokana na ampahany amin'ny tsorakazo, momenta miparitaka…). Tsy omena motera hafa mihitsy ny mekanisma na angona tsy mety.</translation>
-    </message>
-    <message>
-        <source>Hors périmètre :</source>
-        <translation>Ivelan'ny sehatra:</translation>
-    </message>
-    <message>
-        <source>Un calcul confié à OpenSees est annoncé avant le calcul et ses résultats portent l'identité d'OpenSees.</source>
-        <translation>Ambara mialoha ny kajy omena ny OpenSees ary mitondra ny maha-OpenSees azy ny vokatra.</translation>
+        <source>Un modèle hors du périmètre de Fem3D (treillis, câbles, coques) est refusé avec la raison : choisir alors le moteur OpenSees.</source>
+        <translation>Lavina miaraka amin'ny antony ny modely ivelan'ny sehatry ny Fem3D (treillis, tady, coque) : safidio amin'izay ny motera OpenSees.</translation>
     </message>
 </context>
 <context>

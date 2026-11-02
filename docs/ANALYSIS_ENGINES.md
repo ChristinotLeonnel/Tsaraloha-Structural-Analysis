@@ -43,7 +43,7 @@ UI Analysis (AnalysisDialog, AnalysisManagerPanel)   console / Blueprint / IA (a
 | Enregistrement des moteurs intégrés | `src/Analysis/Engines/BuiltInEngines.cpp` |
 | Adaptateur OpenSees | `src/Analysis/Engines/OpenSees/OpenSeesEngine.*` |
 | Contrat du solveur 2D, conversion, moteur | `src/Analysis/Engines/Custom2D/*` |
-| Moteur EF 3D Fem3D (dépôt voisin, facultatif) : conversion, moteur, secours et comparaison | `src/Analysis/Engines/Fem3D/*`, `src/UI/Analysis/Fem3DOptionsWidget.*` |
+| Moteur EF 3D Fem3D (dépôt voisin, facultatif) : conversion, moteur et comparaison | `src/Analysis/Engines/Fem3D/*`, `src/UI/Analysis/Fem3DOptionsWidget.*` |
 | Panneaux d'options par moteur (+ registre de fabriques) | `src/UI/Analysis/AnalysisEngineOptions.*`, `OpenSeesOptionsWidget.*` |
 | Fenêtre Analysis commune | `src/UI/Analysis/AnalysisDialog.*` |
 | Résultats de la barre sélectionnée (Propriétés) | `src/UI/Properties/ElementResultsPanel.*` |
@@ -162,11 +162,10 @@ la qualification de Fem3D dans TSA n'est pas complète (niveau 5, `TSA-3D-FEM-En
   contrôle des blocages automatiques par les fonctions communes.
 - **Hors périmètre** (refus avec la raison) : charges ponctuelles ou partielles sur barre, moments répartis, coques ;
   relâchements de N, V ou T (erreur). Treillis, câbles, modal : refusés par la validation générique.
-- **Options** (`mode`, `fallback`) : `fem3d` (défaut) ou `compare` (Fem3D puis OpenSees ; résultats affichés = Fem3D,
-  table « Comparaison Fem3D / OpenSees », avertissement au-delà de max(1e-6·|réf|, 1e-9·échelle), aucune fusion) ;
-  secours `none` (défaut : refus) ou `opensees` (annoncé à la validation, calcul par OpenSees,
-  `AnalysisRunResult::producedBy` → résultats étiquetés OpenSees). Un mécanisme ou une donnée invalide n'est jamais
-  confié à un autre moteur.
+- **Options** (`mode`) : `fem3d` (défaut) ou `compare` (Fem3D puis OpenSees ; résultats affichés = Fem3D,
+  table « Comparaison Fem3D / OpenSees », avertissement au-delà de max(1e-6·|réf|, 1e-9·échelle), aucune fusion).
+  Plus de secours OpenSees (BUG-144, 2026-11-02) : un modèle hors périmètre est refusé avec la raison ; la clé
+  `fallback` des anciens projets est ignorée. Un mécanisme ou une donnée invalide n'est jamais confié à un autre moteur.
 - Pas de maillage du solveur joint (`setSolverMesh`) : un élément fini par barre, sans nœud auxiliaire.
 
 Documentation du moteur : `TSA-3D-FEM-Engine/docs/` (théorie, conventions, audit indépendant, plan de validation,

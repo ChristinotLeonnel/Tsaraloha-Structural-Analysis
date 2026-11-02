@@ -44,8 +44,10 @@ public:
     /// Verrou du document key, à garder tant que le document est ouvert (nul si le verrou n'a pas pu être pris).
     std::unique_ptr<QLockFile> lock(const QString& key) const;
     /// Écrit (remplace) la copie de récupération du document key et sa fiche.
+    /// `title` : nom du projet (écrit aussi dans la copie, avec `author` : un projet récupéré les garde).
+    /// `password` non vide : copie chiffrée comme le projet, fiche sans le nom (BUG-167 : rien en clair d'un projet protégé).
     bool write(const QString& key, const TSA::Model::Model& model, const TSA::Grid::GridManager* grids, const QString& originalPath,
-               const QString& title, QString* error = nullptr) const;
+               const QString& title, QString* error = nullptr, const QString& password = QString(), const QString& author = QString()) const;
     /// Efface la copie du document key et sa fiche (enregistrement, fermeture normale, copie récupérée ou abandonnée).
     void remove(const QString& key) const;
     /// Copies orphelines (document fermé brutalement : aucun processus ne tient leur verrou), les plus récentes d'abord.

@@ -15,6 +15,7 @@
 #include "UI/Workspace/WorkspaceView.h"
 
 #include <QAction>
+#include <QApplication>
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsView>
@@ -29,8 +30,12 @@
 #include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QTreeWidget>
+#include <QVBoxLayout>
 
 #include <memory>
+#ifdef TSA_HAVE_QTTEST
+#include <QTest>
+#endif
 
 namespace
 {
@@ -1470,6 +1475,73 @@ bool runSuite_Blueprint(int& passed)
         TEST_CHECK(palette->topLevelItemCount() == categories, "Test 528: recherche effacée — groupe retiré, palette intacte");
         std::cout << "[PASS] Test 528: recherche des nœuds placés, distincte de la palette" << std::endl;
         ++passed;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------
+    // TEST 598 (BUG-140) : Ctrl+Z / Ctrl+Y dans le canevas = historique du graphe, pas celui du projet ; hors du canevas,
+    // le raccourci de la fenêtre (Annuler du projet) agit. Touches envoyées comme au clavier (raccourcis de la fenêtre actifs).
+    // ------------------------------------------------------------------------------------------------------------------
+    {
+#ifdef TSA_HAVE_QTTEST
+        QWidget window;
+        window.setAttribute(Qt::WA_DontShowOnScreen);
+        auto* lay = new QVBoxLayout(&window);
+        auto* editor = new TSA::UI::BlueprintEditor(&window);
+        auto* outside = new QWidget(&window);   // pas un champ de saisie : QLineEdit garde Ctrl+Z pour son propre texte
+        outside->setFocusPolicy(Qt::StrongFocus);
+        outside->setMinimumHeight(20);
+        lay->addWidget(editor);
+        lay->addWidget(outside);
+        int projectUndo = 0, projectRedo = 0;
+        QAction undoProject(QStringLiteral("Annuler (projet)"), &window);
+        undoProject.setShortcut(QKeySequence::Undo);
+        QAction redoProject(QStringLiteral("Rétablir (projet)"), &window);
+        redoProject.setShortcut(QKeySequence(QStringLiteral("Ctrl+Y")));
+        window.addAction(&undoProject);
+        window.addAction(&redoProject);
+        QObject::connect(&undoProject, &QAction::triggered, [&] { ++projectUndo; });
+        QObject::connect(&redoProject, &QAction::triggered, [&] { ++projectRedo; });
+        window.resize(1000, 700);
+        window.show();
+        QT_WARNING_PUSH
+        QT_WARNING_DISABLE_DEPRECATED
+        QApplication::setActiveWindow(&window);
+        QT_WARNING_POP
+        QElapsedTimer wait;
+        wait.start();
+        while (QApplication::activeWindow() != &window && wait.elapsed() < 2000) QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+
+        TSA::Blueprint::Graph g;
+        const int n1 = g.addNode("math.add", 0.0, 0.0);
+        g.addNode("math.add", 300.0, 0.0);
+        editor->setGraph(g);
+        QCoreApplication::processEvents();
+        editor->selectNodes({ n1 });
+        for (QAction* a : editor->findChildren<QAction*>())
+            if (a->text() == QStringLiteral("Supprimer")) a->trigger();
+        const size_t afterDelete = editor->graph().nodes().size();
+        TEST_CHECK(afterDelete == 1 && editor->canUndo(), "Test 598: nœud supprimé, une entrée Annuler du graphe");
+
+        editor->view()->setFocus();
+        QCoreApplication::processEvents();
+        QTest::sendKeyEvent(QTest::Click, editor->view(), Qt::Key_Z, QString(), Qt::ControlModifier);
+        TEST_CHECK(editor->graph().nodes().size() == 2 && projectUndo == 0,
+                   "Test 598: Ctrl+Z dans le canevas — graphe annulé (" << editor->graph().nodes().size() << " nœuds), projet intact (" << projectUndo << ")");
+        QTest::sendKeyEvent(QTest::Click, editor->view(), Qt::Key_Y, QString(), Qt::ControlModifier);
+        TEST_CHECK(editor->graph().nodes().size() == 1 && projectRedo == 0,
+                   "Test 598: Ctrl+Y dans le canevas — graphe rétabli, projet intact (" << projectRedo << ")");
+
+        outside->setFocus();
+        QCoreApplication::processEvents();
+        QTest::sendKeyEvent(QTest::Click, outside, Qt::Key_Z, QString(), Qt::ControlModifier);
+        QTest::sendKeyEvent(QTest::Click, outside, Qt::Key_Y, QString(), Qt::ControlModifier);
+        TEST_CHECK(projectUndo == 1 && projectRedo == 1 && editor->graph().nodes().size() == 1,
+                   "Test 598: hors du canevas — Annuler / Rétablir du projet (" << projectUndo << ", " << projectRedo << "), graphe inchangé");
+        std::cout << "[PASS] Test 598: Ctrl+Z / Ctrl+Y du canevas Blueprint = historique du graphe" << std::endl;
+        ++passed;
+#else
+        std::cout << "[SKIP] Test 598: Ctrl+Z dans le canevas Blueprint — NON EXÉCUTÉ (Qt Test absent)" << std::endl;
+#endif
     }
     return true;
 }

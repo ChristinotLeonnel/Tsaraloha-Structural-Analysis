@@ -54,6 +54,7 @@ void MainWindow::capturePreview(bool synchronousWrite)
 {
     if (m_previewTimer) m_previewTimer->stop();
     if (!m_occView || !m_model || !m_projectManager || !m_projectManager->hasFilePath()) return;
+    if (m_projectManager->hasPassword()) return;   // projet protégé : aucune image en clair (BUG-167)
     if (!isVisible() || window()->isMinimized()) return; // le rendu hors écran exige un viewport affiché
 
     const QJsonObject camera = m_occView->cameraState();

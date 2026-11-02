@@ -97,6 +97,7 @@
 #include <QActionGroup>
 #include <QDockWidget>
 #include <QInputDialog>
+#include <QLineEdit>
 #include <QMessageBox>
 #include <QIcon>
 #include <QPainter>
@@ -295,9 +296,17 @@ bool MainWindow::autosaveNow()
 {
     if (!m_model || !m_session || !m_session->hasUnsavedChanges()) return false;
     QString error;
-    const QString title = m_projectManager ? m_projectManager->windowTitle() : QString();
+    // Nom du projet, jamais le titre de la fenêtre (« TSA - x * ») : il devient le nom du projet récupéré
+    QString title, author;
+    if (m_projectManager)
+    {
+        title = m_projectManager->projectName().isEmpty() ? m_projectManager->currentFileName() : m_projectManager->projectName();
+        author = m_projectManager->author();
+    }
+    // Projet protégé : copie chiffrée avec son mot de passe (BUG-167)
     if (!TSA::Project::RecoveryStore().write(m_recoveryKey, *m_model, m_gridManager,
-                                            m_projectManager ? m_projectManager->currentFilePath() : QString(), title, &error))
+                                            m_projectManager ? m_projectManager->currentFilePath() : QString(), title, &error,
+                                            m_projectManager ? m_projectManager->password() : QString(), author))
     {
         if (m_consoleDock) m_consoleDock->appendLog(tr("Copie de récupération impossible : %1").arg(error), "WARN");
         return false;
@@ -1830,8 +1839,24 @@ bool MainWindow::loadFile(const QString& path)
     loadTimer.start();
 
     QString errorMsg;
-    bool ok = m_projectManager ? m_projectManager->openProject(path, *m_model, m_gridManager, &errorMsg)
-                               : false;
+    // Projet protégé (BUG-167) : mot de passe demandé, redemandé s'il est refusé ; abandon = rien n'est ouvert
+    using OpenStatus = TSA::IO::TSAProjectIO::OpenStatus;
+    OpenStatus status = OpenStatus::Failed;
+    QString password;
+    while (m_projectManager)
+    {
+        status = m_projectManager->openProject(path, *m_model, m_gridManager, password, &errorMsg);
+        if (status != OpenStatus::PasswordRequired && status != OpenStatus::WrongPassword)
+            break;
+        bool accepted = false;
+        const QString label = status == OpenStatus::WrongPassword
+            ? tr("Mot de passe incorrect pour « %1 ». Réessayer :").arg(QFileInfo(path).fileName())
+            : tr("Le projet « %1 » est protégé par mot de passe :").arg(QFileInfo(path).fileName());
+        password = QInputDialog::getText(this, tr("Projet protégé"), label, QLineEdit::Password, QString(), &accepted);
+        if (!accepted)
+            return false;
+    }
+    bool ok = status == OpenStatus::Ok;
     const qint64 openMs = loadTimer.elapsed();
     qint64 lastLap = openMs;
     std::string laps;

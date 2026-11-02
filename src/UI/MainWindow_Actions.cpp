@@ -755,6 +755,10 @@ void MainWindow::createActions()
                                        "utilisées : présence et intégrité contrôlées à l'ouverture"));
     connect(m_actionLinkedFiles, &QAction::triggered, this, &MainWindow::onActionLinkedFiles);
 
+    m_actionProjectPassword = new QAction(tr("&Protection par mot de passe..."), this);
+    m_actionProjectPassword->setToolTip(tr("Chiffrer le fichier du projet avec un mot de passe (AES-256), ou retirer la protection"));
+    connect(m_actionProjectPassword, &QAction::triggered, this, &MainWindow::onActionProjectPassword);
+
     m_actionExportDiagnostic = new QAction(tr("&Exporter Rapport de Diagnostic..."), this);
     m_actionExportDiagnostic->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/common/diagnostic.svg")));
     m_actionExportDiagnostic->setToolTip(tr("Générer un rapport de diagnostic complet (système, modèle, 100 derniers événements)"));
@@ -1046,6 +1050,7 @@ void MainWindow::createMenus()
     fileMenu->addAction(m_actionImportViaModule);
     fileMenu->addAction(m_actionExportIfc);
     fileMenu->addAction(m_actionLinkedFiles);
+    fileMenu->addAction(m_actionProjectPassword);
     fileMenu->addSeparator();
     QMenu* projectSettingsMenu = fileMenu->addMenu(tr("&Paramètres du projet"));
     projectSettingsMenu->addAction(m_actionTopology);

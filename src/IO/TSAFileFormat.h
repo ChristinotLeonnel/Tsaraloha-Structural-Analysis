@@ -30,12 +30,13 @@ constexpr bool isReadableFileMagic(uint32_t magic)
 // fonctionnalités obligatoires dans l'en-tête (requiredFeatures). Version majeure : tout lecteur 1.x refuse le fichier au
 // lieu de recalculer les sections d'après leur nom. Les fichiers 1.x sont migrés à la lecture (algorithme historique).
 constexpr uint16_t TSA_FORMAT_VERSION_MAJOR = 3;   // 3 : repère local des barres verticales selon Robot (y = +Y), migration à la lecture
-constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 1; // 3.1 : chunks facultatifs d'état du projet UIST, VSTA, RSLT, DIAG, PMAN (docs/PROJECT_STATE_PLAN.md) ; 1.12 : chunk VIEW (vues nommées) ; 1.11 : chunk BGEO (géométries physiques importées) ; 1.10 : chunk SURF, ouvertures des voiles (OPNG) ; 1.9 : chunk MVIS ; 1.8 : chunks MESH et OPNG ; 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT ; 1.5 : chunk TOPO ; 1.6 : chunk DIMS ; 1.7 : chunk XTND
+constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 2; // 3.2 : chiffrement authentifié AES-256-GCM des projets protégés par mot de passe (FLAG_ENCRYPTED_AEAD, FEATURE_ENCRYPTION_AEAD, TSAEncryption.h) ; 3.1 : chunks facultatifs d'état du projet UIST, VSTA, RSLT, DIAG, PMAN (docs/PROJECT_STATE_PLAN.md) ; 1.12 : chunk VIEW (vues nommées) ; 1.11 : chunk BGEO (géométries physiques importées) ; 1.10 : chunk SURF, ouvertures des voiles (OPNG) ; 1.9 : chunk MVIS ; 1.8 : chunks MESH et OPNG ; 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT ; 1.5 : chunk TOPO ; 1.6 : chunk DIMS ; 1.7 : chunk XTND
 
 // Fonctionnalités obligatoires (TSAFileHeader::requiredFeatures, format ≥ 2.0) : un lecteur refuse un fichier qui en
 // exige une qu'il ne connaît pas, au lieu de l'interpréter autrement. Ajouter un bit pour toute donnée qui change le calcul.
 constexpr uint64_t FEATURE_SECTION_PROPERTIES = 1ULL << 0;   // chunk SECP : rayon de congé et propriétés des sections
-constexpr uint64_t KNOWN_REQUIRED_FEATURES = FEATURE_SECTION_PROPERTIES;
+constexpr uint64_t FEATURE_ENCRYPTION_AEAD = 1ULL << 1;      // 3.2 : contenu chiffré AES-256-GCM (posé seulement sur un projet protégé)
+constexpr uint64_t KNOWN_REQUIRED_FEATURES = FEATURE_SECTION_PROPERTIES | FEATURE_ENCRYPTION_AEAD;
 
 // Version de disposition interne du chunk LOAD (indépendante de la version du format)
 constexpr uint32_t LOAD_CHUNK_LAYOUT_VERSION = 1;
@@ -52,11 +53,12 @@ enum TSAFileFlags : uint32_t
 {
     FLAG_NONE       = 0x00000000,
     FLAG_COMPRESSED = 0x00000001, // Données compressées (zlib / deflate)
-    FLAG_ENCRYPTED  = 0x00000002, // Données protégées / chiffrées
+    FLAG_ENCRYPTED  = 0x00000002, // Données protégées par mot de passe ; seul (fichiers < 3.2) : ancien XOR, lu jamais écrit
     FLAG_HAS_MESH      = 0x00000004, // Contient un maillage EF pré-généré
     FLAG_HAS_RESULT    = 0x00000008, // Contient des résultats de calcul EF
     FLAG_HAS_THUMBNAIL = 0x00000010, // Contient une miniature 3D embarquée (PNG, chunk THMB)
-    FLAG_HAS_PREVIEW_BLOCK = 0x00000020 // 1.2 : aperçu PNG non compressé après le payload (Explorateur Windows)
+    FLAG_HAS_PREVIEW_BLOCK = 0x00000020, // 1.2 : aperçu PNG non compressé après le payload (Explorateur Windows)
+    FLAG_ENCRYPTED_AEAD = 0x00000040     // 3.2 : avec FLAG_ENCRYPTED, bloc AES-256-GCM authentifié (TSAEncryption.h, BUG-167)
 };
 
 // -----------------------------------------------------------------------------

@@ -2838,6 +2838,18 @@ Do you want to save the changes before continuing?</translation>
         <translation>open another project</translation>
     </message>
     <message>
+        <source>Mot de passe incorrect pour « %1 ». Réessayer :</source>
+        <translation>Incorrect password for “%1”. Try again:</translation>
+    </message>
+    <message>
+        <source>Le projet « %1 » est protégé par mot de passe :</source>
+        <translation>The project “%1” is password-protected:</translation>
+    </message>
+    <message>
+        <source>Projet protégé</source>
+        <translation>Protected project</translation>
+    </message>
+    <message>
         <source>Erreur de chargement</source>
         <translation>Load error</translation>
     </message>
@@ -2869,7 +2881,10 @@ Do you want to save the changes before continuing?</translation>
     </message>
     <message numerus="yes">
         <source>%n anomalie(s) de validation relevée(s) au dernier enregistrement.</source>
-        <translation><numerusform>%n validation issue(s) found at the last save.</numerusform></translation>
+        <translation>
+            <numerusform>%n validation issue(s) found at the last save.</numerusform>
+            <numerusform />
+        </translation>
     </message>
     <message>
         <source>Résultats du dernier calcul rétablis (enregistrés avec le projet).</source>
@@ -3906,6 +3921,14 @@ Do you want to save the changes before continuing?</translation>
     <message>
         <source>Fichiers reliés au projet (imports, exports, textures, documents joints) et bibliothèques utilisées : présence et intégrité contrôlées à l'ouverture</source>
         <translation>Files linked to the project (imports, exports, textures, attached documents) and libraries used: presence and integrity checked on opening</translation>
+    </message>
+    <message>
+        <source>&amp;Protection par mot de passe...</source>
+        <translation>&amp;Password protection...</translation>
+    </message>
+    <message>
+        <source>Chiffrer le fichier du projet avec un mot de passe (AES-256), ou retirer la protection</source>
+        <translation>Encrypt the project file with a password (AES-256), or remove the protection</translation>
     </message>
     <message>
         <source>&amp;Exporter Rapport de Diagnostic...</source>
@@ -6605,7 +6628,10 @@ See Help &gt; Modules.</translation>
     </message>
     <message numerus="yes">
         <source>%n fichier(s) lié(s) au projet, tous présents et inchangés.</source>
-        <translation><numerusform>%n file(s) linked to the project, all present and unchanged.</numerusform></translation>
+        <translation>
+            <numerusform>%n file(s) linked to the project, all present and unchanged.</numerusform>
+            <numerusform />
+        </translation>
     </message>
     <message>
         <source>Dernier enregistrement : %1 par %2 (%3, format %4).</source>
@@ -6614,6 +6640,54 @@ See Help &gt; Modules.</translation>
     <message>
         <source>auteur non renseigné</source>
         <translation>author not specified</translation>
+    </message>
+    <message>
+        <source>Protection par mot de passe</source>
+        <translation>Password protection</translation>
+    </message>
+    <message>
+        <source>Aucun mot de passe : le fichier s'ouvre sans demande</source>
+        <translation>No password: the file opens without asking</translation>
+    </message>
+    <message>
+        <source>Protéger le fichier par un mot de passe</source>
+        <translation>Protect the file with a password</translation>
+    </message>
+    <message>
+        <source>Mot de passe :</source>
+        <translation>Password:</translation>
+    </message>
+    <message>
+        <source>Confirmation :</source>
+        <translation>Confirm:</translation>
+    </message>
+    <message>
+        <source>Le contenu du fichier est chiffré (AES-256-GCM, clé dérivée du mot de passe) : sans le mot de passe, personne ne peut l'ouvrir, et %1 ne peut pas le retrouver. Le nom du fichier reste visible.</source>
+        <translation>The file content is encrypted (AES-256-GCM, key derived from the password): without the password nobody can open it, and %1 cannot recover it. The file name stays visible.</translation>
+    </message>
+    <message>
+        <source>Chiffrement indisponible sur ce poste (bibliothèque OpenSSL absente à la compilation).</source>
+        <translation>Encryption unavailable on this computer (OpenSSL library missing at build time).</translation>
+    </message>
+    <message>
+        <source>Au moins %1 caractères.</source>
+        <translation>At least %1 characters.</translation>
+    </message>
+    <message>
+        <source>Les deux saisies diffèrent.</source>
+        <translation>The two entries differ.</translation>
+    </message>
+    <message>
+        <source>Champs vides : le mot de passe actuel est conservé.</source>
+        <translation>Empty fields: the current password is kept.</translation>
+    </message>
+    <message>
+        <source>Protection par mot de passe retirée : enregistrer le projet pour l'appliquer au fichier.</source>
+        <translation>Password protection removed: save the project to apply it to the file.</translation>
+    </message>
+    <message>
+        <source>Protection par mot de passe définie : enregistrer le projet pour chiffrer le fichier.</source>
+        <translation>Password protection set: save the project to encrypt the file.</translation>
     </message>
     <message>
         <source>Fichiers liés et bibliothèques</source>
@@ -6986,11 +7060,17 @@ See Help &gt; Modules.</translation>
     </message>
     <message numerus="yes">
         <source>%n autre(s) cas chargé(s) masqué(s) — Charges › Cas affichés</source>
-        <translation><numerusform>%n other loaded case hidden — Loads › Displayed cases</numerusform><numerusform>%n other loaded cases hidden — Loads › Displayed cases</numerusform></translation>
+        <translation>
+            <numerusform>%n other loaded case hidden — Loads › Displayed cases</numerusform>
+            <numerusform>%n other loaded cases hidden — Loads › Displayed cases</numerusform>
+        </translation>
     </message>
     <message numerus="yes">
         <source>%n valeur(s) superposée(s) masquée(s) — zoomer pour les lire</source>
-        <translation><numerusform>%n overlapping value hidden — zoom in to read it</numerusform><numerusform>%n overlapping values hidden — zoom in to read them</numerusform></translation>
+        <translation>
+            <numerusform>%n overlapping value hidden — zoom in to read it</numerusform>
+            <numerusform>%n overlapping values hidden — zoom in to read them</numerusform>
+        </translation>
     </message>
     <message>
         <source>X global</source>
@@ -8152,14 +8232,6 @@ Run the analysis?</translation>
         <translation>TSA 3D finite element engine (exact Euler–Bernoulli beams, hinges, elastic supports), validated against OpenSees within its scope. Secondary engine: OpenSees remains the default engine.</translation>
     </message>
     <message>
-        <source>Hors du périmètre de Fem3D : %1. Calcul confié à OpenSees (secours choisi dans les options de Fem3D) : les résultats porteront l'identité d'OpenSees.</source>
-        <translation>Outside the scope of Fem3D: %1. Analysis handed over to OpenSees (fallback chosen in the Fem3D options): the results will carry the OpenSees identity.</translation>
-    </message>
-    <message>
-        <source>Hors du périmètre de Fem3D : %1. Choisir le moteur OpenSees, ou activer le secours OpenSees dans les options de Fem3D.</source>
-        <translation>Outside the scope of Fem3D: %1. Choose the OpenSees engine, or enable the OpenSees fallback in the Fem3D options.</translation>
-    </message>
-    <message>
         <source>Comparaison impossible : Fem3D ne peut pas calculer ce modèle.</source>
         <translation>Comparison impossible: Fem3D cannot analyse this model.</translation>
     </message>
@@ -8170,10 +8242,6 @@ Run the analysis?</translation>
     <message>
         <source>comparaison</source>
         <translation>comparison</translation>
-    </message>
-    <message>
-        <source>secours</source>
-        <translation>fallback</translation>
     </message>
     <message>
         <source>Conversion du modèle pour Fem3D…</source>
@@ -8188,12 +8256,8 @@ Run the analysis?</translation>
         <translation>Outside the scope of Fem3D: %1. No analysis was performed.</translation>
     </message>
     <message>
-        <source>Calcul fait par OpenSees (secours de Fem3D) — hors du périmètre de Fem3D : %1</source>
-        <translation>Analysis performed by OpenSees (Fem3D fallback) — outside the scope of Fem3D: %1</translation>
-    </message>
-    <message>
-        <source>Calcul OpenSees terminé (secours de Fem3D).</source>
-        <translation>OpenSees analysis completed (Fem3D fallback).</translation>
+        <source>Hors du périmètre de Fem3D : %1. Choisir le moteur OpenSees.</source>
+        <translation>Outside the scope of Fem3D: %1. Choose the OpenSees engine.</translation>
     </message>
     <message>
         <source>Calcul annulé.</source>
@@ -10853,6 +10917,10 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
         <translation>recomputed %1 (%2) differs from the saved value (%3)</translation>
     </message>
     <message>
+        <source>Protection par mot de passe impossible (%1) : le projet n'a pas été enregistré.</source>
+        <translation>Password protection failed (%1): the project was not saved.</translation>
+    </message>
+    <message>
         <source>Impossible de créer le fichier .tsa : %1 (%2)</source>
         <translation>Cannot create the .tsa file: %1 (%2)</translation>
     </message>
@@ -10911,6 +10979,22 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
     <message>
         <source>Somme de contrôle CRC32 invalide. Le fichier est altéré ou corrompu.</source>
         <translation>Invalid CRC32 checksum. The file is altered or corrupt.</translation>
+    </message>
+    <message>
+        <source>Ce projet est protégé par mot de passe.</source>
+        <translation>This project is password-protected.</translation>
+    </message>
+    <message>
+        <source>Mot de passe incorrect (ou contenu du fichier modifié).</source>
+        <translation>Incorrect password (or file content modified).</translation>
+    </message>
+    <message>
+        <source>Ce projet est protégé par mot de passe, mais le chiffrement n'est pas disponible sur ce poste (bibliothèque OpenSSL absente à la compilation).</source>
+        <translation>This project is password-protected, but encryption is not available on this computer (OpenSSL library missing at build time).</translation>
+    </message>
+    <message>
+        <source>Bloc chiffré illisible : fichier altéré.</source>
+        <translation>Unreadable encrypted block: corrupted file.</translation>
     </message>
     <message>
         <source>Ce fichier est protégé par mot de passe mais aucun déchiffreur n'est disponible.</source>
@@ -16174,7 +16258,10 @@ Each restraint is listed before the analysis and reported if it carries a force.
     </message>
     <message numerus="yes">
         <source>%1 n'a pas été fermé normalement. %n projet(s) modifié(s) peuvent être récupérés depuis leur dernière copie automatique :</source>
-        <translation><numerusform>%1 was not closed normally. %n modified project(s) can be recovered from their last automatic copy:</numerusform></translation>
+        <translation>
+            <numerusform>%1 was not closed normally. %n modified project(s) can be recovered from their last automatic copy:</numerusform>
+            <numerusform />
+        </translation>
     </message>
     <message>
         <source>Récupérer</source>
@@ -16743,10 +16830,6 @@ Convert to the custom section “%3”?</translation>
     <message>
         <source>Rétablir (graphe)</source>
         <translation>Redo (graph)</translation>
-    </message>
-    <message>
-        <source>Annuler la dernière modification du Blueprint (l'historique du projet est distinct)</source>
-        <translation>Undo the last Blueprint change (the project history is separate)</translation>
     </message>
     <message>
         <source>Supprimer</source>
@@ -17379,6 +17462,14 @@ Fix the subgraph body or discard its changes.</translation>
     <message>
         <source>Mini-carte : cliquer ou glisser pour déplacer la vue</source>
         <translation>Minimap: click or drag to move the view</translation>
+    </message>
+    <message>
+        <source>Annuler la dernière modification du Blueprint (Ctrl+Z dans le graphe ; l'historique du projet est distinct)</source>
+        <translation>Undo the last Blueprint change (Ctrl+Z in the graph; the project history is separate)</translation>
+    </message>
+    <message>
+        <source>Rétablir la modification du Blueprint (Ctrl+Y dans le graphe ; l'historique du projet est distinct)</source>
+        <translation>Redo the Blueprint change (Ctrl+Y in the graph; the project history is separate)</translation>
     </message>
     <message>
         <source>Zoom du graphe (molette autour du curseur, bouton du milieu pour déplacer)</source>
@@ -18702,7 +18793,10 @@ Run the analysis (F5) to plot the curves.</translation>
     </message>
     <message numerus="yes">
         <source>%1 — %n charge(s)</source>
-        <translation><numerusform>%1 — %n load</numerusform><numerusform>%1 — %n loads</numerusform></translation>
+        <translation>
+            <numerusform>%1 — %n load</numerusform>
+            <numerusform>%1 — %n loads</numerusform>
+        </translation>
     </message>
     <message>
         <source>Applique les réglages graphiques du profil (aucune donnée du modèle ni des résultats n'est modifiée)</source>
@@ -19437,24 +19531,8 @@ Install a .tsalib package instead.</translation>
         <translation>Analysis:</translation>
     </message>
     <message>
-        <source>Refuser le calcul</source>
-        <translation>Refuse the analysis</translation>
-    </message>
-    <message>
-        <source>Calculer par OpenSees</source>
-        <translation>Analyse with OpenSees</translation>
-    </message>
-    <message>
-        <source>Modèle hors du périmètre de Fem3D (charge ponctuelle ou partielle sur barre, moment réparti…). Un mécanisme ou une donnée invalide n'est jamais confié à un autre moteur.</source>
-        <translation>Model outside the scope of Fem3D (point or partial load on a member, distributed moment…). A mechanism or invalid data is never handed over to another engine.</translation>
-    </message>
-    <message>
-        <source>Hors périmètre :</source>
-        <translation>Out of scope:</translation>
-    </message>
-    <message>
-        <source>Un calcul confié à OpenSees est annoncé avant le calcul et ses résultats portent l'identité d'OpenSees.</source>
-        <translation>An analysis handed over to OpenSees is announced beforehand and its results carry the OpenSees identity.</translation>
+        <source>Un modèle hors du périmètre de Fem3D (treillis, câbles, coques) est refusé avec la raison : choisir alors le moteur OpenSees.</source>
+        <translation>A model outside the scope of Fem3D (trusses, cables, shells) is refused with the reason: then choose the OpenSees engine.</translation>
     </message>
 </context>
 <context>

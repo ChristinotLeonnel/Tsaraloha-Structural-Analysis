@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-11-02 soir (17 bugs corrigés et retirés, tests 592-597 et suites stabilisées : BUG-157 sauvegarde automatique et récupération, BUG-171, BUG-175, BUG-176, BUG-075, BUG-115, BUG-121, BUG-147, BUG-077, BUG-102, BUG-138, BUG-135, BUG-169/104, BUG-173, BUG-174/179 (compte de référence pris après les affichages différés) ; BUG-159 à 168 : restent 161, 167, 168 ; BUG-117 : reste l'équilibre Custom2D ; BUG-137 : reste Linux ; BUG-124 : reste Windows sans OpenSees). Avant : 2026-11-02 (BUG-179 ajouté, test 343 intermittent ; BUG-154, BUG-155, BUG-156 corrigés et retirés, tests 588-590 ; BUG-111 terminé et retiré, annexe nationale du projet, test 591 ; BUG-002 retiré : dalles et voiles calculés en coques depuis le maillage du projet, suite surfaces ; BUG-117 P2 corrigé ; BUG-111 étapes 1-2 faites, test 587 ; BUG-133 corrigé et retiré : installation d'OpenSees depuis l'application par conda-forge ; BUG-173 : moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine ; BUG-153 corrigé et retiré, test 586 — reste documenté : centre de cisaillement, docs/AUDIT_CALCULS.md § 8 ; BUG-151 corrigé et retiré, test 585 ; BUG-152 corrigé et retiré, test 584 ; BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
+Last Updated: 2026-11-02 nuit (BUG-166 terminé — CRC toujours vérifié, la partie « CRC nul » avait été annoncée corrigée à tort ; BUG-144 secours OpenSees retiré ; BUG-140 Ctrl+Z du canevas Blueprint = graphe, test 598 ; BUG-167 projets protégés AES-256-GCM, format 3.2, test 599). Avant : 2026-11-02 soir (17 bugs corrigés et retirés, tests 592-597 et suites stabilisées : BUG-157 sauvegarde automatique et récupération, BUG-171, BUG-175, BUG-176, BUG-075, BUG-115, BUG-121, BUG-147, BUG-077, BUG-102, BUG-138, BUG-135, BUG-169/104, BUG-173, BUG-174/179 (compte de référence pris après les affichages différés) ; BUG-159 à 168 : restent 161, 167, 168 ; BUG-117 : reste l'équilibre Custom2D ; BUG-137 : reste Linux ; BUG-124 : reste Windows sans OpenSees). Avant : 2026-11-02 (BUG-179 ajouté, test 343 intermittent ; BUG-154, BUG-155, BUG-156 corrigés et retirés, tests 588-590 ; BUG-111 terminé et retiré, annexe nationale du projet, test 591 ; BUG-002 retiré : dalles et voiles calculés en coques depuis le maillage du projet, suite surfaces ; BUG-117 P2 corrigé ; BUG-111 étapes 1-2 faites, test 587 ; BUG-133 corrigé et retiré : installation d'OpenSees depuis l'application par conda-forge ; BUG-173 : moteur Fem3D trouvé dans ../TSA-3D-FEM-Engine ; BUG-153 corrigé et retiré, test 586 — reste documenté : centre de cisaillement, docs/AUDIT_CALCULS.md § 8 ; BUG-151 corrigé et retiré, test 585 ; BUG-152 corrigé et retiré, test 584 ; BUG-149 et BUG-150 retirés : fonctionnalité retirée, analyse non linéaire, ADR-025 ; BUG-177 et BUG-178 corrigés et retirés, tests 583 et 373, voir changelog). Avant : 2026-11-01 (BUG-175, BUG-176 ajoutés ; BUG-174 ajouté ; BUG-074 corrigé et retiré, test 573 ; BUG-173 ajouté). Avant : 2026-11-01 (bugs corrigés retirés). Avant : 2026-10-31 (BUG-148 corrigé ; analyse non linéaire retirée, ADR-025 : BUG-149 et BUG-150 clos par retrait, conservés ; BUG-151 à 168 inchangés). Avant : audit technique du 2026-10-31 (BUG-148 à 168). Avant : 2026-10-26 soir (préparation de l'étape 2 : BUG-006 recompté, BUG-125 à BUG-130 caractérisés, non corrigés). Avant : 2026-10-26 (D1-D6 : BUG-117 P1 corrigés, BUG-111 étape 0, BUG-118 étape E0, BUG-113 tests ajoutés, BUG-110 présenté). Précédent : 2026-10-25 (TSA Core phase 0 : BUG-105 à BUG-109 corrigés, BUG-110 à BUG-115 ouverts ; portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Un bug entièrement corrigé est retiré de ce fichier (2026-11-01 : 23 entrées FIXED et la section « Corrigés (historique) », 16 entrées, retirées) ; son historique reste dans Git et dans changelog.md. Un bug corrigé en partie reste, avec ce qui demeure ouvert. Un bug d'une fonctionnalité retirée (ADR-022 dynamique, ADR-025 non linéaire) est retiré aussi : il revient avec la fonctionnalité.
 
 ## Ouverts
 
@@ -15,19 +15,12 @@ la sortie du processus, après les tests. 10 autres exécutions dont 6 répété
 ## BUG-158
 Status: OPEN (MEDIUM, mesuré) — Fem3D : 117 s contre 18 s pour OpenSees à 29 200 barres, environ 90 % dans SimplicialLDLT.
 
-## BUG-161, BUG-167, BUG-168 (restes de BUG-159 à BUG-168)
+## BUG-161, BUG-168 (restes de BUG-159 à BUG-168)
 Status: OPEN (LOW) — BUG-161 : banc Fem3D/OpenSees du dépôt du moteur (../TSA-3D-FEM-Engine) qui supprime ses références et
-conclut « 0 écart » sans comparaison (autre dépôt). BUG-167 : chiffrement XOR du contenu .tsa (obscurcissement, pas une
-protection ; décision à prendre : AES authentifié ou retrait, compatibilité .tsa et test_thumbnail_provider à préserver).
-BUG-168 : clé d'API de l'IA en clair hors Windows (trousseau Linux / macOS : libsecret ou QtKeychain, dépendance à décider).
-BUG-159, 160, 162 à 166 corrigés le 2026-11-02 (changelog).
+conclut « 0 écart » sans comparaison (autre dépôt). BUG-168 : clé d'API de l'IA en clair hors Windows (trousseau Linux /
+macOS : libsecret ou QtKeychain, dépendance à décider). BUG-159, 160, 162 à 167 corrigés le 2026-11-02 (changelog).
+Reste lié à BUG-167 : protection par mot de passe sous Linux (OpenSSL) écrite mais jamais compilée ni testée.
 
-## BUG-144
-Status: OPEN (constat, 2026-10-29) — secours OpenSees de Fem3D sans cas atteignable depuis l'interface : depuis
-Fem3D 0.3.0 les charges sur barre sont calculées ; les seuls « hors périmètre » restants (treillis, câbles, coques)
-sont refusés avant par AnalysisManager (familles d'éléments ; coques non transmises si !supportsShell). L'option
-« secours OpenSees » ne change donc plus rien. Logique testée directement sur le moteur (test 478). Décision à
-prendre : retirer l'option, ou faire passer ces familles par la décision du moteur quand un secours est choisi.
 Espace de travail (2026-10-29, essais réels dans TSA.exe, branche feature/blueprint-workspace) :
 
 ## BUG-139
@@ -35,10 +28,6 @@ Status: OPEN — vue partagée à la taille minimale de la fenêtre (960 × 560 
 ouverts : zone centrale plus étroite que les minimums vue 3D (240 px) + canevas (280 px) ; le Blueprint est rogné.
 Contournement : mode Blueprint, mode focus (Ctrl+Shift+F) ou fermer une colonne de panneaux. Piste : replier palette et
 inspecteur de l'éditeur sous un seuil, ou relever la largeur minimale du workspace en vue partagée.
-
-## BUG-140
-Status: OPEN (ergonomie, décision à prendre) — Ctrl+Z dans le canevas du Blueprint annule le PROJET (modèle structurel),
-pas l'édition du graphe (boutons propres à l'éditeur). Cohérent avec la documentation, peut surprendre en éditant un graphe.
 
 ## BUG-141
 Status: OPEN (mineur) — mini-carte peu lisible pour un graphe très allongé (une rangée de 400 nœuds : bande quasi

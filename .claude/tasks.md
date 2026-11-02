@@ -42,8 +42,12 @@ Last Updated: 2026-11-02 soir. Avant : 2026-11-01. Uniquement des tâches réell
       BUG-171 (593), BUG-175 (594), BUG-075 (595), BUG-115 / BUG-121 (596), BUG-176 (597), BUG-147, BUG-077, BUG-102, BUG-138,
       BUG-159, BUG-162 à 166, BUG-117 P3 (g unique), BUG-169/104, BUG-173, BUG-174/179 (tests stabilisés) ; traductions en / mg 100 %.
 - [x] TSALab (branche fix/opensees-timeout, non commitée) : BUG-160, OpenSeesPlanarSolver arrêté après le délai.
-- [ ] Commit, fusion et push des deux branches : accord demandé.
-- [ ] Restent ouverts, hors portée d'une correction ici : voir known-issues.md (décisions : BUG-144, 140, 167 ; autres dépôts :
+- [x] Commit, fusion et push des deux branches (accord du 2026-11-02 ; TSA fe5ca79, TSALab 774bc55).
+- [x] Décisions BUG-144 (retrait), BUG-140 (Ctrl+Z du graphe), BUG-167 (AES-GCM facultatif) ; BUG-166 terminé — branche
+      fix/file-protection-fem3d-blueprint-undo, tests 598-599.
+- [ ] Essai manuel dans TSA.exe : protéger, enregistrer, rouvrir (mot de passe faux puis bon), récupération d'un projet protégé.
+- [ ] Linux : compiler avec OpenSSL et exécuter le test 599.
+- [ ] Restent ouverts, hors portée d'une correction ici : voir known-issues.md (décisions : aucune en attente ; autres dépôts :
       BUG-161, 158, 076 ; environnement : BUG-012, 021, 023, 033, 036, 168, 137 Linux ; tests intermittents : BUG-079, 123, 170 ;
       grands chantiers : BUG-006, 008, 028, 118 E1-E5 ; BUG-117 équilibre Custom2D ; BUG-124 Windows sans OpenSees).
 - [ ] Traductions en / mg manquantes (88 / 107 textes, dont Style des charges, menus d'affichage) : tools/i18n.

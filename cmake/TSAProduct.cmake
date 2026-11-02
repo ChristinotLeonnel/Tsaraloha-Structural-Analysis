@@ -975,6 +975,8 @@ set(IO_SOURCES
     ${TSA_ROOT}/src/IO/TSAFile_BinaryUtils.h
     ${TSA_ROOT}/src/IO/TSAFile.h
     ${TSA_ROOT}/src/IO/TSAFile.cpp
+    ${TSA_ROOT}/src/IO/TSAEncryption.h
+    ${TSA_ROOT}/src/IO/TSAEncryption.cpp
     ${TSA_ROOT}/src/IO/Tsa3d/Tsa3d.h
     ${TSA_ROOT}/src/IO/Tsa3d/Tsa3dInternal.h
     ${TSA_ROOT}/src/IO/Tsa3d/Tsa3dCommon.cpp
@@ -1313,6 +1315,7 @@ set(TSA_NO_PCH_SOURCES
     ${TSA_ROOT}/src/Platform/WindowsAssociation.cpp
     ${TSA_ROOT}/src/AI/Hardware/HardwareProfiler.cpp
     ${TSA_ROOT}/src/AI/Core/SecretStore.cpp
+    ${TSA_ROOT}/src/IO/TSAEncryption.cpp
     ${TSA_ROOT}/src/AI/Providers/ProcessLifetime.cpp
     ${TSA_ROOT}/src/UI/Shell/AppShell.cpp
     ${TSA_ROOT}/src/UI/Common/EcosystemApplication.cpp
@@ -1556,7 +1559,17 @@ function(tsaraloha_add_shared_libraries)
         TKMath
     )
     if(WIN32)
-        target_link_libraries(${model} PUBLIC DbgHelp Crypt32)
+        # Bcrypt : chiffrement authentifié des projets protégés (CNG, src/IO/TSAEncryption.cpp, BUG-167)
+        target_link_libraries(${model} PUBLIC DbgHelp Crypt32 Bcrypt)
+    else()
+        # Hors Windows : OpenSSL libcrypto pour la protection par mot de passe ; absent, elle est annoncée indisponible
+        find_package(OpenSSL QUIET COMPONENTS Crypto)
+        if(OpenSSL_FOUND)
+            target_link_libraries(${model} PUBLIC OpenSSL::Crypto)
+            target_compile_definitions(${model} PUBLIC TSA_HAS_OPENSSL_CRYPTO=1)
+        else()
+            message(STATUS "OpenSSL (libcrypto) introuvable : projets protégés par mot de passe indisponibles (paquet libssl-dev)")
+        endif()
     endif()
     if(TSA_HAS_FEM3D)
         target_link_libraries(${model} PUBLIC fem3d)

@@ -319,3 +319,19 @@ Consequences: un projet rouvre sans recalcul, avec sa disposition, sa vue et ses
 par Annuler sans données de surfaces, à vérifier), BUG-176 (Annuler après un calcul jusqu'à l'état enregistré lève « * »),
 géométrie de la fenêtre non enregistrée (fenêtre partagée par les onglets de l'AppShell), export de la note de calcul
 non relié au manifeste.
+
+## ADR-027
+Title: Projets protégés par mot de passe : chiffrement authentifié, facultatif (format 3.2)
+Decision: (2026-11-02, BUG-167, choix de l'utilisateur : vrai chiffrement, protection choisie ou non dans l'interface)
+- AES-256-GCM, clé PBKDF2-HMAC-SHA-256 (sel 16 octets, 600 000 itérations enregistrées dans le bloc), nonce 12 octets ;
+  paramètres authentifiés comme données associées (`src/IO/TSAEncryption.h`, docs/TSA_FILE_FORMAT.md § 6.8).
+- Aucune dépendance ajoutée sous Windows (CNG, bcrypt) ; ailleurs OpenSSL libcrypto si CMake le trouve, sinon protection
+  annoncée indisponible. Jamais d'écriture en clair à la place d'un fichier protégé.
+- Fonctionnalité obligatoire FEATURE_ENCRYPTION_AEAD posée seulement sur un fichier protégé : les fichiers en clair restent
+  lisibles par 3.0 / 3.1.
+- Ancien XOR (FLAG_ENCRYPTED seul) : lu avec son mot de passe, jamais écrit.
+- Mot de passe : en mémoire pour la session (ProjectManager), jamais enregistré ; perdu = projet irrécupérable (annoncé).
+Consequences: un fichier protégé n'expose que son nom de fichier, ses dates et sa taille ; ni aperçu, ni miniature, ni nom de
+projet. Sa fiche de récupération garde le chemin d'origine, en clair (nécessaire pour la proposer). Chaque enregistrement, copie
+de récupération comprise, dérive la clé (durée non mesurée). Linux non vérifié.
+Status: ACTIVE

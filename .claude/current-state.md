@@ -5,6 +5,12 @@ revues depuis le 2026-10-07 : voir l'audit du 2026-10-31 (TSA_CODE_QUALITY_AUDIT
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
+## Projets protégés par mot de passe (2026-11-02, branche fix/file-protection-fem3d-blueprint-undo, ADR-027)
+Status: IMPLEMENTED (Windows) / UNKNOWN (Linux, OpenSSL : jamais compilé) — facultatif, Fichier › Protection par mot de passe ;
+AES-256-GCM, PBKDF2-HMAC-SHA-256 (src/IO/TSAEncryption), format 3.2 ; mot de passe demandé à l'ouverture ; copie de récupération
+chiffrée ; ancien XOR lu, jamais écrit. Test 599 (bloc, fichier, altérations, ancien XOR, ProjectManager, récupération). Non vérifié :
+dialogues dans TSA.exe (MainWindow n'est pas lié aux tests).
+
 ## Sauvegarde automatique et récupération (2026-11-02, branche fix/autosave-recovery, non commitée)
 Status: IMPLEMENTED — RecoveryStore (src/Project) : copie périodique du projet modifié dans <AppLocalData>/recovery (QSettings
 Project/autosaveMinutes, 5 par défaut, 0 = désactivée), verrou par session (QLockFile), copies orphelines proposées au lancement

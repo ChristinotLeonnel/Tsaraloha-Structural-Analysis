@@ -2,6 +2,31 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-02 (nuit) — BUG-166 terminé, BUG-144, BUG-140, BUG-167 (branche fix/file-protection-fem3d-blueprint-undo)
+
+Décisions de l'utilisateur : 144 → retirer l'option ; 140 → Ctrl+Z du canevas = graphe ; 167 → vrai chiffrement, protection
+facultative choisie dans l'interface.
+- BUG-166 (fin) : CRC32 toujours vérifié (TSAFileReader) — un champ à 0 désactivait le contrôle ; cette partie avait été annoncée
+  corrigée à tort dans l'entrée précédente. Aucun écrivain n'a jamais écrit 0. Test 599 (c).
+- BUG-144 : secours OpenSees de Fem3D retiré (Fem3DEngine::Settings::fallback, panneau, tests 476 / 478 / 480 adaptés) ; un modèle
+  hors périmètre est refusé ; la clé « fallback » des anciens projets est ignorée, jamais réécrite. docs/ANALYSIS_ENGINES.md.
+- BUG-140 : Ctrl+Z / Ctrl+Y (et Ctrl+Maj+Z) pris par la vue du Blueprint quand elle a le focus (ShortcutOverride, comme Ctrl+C / V)
+  → historique du graphe ; ailleurs, Annuler du projet. Test 598 (touches envoyées par QTest, raccourcis de la fenêtre actifs).
+  docs/UI.md.
+- BUG-167 : projets protégés par mot de passe — `src/IO/TSAEncryption` (AES-256-GCM authentifié, PBKDF2-HMAC-SHA-256 600 000
+  itérations, sel et nonce aléatoires ; Windows CNG / bcrypt, OpenSSL libcrypto ailleurs si trouvé) ; format 3.2
+  (FLAG_ENCRYPTED_AEAD, FEATURE_ENCRYPTION_AEAD posé seulement sur un fichier protégé) ; en-tête sans nom ni auteur, ni aperçu ;
+  échec du chiffrement = rien écrit (l'ancien code écrivait en clair) ; ancien XOR lu, jamais écrit. TSAProjectIO :
+  saveProtectedProject / loadProtectedProject (OpenStatus) / isPasswordProtected ; ProjectManager retient le mot de passe ;
+  copie de récupération chiffrée ; aperçu du Start Center jamais capturé. Interface : Fichier › Protection par mot de passe
+  (aucun / mot de passe ≥ 8 caractères confirmé), mot de passe demandé et redemandé à l'ouverture. Test 599.
+  docs/TSA_FILE_FORMAT.md § 6.8, ADR-027.
+- BUG-157 (corrections) : la copie de récupération garde le nom et l'auteur du projet (perdus à la récupération) ; elle reçoit le
+  nom du projet, plus le titre de fenêtre « TSA - x * » qui devenait le nom d'un projet récupéré jamais enregistré. Test 599 (f).
+- Traductions en / mg : 6 814 / 6 814.
+- Vérifié (Release, Windows) : 60/60 suites, banc 2 097 vérifications réussies, 0 en échec, check_layers 0 violation, check_shortcuts OK ;
+  TSALab 27/27, science 22/22 ; 11 fichiers .tsa du dépôt : CRC non nul et exact. Non vérifié : dialogues du mot de passe dans TSA.exe, Linux (OpenSSL).
+
 ## 2026-11-02 (soir) — bugs restants de known-issues (branche fix/autosave-recovery, TSALab fix/opensees-timeout, non commitées)
 
 - BUG-157 : sauvegarde automatique et récupération — `Project/RecoveryStore` (copie .tsa + fiche .json dans <AppLocalData>/recovery,

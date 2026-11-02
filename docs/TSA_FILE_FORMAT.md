@@ -289,7 +289,7 @@ Pour prévenir toute corruption de mémoire ou exploitation par fichier malveill
 1. **Magic Number Check :** Rejet immédiat si `magic != TSA_FILE_MAGIC`.
 2. **Version Compatibility Check :** Rejet explicite avec message clair si `formatMajorVersion > TSA_FORMAT_VERSION_MAJOR`, ou (format ≥ 2.0) si `requiredFeatures` contient une fonctionnalité inconnue.
 3. **Contrôle de Taille Réelle :** Vérification que la taille sur le système de fichiers correspond exactement à `fileSize`.
-4. **Validation CRC32 :** Calcul du CRC32 du payload brut avant décompression. Rejet si différence avec `checksumCRC32`.
+4. **Validation CRC32 :** Calcul du CRC32 du payload brut avant décompression. Rejet si différence avec `checksumCRC32`. Contrôle toujours fait : une valeur nulle ne le désactive plus (BUG-166, 2026-11-02).
 5. **Limites Numériques de Sécurité :**
    - Taille maximale de payload : 1 Go (`MAX_SAFE_PAYLOAD_SIZE`).
    - Nombre maximal de nœuds : 1 000 000 (`MAX_SAFE_NODES`).
@@ -297,6 +297,32 @@ Pour prévenir toute corruption de mémoire ou exploitation par fichier malveill
    - Longueur maximale de chaîne de caractères : 65 536 caractères (`MAX_SAFE_STRING_LENGTH`).
 6. **Isolation Atomique :** La reconstruction utilise un snapshot `ModelStateSnapshot`. En cas d'erreur de lecture, le modèle en mémoire n'est pas pollué.
 7. **Écriture atomique (depuis 1.1) :** l'enregistrement passe par `QSaveFile` (fichier temporaire puis renommage à `commit()`). Une erreur d'écriture (disque plein, droits, crash) laisse le fichier existant intact. Le CRC32 est calculé par table (résultat identique à l'implémentation bit à bit d'origine).
+8. **Projets protégés par mot de passe (spécification 3.2, BUG-167) :** facultatif, choisi dans *Fichier › Protection par
+   mot de passe*. Drapeaux `FLAG_ENCRYPTED | FLAG_ENCRYPTED_AEAD` (0x02 | 0x40) et fonctionnalité obligatoire
+   `FEATURE_ENCRYPTION_AEAD` (bit 1 de `requiredFeatures`, posé seulement sur un fichier protégé : un fichier en clair reste
+   lisible par les versions 3.0 / 3.1 ; une version antérieure refuse un fichier protégé avec un message). Le payload
+   (déjà compressé) est remplacé par un bloc (`src/IO/TSAEncryption.h`) :
+
+   | Décalage | Taille | Contenu |
+   | :--- | :--- | :--- |
+   | 0 | 4 | signature `TSAE` |
+   | 4 | 1 | version du bloc (1) |
+   | 5 | 1 | dérivation de clé : 1 = PBKDF2-HMAC-SHA-256 |
+   | 6 | 1 | chiffrement : 1 = AES-256-GCM |
+   | 7 | 1 | réservé (0) |
+   | 8 | 4 | itérations PBKDF2 (u32 petit-boutiste ; 600 000 à l'écriture ; lues dans [10 000, 10 000 000]) |
+   | 12 | 16 | sel aléatoire |
+   | 28 | 12 | nonce aléatoire |
+   | 40 | n | contenu chiffré |
+   | 40 + n | 16 | étiquette d'authentification GCM |
+
+   Mot de passe : UTF-8 de sa forme NFC. Les 40 premiers octets sont des données associées authentifiées. Le CRC32 porte
+   sur le bloc. Un fichier protégé n'a ni bloc d'aperçu ni nom / auteur dans l'en-tête (le chunk `PROJ`, chiffré, les
+   porte) ; sa copie de récupération est chiffrée avec le même mot de passe. Mot de passe faux et contenu modifié sont
+   refusés de la même façon (étiquette refusée). Implémentation : CNG de Windows (`bcrypt`) ; ailleurs OpenSSL libcrypto si
+   CMake le trouve, sinon la protection est annoncée indisponible (jamais d'écriture en clair à la place). Les fichiers
+   antérieurs à 3.2 marqués `FLAG_ENCRYPTED` seul (ancien XOR avec le mot de passe, sans protection réelle) restent lus avec
+   leur mot de passe et ne sont plus jamais écrits ainsi. Test 599.
 
 ---
 
