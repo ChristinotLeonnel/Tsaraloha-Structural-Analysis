@@ -372,6 +372,12 @@ std::map<ElementKey, ElementResults> buildElementResults(const CalculationSnapsh
             // du côté négatif de l'axe local et V = dM/dx.
             double rawI[6] = { v[idx], v[idx + 1], v[idx + 2], v[idx + 3], v[idx + 4], v[idx + 5] };
             double rawJ[6] = { v[idx + 6], v[idx + 7], v[idx + 8], v[idx + 9], v[idx + 10], v[idx + 11] };
+            // Cornière calculée sur ses axes principaux (BUG-153) : tranchants et moments ramenés aux axes locaux de TSA,
+            // ceux des charges, des diagrammes et des vérifications
+            e.engineToTsa(rawI[1], rawI[2]);
+            e.engineToTsa(rawI[4], rawI[5]);
+            e.engineToTsa(rawJ[1], rawJ[2]);
+            e.engineToTsa(rawJ[4], rawJ[5]);
             const std::vector<BeamElementLoad>* elementLoads = &kNoLoad;
             if (loads)
             {

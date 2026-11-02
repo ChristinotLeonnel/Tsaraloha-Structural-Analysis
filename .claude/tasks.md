@@ -30,7 +30,8 @@ Last Updated: 2026-11-01. Uniquement des tâches réellement identifiées (voir 
 ## Correction des bugs de known-issues, du plus critique au moins critique (2026-11-02)
 - [x] BUG-152 (HIGH, verdict non sécuritaire) : flambement EC3 sur les deux axes principaux, test 584.
 - [x] BUG-151 (HIGH) : câble comprimé ou détendu signalé après le calcul, test 585.
-- [ ] Suivants (HIGH) : BUG-153 cornières (calcul sur axes géométriques) ; BUG-133
+- [x] BUG-153 (HIGH) : cornières sur leurs axes principaux (OpenSees ; Fem3D non exécuté ici), test 586.
+- [ ] Suivants (HIGH) : BUG-133
   téléchargement OpenSees ; BUG-111 traçabilité ; BUG-117 P2 ; BUG-002 dalles et voiles hors calcul.
 - [ ] Traductions en / mg manquantes (88 / 107 textes, dont Style des charges, menus d'affichage) : tools/i18n.
 

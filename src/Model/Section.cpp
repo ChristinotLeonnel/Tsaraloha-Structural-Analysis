@@ -300,6 +300,25 @@ double Section::centroidFromLeft() const
     }
 }
 
+Section::PrincipalInertia Section::principalInertia() const
+{
+    PrincipalInertia p;
+    const double Iy = iy(), Iz = iz(), P = iyz();
+    p.iy = Iy;
+    p.iz = Iz;
+    if (!std::isfinite(P) || std::abs(P) <= 1e-9 * std::max(std::abs(Iy), std::abs(Iz))) return p;
+    // ∫ y'·z' dA = ½·sin 2θ·(Iy − Iz) + cos 2θ·Iyz = 0
+    double theta = 0.5 * std::atan2(2.0 * P, Iz - Iy);
+    const double quarter = std::atan(1.0);   // π/4 : l'autre solution, à π/2 près, donne les mêmes axes
+    if (theta > quarter + 1e-12) theta -= 2.0 * quarter;
+    else if (theta < -quarter - 1e-12) theta += 2.0 * quarter;
+    const double c = std::cos(theta), s = std::sin(theta);
+    p.angle = theta;
+    p.iy = c * c * Iy + s * s * Iz - 2.0 * s * c * P;
+    p.iz = c * c * Iz + s * s * Iy + 2.0 * s * c * P;
+    return p;
+}
+
 double Section::iyz() const
 {
     if (shape != SectionShape::Angle) return 0.0;

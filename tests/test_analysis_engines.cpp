@@ -1598,5 +1598,98 @@ bool runSuite_Engines(int& passed)
         ++passed;
     }
 
+
+    // -------------------------------------------------------------------------
+    // TEST 586 (BUG-153) : cornière calculée sur ses axes principaux (flexion déviée). Avant : axes géométriques, console
+    // L100×100×10 de 3 m sous 1 kN en bout : uz = −23,8 mm au lieu de −36,7 mm, uy = 0 au lieu de ±21,7 mm.
+    // -------------------------------------------------------------------------
+    {
+        const Section angle = Section::angle(0.1, 0.1, 0.01);
+        const auto principal = angle.principalInertia();
+        const double Imax = std::max(principal.iy, principal.iz), Imin = std::min(principal.iy, principal.iz);
+        TEST_CHECK(principal.rotated() && std::abs(std::abs(principal.angle) - std::atan(1.0)) < 1e-9 &&
+                       std::abs(principal.iy + principal.iz - angle.iy() - angle.iz()) < 1e-15 && Imin < angle.iz() && Imax > angle.iy(),
+                   "Test 586: cornière à ailes égales — axes principaux à 45°, Iu = " << Imax * 1e8 << " cm⁴, Iv = " << Imin * 1e8 << " cm⁴");
+        TEST_CHECK(!Section::ipe(300).principalInertia().rotated() && !Section::rectangular(0.2, 0.4).principalInertia().rotated(),
+                   "Test 586: section symétrique — axes inchangés");
+
+        // Flexion déviée à la main : charge P selon z, axes principaux à 45° : uz = PL³/3E · ½(1/Iu + 1/Iv), uy = PL³/3E · ½(1/Iv − 1/Iu)
+        const double E = Material::steelS235().mechanical.youngModulus, P = 1000.0, L = 3.0;
+        const double k = P * L * L * L / (3.0 * E);
+        const double uzExpected = -k * 0.5 * (1.0 / Imax + 1.0 / Imin), uyExpected = k * 0.5 * (1.0 / Imin - 1.0 / Imax);
+        TEST_CHECK(std::abs(uzExpected + 0.0367) < 0.0367 * 0.02 && std::abs(uyExpected - 0.0217) < 0.0217 * 0.02,
+                   "Test 586: valeurs de référence du registre (uz = " << uzExpected * 1e3 << " mm, uy = ±" << uyExpected * 1e3 << " mm)");
+
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        int computed = 0;
+        for (const char* engineId : { "opensees", "fem3d" })
+        {
+            const AnalysisEngine* engine = reg.engine(engineId);
+            if (!engine || !engine->availability().available)
+            {
+                std::cout << "[SKIP] Test 586: moteur " << engineId << " indisponible" << std::endl;
+                continue;
+            }
+            Model m;
+            GridManager gm;
+            const int a = m.addNode(0, 0, 0), b = m.addNode(L, 0, 0);
+            m.getNode(a)->setSupport(SupportDefinition::fixed());
+            const int bar = m.addBar(a, b, angle, Material::steelS235(), BarRole::Beam);
+            const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+            m.loadManager().addNodalLoad(NodalLoad(0, b, lc, 0.0, 0.0, -1.0));   // 1 kN vers le bas
+            m.loadManager().setActiveLoadCaseId(lc);
+            AnalysisManager mgr(reg);
+            AnalysisContext c;
+            c.engineId = engineId;
+            c.common.includeSelfWeight = false;
+            const auto run = mgr.run(c, mgr.prepare(m, &gm, c));
+            TEST_CHECK(run.success, "Test 586: calcul " << engineId << " (" << run.message << ")");
+            if (!run.success) continue;
+            ++computed;
+            const auto d = run.results.nodeDisplacement(b);
+            TEST_CHECK(std::abs(d.uz - uzExpected) < 0.01 * std::abs(uzExpected) && std::abs(std::abs(d.uy) - uyExpected) < 0.01 * uyExpected,
+                       "Test 586: " << engineId << " — flexion déviée : uz = " << d.uz * 1e3 << " mm (attendu " << uzExpected * 1e3 << "), uy = " << d.uy * 1e3
+                                    << " mm (attendu ±" << uyExpected * 1e3 << ")");
+            // Efforts dans les axes locaux de TSA : charge verticale → moment d'encastrement P·L autour de y, rien autour de z
+            const auto* er = run.results.getElementResults(StructuralElementKind::Beam, bar);
+            const double toKN = run.results.units().forceToKiloNewtons();
+            TEST_CHECK(er && std::abs(std::abs(er->startForces.My * toKN) - 3.0) < 0.01 && std::abs(er->startForces.Mz * toKN) < 1e-6 &&
+                           std::abs(std::abs(er->startForces.Vz * toKN) - 1.0) < 0.001 && std::abs(er->startForces.Vy * toKN) < 1e-6,
+                       "Test 586: " << engineId << " — efforts ramenés aux axes de TSA (My = " << (er ? er->startForces.My * toKN : 0.0)
+                                    << " kN·m, Mz = " << (er ? er->startForces.Mz * toKN : 0.0) << ")");
+        }
+
+        // Même console, charge répartie locale z (eleLoad / charge Fem3D tournées vers les axes principaux)
+        if (const AnalysisEngine* ops = reg.engine("opensees"); ops && ops->availability().available)
+        {
+            Model m;
+            GridManager gm;
+            const int a = m.addNode(0, 0, 0), b = m.addNode(L, 0, 0);
+            m.getNode(a)->setSupport(SupportDefinition::fixed());
+            const int bar = m.addBar(a, b, angle, Material::steelS235(), BarRole::Beam);
+            const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+            m.loadManager().addMemberLoad(MemberLoad::uniform(bar, lc, -2.0, LoadDirection::LocalZ));   // 2 kN/m
+            m.loadManager().setActiveLoadCaseId(lc);
+            AnalysisManager mgr(reg);
+            AnalysisContext c;
+            c.engineId = "opensees";
+            c.common.includeSelfWeight = false;
+            const auto run = mgr.run(c, mgr.prepare(m, &gm, c));
+            const double q = 2000.0, kq = q * L * L * L * L / (8.0 * E);
+            const double uzQ = -kq * 0.5 * (1.0 / Imax + 1.0 / Imin), uyQ = kq * 0.5 * (1.0 / Imin - 1.0 / Imax);
+            const auto d = run.results.nodeDisplacement(b);
+            const auto* er = run.results.getElementResults(StructuralElementKind::Beam, bar);
+            const double toKN = run.results.units().forceToKiloNewtons();
+            TEST_CHECK(run.success && std::abs(d.uz - uzQ) < 0.01 * std::abs(uzQ) && std::abs(std::abs(d.uy) - uyQ) < 0.01 * uyQ && er &&
+                           std::abs(std::abs(er->startForces.My * toKN) - 9.0) < 0.01 && std::abs(er->startForces.Mz * toKN) < 1e-6,
+                       "Test 586: charge répartie locale — uz = " << d.uz * 1e3 << " mm (attendu " << uzQ * 1e3 << "), uy = " << d.uy * 1e3
+                                                                  << " mm, M encastrement = " << (er ? er->startForces.My * toKN : 0.0) << " kN·m");
+        }
+        TEST_CHECK(computed >= 1, "Test 586: au moins un moteur 3D a calculé la cornière");
+        std::cout << "[PASS] Test 586: Cornière calculée sur ses axes principaux (flexion déviée)" << std::endl;
+        ++passed;
+    }
+
     return true;
 }
