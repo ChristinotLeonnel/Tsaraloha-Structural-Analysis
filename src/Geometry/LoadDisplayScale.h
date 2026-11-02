@@ -12,7 +12,8 @@
 //                     rapports conservés au-dessus de ce seuil ;
 //   - normalisé     : toutes les flèches à L_réf × facteur ; l'intensité est donnée par le texte (ne prétend pas
 //                     être proportionnel).
-// L_réf est fournie par la vue (longueur à peu près constante à l'écran, adaptée au zoom par paliers).
+// L_réf vient de la STRUCTURE (structureLoadReferenceLength), jamais du zoom : en zoomant, flèches et valeurs grandissent
+// avec la scène et deviennent lisibles (2026-11-01 ; auparavant longueur constante à l'écran, adaptée au zoom par paliers).
 
 #include <array>
 #include <string>
@@ -20,6 +21,7 @@
 namespace TSA::Model
 {
 class LoadManager;
+class Model;
 }
 
 namespace TSA::Geometry
@@ -57,14 +59,24 @@ struct LoadScaleSettings
     bool operator==(const LoadScaleSettings&) const = default;
 };
 
-/// Intensités maximales (valeur absolue) par famille, sur toutes les charges du modèle.
+/// Intensités par famille, sur toutes les charges du modèle (tous les cas : l'échelle ne change pas d'un cas affiché à
+/// l'autre, les flèches de G et de Q restent comparables).
 struct LoadFamilyMaxima
 {
-    std::array<double, static_cast<int>(LoadFamily::Count)> max {};
+    std::array<double, static_cast<int>(LoadFamily::Count)> max {};     ///< intensité maximale (valeur absolue)
+    /// Échelle robuste : le maximum, sauf charge exceptionnelle (maximum > 3 × 90e centile) : 3 × 90e centile. Les autres
+    /// charges ne sont plus écrasées par une seule valeur hors norme, plafonnée à la longueur maximale (valeur affichée).
+    std::array<double, static_cast<int>(LoadFamily::Count)> scale {};
     double of(LoadFamily f) const { return max[static_cast<int>(f)]; }
+    double scaleOf(LoadFamily f) const { return scale[static_cast<int>(f)]; }
     bool operator==(const LoadFamilyMaxima&) const = default;
 };
 LoadFamilyMaxima loadFamilyMaxima(const TSA::Model::LoadManager& loads);
+
+/// Longueur de référence des flèches (m) d'après la structure, jamais le zoom : 35 % de la hauteur d'étage typique (médiane
+/// des éléments quasi verticaux), à défaut 30 % de la longueur médiane des barres, bornée à [1 %, 10 %] de l'envergure ; 1 m
+/// sans barre. La flèche d'intensité maximale tient ainsi sous le plancher supérieur (R+7, étages de 3 m : 1,05 m).
+double structureLoadReferenceLength(const TSA::Model::Model& model);
 
 /// Longueur graphique (m) d'une flèche d'intensité « intensity » (valeur absolue utilisée).
 double loadArrowLength(double intensity, double familyMax, double referenceLength, const LoadScaleSettings& s);

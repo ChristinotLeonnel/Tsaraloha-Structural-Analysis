@@ -2,6 +2,45 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-01 — affichage intelligent des charges (branche feature/load-display-scaling)
+
+- Supprimé : adaptation des flèches au zoom (OccView::memberLoadArrowLength ≈ 8 % de la vue par paliers,
+  updateMemberLoadZoomScale sur viewCameraChanged) — valeurs illisibles en zoomant. Longueur de référence
+  `Geometry::structureLoadReferenceLength` : 35 % de la hauteur d'étage typique (éléments quasi verticaux), sinon 30 % de la
+  longueur médiane des barres, bornée à [1 %, 10 %] de l'envergure (R+7, étages de 3 m : 1,05 m) ; relevée avec les maxima.
+- `LoadFamilyMaxima::scale` : échelle robuste (maximum, ou 3 × 90e centile si le maximum le dépasse) en modes automatique et
+  normalisé ; proportionnel inchangé (maximum). Échelle commune à tous les cas.
+- `Viewer/LoadDisplayStyle` (QSettings Display/Loads/*) : cas affichés (cas actif du projet par défaut, ou tous), couleurs
+  (par cas par défaut, intensité, famille, unique ; sRVB), texte (hauteur liée au modèle par défaut, automatique 0,25 × réf.,
+  ou constante à l'écran), décimales, symbole, unité, nom du cas, contour DEKALE, épaisseur des flèches. Textes des charges
+  hors AnnotationStyle. `OccView::setDisplayedLoadCase` (LoadManager::activeLoadCaseId, sans révision ni « modifié » :
+  notifyLoadCaseChanged aurait invalidé les résultats) ; légende : cas affiché et cas masqués.
+- UI : `UI/Display/LoadStyleDialog` (style des charges, aperçu immédiat, Annuler rétablit) ; DisplayMenus : « Style des
+  charges… » (menu Échelle des charges) et menu « Cas affichés » (pastille de couleur, nombre de charges, tous les cas) ;
+  ruban Charges › Affichage des charges. docs/DISPLAY_SCALES.md. Test 583 (display).
+- Vérifié (Release) : display, loadaxes, surfaces ; suite complète avant la correction de borne : 58/60, 568 tests (367 :
+  BUG-173 ; 583 : borne 6 % trop serrée, corrigée à 10 %, test 583 réussi ensuite) ; TSALab 27/27.
+  Non vérifié dans TSA.exe : boîte Style des charges, menu Cas affichés, rendu sur un vrai R+7.
+- 2026-11-02, BUG-177 (capture de l'utilisateur : valeurs « 42.00 kN/m » hautes de plusieurs mètres, structure recouverte) :
+  cause mesurée sur le rendu (sonde temporaire, retirée) — OCCT ne trace pas un texte « zoomable » sous ~16 unités du monde
+  (0,1 à 2 m → ~11 m de hauteur de capitale ; 12 → 8 m) ; une échelle locale n'y change rien. Correction : texte jamais
+  zoomable ; hauteur en mètres convertie en pixels à l'échelle de la vue, bornée [9, 16] px × facteur d'écran
+  (`LoadDisplayStyle::labelPixels`, réglages textMinPixels / textMaxPixels) ; `OccView::layoutLoadLabels` après chaque
+  reconstruction et 80 ms après l'arrêt de la caméra (hauteurs, valeurs superposées masquées par `SetViewAffinity`, la plus
+  forte gardée, réglage `declutter`, nombre dans la légende) ; valeurs au calque Topmost (plus coupées par les poutres
+  placées devant). Boîte Style des charges : bornes à l'écran, case « Masquer les valeurs qui se chevauchent ». Test 583
+  étendu (non zoomable, bornes, zoom, mode constant, 40 valeurs superposées puis masquage désactivé). Rendu R+7 3 × 3
+  travées vérifié par capture : 55 valeurs lisibles sur 192 en vue d'ensemble (11 px), 167 sur un zoom × 3 (20 px).
+  Vérifié (Release) : suite complète 59/60 (367 : BUG-173, environnement) ; check_layers 0 ; TSALab 27/27.
+  Non vérifié dans TSA.exe lui-même (rendu vérifié par capture d'une OccView dans la suite de tests).
+- 2026-11-02, BUG-178 : même limite d'OCCT pour la taille « liée au modèle » des annotations (AnnotationStyle). Texte jamais
+  zoomable ; hauteur = mètres × échelle de la vue bornée [8, 32] px ; `AnnotationStyle::setViewScale` (paliers de 15 %,
+  changed() seulement si la hauteur change) appelée à l'arrêt de la caméra ; `OccView::viewPixelsPerMeter` = médiane sur les
+  nœuds visibles (en perspective, le zoom déplace le centre de visée avec l'œil : l'échelle mesurée au centre restait fixe).
+  Trouvé en testant : la reconstruction déclenchée par un réglage d'annotation (rebuildAllShapes → fitAll) recadrait la vue
+  et annulait le zoom — caméra désormais conservée. Test 373 adapté (échelle, paliers, bornes, non zoomable, une seule
+  reconstruction au zoom avec zoom conservé, aucune caméra immobile). Suite complète 59/60 (367 : BUG-173) ; TSALab 27/27.
+
 ## 2026-11-01 — la molette ne modifie plus les champs survolés (branche fix/no-wheel-on-fields)
 
 - Cause : faire défiler un panneau ou une boîte de dialogue changeait la valeur du champ numérique ou de la liste déroulante

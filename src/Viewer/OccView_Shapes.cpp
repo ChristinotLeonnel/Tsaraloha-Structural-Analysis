@@ -2,6 +2,7 @@
 #include <AIS_ListOfInteractive.hxx>
 #include <Graphic3d_TransformPers.hxx>
 #include "AnnotationStyle.h"
+#include "LoadDisplayStyle.h"
 #include "OccView.h"
 #include "SelectionManager.h"
 #include "ResultsVisualManager.h"
@@ -35,6 +36,9 @@
 #include <AIS_Shape.hxx>
 #include <AIS_TextLabel.hxx>
 #include <Font_FontAspect.hxx>
+#include <Aspect_Window.hxx>
+#include <Graphic3d_Camera.hxx>
+#include <Prs3d_TextAspect.hxx>
 #include <AIS_InteractiveContext.hxx>
 #include <V3d_View.hxx>
 #include <Graphic3d_NameOfMaterial.hxx>
@@ -1894,7 +1898,7 @@ void OccView::updateNodalLoadShape(int loadId, bool redrawImmediately)
     removeNodalLoadShape(loadId, false);
 
     const auto* nl = m_model->loadManager().getNodalLoad(loadId);
-    if (!nl) return;
+    if (!nl || !loadCaseDisplayed(nl->loadCaseId())) return;   // cas non affiché (style des charges)
 
     const auto* node = m_model->getNode(nl->nodeId());
     if (!node) return;
@@ -1912,8 +1916,10 @@ void OccView::updateNodalLoadShape(int loadId, bool redrawImmediately)
             updateAllLoadShapes();
         });
     }
-    const double ref = memberLoadArrowLength();   // longueur de référence (≈ constante à l'écran, facteur inclus)
+    const double ref = memberLoadArrowLength();   // longueur de référence d'après la structure (facteur inclus)
+    const double widthFactor = TSA::Viewer::LoadDisplayStyle::instance().settings().arrowWidth;
     gp_Pnt labelPos(p0.X(), p0.Y(), p0.Z() + 0.35 * ref);
+    Quantity_Color labelColor = loadDisplayColor(nl->loadCaseId(), 0.0, TSA::Geometry::LoadFamily::Force);
 
     // 1. Vecteur force
     // [CONVENTION]
@@ -1932,16 +1938,18 @@ void OccView::updateNodalLoadShape(int loadId, bool redrawImmediately)
         // Longueur proportionnelle à l'intensité dans la famille des forces (auparavant 0,6 + 0,02·F bornée à
         // [0,8 ; 2,5] m : 100 et 500 kN avaient la même flèche)
         const double arrowLen = loadArrowLengthFor(mag, TSA::Geometry::LoadFamily::Force);
-        const double shaftR = 0.03 * ref;
-        const double headR = 0.08 * ref;
+        const double shaftR = 0.03 * ref * widthFactor;
+        const double headR = 0.08 * ref * widthFactor;
         const double headL = std::min(0.25 * ref, 0.6 * arrowLen);
+        const Quantity_Color forceColor = loadDisplayColor(nl->loadCaseId(), mag, TSA::Geometry::LoadFamily::Force);
+        labelColor = forceColor;
         labelPos = p0.Translated(gp_Vec(fDir) * (arrowLen + 0.12 * ref));   // valeur au bout de la flèche
 
         TopoDS_Shape arrow = makeLoadArrowShape(p0, fDir, arrowLen, shaftR, headR, headL);
         if (!arrow.IsNull())
         {
             Handle(AIS_Shape) aisLoad = new AIS_Shape(arrow);
-            aisLoad->SetColor(Quantity_NOC_RED);
+            aisLoad->SetColor(forceColor);
             aisLoad->SetMaterial(Graphic3d_NOM_PLASTIC);
             aisLoad->SetDisplayMode(AIS_Shaded);
             if (m_loadsVisible)
@@ -1972,16 +1980,17 @@ void OccView::updateNodalLoadShape(int loadId, bool redrawImmediately)
     {
         // Rayon de l'arc proportionnel à l'intensité dans la famille des moments
         const double arcRadius = std::max(0.15 * ref, 0.6 * loadArrowLengthFor(mMag, TSA::Geometry::LoadFamily::Moment));
-        const double tubeR = 0.022 * ref;
-        const double headR = 0.06 * ref;
+        const double tubeR = 0.022 * ref * widthFactor;
+        const double headR = 0.06 * ref * widthFactor;
+        const Quantity_Color momentColor = loadDisplayColor(nl->loadCaseId(), mMag, TSA::Geometry::LoadFamily::Moment);
+        if (!(mag > 1e-6 && m_forcesVisible)) labelColor = momentColor;
         const double headL = 0.15 * ref;
 
         TopoDS_Shape mMoment = makeMomentShape(p0, mVec, arcRadius, tubeR, headR, headL);
         if (!mMoment.IsNull())
         {
             Handle(AIS_Shape) aisMoment = new AIS_Shape(mMoment);
-            // Couleur distincte pour le moment : Violet / Magenta
-            aisMoment->SetColor(Quantity_Color(0.85, 0.35, 0.95, Quantity_TOC_RGB));
+            aisMoment->SetColor(momentColor);   // code couleur du style des charges (cas, intensité, famille)
             aisMoment->SetMaterial(Graphic3d_NOM_PLASTIC);
             aisMoment->SetDisplayMode(AIS_Shaded);
             if (m_loadsVisible)
@@ -2003,31 +2012,39 @@ void OccView::updateNodalLoadShape(int loadId, bool redrawImmediately)
 
     // 3. Texte de valeur
     Handle(AIS_TextLabel) aisLabel = new AIS_TextLabel();
+    // Texte court (style des charges) : une composante seule est donnée signée (« Fz = -10.00 kN »), plusieurs par leur
+    // résultante suivie des composantes non nulles.
+    const auto& loadStyle = TSA::Viewer::LoadDisplayStyle::instance();
+    const QString caseName = loadCaseName(nl->loadCaseId());
+    auto vectorText = [&](const char* sym, const char* unit, const std::array<double, 3>& c, double magnitude) {
+        static const char* axes[3] = { "x", "y", "z" };
+        int nonZero = 0, last = 0;
+        for (int i = 0; i < 3; ++i)
+            if (std::abs(c[i]) > 1e-6) ++nonZero, last = i;
+        if (nonZero == 1)
+            return loadStyle.formatValue(QString::fromLatin1(sym) + QString::fromLatin1(axes[last]), c[last], QString::fromUtf8(unit), caseName);
+        QString t = loadStyle.formatValue(QString::fromLatin1(sym), magnitude, QString::fromUtf8(unit), caseName);
+        QStringList parts;
+        for (int i = 0; i < 3; ++i)
+            if (std::abs(c[i]) > 1e-6)
+                parts << QString("%1%2 = %3").arg(QLatin1String(sym), QLatin1String(axes[i]), QString::number(c[i], 'f', loadStyle.settings().decimals));
+        return t + QStringLiteral(" (") + parts.join(QStringLiteral(", ")) + QLatin1Char(')');
+    };
     QString valTxt;
-    if (mag > 1e-6)
-    {
-        valTxt = QString("F = %1 kN").arg(QString::number(mag, 'f', 1));
-        if (std::abs(nl->fx()) > 1e-6) valTxt += QString(" (Fx=%1)").arg(QString::number(nl->fx(), 'f', 1));
-        if (std::abs(nl->fy()) > 1e-6) valTxt += QString(" (Fy=%1)").arg(QString::number(nl->fy(), 'f', 1));
-        if (std::abs(nl->fz()) > 1e-6) valTxt += QString(" (Fz=%1)").arg(QString::number(nl->fz(), 'f', 1));
-    }
+    if (mag > 1e-6) valTxt = vectorText("F", "kN", { nl->fx(), nl->fy(), nl->fz() }, mag);
     if (mMag > 1e-6)
     {
         if (!valTxt.isEmpty()) valTxt += "\n";
-        valTxt += QString("M = %1 kNm").arg(QString::number(mMag, 'f', 1));
-        if (std::abs(nl->mx()) > 1e-6) valTxt += QString(" (Mx=%1)").arg(QString::number(nl->mx(), 'f', 1));
-        if (std::abs(nl->my()) > 1e-6) valTxt += QString(" (My=%1)").arg(QString::number(nl->my(), 'f', 1));
-        if (std::abs(nl->mz()) > 1e-6) valTxt += QString(" (Mz=%1)").arg(QString::number(nl->mz(), 'f', 1));
+        valTxt += vectorText("M", "kN·m", { nl->mx(), nl->my(), nl->mz() }, mMag);
     }
     if (valTxt.isEmpty()) valTxt = QString("NL#%1").arg(loadId);
 
     aisLabel->SetText(TCollection_ExtendedString(valTxt.toUtf8().constData(), true));
     aisLabel->SetPosition(labelPos);
-    aisLabel->SetColor(m_isDarkMode ? Quantity_Color(1.0, 0.8, 0.2, Quantity_TOC_RGB) : Quantity_Color(0.8, 0.4, 0.0, Quantity_TOC_RGB));
     aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
     aisLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
-    TSA::Viewer::AnnotationStyle::instance().apply(aisLabel, TSA::Viewer::AnnotationRole::LoadValue);
-    aisLabel->SetFontAspect(Font_FA_Bold);
+    styleLoadValueLabel(aisLabel, labelColor,
+                        std::max(loadIntensityRatio(mag, TSA::Geometry::LoadFamily::Force), loadIntensityRatio(mMag, TSA::Geometry::LoadFamily::Moment)));
 
     m_context->Display(aisLabel, false);
     m_context->Deactivate(aisLabel);
@@ -2036,6 +2053,7 @@ void OccView::updateNodalLoadShape(int loadId, bool redrawImmediately)
         m_context->Erase(aisLabel, false);
     }
     m_nodalLoadLabels[loadId] = aisLabel;
+    if (redrawImmediately && m_loadLabelLayoutTimer) m_loadLabelLayoutTimer->start();
 
     if (redrawImmediately && !m_view.IsNull())
     {
@@ -2065,6 +2083,7 @@ void OccView::removeNodalLoadShape(int loadId, bool redrawImmediately)
     auto itL = m_nodalLoadLabels.find(loadId);
     if (itL != m_nodalLoadLabels.end())
     {
+        m_loadLabelPriority.erase(itL->second.get());
         if (!m_context.IsNull()) m_context->Remove(itL->second, false);
         m_nodalLoadLabels.erase(itL);
     }
@@ -2082,7 +2101,7 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
     removeMemberLoadShape(loadId, false);
 
     const auto* ml = m_model->loadManager().getMemberLoad(loadId);
-    if (!ml) return;
+    if (!ml || !loadCaseDisplayed(ml->loadCaseId())) return;   // cas non affiché (style des charges)
 
     int sNode = 0, eNode = 0;
     double rotDeg = 0.0;
@@ -2099,7 +2118,7 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
 
     // Représentation calculée hors de la vue (MemberLoadGlyph) : sens = LoadResolver (même
     // convention que les moteurs), forme = intervalle et intensités du modèle. Taille des flèches :
-    // fonction du zoom (paliers), densité : espacement proportionnel à cette taille.
+    // d'après la structure (jamais le zoom), densité : espacement proportionnel à cette taille.
     TSA::Geometry::MemberLoadGlyphSettings settings;
     if (refreshLoadMaxima() && !m_loadRebuildPending)
     {
@@ -2110,16 +2129,15 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
         });
     }
     const double refLength = memberLoadArrowLength();
-    m_memberLoadArrowLength = refLength;   // palier courant (updateMemberLoadZoomScale)
-    {
-        // Flèche de l'intensité maximale de CETTE charge, à l'échelle de sa famille (une charge de 5 kN/m n'a plus la
-        // même flèche qu'une charge de 50 kN/m) ; la forme le long de la barre reste proportionnelle à q(x)
-        using TSA::Model::LoadType;
-        const double qMax = std::max(std::abs(ml->q1()), ml->type() == LoadType::MemberLinear ? std::abs(ml->q2()) : 0.0);
-        const auto family = ml->type() == LoadType::MemberPoint ? TSA::Geometry::LoadFamily::Force
-                                                                 : (ml->type() == LoadType::MemberMoment ? TSA::Geometry::LoadFamily::LineMoment : TSA::Geometry::LoadFamily::LineForce);
-        settings.arrowLength = std::max(1e-6, loadArrowLengthFor(qMax, family));
-    }
+    // Flèche de l'intensité maximale de CETTE charge, à l'échelle de sa famille (une charge de 5 kN/m n'a plus la
+    // même flèche qu'une charge de 50 kN/m) ; la forme le long de la barre reste proportionnelle à q(x)
+    using TSA::Model::LoadType;
+    const double qMax = std::max(std::abs(ml->q1()), ml->type() == LoadType::MemberLinear ? std::abs(ml->q2()) : 0.0);
+    const auto family = ml->type() == LoadType::MemberPoint ? TSA::Geometry::LoadFamily::Force
+                                                             : (ml->type() == LoadType::MemberMoment ? TSA::Geometry::LoadFamily::LineMoment : TSA::Geometry::LoadFamily::LineForce);
+    settings.arrowLength = std::max(1e-6, loadArrowLengthFor(qMax, family));
+    const Quantity_Color loadColor = loadDisplayColor(ml->loadCaseId(), qMax, family);
+    const double widthFactor = TSA::Viewer::LoadDisplayStyle::instance().settings().arrowWidth;
     settings.spacing = 0.5 * refLength;   // densité liée à la vue, pas à l'intensité
     const TSA::Geometry::MemberLoadGlyph glyph = TSA::Geometry::buildMemberLoadGlyph(*ml, p1, p2, rotDeg, settings);
     if (glyph.kind == TSA::Geometry::MemberLoadGlyphKind::Invalid) return;
@@ -2138,11 +2156,11 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
         // Force concentrée : flèche pleine, comme les charges nodales.
         const auto& a = glyph.arrows.front();
         const double L = a.length;
-        TopoDS_Shape arrow = makeArrowShape(a.tip, gp_Vec(a.direction), L, 0.035 * L, 0.11 * L, 0.26 * L);
+        TopoDS_Shape arrow = makeArrowShape(a.tip, gp_Vec(a.direction), L, 0.035 * L * widthFactor, 0.11 * L * widthFactor, 0.26 * L);
         if (!arrow.IsNull())
         {
             Handle(AIS_Shape) ais = new AIS_Shape(arrow);
-            ais->SetColor(Quantity_NOC_CYAN);
+            ais->SetColor(loadColor);
             ais->SetMaterial(Graphic3d_NOM_PLASTIC);
             ais->SetDisplayMode(AIS_Shaded);
             show(ais);
@@ -2181,8 +2199,8 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
         if (any)
         {
             Handle(AIS_Shape) ais = new AIS_Shape(comp);
-            ais->SetColor(Quantity_NOC_CYAN);
-            ais->SetWidth(2.0);
+            ais->SetColor(loadColor);
+            ais->SetWidth(2.0 * widthFactor);
             ais->SetDisplayMode(AIS_WireFrame);
             show(ais);
         }
@@ -2225,47 +2243,51 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
         if (any)
         {
             Handle(AIS_Shape) ais = new AIS_Shape(comp);
-            ais->SetColor(Quantity_NOC_MAGENTA);
-            ais->SetWidth(2.0);
+            ais->SetColor(loadColor);
+            ais->SetWidth(2.0 * widthFactor);
             ais->SetDisplayMode(AIS_WireFrame);
             show(ais);
         }
     }
     m_memberLoadShapes[loadId] = shapes;
 
-    // Étiquette : forme et intervalle de la charge, valeurs du modèle (jamais mises à l'échelle).
-    auto fmt = [](double v) { return QString::number(v, 'f', 2); };
+    // Étiquette (style des charges) : valeurs du modèle (jamais mises à l'échelle), décimales, symbole, unité et nom du
+    // cas selon les réglages ; position et étendue d'une charge partielle.
+    const auto& loadStyle = TSA::Viewer::LoadDisplayStyle::instance();
+    const int decimals = loadStyle.settings().decimals;
+    auto fmt = [decimals](double v) { return QString::number(v, 'f', decimals); };
+    const QString caseName = loadCaseName(ml->loadCaseId());
     QString textVal;
     const bool partial = !ml->coversFullLength(axis.Magnitude());
+    const bool varying = ml->type() == TSA::Model::LoadType::MemberLinear || std::abs(ml->q1() - ml->q2()) >= 1e-12;
     switch (glyph.kind)
     {
     case TSA::Geometry::MemberLoadGlyphKind::Point:
-        textVal = QString("P = %1 kN (x = %2 m)").arg(fmt(ml->q1()), fmt(glyph.start));
+        textVal = loadStyle.formatValue(QStringLiteral("P"), ml->q1(), QStringLiteral("kN"), caseName) +
+                  QString(" (x = %1 m)").arg(fmt(glyph.start));
         break;
     case TSA::Geometry::MemberLoadGlyphKind::DistributedMoment:
-        textVal = std::abs(ml->q1() - ml->q2()) < 1e-12 ? QString("m = %1 kNm/m").arg(fmt(ml->q1()))
-                                                         : QString("m = %1 → %2 kNm/m").arg(fmt(ml->q1()), fmt(ml->q2()));
+        textVal = varying ? loadStyle.formatValue(QStringLiteral("m"), ml->q1(), QString(), QString()) + QStringLiteral(" → ") +
+                                loadStyle.formatValue(QString(), ml->q2(), QStringLiteral("kN·m/m"), caseName)
+                          : loadStyle.formatValue(QStringLiteral("m"), ml->q1(), QStringLiteral("kN·m/m"), caseName);
         if (ml->direction() == TSA::Model::LoadDirection::LocalX) textVal += QStringLiteral(" (torsion)");
         if (partial) textVal += QString(" [%1 – %2 m]").arg(fmt(glyph.start), fmt(glyph.end));
         break;
     default:
         textVal = ml->type() == TSA::Model::LoadType::MemberLinear
-                      ? QString("q = %1 → %2 kN/m").arg(fmt(ml->q1()), fmt(ml->q2()))
-                      : QString("q = %1 kN/m").arg(fmt(ml->q1()));
+                      ? loadStyle.formatValue(QStringLiteral("q"), ml->q1(), QString(), QString()) + QStringLiteral(" → ") +
+                            loadStyle.formatValue(QString(), ml->q2(), QStringLiteral("kN/m"), caseName)
+                      : loadStyle.formatValue(QStringLiteral("q"), ml->q1(), QStringLiteral("kN/m"), caseName);
         if (partial) textVal += QString(" [%1 – %2 m]").arg(fmt(glyph.start), fmt(glyph.end));
         break;
     }
-    if (const auto* lc = m_model->loadManager().getLoadCase(ml->loadCaseId()))
-        textVal += QString(" [%1]").arg(QString::fromStdString(lc->name()));
 
     Handle(AIS_TextLabel) aisLabel = new AIS_TextLabel();
     aisLabel->SetText(TCollection_ExtendedString(textVal.toUtf8().constData(), true));
     aisLabel->SetPosition(glyph.labelAnchor);
-    aisLabel->SetColor(m_isDarkMode ? Quantity_Color(0.2, 0.9, 1.0, Quantity_TOC_RGB) : Quantity_Color(0.0, 0.5, 0.7, Quantity_TOC_RGB));
     aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
     aisLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
-    TSA::Viewer::AnnotationStyle::instance().apply(aisLabel, TSA::Viewer::AnnotationRole::LoadValue);
-    aisLabel->SetFontAspect(Font_FA_Bold);
+    styleLoadValueLabel(aisLabel, loadColor, loadIntensityRatio(qMax, family));
 
     m_context->Display(aisLabel, false);
     m_context->Deactivate(aisLabel);
@@ -2274,6 +2296,7 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
         m_context->Erase(aisLabel, false);
     }
     m_memberLoadLabels[loadId] = aisLabel;
+    if (redrawImmediately && m_loadLabelLayoutTimer) m_loadLabelLayoutTimer->start();
 
     if (redrawImmediately && !m_view.IsNull())
     {
@@ -2284,35 +2307,11 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
 
 double OccView::memberLoadArrowLength() const
 {
-    // Longueur à l'écran à peu près constante (≈ 8 % de la hauteur visible), par paliers × 1,5 : le
-    // rendu ne change qu'au franchissement d'un palier, jamais pendant un déplacement de la vue.
-    double base = 0.6;
-    if (!m_view.IsNull())
-    {
-        double width = 0.0, height = 0.0;
-        m_view->Size(width, height);
-        const double visible = std::min(width, height);
-        if (std::isfinite(visible) && visible > 1e-6) base = 0.08 * visible;
-    }
-    const double step = std::log(1.5);
-    const double quantized = std::pow(1.5, std::round(std::log(base) / step));
+    // Longueur de référence d'après la STRUCTURE (hauteur d'étage, longueur des barres : structureLoadReferenceLength),
+    // jamais le zoom : en zoomant, flèches et valeurs grandissent avec la scène et deviennent lisibles. Auparavant ≈ 8 %
+    // de la hauteur visible, adaptée au zoom par paliers (supprimé le 2026-11-01).
     const double scale = (m_loadScale > 0.05) ? m_loadScale : 1.0;
-    return std::clamp(quantized, 1e-3, 1e4) * scale;
-}
-
-void OccView::updateMemberLoadZoomScale()
-{
-    if (!m_model) return;
-    const double length = memberLoadArrowLength();
-    if (std::abs(length - m_memberLoadArrowLength) <= 1e-9 * std::max(1.0, length)) return;
-    m_memberLoadArrowLength = length;
-    updateAllLoadShapes();   // forces, moments, charges réparties et surfaciques : même longueur de référence
-    reapplyIsolationIfActive();
-    if (!m_context.IsNull() && !m_view.IsNull())
-    {
-        m_context->UpdateCurrentViewer();
-        m_view->Redraw();
-    }
+    return std::clamp(m_structureLoadReference, 1e-3, 1e4) * scale;
 }
 
 void OccView::removeMemberLoadShape(int loadId, bool redrawImmediately)
@@ -2336,6 +2335,7 @@ void OccView::removeMemberLoadShape(int loadId, bool redrawImmediately)
     auto itL = m_memberLoadLabels.find(loadId);
     if (itL != m_memberLoadLabels.end())
     {
+        m_loadLabelPriority.erase(itL->second.get());
         if (!m_context.IsNull()) m_context->Remove(itL->second, false);
         m_memberLoadLabels.erase(itL);
     }
@@ -2350,8 +2350,13 @@ bool OccView::refreshLoadMaxima()
 {
     if (!m_model) return false;
     const auto maxima = TSA::Geometry::loadFamilyMaxima(m_model->loadManager());
-    if (maxima == m_loadMaxima) return false;
+    // Longueur de référence d'après la structure : une barre ajoutée ou un étage plus haut change l'échelle de toutes
+    // les charges (reconstruction différée, comme une nouvelle intensité maximale).
+    const double reference = TSA::Geometry::structureLoadReferenceLength(*m_model);
+    const bool referenceChanged = std::abs(reference - m_structureLoadReference) > 1e-9 * std::max(1.0, reference);
+    if (maxima == m_loadMaxima && !referenceChanged) return false;
     m_loadMaxima = maxima;
+    m_structureLoadReference = reference;
     return true;
 }
 
@@ -2359,14 +2364,281 @@ double OccView::loadArrowLengthFor(double intensity, TSA::Geometry::LoadFamily f
 {
     auto s = m_loadScaleSettings;
     s.factor = 1.0;   // le facteur global (setLoadScale) est déjà dans la longueur de référence
-    return TSA::Geometry::loadArrowLength(intensity, m_loadMaxima.of(family), memberLoadArrowLength(), s);
+    // Proportionnel : rapports exacts au maximum ; automatique et normalisé : échelle robuste (une charge hors norme
+    // n'écrase pas les autres, LoadFamilyMaxima::scale).
+    const double familyScale = s.mode == TSA::Geometry::LoadScaleMode::Proportional ? m_loadMaxima.of(family) : m_loadMaxima.scaleOf(family);
+    return TSA::Geometry::loadArrowLength(intensity, familyScale, memberLoadArrowLength(), s);
+}
+
+void OccView::setDisplayedLoadCase(int caseId)
+{
+    if (!m_model || !m_model->loadManager().getLoadCase(caseId)) return;
+    m_model->loadManager().setActiveLoadCaseId(caseId);
+    updateAllLoadShapes();
+    if (!m_view.IsNull()) m_view->Redraw();
+}
+
+bool OccView::loadCaseDisplayed(int caseId) const
+{
+    if (!m_model) return true;
+    return TSA::Viewer::LoadDisplayStyle::instance().caseShown(caseId, m_model->loadManager().activeLoadCaseId());
+}
+
+int OccView::loadCaseRank(int caseId) const
+{
+    if (!m_model) return 0;
+    int rank = 0;
+    for (const auto& [id, lc] : m_model->loadManager().loadCases())
+    {
+        if (id == caseId) return rank;
+        ++rank;
+    }
+    return rank;
+}
+
+QString OccView::loadCaseName(int caseId) const
+{
+    if (!m_model) return QString::number(caseId);
+    const auto* lc = m_model->loadManager().getLoadCase(caseId);
+    return lc ? QString::fromStdString(lc->name()) : QString::number(caseId);
+}
+
+Quantity_Color OccView::loadDisplayColor(int caseId, double intensity, TSA::Geometry::LoadFamily family) const
+{
+    const double max = m_loadMaxima.of(family);
+    const double ratio = max > 0.0 ? std::abs(intensity) / max : 0.0;
+    const QColor c = TSA::Viewer::LoadDisplayStyle::instance().loadColor(loadCaseRank(caseId), ratio, family);
+    // Couleur d'écran en sRVB (Quantity_Color en RVB linéaire sortirait éclaircie par le gamma, docs/AXIS_DISPLAY.md)
+    return Quantity_Color(c.redF(), c.greenF(), c.blueF(), Quantity_TOC_sRGB);
+}
+
+double OccView::loadIntensityRatio(double intensity, TSA::Geometry::LoadFamily family) const
+{
+    const double max = m_loadMaxima.of(family);
+    return max > 0.0 && std::isfinite(intensity) ? std::abs(intensity) / max : 0.0;
+}
+
+void OccView::styleLoadValueLabel(const Handle(AIS_TextLabel)& label, const Quantity_Color& color, double priority)
+{
+    if (label.IsNull()) return;
+    const auto& style = TSA::Viewer::LoadDisplayStyle::instance();
+    const auto& s = style.settings();
+    label->SetColor(color);
+    label->SetFontAspect(Font_FA_Bold);
+    // Jamais « zoomable » : OCCT ne trace pas un texte zoomable de moins de ~16 unités du monde (une valeur de 0,25 m
+    // sortait haute de ~11 m, BUG-177). La hauteur liée au modèle est convertie en pixels par layoutLoadLabels().
+    label->SetZoomable(false);
+    const double dpr = TSA::Viewer::AnnotationStyle::instance().settings().devicePixelRatio;
+    label->SetHeight(s.textSize == TSA::Viewer::LoadTextSize::ModelLinked ? s.textMinPixels * dpr : s.textPixels * dpr);
+    // Au-dessus de la structure (calque à profondeur effacée, comme une cote) : une poutre placée devant ne coupe plus le texte
+    label->SetZLayer(Graphic3d_ZLayerId_Topmost);
+    m_loadLabelPriority[label.get()] = priority;
+    if (s.textBackground)
+    {
+        // Contour contrasté (et non rectangle de fond, qui exige core20fwd, BUG-122) : lisible devant la structure
+        label->SetDisplayType(Aspect_TODT_DEKALE);
+        label->SetColorSubTitle(m_isDarkMode ? Quantity_Color(0.05, 0.05, 0.05, Quantity_TOC_RGB) : Quantity_Color(1.0, 1.0, 1.0, Quantity_TOC_RGB));
+    }
+}
+
+double OccView::viewPixelsPerMeter() const
+{
+    if (m_view.IsNull() || m_view->Camera().IsNull() || m_view->Window().IsNull()) return 0.0;
+    int width = 0, height = 0;
+    m_view->Window()->Size(width, height);
+    if (width <= 0 || height <= 0) return 0.0;
+    const Handle(Graphic3d_Camera)& camera = m_view->Camera();
+    const gp_Vec up(camera->Up());
+    auto scaleAt = [&](const gp_Pnt& p, bool requireVisible) {
+        const gp_Pnt c = camera->Project(p);
+        if (requireVisible && (std::abs(c.X()) > 1.0 || std::abs(c.Y()) > 1.0 || c.Z() < -1.0 || c.Z() > 1.0)) return 0.0;
+        const gp_Pnt u = camera->Project(p.Translated(up));
+        const double px = std::hypot((u.X() - c.X()) * 0.5 * width, (u.Y() - c.Y()) * 0.5 * height);
+        return std::isfinite(px) ? px : 0.0;
+    };
+    // Échelle de la structure visible (médiane sur les nœuds à l'écran, 256 au plus) : en perspective, le zoom déplace le
+    // centre de visée avec l'œil, l'échelle mesurée au centre de visée ne changerait pas
+    if (m_model && !m_model->nodes().empty())
+    {
+        const std::size_t n = m_model->nodes().size(), stride = std::max<std::size_t>(1, n / 256);
+        std::vector<double> scales;
+        std::size_t i = 0;
+        for (const auto& [id, node] : m_model->nodes())
+            if (i++ % stride == 0)
+                if (const double px = scaleAt(gp_Pnt(node.x(), node.y(), node.z()), true); px > 0.0) scales.push_back(px);
+        if (!scales.empty())
+        {
+            std::nth_element(scales.begin(), scales.begin() + scales.size() / 2, scales.end());
+            return scales[scales.size() / 2];
+        }
+    }
+    return scaleAt(camera->Center(), false);
+}
+
+void OccView::layoutLoadLabels()
+{
+    m_loadLabelStats = {};
+    if (m_context.IsNull() || m_view.IsNull() || m_view->Camera().IsNull() || m_view->Window().IsNull()) return;
+    int width = 0, height = 0;
+    m_view->Window()->Size(width, height);
+    if (width <= 0 || height <= 0) return;
+
+    const auto& style = TSA::Viewer::LoadDisplayStyle::instance();
+    const auto& s = style.settings();
+    const Handle(Graphic3d_Camera)& camera = m_view->Camera();
+    const gp_Vec up(camera->Up());
+    const double dpr = TSA::Viewer::AnnotationStyle::instance().settings().devicePixelRatio;
+    const double ref = memberLoadArrowLength();
+    auto toPixel = [&](const gp_Pnt& p, double& x, double& y) {
+        const gp_Pnt n = camera->Project(p);
+        x = (n.X() + 1.0) * 0.5 * width;
+        y = (1.0 - n.Y()) * 0.5 * height;
+        return n.X() >= -1.0 && n.X() <= 1.0 && n.Y() >= -1.0 && n.Y() <= 1.0 && n.Z() >= -1.0 && n.Z() <= 1.0;
+    };
+
+    struct Item
+    {
+        Handle(AIS_TextLabel) label;
+        double priority = 0, x0 = 0, y0 = 0, x1 = 0, y1 = 0, pixels = 0;
+        bool onScreen = false;
+        int order = 0;
+    };
+    std::vector<Item> items;
+    auto collect = [&](const Handle(AIS_TextLabel)& label) {
+        if (label.IsNull() || !m_context->IsDisplayed(label)) return;
+        Item it;
+        it.label = label;
+        it.order = static_cast<int>(items.size());
+        const auto pr = m_loadLabelPriority.find(label.get());
+        it.priority = pr != m_loadLabelPriority.end() ? pr->second : 0.0;
+        double x = 0, y = 0, xu = 0, yu = 0;
+        const gp_Pnt p = label->Position();
+        it.onScreen = toPixel(p, x, y);
+        toPixel(p.Translated(up), xu, yu);   // échelle de la vue à l'étiquette (perspective comprise) : px par mètre
+        it.pixels = std::round(style.labelPixels(std::hypot(xu - x, yu - y), ref, dpr));
+        // Encombrement estimé (police grasse) : ~0,6 em par caractère, 1,25 em par ligne ; ancrage centré en bas
+        int lines = 1, chars = 0, run = 0;
+        const TCollection_ExtendedString& text = label->Text();
+        for (int i = 1; i <= text.Length(); ++i)
+        {
+            if (text.Value(i) == '\n')
+            {
+                ++lines;
+                run = 0;
+            }
+            else
+                chars = std::max(chars, ++run);
+        }
+        const double w = 0.6 * it.pixels * (std::max(1, chars) + 1), h = 1.6 * it.pixels * lines;   // marges : un caractère, 0,6 ligne
+        it.x0 = x - 0.5 * w;
+        it.x1 = x + 0.5 * w;
+        it.y0 = y - h;
+        it.y1 = y;
+        items.push_back(it);
+    };
+    for (const auto& [id, l] : m_nodalLoadLabels) collect(l);
+    for (const auto& [id, l] : m_memberLoadLabels) collect(l);
+    for (const auto& o : m_surfaceLoadShapes) collect(Handle(AIS_TextLabel)::DownCast(o));
+
+    // La plus forte d'abord (puis l'ordre de création, stable) ; une valeur est masquée si elle chevauche une valeur gardée
+    std::sort(items.begin(), items.end(), [](const Item& a, const Item& b) {
+        return a.priority != b.priority ? a.priority > b.priority : a.order < b.order;
+    });
+    constexpr double cell = 64.0;
+    std::map<std::pair<int, int>, std::vector<std::size_t>> grid;
+    auto forCells = [&](const Item& it, const std::function<void(const std::pair<int, int>&)>& fn) {
+        for (int cx = int(std::floor(it.x0 / cell)); cx <= int(std::floor(it.x1 / cell)); ++cx)
+            for (int cy = int(std::floor(it.y0 / cell)); cy <= int(std::floor(it.y1 / cell)); ++cy) fn({ cx, cy });
+    };
+    m_loadLabelStats.minPixels = items.empty() ? 0.0 : 1e9;
+    for (std::size_t i = 0; i < items.size(); ++i)
+    {
+        Item& it = items[i];
+        bool visible = true;
+        if (s.declutter && it.onScreen)
+        {
+            forCells(it, [&](const std::pair<int, int>& c) {
+                if (!visible) return;
+                const auto g = grid.find(c);
+                if (g == grid.end()) return;
+                for (std::size_t k : g->second)
+                {
+                    const Item& o = items[k];
+                    if (it.x0 < o.x1 && o.x0 < it.x1 && it.y0 < o.y1 && o.y0 < it.y1)
+                    {
+                        visible = false;
+                        return;
+                    }
+                }
+            });
+            if (visible) forCells(it, [&](const std::pair<int, int>& c) { grid[c].push_back(i); });
+        }
+        const Handle(Prs3d_TextAspect)& aspect = it.label->Attributes()->TextAspect();
+        m_loadLabelStats.anyZoomable = m_loadLabelStats.anyZoomable || aspect->Aspect()->GetTextZoomable();
+        if (std::abs(aspect->Height() - it.pixels) > 0.5)
+        {
+            it.label->SetHeight(it.pixels);
+            m_context->Redisplay(it.label, false);
+        }
+        m_context->SetViewAffinity(it.label, m_view, visible);
+        ++m_loadLabelStats.labels;
+        if (!visible) ++m_loadLabelStats.hidden;
+        m_loadLabelStats.minPixels = std::min(m_loadLabelStats.minPixels, it.pixels);
+        m_loadLabelStats.maxPixels = std::max(m_loadLabelStats.maxPixels, it.pixels);
+    }
+    // Légende : nombre de valeurs masquées par chevauchement (« zoomer pour les lire »)
+    if (!m_loadLegend.IsNull() && m_context->IsDisplayed(m_loadLegend))
+    {
+        const TCollection_ExtendedString legend(loadScaleLegendText().toUtf8().constData(), true);
+        if (!legend.IsEqual(m_loadLegend->Text()))
+        {
+            m_loadLegend->SetText(legend);
+            m_context->Redisplay(m_loadLegend, false);
+        }
+    }
+}
+
+std::size_t OccView::displayedLoadObjectCount() const
+{
+    if (m_context.IsNull()) return 0;
+    std::size_t n = 0;
+    auto count = [&](const Handle(AIS_InteractiveObject)& o) { n += !o.IsNull() && m_context->IsDisplayed(o) ? 1 : 0; };
+    for (const auto& [id, shapes] : m_nodalLoadShapes)
+        for (const auto& s : shapes) count(s);
+    for (const auto& [id, l] : m_nodalLoadLabels) count(l);
+    for (const auto& [id, shapes] : m_memberLoadShapes)
+        for (const auto& s : shapes) count(s);
+    for (const auto& [id, l] : m_memberLoadLabels) count(l);
+    for (const auto& o : m_surfaceLoadShapes) count(o);
+    return n;
 }
 
 QString OccView::loadScaleLegendText() const
 {
     auto s = m_loadScaleSettings;
     s.factor = 1.0;
-    return QString::fromStdString(TSA::Geometry::loadScaleLegend(m_loadMaxima, memberLoadArrowLength(), s));
+    QString text = QString::fromStdString(TSA::Geometry::loadScaleLegend(m_loadMaxima, memberLoadArrowLength(), s));
+    if (!m_model) return text;
+    // Cas affichés (style des charges) : le cas actif seul, ou tous ; les cas masqués sont annoncés.
+    const auto& lm = m_model->loadManager();
+    std::map<int, int> perCase;
+    for (const auto& [id, l] : lm.nodalLoads()) ++perCase[l.loadCaseId()];
+    for (const auto& [id, l] : lm.memberLoads()) ++perCase[l.loadCaseId()];
+    for (const auto& [id, l] : lm.surfaceLoads()) ++perCase[l.loadCaseId];
+    const bool all = TSA::Viewer::LoadDisplayStyle::instance().settings().cases == TSA::Viewer::LoadCaseFilter::AllCases;
+    QStringList shown;
+    int hidden = 0;
+    for (const auto& [caseId, n] : perCase)
+    {
+        if (loadCaseDisplayed(caseId)) shown << QStringLiteral("%1 (%2)").arg(loadCaseName(caseId)).arg(n);
+        else ++hidden;
+    }
+    text += QStringLiteral("\n") + (all ? tr("Tous les cas : %1") : tr("Cas affiché : %1"))
+                                    .arg(shown.isEmpty() ? tr("aucune charge") : shown.join(QStringLiteral(", ")));
+    if (hidden > 0) text += QStringLiteral("\n") + tr("%n autre(s) cas chargé(s) masqué(s) — Charges › Cas affichés", nullptr, hidden);
+    if (m_loadLabelStats.hidden > 0)
+        text += QStringLiteral("\n") + tr("%n valeur(s) superposée(s) masquée(s) — zoomer pour les lire", nullptr, m_loadLabelStats.hidden);
+    return text;
 }
 
 void OccView::setLoadScaleSettings(const TSA::Geometry::LoadScaleSettings& s)
@@ -2419,6 +2691,7 @@ void OccView::updateAllLoadShapes()
     // Dernière étape de onModelDiffApplied() et de rebuildAllShapes() : une seule passe
     // d'isolation couvre ainsi les éléments et les charges recréés (no-op hors isolation).
     reapplyIsolationIfActive();
+    layoutLoadLabels();   // après l'isolation : seules les valeurs réellement dessinées se disputent la place
     if (!m_context.IsNull())
     {
         m_context->UpdateCurrentViewer();
@@ -2428,6 +2701,7 @@ void OccView::updateAllLoadShapes()
 void OccView::clearLoadShapes()
 {
     if (m_context.IsNull()) return;
+    m_loadLabelPriority.clear();
     for (auto& o : m_surfaceLoadShapes)
         if (!o.IsNull()) m_context->Remove(o, false);
     m_surfaceLoadShapes.clear();
@@ -2744,10 +3018,13 @@ void OccView::updateSurfaceLoadShapes()
     // Géométrie des surfaces identique à celle du maillage (contours, ouvertures, repères locaux)
     const auto geo = TSA::Mesh::MeshGeometry::extract(*m_model);
     const double Lref = memberLoadArrowLength();
-    const Quantity_Color color = m_isDarkMode ? Quantity_Color(1.0, 0.62, 0.18, Quantity_TOC_RGB) : Quantity_Color(0.85, 0.42, 0.0, Quantity_TOC_RGB);
+    const double widthFactor = TSA::Viewer::LoadDisplayStyle::instance().settings().arrowWidth;
     auto toPnt = [](const TSA::Mesh::P3& p) { return gp_Pnt(p.x, p.y, p.z); };
     for (const auto& [id, l] : m_model->loadManager().surfaceLoads())
     {
+        if (!loadCaseDisplayed(l.loadCaseId)) continue;   // cas non affiché (style des charges)
+        const Quantity_Color color = loadDisplayColor(l.loadCaseId, l.value, l.distribution == TSA::Model::SurfaceLoadDistribution::Point
+                                                                                 ? TSA::Geometry::LoadFamily::Force : TSA::Geometry::LoadFamily::Pressure);
         // Flèche de l'intensité de cette charge à l'échelle de sa famille (kN/m² ou kN pour une charge ponctuelle)
         const double L = std::max(0.05 * Lref, loadArrowLengthFor(l.value, l.distribution == TSA::Model::SurfaceLoadDistribution::Point
                                                                               ? TSA::Geometry::LoadFamily::Force : TSA::Geometry::LoadFamily::Pressure));
@@ -2771,7 +3048,7 @@ void OccView::updateSurfaceLoadShapes()
         if (point)
         {
             const gp_Pnt P = toPnt(sg->frame.toGlobal(l.u, l.v));
-            TopoDS_Shape arrow = makeArrowShape(P, dir, 1.4 * L, 0.035 * L, 0.11 * L, 0.3 * L);
+            TopoDS_Shape arrow = makeArrowShape(P, dir, 1.4 * L, 0.035 * L * widthFactor, 0.11 * L * widthFactor, 0.3 * L);
             if (!arrow.IsNull())
             {
                 Handle(AIS_Shape) ais = new AIS_Shape(arrow);
@@ -2858,7 +3135,7 @@ void OccView::updateSurfaceLoadShapes()
             {
                 Handle(AIS_Shape) ais = new AIS_Shape(comp);
                 ais->SetColor(color);
-                ais->SetWidth(1.5);
+                ais->SetWidth(1.5 * widthFactor);
                 ais->SetDisplayMode(AIS_WireFrame);
                 m_context->Display(ais, false);
                 m_context->Deactivate(ais);
@@ -2868,18 +3145,15 @@ void OccView::updateSurfaceLoadShapes()
         }
         if (m_loadValuesVisible)
         {
-            const auto* lc = m_model->loadManager().getLoadCase(l.loadCaseId);
-            const QString text = QStringLiteral("%1 = %2 %3 [%4, %5]")
-                                     .arg(point ? QStringLiteral("P") : QStringLiteral("q"), QString::number(std::abs(l.value), 'f', 2),
-                                          point ? QStringLiteral("kN") : QStringLiteral("kN/m²"), lc ? QString::fromStdString(lc->name()) : QString::number(l.loadCaseId),
-                                          dirName);
+            const QString text = TSA::Viewer::LoadDisplayStyle::instance().formatValue(
+                                     point ? QStringLiteral("P") : QStringLiteral("q"), std::abs(l.value),
+                                     point ? QStringLiteral("kN") : QStringLiteral("kN/m²"), loadCaseName(l.loadCaseId)) +
+                                 QStringLiteral(" (%1)").arg(dirName);
             Handle(AIS_TextLabel) label = new AIS_TextLabel();
             label->SetText(TCollection_ExtendedString(text.toUtf8().constData(), true));
             label->SetPosition(labelAt);
-            label->SetColor(color);
             label->SetHJustification(Graphic3d_HTA_CENTER);
-            TSA::Viewer::AnnotationStyle::instance().apply(label, TSA::Viewer::AnnotationRole::LoadValue);
-            label->SetFontAspect(Font_FA_Bold);
+            styleLoadValueLabel(label, color, loadIntensityRatio(l.value, point ? TSA::Geometry::LoadFamily::Force : TSA::Geometry::LoadFamily::Pressure));
             m_context->Display(label, false);
             m_context->Deactivate(label);
             m_surfaceLoadShapes.push_back(label);

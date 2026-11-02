@@ -332,6 +332,8 @@ set(UI_RULER_SOURCES
 set(UI_WIDGETS_SOURCES
     ${TSA_ROOT}/src/UI/Display/DisplayMenus.h
     ${TSA_ROOT}/src/UI/Display/DisplayMenus.cpp
+    ${TSA_ROOT}/src/UI/Display/LoadStyleDialog.h
+    ${TSA_ROOT}/src/UI/Display/LoadStyleDialog.cpp
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintScene.h
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintScene.cpp
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintEditor.h
@@ -475,6 +477,8 @@ set(VIEWER_MAIN_SOURCES
     ${TSA_ROOT}/src/Viewer/AxisTriad.cpp
     ${TSA_ROOT}/src/Viewer/AxisDisplayStyle.h
     ${TSA_ROOT}/src/Viewer/AxisDisplayStyle.cpp
+    ${TSA_ROOT}/src/Viewer/LoadDisplayStyle.h
+    ${TSA_ROOT}/src/Viewer/LoadDisplayStyle.cpp
     ${TSA_ROOT}/src/Viewer/ElementAxisFrames.h
     ${TSA_ROOT}/src/Viewer/ElementAxisFrames.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Events.cpp

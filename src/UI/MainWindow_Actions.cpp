@@ -1588,6 +1588,8 @@ void MainWindow::createRibbon()
     acts.meshViewMenu = m_meshViewMenu;
     acts.annotationScaleMenu = m_annotationScaleMenu;
     acts.loadScaleMenu = m_loadScaleMenu;
+    acts.loadCasesMenu = m_displayMenus ? m_displayMenus->loadCasesMenu() : nullptr;
+    acts.actionLoadStyle = m_displayMenus ? m_displayMenus->loadStyleAction() : nullptr;
     acts.actionAnalysisConfig = m_actionAnalysisConfig;
     acts.actionRunSolve = m_actionRunSolve;
 

@@ -6,9 +6,14 @@
 #include "../../Viewer/AxisDisplayStyle.h"
 #include "../../Viewer/DisplayProfile.h"
 #include "../../Viewer/OccView.h"
+#include "../../Viewer/LoadDisplayStyle.h"
+#include "../../Model/Load/LoadManager.h"
+#include "LoadStyleDialog.h"
 #include "../Theme/ThemedIcon.h"
 
 #include <QAction>
+#include <QIcon>
+#include <QPixmap>
 #include <QActionGroup>
 #include <QCoreApplication>
 #include <QInputDialog>
@@ -16,6 +21,8 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QSignalBlocker>
+
+#include <map>
 
 #include <algorithm>
 #include <cmath>
@@ -277,6 +284,77 @@ void DisplayMenus::buildLoadMenu()
         values->setChecked(s.showValues);
         legend->setChecked(s.showLegend);
     });
+
+    // Style des charges (couleurs, texte, flèches) et cas affichés
+    m_loadStyle = new QAction(tr("Style des charges…"), this);
+    m_loadStyle->setToolTip(tr("Couleurs (par cas, par intensité…), texte des valeurs (hauteur, décimales, symbole, unité), "
+                               "épaisseur des flèches, cas affichés — comme un style de cote"));
+    connect(m_loadStyle, &QAction::triggered, this, [this] {
+        LoadStyleDialog dialog(m_parent);
+        dialog.exec();
+    });
+    m_loadMenu->addSeparator();
+    m_loadMenu->addAction(m_loadStyle);
+    m_loadCasesMenu = new QMenu(tr("Cas affichés"), m_parent);
+    m_loadCasesMenu->setToolTipsVisible(true);
+    connect(m_loadCasesMenu, &QMenu::aboutToShow, this, &DisplayMenus::rebuildLoadCasesMenu);
+    rebuildLoadCasesMenu();
+}
+
+void DisplayMenus::rebuildLoadCasesMenu()
+{
+    using TSA::Viewer::LoadCaseFilter;
+    using TSA::Viewer::LoadDisplayStyle;
+    m_loadCasesMenu->clear();
+    auto& style = LoadDisplayStyle::instance();
+    QAction* all = m_loadCasesMenu->addAction(tr("Tous les cas superposés"));
+    all->setCheckable(true);
+    all->setChecked(style.settings().cases == LoadCaseFilter::AllCases);
+    all->setToolTip(tr("Flèches et valeurs de tous les cas en même temps (couleur du cas, voir Style des charges)"));
+    connect(all, &QAction::toggled, this, [](bool on) {
+        auto s = LoadDisplayStyle::instance().settings();
+        s.cases = on ? LoadCaseFilter::AllCases : LoadCaseFilter::ActiveCase;
+        LoadDisplayStyle::instance().setSettings(s);
+    });
+    m_loadCasesMenu->addSeparator();
+    OccView* v = view();
+    TSA::Model::Model* model = v ? v->model() : nullptr;
+    if (!model || model->loadManager().loadCases().empty())
+    {
+        m_loadCasesMenu->addAction(tr("Aucun cas de charge"))->setEnabled(false);
+        return;
+    }
+    const auto& lm = model->loadManager();
+    std::map<int, int> perCase;
+    for (const auto& [id, l] : lm.nodalLoads()) ++perCase[l.loadCaseId()];
+    for (const auto& [id, l] : lm.memberLoads()) ++perCase[l.loadCaseId()];
+    for (const auto& [id, l] : lm.surfaceLoads()) ++perCase[l.loadCaseId];
+    auto* group = new QActionGroup(m_loadCasesMenu);
+    group->setExclusive(true);
+    int rank = 0;
+    for (const auto& [id, lc] : lm.loadCases())
+    {
+        const int n = perCase.count(id) ? perCase.at(id) : 0;
+        QPixmap swatch(12, 12);
+        swatch.fill(LoadDisplayStyle::caseColor(rank++));
+        QAction* a = m_loadCasesMenu->addAction(QIcon(swatch), tr("%1 — %n charge(s)", nullptr, n).arg(QString::fromStdString(lc.name())));
+        a->setCheckable(true);
+        a->setChecked(id == lm.activeLoadCaseId() && style.settings().cases == LoadCaseFilter::ActiveCase);
+        group->addAction(a);
+        connect(a, &QAction::triggered, this, [this, id] {
+            OccView* view = this->view();
+            if (!view) return;
+            auto s = LoadDisplayStyle::instance().settings();
+            if (s.cases != LoadCaseFilter::ActiveCase)
+            {
+                s.cases = LoadCaseFilter::ActiveCase;
+                view->model()->loadManager().setActiveLoadCaseId(id);
+                LoadDisplayStyle::instance().setSettings(s);   // redessin par le signal changed()
+            }
+            else
+                view->setDisplayedLoadCase(id);
+        });
+    }
 }
 
 void DisplayMenus::rebuildProfilesMenu()

@@ -44,6 +44,10 @@ public:
     /// Bouton « Repères » (ruban) : affiche ou masque le repère global et les repères locaux, synchronisé avec le menu.
     QAction* axesToggleAction() const { return m_axesToggle; }
     QMenu* loadScaleMenu() const { return m_loadMenu; }
+    /// « Cas affichés » : cas actif du projet (un seul) ou tous les cas superposés (style des charges).
+    QMenu* loadCasesMenu() const { return m_loadCasesMenu; }
+    /// « Style des charges… » : couleurs, texte des valeurs, flèches (LoadStyleDialog).
+    QAction* loadStyleAction() const { return m_loadStyle; }
     QMenu* profilesMenu() const { return m_profilesMenu; }
     QAction* diagnosticAction() const { return m_diagnostic; }
     /// Ajoute les trois menus et le diagnostic à un menu de la fenêtre hôte.
@@ -64,6 +68,7 @@ private:
     void buildAnnotationMenu();
     void buildAxisMenu();
     void buildLoadMenu();
+    void rebuildLoadCasesMenu();
     void rebuildProfilesMenu();
     OccView* view() const { return m_context.view ? m_context.view() : nullptr; }
 
@@ -73,6 +78,8 @@ private:
     QMenu* m_axisMenu = nullptr;
     QAction* m_axesToggle = nullptr;
     QMenu* m_loadMenu = nullptr;
+    QMenu* m_loadCasesMenu = nullptr;
+    QAction* m_loadStyle = nullptr;
     QMenu* m_profilesMenu = nullptr;
     QAction* m_diagnostic = nullptr;
     QString m_activeProfile;
