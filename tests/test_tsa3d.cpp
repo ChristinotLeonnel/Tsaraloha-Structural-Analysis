@@ -297,10 +297,10 @@ bool runSuite_Tsa3d(int& passed)
         optN.results = &runN.results;
         const auto exN = T3::exportModel(m, optN);
         QDir().mkpath("build/test_tsa_data");
-        for (const auto& [name, d] : { std::pair { "test_results_kN.tsa3d.json", &ex.document }, std::pair { "test_results_N.tsa3d.json", &exN.document } })
+        for (const auto& [name, doc] : { std::pair { "test_results_kN.tsa3d.json", &ex.document }, std::pair { "test_results_N.tsa3d.json", &exN.document } })
         {
             QFile f(QStringLiteral("build/test_tsa_data/") + name);
-            TEST_CHECK(f.open(QIODevice::WriteOnly) && f.write(QJsonDocument(*d).toJson()) > 0, "Test 500: fichier " << name);
+            TEST_CHECK(f.open(QIODevice::WriteOnly) && f.write(QJsonDocument(*doc).toJson()) > 0, "Test 500: fichier " << name);
         }
         auto reactions = [](const QJsonObject& doc) {
             std::map<QString, std::array<double, 6>> out;
@@ -326,11 +326,11 @@ bool runSuite_Tsa3d(int& passed)
         TEST_CHECK(same, "Test 500: réactions identiques dans les fichiers (calcul en kN / en N)");
         TEST_CHECK(std::abs(sumX + 10.0) < 1e-6 && std::abs(sumZ - 20.0) < 1e-6,
                    "Test 500: ΣRx = −10 kN, ΣRz = 20 kN (" << sumX << ", " << sumZ << ")");
-        for (const auto* d : { &ex.document, &exN.document })
+        for (const auto* doc : { &ex.document, &exN.document })
         {
-            const QJsonObject u = (*d)["results"].toObject()["units"].toObject();
+            const QJsonObject u = (*doc)["results"].toObject()["units"].toObject();
             TEST_CHECK(u["force"] == "kN" && u["moment"] == "kN.m" && u["length"] == "m" && u["rotation"] == "rad"
-                           && (*d)["units"].toObject()["force"] == "kN",
+                           && (*doc)["units"].toObject()["force"] == "kN",
                        "Test 500: unités des résultats déclarées (kN, kN.m, m, rad)");
         }
         TEST_CHECK(!T3::validate(exN.document).hasErrors(), "Test 500: document valide");

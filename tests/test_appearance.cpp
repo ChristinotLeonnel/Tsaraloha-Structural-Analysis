@@ -161,8 +161,8 @@ bool runSuite_Appearance(int& passed)
             view.setElementId(ipe);
             view.setElementId(upn);
             QComboBox* shape = nullptr;
-            for (auto* c : view.findChildren<QComboBox*>())
-                if (c->findData(static_cast<int>(SectionShape::IShape)) >= 0) shape = c;
+            for (auto* combo : view.findChildren<QComboBox*>())
+                if (combo->findData(static_cast<int>(SectionShape::IShape)) >= 0) shape = combo;
             TEST_CHECK(shape && shape->currentIndex() == -1 && shape->placeholderText() == QString::fromStdString(upnSec.name) && !shape->isEnabled(),
                        "Test 493: UPN : liste des types désactivée, aucun type affiché, désignation « " << upnSec.name << " »");
         }

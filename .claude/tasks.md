@@ -1,6 +1,12 @@
 # Tasks
 
-Last Updated: 2026-11-02 soir. Avant : 2026-11-01. Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-11-03. Avant : 2026-11-02 soir. Uniquement des tâches réellement identifiées (voir known-issues.md).
+
+## Avertissements de compilation (2026-11-03, branche fix/build-warnings)
+- [x] Avertissements de Warning.txt supprimés (TSA et TSALab Release : 0 avertissement) ; test 594 réellement vérifiant.
+- [x] Sortie de `install_dependencies.py --build/--package` décodée (accents et « → » lisibles).
+- [ ] Vérifier l'affichage décodé dans une vraie console interactive (essai fait avec sortie redirigée vers un fichier).
+- [ ] BUG-181 : stabiliser la suite display (test 371).
 
 ## État du projet dans le .tsa (2026-11-01, branche fix/save-dirty-state, plan docs/PROJECT_STATE_PLAN.md validé)
 - [x] Étape 0 : BUG-074 (test 573). [x] Étape 1 : socle, blocs d'état, format 3.1 (test 574).

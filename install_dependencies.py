@@ -902,9 +902,66 @@ def preset_generator(preset):
     return ""
 
 
-def _run_cmake(ctx, cmake_args, generator):
+def _console_codepage():
+    """Page de code de la console Windows (celle de MSVC, imposée par msvc_codepage.cmd), sinon la page OEM."""
+    try:
+        import ctypes
+        k32 = ctypes.windll.kernel32
+        cp = k32.GetConsoleOutputCP() or k32.GetOEMCP()
+        return f"cp{cp}" if cp != 65001 else f"cp{k32.GetOEMCP()}"
+    except (ImportError, AttributeError, OSError):
+        return "cp850"
+
+
+def _decode_build_line(raw):
+    """Une ligne de compilation Windows mêle deux encodages : CMake écrit en UTF-8 dans un tube (scripts -P lancés
+    par Ninja, COMMENT de build.ninja), MSVC dans la page de code de la console. Ninja recopie ces octets tels quels :
+    sans ce décodage, la console affiche « D├®ploiement » ou « ÔåÆ » au lieu de « Déploiement » et « → »."""
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            return raw.decode(_console_codepage(), errors="replace")
+        except LookupError:
+            return raw.decode("cp850", errors="replace")
+
+
+def _call_relayed(command, env=None):
+    """Lance command (ligne cmd.exe) et réaffiche sa sortie décodée (_decode_build_line). Dans une console, la ligne
+    d'avancement « [n/N] … » de Ninja est réécrite sur place, comme Ninja le fait lui-même ; redirigée, elle est
+    conservée telle quelle. Renvoie le code de sortie."""
+    tty = sys.stdout.isatty()
+    width = max(20, shutil.get_terminal_size((120, 20)).columns - 1)
+    status = re.compile(r"\[\d+/\d+\] ")
+    pending = 0   # longueur de la ligne d'avancement affichée sur place (0 : aucune)
+    p = subprocess.Popen(command, cwd=str(ROOT), env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    try:
+        for raw in iter(p.stdout.readline, b""):
+            line = _decode_build_line(raw).rstrip("\r\n")
+            if tty and status.match(line):
+                shown = line if len(line) <= width else line[:width - 3] + "..."
+                sys.stdout.write("\r" + shown + " " * max(0, pending - len(shown)))
+                sys.stdout.flush()
+                pending = len(shown)
+                continue
+            if pending:   # la ligne d'avancement précède la sortie de la commande qu'elle annonce : elle est gardée
+                sys.stdout.write("\n")
+                pending = 0
+            print(line, flush=True)
+    except KeyboardInterrupt:
+        p.terminate()
+        raise
+    finally:
+        if pending:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+    return p.wait()
+
+
+def _run_cmake(ctx, cmake_args, generator, relay=False):
     """Lance CMake ; sous Windows, un générateur autre que Visual Studio (Ninja) a besoin de l'environnement MSVC
-    (INCLUDE, LIB, PATH de cl.exe) : CMake est alors lancé après vcvars64.bat. Renvoie le code de sortie."""
+    (INCLUDE, LIB, PATH de cl.exe) : CMake est alors lancé après vcvars64.bat. relay : sortie réaffichée décodée
+    (_call_relayed ; compilation sous Windows). Renvoie le code de sortie."""
     cmake = ctx.cmake
     if not cmake:
         raise InstallError("CMake introuvable : l'installer (https://cmake.org, 3.20 ou plus) ou indiquer --cmake.")
@@ -916,12 +973,16 @@ def _run_cmake(ctx, cmake_args, generator):
                            "charge de travail « Développement Desktop en C++ » (MSVC x64 + Windows SDK), puis "
                            "relancer. Qt et OCCT de TSA sont des builds MSVC : MinGW ne convient pas.")
     if "Visual Studio" in generator or (shutil.which("cl") and os.environ.get("INCLUDE")):
+        if relay:
+            return _call_relayed([cmake] + cmake_args)
         return subprocess.call([cmake] + cmake_args, cwd=str(ROOT))
     line = f'"{vcvars}" >nul && "{cmake}" ' + " ".join(f'"{a}"' if " " in a else a for a in cmake_args)
     info(f"  $ {line}")
     env = dict(os.environ)   # vcvars64.bat appelle vswhere sans chemin : dossier de l'installateur dans le PATH
     env["PATH"] = str(Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) /
                       "Microsoft Visual Studio" / "Installer") + os.pathsep + env.get("PATH", "")
+    if relay:
+        return _call_relayed(f'cmd /d /s /c "{line}"', env=env)
     return subprocess.call(f'cmd /d /s /c "{line}"', cwd=str(ROOT), env=env)
 
 
@@ -949,7 +1010,7 @@ def build(ctx, preset, target=None):
     info(f"Compilation : preset {preset}" + (f", cible {target}" if target else "") + f", {jobs} tâches en parallèle")
     t0 = time.time()
     rc = _run_cmake(ctx, ["--build", "--preset", preset, "--parallel", str(jobs)]
-                    + (["--target", target] if target else []), generator)
+                    + (["--target", target] if target else []), generator, relay=ctx.windows)
     if rc != 0:
         raise InstallError(f"échec de la compilation (code {rc}) : voir les messages ci-dessus. Relancer la même "
                            "commande reprend là où la compilation s'est arrêtée.")

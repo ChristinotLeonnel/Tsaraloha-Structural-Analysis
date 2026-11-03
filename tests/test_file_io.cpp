@@ -1116,12 +1116,12 @@ bool runSuite_FileIO(int& passed)
             std::memcpy(bytes.data(), &hdr, sizeof(hdr));
             const std::string out = (QDir::currentPath() + "/test_bug110_altered.tsa").toStdString();
             QFile f(QString::fromStdString(out));
-            f.open(QIODevice::WriteOnly);
+            if (!f.open(QIODevice::WriteOnly)) return std::make_pair(false, "ouverture impossible : " + out);
             f.write(bytes);
             f.close();
             Model m;
             std::string e;
-            const bool ok = TSA::IO::TSAFileReader().loadFromFile(out, m, nullptr, "", nullptr, nullptr, nullptr, &e);
+            const bool ok =TSA::IO::TSAFileReader().loadFromFile(out, m, nullptr, "", nullptr, nullptr, nullptr, &e);
             return std::make_pair(ok, e);
         };
         const QByteArray original = readAll(v2);
@@ -1132,7 +1132,7 @@ bool runSuite_FileIO(int& passed)
             hdr.requiredFeatures |= 1ULL << 40;
             std::memcpy(bytes.data(), &hdr, sizeof(hdr));
             QFile f(QDir::currentPath() + "/test_bug110_feature.tsa");
-            f.open(QIODevice::WriteOnly);
+            TEST_CHECK(f.open(QIODevice::WriteOnly), "ouverture de " << f.fileName().toStdString());
             f.write(bytes);
             f.close();
             Model m;
@@ -1537,7 +1537,7 @@ bool runSuite_FileIO(int& passed)
                        && !(h.flags & FLAG_HAS_PREVIEW_BLOCK),
                    "Test 599: en-tête — chiffrement annoncé, ni nom ni auteur en clair, aucun aperçu");
         QFile raw(file);
-        raw.open(QIODevice::ReadOnly);
+        TEST_CHECK(raw.open(QIODevice::ReadOnly), "ouverture de " << raw.fileName().toStdString());
         QByteArray bytes = raw.readAll();
         raw.close();
         TEST_CHECK(!bytes.contains("Pont Secret XYZ") && !bytes.contains("Bureau Alpha") && !bytes.contains("IPE"),
@@ -1561,7 +1561,7 @@ bool runSuite_FileIO(int& passed)
         // c) Altérations du fichier : contenu chiffré modifié (CRC recalculé) → refusé ; CRC faux ou nul → refusé (BUG-166)
         auto rewrite = [&](const QString& path, const QByteArray& data) {
             QFile f(path);
-            f.open(QIODevice::WriteOnly | QIODevice::Truncate);
+            if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) return;   // le contrôle qui suit échoue alors
             f.write(data);
             f.close();
         };
@@ -1590,7 +1590,7 @@ bool runSuite_FileIO(int& passed)
         const QString plainFile = dir.filePath("Clair.tsa");
         TEST_CHECK(TSAProjectIO::saveProject(plainFile, m), "Test 599: projet en clair enregistré");
         QFile pf(plainFile);
-        pf.open(QIODevice::ReadOnly);
+        TEST_CHECK(pf.open(QIODevice::ReadOnly), "ouverture de " << pf.fileName().toStdString());
         QByteArray plainBytes = pf.readAll();
         pf.close();
         TEST_CHECK(!TSAProjectIO::isPasswordProtected(plainFile), "Test 599: projet en clair non protégé");
@@ -1654,7 +1654,7 @@ bool runSuite_FileIO(int& passed)
                            && TSAProjectIO::isPasswordProtected(copy),
                        "Test 599: copie de récupération chiffrée (" << err.toStdString() << ")");
             QFile sidecar(QDir(store.directory()).filePath("doc-p.json"));
-            sidecar.open(QIODevice::ReadOnly);
+            TEST_CHECK(sidecar.open(QIODevice::ReadOnly), "ouverture de " << sidecar.fileName().toStdString());
             TEST_CHECK(!sidecar.readAll().contains("Pont Secret XYZ"), "Test 599: fiche de récupération sans le nom du projet protégé");
             const auto orphans = store.orphans();
             TEST_CHECK(orphans.size() == 1 && orphans.front().title.isEmpty() && orphans.front().originalPath == file,

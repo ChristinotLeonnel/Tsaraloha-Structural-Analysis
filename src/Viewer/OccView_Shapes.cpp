@@ -1,5 +1,6 @@
 #include "../Mesh/MeshGeometry.h"
-#include <AIS_ListOfInteractive.hxx>
+#include <AIS_InteractiveObject.hxx>
+#include <NCollection_List.hxx>
 #include <Graphic3d_TransformPers.hxx>
 #include "AnnotationStyle.h"
 #include "LoadDisplayStyle.h"
@@ -249,7 +250,8 @@ Handle(AIS_InteractiveObject) OccView::detectedPreferringModel()
     Handle(AIS_InteractiveObject) firstModel;
     for (m_context->InitDetected(); m_context->MoreDetected(); m_context->NextDetected())
     {
-        Handle(AIS_InteractiveObject) obj = m_context->DetectedCurrentObject();
+        const Handle(SelectMgr_EntityOwner) owner = m_context->DetectedCurrentOwner();
+        Handle(AIS_InteractiveObject) obj = owner.IsNull() ? Handle(AIS_InteractiveObject)() : Handle(AIS_InteractiveObject)::DownCast(owner->Selectable());
         if (obj.IsNull() || !m_selectionManager->isModelObject(obj)) continue;
         if (m_selectionManager->getNodeId(obj) > 0) return obj;
         if (firstModel.IsNull()) firstModel = obj;
@@ -3178,7 +3180,7 @@ QString OccView::displayDiagnosticsText() const
     int scene = 0;
     if (!m_context.IsNull())
     {
-        AIS_ListOfInteractive list;
+        NCollection_List<Handle(AIS_InteractiveObject)> list;
         m_context->DisplayedObjects(list);
         scene = list.Extent();
     }

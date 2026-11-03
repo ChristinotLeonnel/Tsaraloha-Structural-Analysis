@@ -798,7 +798,7 @@ void chapterChecks(Ctx& x, NDCDocument& doc, int& issues)
                 double area = 0.0;
                 if (l.targetKind == TSA::Model::SurfaceTargetKind::Slab)
                 {
-                    if (const auto* s = x.model.getSlab(l.surfaceId)) area = s->area(x.model);
+                    if (const auto* slab = x.model.getSlab(l.surfaceId)) area = slab->area(x.model);
                 }
                 else if (const auto* w = x.model.getWall(l.surfaceId))
                     area = w->area(x.model);
@@ -870,7 +870,7 @@ void chapterViews(Ctx& x, NDCDocument& doc)
     doc.addChapter(ch);
 }
 
-void chapterDisplacements(Ctx& x, NDCDocument& doc, int& issues)
+void chapterDisplacements(Ctx& x, NDCDocument& doc, int& /*issues*/)
 {
     auto ch = x.makeChapter(QStringLiteral("Déplacements et flèches"));
     NDCSection s;
@@ -1059,12 +1059,12 @@ void chapterForces(Ctx& x, NDCDocument& doc)
         };
         for (const auto& [id, r] : x.results->shellResults())
         {
-            auto& s = per[r.source];
-            ++s.elements;
+            auto& acc = per[r.source];
+            ++acc.elements;
             const auto& m = r.mean;
-            s.m = std::max(s.m, principal(m[3], m[4], m[5]));
-            s.n = std::max(s.n, principal(m[0], m[1], m[2]));
-            s.v = std::max(s.v, std::hypot(m[6], m[7]));
+            acc.m = std::max(acc.m, principal(m[3], m[4], m[5]));
+            acc.n = std::max(acc.n, principal(m[0], m[1], m[2]));
+            acc.v = std::max(acc.v, std::hypot(m[6], m[7]));
         }
         int node = 0;
         const double wmax = x.results->maxSurfaceDisplacement(&node);
@@ -1079,7 +1079,7 @@ void chapterForces(Ctx& x, NDCDocument& doc)
                               { QStringLiteral("Surface"), QStringLiteral("Éléments"), QStringLiteral("|M| max (kN·m/m)"), QStringLiteral("|N| max (kN/m)"), QStringLiteral("|V| max (kN/m)") },
                               { QStringLiteral("left"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right") });
         const double k = x.toKN();
-        for (const auto& [ref, s] : per) tc.rows.push_back({ QString::fromStdString(ref), QString::number(s.elements), f(s.m * k, 2), f(s.n * k, 2), f(s.v * k, 2) });
+        for (const auto& [ref, acc] : per) tc.rows.push_back({ QString::fromStdString(ref), QString::number(acc.elements), f(acc.m * k, 2), f(acc.n * k, 2), f(acc.v * k, 2) });
         sc.tables.push_back(tc);
         ch.sections.push_back(sc);
     }

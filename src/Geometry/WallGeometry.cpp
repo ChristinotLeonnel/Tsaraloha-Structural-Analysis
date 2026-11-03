@@ -81,7 +81,7 @@ TopoDS_Shape WallGeometry::createWallShape(const std::vector<gp_Pnt>& outer, con
     };
     auto outerPoly = wire(outer);
     if (!outerPoly.IsDone()) return TopoDS_Shape();
-    BRepBuilderAPI_MakeFace face(outerPoly.Wire(), Standard_True);
+    BRepBuilderAPI_MakeFace face(outerPoly.Wire(), true);
     if (!face.IsDone()) return TopoDS_Shape();
     for (const auto& h : holes)
     {

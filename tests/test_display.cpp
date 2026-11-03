@@ -43,7 +43,7 @@
 
 #include <Prs3d_TextAspect.hxx>
 
-#include <AIS_ListOfInteractive.hxx>
+#include <NCollection_List.hxx>
 #include <Bnd_Box.hxx>
 #include <QApplication>
 #include <QImage>
@@ -60,7 +60,7 @@ namespace
 {
 int displayedObjects(OccView& v)
 {
-    AIS_ListOfInteractive list;
+    NCollection_List<Handle(AIS_InteractiveObject)> list;
     v.context()->DisplayedObjects(list);
     return list.Extent();
 }
@@ -1024,7 +1024,7 @@ bool runSuite_Display(int& passed)
         const double dpr = TSA::Viewer::AnnotationStyle::instance().settings().devicePixelRatio;
         const auto& textStyle = TSA::Viewer::LoadDisplayStyle::instance().settings();
         int labels = 0, topmost = 0, sized = 0, clear = 0;
-        AIS_ListOfInteractive shown;
+        NCollection_List<Handle(AIS_InteractiveObject)> shown;
         view.context()->DisplayedObjects(shown);
         for (const auto& object : shown)
         {
@@ -1056,7 +1056,7 @@ bool runSuite_Display(int& passed)
         rv->layoutLabels();
         pump();
         capture("res_4_textes_en_plan");
-        AIS_ListOfInteractive inPlan;
+        NCollection_List<Handle(AIS_InteractiveObject)> inPlan;
         view.context()->DisplayedObjects(inPlan);
         int sideLabels = 0, valueLabels = 0;
         for (const auto& object : inPlan)
@@ -1094,7 +1094,7 @@ bool runSuite_Display(int& passed)
             endA += curve.X() < n1->x() + 1e-6;
             endB += curve.X() > n2->x() - 1e-6;
             // Le texte à l'autre bout de la ligne donne la valeur : point de la courbe = axe + valeur × échelle
-            AIS_ListOfInteractive objects;
+            NCollection_List<Handle(AIS_InteractiveObject)> objects;
             view.context()->DisplayedObjects(objects);
             for (const auto& object : objects)
             {
@@ -1190,7 +1190,7 @@ bool runSuite_Display(int& passed)
         rv->setDeformedVisible(true);
         pump();
         auto solidObjects = [&] {
-            AIS_ListOfInteractive list;
+            NCollection_List<Handle(AIS_InteractiveObject)> list;
             view.context()->DisplayedObjects(list);
             int n = 0;
             for (const auto& object : list)

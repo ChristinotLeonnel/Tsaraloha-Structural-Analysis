@@ -1532,7 +1532,7 @@ bool runSuite_Engines(int& passed)
         const auto prep = mgr.prepare(m, &gm, c);
         const auto run = prep.canRun() ? mgr.run(c, prep) : AnalysisRunResult {};
         std::string prepErrors;
-        for (const auto& e : prep.validation.texts(ValidationSeverity::Error)) prepErrors += " | " + e;
+        for (const auto& text : prep.validation.texts(ValidationSeverity::Error)) prepErrors += " | " + text;
         TEST_CHECK(prep.canRun() && !run.success && !run.results.hasResults(),
                    "Test 479: mécanisme refusé, aucun résultat (préparation" << prepErrors << " ; calcul : " << run.success << " " << run.message << ")");
         TEST_CHECK(run.message.find("mécanisme") != std::string::npos && run.message.find("Aucun moteur de secours") != std::string::npos,

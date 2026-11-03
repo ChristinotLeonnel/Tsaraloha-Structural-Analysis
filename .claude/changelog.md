@@ -2,6 +2,19 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-03 — Avertissements de compilation supprimés, sortie de compilation lisible (branche fix/build-warnings)
+
+- Compilation Release de TSA et de TSALab sans aucun avertissement (avant : une cinquantaine, Warning.txt). Dépréciations OCCT 8 :
+  `NCollection_List<Handle(AIS_InteractiveObject)>`, `NCollection_IndexedDataMap<TCollection_AsciiString, TCollection_AsciiString>`,
+  `DetectedCurrentOwner()->Selectable()` au lieu de `DetectedCurrentObject()`, `true` au lieu de `Standard_True`. Masquages (C4456,
+  C4458) renommés, paramètres inutilisés commentés, retours de `QFile::open` contrôlés dans les tests (C4834).
+- Test 594 : la lambda `differs` faisait `return false` sans que son résultat soit lu (C4715) ; un contenu jugé identique à tort ne
+  faisait donc jamais échouer le test. Les écarts sont maintenant relevés puis vérifiés par `TEST_CHECK(allDiffer, …)`.
+- `install_dependencies.py --build/--package` (Windows) : sortie de compilation réaffichée par Python, chaque ligne décodée en UTF-8
+  sinon dans la page de code de la console (`_decode_build_line`). Corrige « D├®ploiement », « ÔåÆ » : CMake écrit en UTF-8 dans un
+  tube (scripts `-P`, COMMENT de build.ninja) alors que MSVC écrit en CP850. La ligne d'avancement de Ninja reste réécrite sur place.
+- Vérifié : TSA_TestSuite code 0 (601 tests comptés), TSALab_TestSuite 27/27. Test 371 a échoué une fois (BUG-181).
+
 ## 2026-11-02 — Diagrammes rabattus dans le plan en vue 2D (branche feature/diagrams-folded-2d)
 
 - `DiagramGeometry::foldOffsetIntoPlane` : diagramme à plus de 60° du plan regardé rabattu perpendiculairement à la barre, sens

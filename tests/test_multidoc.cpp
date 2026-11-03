@@ -435,7 +435,7 @@ bool runSuite_MultiDoc(int& passed)
         const QString path = dir.filePath("verrou.tsa");
         {
             QFile f(path);
-            f.open(QIODevice::WriteOnly);
+            TEST_CHECK(f.open(QIODevice::WriteOnly), "ouverture de " << f.fileName().toStdString());
             f.write("TSA");
         }
         HANDLE h = CreateFileW(QDir::toNativeSeparators(path).toStdWString().c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
