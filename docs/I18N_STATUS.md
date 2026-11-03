@@ -167,7 +167,7 @@ Produit par `tools/i18n/check_translations.py --report` le 2026-10-19. Langue so
 | `TSA::Automation::AutomationServer` | 2 / 2 ✓ | 2 / 2 ✓ |
 | `TSA::Model::NamedViews` | 2 / 2 ✓ | 2 / 2 ✓ |
 | `TSA::Project::ProjectManager` | 2 / 2 ✓ | 2 / 2 ✓ |
-| `TSA::UI::IfcProgressDialog` | 2 / 2 ✓ | 2 / 2 ✓ |
+| `TSA::UI::TaskProgressDialog` | 2 / 2 ✓ | 2 / 2 ✓ |
 | `TSA::UI::SectionPreviewWidget` | 2 / 2 ✓ | 2 / 2 ✓ |
 | `TSA::Viewer::DimensionRenderer` | 2 / 2 ✓ | 2 / 2 ✓ |
 | `TSA::Analysis::AnalysisEngine` | 1 / 1 ✓ | 1 / 1 ✓ |

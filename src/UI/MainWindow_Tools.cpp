@@ -11,6 +11,7 @@
 #include "Dialogs/NewNodeDialog.h"
 #include "Dialogs/MemberLoadDialog.h"
 #include "Dialogs/LoadCaseDialog.h"
+#include "Dialogs/TaskProgressDialog.h"
 #include "Diagrams/Diagram2DWidget.h"
 #include "../NDC/NDCViewerWidget.h"
 #include "../Analysis/OpenSeesSolver.h"
@@ -602,12 +603,29 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
             tr("%1\n\nVoulez-vous l'installer automatiquement ?").arg(QString::fromStdString(avail.message)),
             QMessageBox::Yes | QMessageBox::No);
         if (reply != QMessageBox::Yes) return false;
+        // Téléchargement et installation dans un thread de travail : la fenêtre reste dessinée et réactive (avant : figée
+        // plusieurs minutes, « Ne répond pas »). Fenêtre modale : aucune autre commande ne démarre pendant ce temps.
+        TSA::UI::TaskProgressDialog dialog(tr("Installation de %1").arg(engineName), tr("Préparation…"), this);
+        TSA::UI::TaskProgress progress;
+        AnalysisRunCallbacks callbacks;
+        callbacks.progress = [&progress](int percent, const std::string& stage) { progress.publish(percent, stage); };
+        callbacks.cancelRequested = [&progress] { return progress.cancel.load(); };
         std::string err;
-        if (!engine->provision(&err))
+        bool provisioned = false;
+        const std::string failure = TSA::UI::runTaskInWorker(dialog, progress, [&] { provisioned = engine->provision(&err, callbacks); });
+        if (!failure.empty()) err = failure;
+        if (!provisioned)
         {
+            if (progress.cancel && err.empty())   // arrêt demandé : provision rend faux sans erreur
+            {
+                if (m_consoleDock) m_consoleDock->appendLog(tr("Installation de %1 annulée.").arg(engineName), "WARN");
+                if (m_statusInfo) m_statusInfo->setText(tr("Installation de %1 annulée").arg(engineName));
+                return false;
+            }
             QMessageBox::critical(this, tr("Installation impossible"), QString::fromStdString(err));
             return false;
         }
+        if (m_consoleDock) m_consoleDock->appendLog(tr("%1 installé et vérifié.").arg(engineName), "INFO");
     }
 
     // 1 bis. Topologie : nœuds confondus, nœuds sur barres, doublons, nœuds parasites faussent le

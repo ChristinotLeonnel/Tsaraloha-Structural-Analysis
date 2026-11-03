@@ -2,6 +2,23 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-03 — Installation d'un moteur hors du thread de l'interface (branche fix/engine-download-thread)
+
+- Avant : « Voulez-vous l'installer automatiquement ? » appelait `engine->provision()` dans le thread de l'interface
+  (MainWindow_Tools) : téléchargement curl (jusqu'à 5 min par paquet), extraction et premier lancement (60 s) figeaient
+  TSA (« Ne répond pas »). Maintenant : thread de travail, fenêtre de progression modale avec avancement et Annuler.
+- Composant partagé `src/UI/Dialogs/TaskProgressDialog` (`TaskProgressDialog`, `TaskProgress`, `runTaskInWorker`),
+  extrait de MainWindow_Bim (ex-`IfcProgressDialog`, `WorkProgress`, `runInWorker`) ; IFC et moteur l'utilisent.
+  Contexte de traduction renommé dans les .ts.
+- `AnalysisEngine::provision(error, callbacks)` : `AnalysisRunCallbacks` (avancement, arrêt), appelable hors interface.
+- `OpenSeesManager::downloadAndInstall(…, cancelled)` : travail sans état dans le thread de travail ; caches, vérification
+  et signaux dans le thread du gestionnaire (`runInOwnThread`, attente bloquante) ; une seule installation à la fois
+  (`m_isDownloading` atomique) ; vérification du premier lancement réutilisée (plus de second lancement de 15 s).
+  `installFromCondaForge(…, cancelled)` : curl et tar arrêtés sur demande, destination intacte. `downloadAndInstallAsync`
+  n'émet plus l'avancement en double.
+- Test 610 (suite opensees). TSA_TestSuite code 0 (602 comptés), TSALab 27/27, check_layers 0 violation.
+  Essai réel dans TSA.exe fait par l'utilisateur (2026-11-03).
+
 ## 2026-11-03 — Avertissements de compilation supprimés, sortie de compilation lisible (branche fix/build-warnings)
 
 - Compilation Release de TSA et de TSALab sans aucun avertissement (avant : une cinquantaine, Warning.txt). Dépréciations OCCT 8 :

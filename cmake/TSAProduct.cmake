@@ -221,6 +221,8 @@ set(UI_DIALOGS_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.cpp
     ${TSA_ROOT}/src/UI/Dialogs/IfcDialogs.h
     ${TSA_ROOT}/src/UI/Dialogs/IfcDialogs.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/TaskProgressDialog.h
+    ${TSA_ROOT}/src/UI/Dialogs/TaskProgressDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/SurfaceLoadsDialog.h

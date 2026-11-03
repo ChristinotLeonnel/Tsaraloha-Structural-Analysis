@@ -2,6 +2,10 @@
 
 Last Updated: 2026-11-03. Avant : 2026-11-02 soir. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
+## Installation d'un moteur hors interface (2026-11-03, branche fix/engine-download-thread)
+- [x] provision dans un thread de travail, progression et Annuler (test 610).
+- [x] Essai réel dans TSA.exe fait par l'utilisateur le 2026-11-03 (fenêtre réactive pendant l'installation).
+
 ## Avertissements de compilation (2026-11-03, branche fix/build-warnings)
 - [x] Avertissements de Warning.txt supprimés (TSA et TSALab Release : 0 avertissement) ; test 594 réellement vérifiant.
 - [x] Sortie de `install_dependencies.py --build/--package` décodée (accents et « → » lisibles).

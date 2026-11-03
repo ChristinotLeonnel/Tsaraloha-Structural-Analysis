@@ -15,6 +15,7 @@
 #include "../Project/ProjectManager.h"
 #include "../Viewer/OccView.h"
 #include "Dialogs/IfcDialogs.h"
+#include "Dialogs/TaskProgressDialog.h"
 #include "Dock/LogConsoleDock.h"
 #include "ModelTree/ModelTreeWidget.h"
 #include "Ruler/ViewportContainer.h"
@@ -22,18 +23,10 @@
 
 #include <QApplication>
 #include <QMetaMethod>
-#include <QEventLoop>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QLabel>
 #include <QMessageBox>
-#include <QThread>
-#include <QTimer>
-
-#include <atomic>
-#include <exception>
-#include <functional>
-#include <mutex>
 
 namespace
 {
@@ -43,68 +36,6 @@ QString joinWarnings(const std::vector<std::string>& warnings, int max = 8)
     for (std::size_t i = 0; i < warnings.size() && static_cast<int>(i) < max; ++i) lines << QString::fromStdString(warnings[i]);
     if (static_cast<int>(warnings.size()) > max) lines << QObject::tr("… %1 autre(s), voir la console.").arg(warnings.size() - max);
     return lines.join("\n");
-}
-
-/// Progression publiée par le thread de travail, relevée par l'interface (minuterie) ; l'annulation est demandée par
-/// l'interface et constatée par le travail à sa prochaine étape.
-struct WorkProgress
-{
-    std::atomic<int> percent { 0 };
-    std::atomic<bool> cancel { false };
-    std::mutex mutex;
-    std::string stage;
-
-    void publish(int p, const std::string& s)
-    {
-        percent = p;
-        std::lock_guard<std::mutex> lock(mutex);
-        stage = s;
-    }
-    QString currentStage()
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        return QString::fromStdString(stage);
-    }
-};
-
-/// Exécute `work` dans un thread de travail ; boucle locale (fenêtre de progression modale) jusqu'à sa fin effective.
-/// Une exception échappée du travail est rendue en message (jamais de fin anormale du programme).
-std::string runInWorker(TSA::UI::IfcProgressDialog& dialog, WorkProgress& progress, const std::function<void()>& work)
-{
-    std::string failure;
-    QEventLoop loop;
-    QThread* worker = QThread::create([&work, &failure] {
-        try
-        {
-            work();
-        }
-        catch (const std::bad_alloc&)
-        {
-            failure = QCoreApplication::translate("MainWindow", "mémoire insuffisante").toStdString();
-        }
-        catch (const std::exception& e)
-        {
-            failure = e.what();
-        }
-        catch (...)
-        {
-            failure = QCoreApplication::translate("MainWindow", "erreur interne inconnue").toStdString();
-        }
-    });
-    QObject::connect(worker, &QThread::finished, &loop, &QEventLoop::quit);
-    QObject::connect(&dialog, &QProgressDialog::canceled, &loop, [&progress] { progress.cancel = true; });
-    QTimer poll;
-    poll.setInterval(100);
-    QObject::connect(&poll, &QTimer::timeout, &dialog, [&dialog, &progress] { dialog.setStage(progress.percent, progress.currentStage()); });
-    worker->start();
-    poll.start();
-    loop.exec();
-    poll.stop();
-    worker->wait();
-    delete worker;
-    dialog.setValue(dialog.maximum());
-    dialog.hide();
-    return failure;
 }
 } // namespace
 
@@ -127,13 +58,13 @@ void MainWindow::onActionExportIfc()
     TSA::Model::Model copy;
     copy.restoreSnapshot(m_model->createSnapshot("Export IFC"));
 
-    TSA::UI::IfcProgressDialog dialog(tr("Export IFC"), tr("Écriture de %1…").arg(QFileInfo(path).fileName()), this);
+    TSA::UI::TaskProgressDialog dialog(tr("Export IFC"), tr("Écriture de %1…").arg(QFileInfo(path).fileName()), this);
     dialog.setRange(0, 0);              // durée inconnue (écriture puis relecture indépendante)
     dialog.setCancelButton(nullptr);    // l'écriture atomique n'est pas interruptible ; rapide
-    WorkProgress progress;
+    TSA::UI::TaskProgress progress;
     TSA::BIM::Ifc::IfcExportReport r;
     const std::string target = path.toStdString();
-    const std::string failure = runInWorker(dialog, progress, [&] { r = TSA::BIM::Ifc::IfcExporter::exportToFile(copy, target, opt); });
+    const std::string failure = TSA::UI::runTaskInWorker(dialog, progress, [&] { r = TSA::BIM::Ifc::IfcExporter::exportToFile(copy, target, opt); });
     if (!failure.empty())
     {
         r.ok = false;
@@ -174,16 +105,16 @@ void MainWindow::onActionImportIfc()
 
     // Lecture dans un modèle temporaire : le projet ouvert n'est remplacé qu'après un import réussi
     // (un fichier illisible, sans élément exploitable ou un import annulé le laissent intact).
-    WorkProgress progress;
+    TSA::UI::TaskProgress progress;
     options.progress = [&progress](int percent, const std::string& stage) {
         progress.publish(percent, stage);
         return !progress.cancel.load();
     };
     auto imported = std::make_shared<TSA::Model::Model>();
     TSA::BIM::Ifc::IfcImportReport r;
-    TSA::UI::IfcProgressDialog dialog(tr("Import IFC"), tr("Lecture de %1…").arg(QFileInfo(path).fileName()), this);
+    TSA::UI::TaskProgressDialog dialog(tr("Import IFC"), tr("Lecture de %1…").arg(QFileInfo(path).fileName()), this);
     const std::string source = path.toStdString();
-    const std::string failure = runInWorker(dialog, progress, [&] { r = TSA::BIM::Ifc::IfcImporter::importFile(source, *imported, options); });
+    const std::string failure = TSA::UI::runTaskInWorker(dialog, progress, [&] { r = TSA::BIM::Ifc::IfcImporter::importFile(source, *imported, options); });
     if (!failure.empty())
     {
         r.ok = false;
