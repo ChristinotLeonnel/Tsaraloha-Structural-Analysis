@@ -41,8 +41,9 @@ PropertyPanel, ProjectStatusOverlay, ResultsValidityGuard). Détails : `architec
   TSALab (`../TSALab`) en couches model < graphics < widgets < app, contrôlées par `tools/check_layers.py`.
   Avant toute classe : chercher l'existant, puis réutiliser → refactorer → extraire en composant partagé.
   Aucun littéral d'identité dans `src/` (`<ProductIdentity.h>`, `App/ProductInfo.h`). Calcul scientifique =
-  `TSALab/science` (C++ pur). Commandes métier = `Automation/CommandRegistry`. Après une modification de `src/`,
-  compiler et tester TSA puis TSALab (pas en parallèle).
+  `TSALab/science` (C++ pur). Commandes métier = `Automation/CommandRegistry`. Compilation et tests : seulement le
+  produit sur lequel on travaille (travail sur TSA → TSA seul ; travail dans TSALab → TSALab seul), même après une
+  modification de `src/` (règle de l'utilisateur, 2026-11-03). Jamais les deux en parallèle.
 
 - Travailler avec l'architecture existante ; pas d'architecture ni de système parallèle
   (un seul SelectionManager, un seul UndoManager, un seul viewport `OccView`).
