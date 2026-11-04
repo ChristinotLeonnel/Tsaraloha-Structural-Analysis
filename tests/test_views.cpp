@@ -31,7 +31,7 @@
 #include <QMouseEvent>
 #include <QThread>
 
-#include <AIS_ListOfInteractive.hxx>
+#include <NCollection_List.hxx>
 #include <Graphic3d_Camera.hxx>
 
 #include <filesystem>
@@ -921,7 +921,7 @@ bool runSuite_Views(int& passed)
         pump();
         auto gridOrigin = [&]() { return gp_Pnt(0, 0, 0).Transformed(view.workPlaneGrid()->LocalTransformation()); };
         auto gridCount = [&]() {
-            AIS_ListOfInteractive list;
+            NCollection_List<Handle(AIS_InteractiveObject)> list;
             view.context()->DisplayedObjects(list);
             int n = 0;
             for (const auto& o : list) n += Handle(TSA::Viewer::WorkPlaneGrid)::DownCast(o).IsNull() ? 0 : 1;
@@ -1385,7 +1385,7 @@ bool runSuite_Views(int& passed)
                    "Test 511: choix de la vue = table core20fwd du contexte actif (" << (hasCore20 ? "présente" : "absente") << ")");
         auto labelTypes = [&view]() {
             std::set<int> types;
-            AIS_ListOfInteractive list;
+            NCollection_List<Handle(AIS_InteractiveObject)> list;
             view.context()->DisplayedObjects(list);
             for (const auto& o : list)
                 if (Handle(AIS_TextLabel) label = Handle(AIS_TextLabel)::DownCast(o); !label.IsNull())
@@ -1405,7 +1405,7 @@ bool runSuite_Views(int& passed)
         snap.point = { 6.0, 0.0, 0.0 };
         grids.showSnapMarker(snap, view.context());
         Handle(TSA::Grid::SnapMarker) marker;
-        AIS_ListOfInteractive shown;
+        NCollection_List<Handle(AIS_InteractiveObject)> shown;
         view.context()->DisplayedObjects(shown);
         for (const auto& o : shown)
             if (Handle(TSA::Grid::SnapMarker) sm = Handle(TSA::Grid::SnapMarker)::DownCast(o); !sm.IsNull()) marker = sm;
@@ -1457,7 +1457,7 @@ bool runSuite_Views(int& passed)
                    "Test 511: réouverture : choix refait sur le nouveau contexte (core20fwd " << (reopenedCore20 ? "présente" : "absente") << ")");
         std::set<int> reopenedTypes;
         {
-            AIS_ListOfInteractive list;
+            NCollection_List<Handle(AIS_InteractiveObject)> list;
             child->context()->DisplayedObjects(list);
             for (const auto& o : list)
                 if (Handle(AIS_TextLabel) label = Handle(AIS_TextLabel)::DownCast(o); !label.IsNull())

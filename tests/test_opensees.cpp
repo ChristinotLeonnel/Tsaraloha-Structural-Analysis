@@ -7,6 +7,9 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
+#include <QThread>
+
+#include <stdexcept>
 
 #include "Analysis/OpenSeesManager.h"
 #include "AI/Models/ModelManager.h"
@@ -14,6 +17,8 @@
 #include "Analysis/ResultsModel.h"
 #include "Analysis/OpenSeesAnalysisBuilder.h"
 #include "Analysis/OpenSeesSolver.h"
+#include "Analysis/Engines/OpenSees/OpenSeesEngine.h"
+#include "UI/Dialogs/TaskProgressDialog.h"
 #include "Model/Model.h"
 #include "Model/Section.h"
 #include "Model/Material.h"
@@ -847,6 +852,57 @@ bool runSuite_OpenSees(int& passed)
         else
             std::cout << "  [INFO] Test 495 : OpenSees absent, comparaison des calculs non exécutée" << std::endl;
         std::cout << "[PASS] Test 495: Noms du modèle neutralisés dans le script OpenSees (pas d'injection Tcl)" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 610 : installation d'un moteur hors du thread de l'interface (avant : téléchargement d'OpenSees dans le
+    // thread de l'interface, fenêtre figée plusieurs minutes) ; arrêt demandé sans rien modifier
+    // -------------------------------------------------------------------------
+    {
+        auto& mgr = OpenSeesManager::instance();
+        TEST_CHECK(mgr.thread() == QThread::currentThread(), "Test 610: gestionnaire OpenSees dans le thread de l'interface");
+
+        // a) Travail mené par runTaskInWorker dans un autre thread ; ce qui touche l'état partagé revient au thread du
+        //    gestionnaire (boucle locale active) ; avancement relevé ; exception rendue en message.
+        TSA::UI::TaskProgressDialog dialog(QStringLiteral("Essai"), QStringLiteral("…"));
+        TSA::UI::TaskProgress progress;
+        QThread* workerThread = nullptr;
+        QThread* appliedIn = nullptr;
+        std::string failure = TSA::UI::runTaskInWorker(dialog, progress, [&] {
+            workerThread = QThread::currentThread();
+            progress.publish(40, "étape d'essai");
+            mgr.runInOwnThread([&] { appliedIn = QThread::currentThread(); });
+        });
+        TEST_CHECK(failure.empty() && workerThread && workerThread != mgr.thread() && appliedIn == mgr.thread()
+                       && progress.currentStage() == QStringLiteral("étape d'essai") && progress.percent == 40,
+                   "Test 610: travail dans un thread de travail, état appliqué dans le thread du gestionnaire");
+        failure = TSA::UI::runTaskInWorker(dialog, progress, [] { throw std::runtime_error("panne d'essai"); });
+        TEST_CHECK(failure == "panne d'essai", "Test 610: exception du travail rendue en message (" << failure << ")");
+
+#ifdef Q_OS_WIN
+        // b) Arrêt demandé : aucun téléchargement, destination intacte, aucun dossier de préparation
+        QTemporaryDir dest;
+        {
+            QFile existing(dest.filePath("existant.txt"));
+            TEST_CHECK(existing.open(QIODevice::WriteOnly) && existing.write("x") == 1, "Test 610: fichier existant écrit");
+        }
+        QString error;
+        const bool installed = OpenSeesManager::installFromCondaForge(dest.path(), nullptr, &error, [] { return true; });
+        TEST_CHECK(!installed && error.contains(QStringLiteral("annulée")) && QFile::exists(dest.filePath("existant.txt"))
+                       && !QFile::exists(dest.filePath("bin/OpenSees.exe")) && !QDir(dest.filePath(".opensees-install")).exists(),
+                   "Test 610: arrêt demandé, destination intacte (" << error.toStdString() << ")");
+
+        // c) provision() du moteur dans un thread de travail, arrêt demandé : faux, sans erreur (pas un échec)
+        OpenSeesEngine engine;
+        AnalysisRunCallbacks callbacks;
+        callbacks.cancelRequested = [] { return true; };
+        std::string err = "inchangé";
+        bool provisioned = true;
+        failure = TSA::UI::runTaskInWorker(dialog, progress, [&] { provisioned = engine.provision(&err, callbacks); });
+        TEST_CHECK(failure.empty() && !provisioned && err.empty(), "Test 610: provision arrêtée sans erreur (" << err << ")");
+#endif
+        std::cout << "[PASS] Test 610: Installation d'un moteur hors du thread de l'interface, arrêt demandé" << std::endl;
         passed++;
     }
 

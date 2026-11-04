@@ -66,7 +66,8 @@
 #include <SelectMgr_ViewerSelector.hxx>
 #include <StdSelect_ViewerSelector3d.hxx>
 #include <Graphic3d_Camera.hxx>
-#include <TColStd_IndexedDataMapOfStringString.hxx>
+#include <NCollection_IndexedDataMap.hxx>
+#include <TCollection_AsciiString.hxx>
 #include <OpenGl_Caps.hxx>
 #include "../Diagnostics/Logger.h"
 #include <gp_Dir.hxx>
@@ -183,7 +184,7 @@ OccView::RenderingInfo OccView::renderingInfo() const
 {
     RenderingInfo r;
     if (m_view.IsNull()) return r;
-    TColStd_IndexedDataMapOfStringString dict;
+    NCollection_IndexedDataMap<TCollection_AsciiString, TCollection_AsciiString> dict;
     m_view->DiagnosticInformation(dict, Graphic3d_DiagnosticInfo_Device);
     auto get = [&](const char* key) {
         const TCollection_AsciiString k(key);

@@ -280,10 +280,10 @@ bool runSuite_Mesh(int& passed)
         for (const auto& e : r.mesh.elements)
         {
             if (feTypeDimension(e.type) != 2) continue;
-            const P3 c = centroid(r.mesh, e);
+            const P3 center = centroid(r.mesh, e);
             const double h = std::sqrt(2 * elementArea(r.mesh, e));
-            if (c.norm() < 0.3) near += h, ++nn;
-            else if (c.norm() > 3.0) far += h, ++nf;
+            if (center.norm() < 0.3) near += h, ++nn;
+            else if (center.norm() > 3.0) far += h, ++nf;
         }
         near /= std::max(1, nn), far /= std::max(1, nf);
         TEST_CHECK(r.ok && nn > 5 && near < 0.2 && far > 0.35, "Test 292: tailles près de l'appui " << near << " m, loin " << far << " m");

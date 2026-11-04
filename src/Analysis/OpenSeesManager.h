@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <atomic>
 #include <functional>
 #include <vector>
 
@@ -71,9 +72,11 @@ public:
     static std::vector<CondaPackage> condaPackages();
     /// Télécharge les paquets (curl.exe), vérifie chaque empreinte (un paquet différent n'est jamais extrait), extrait
     /// avec tar.exe de Windows (.conda = zip de pkg-*.tar.zst) et installe dans <targetDir>/bin et <targetDir>/lib
-    /// (OpenSees.exe, ses DLL, bibliothèque Tcl 8.6), seulement si tout a réussi. Windows seulement.
+    /// (OpenSees.exe, ses DLL, bibliothèque Tcl 8.6), seulement si tout a réussi. Windows seulement. Sans état : appelable
+    /// depuis un thread de travail. cancelled : arrêt demandé, consulté pendant chaque téléchargement ou extraction (outil
+    /// arrêté) et avant la copie finale (jamais interrompue) ; la destination reste alors intacte.
     static bool installFromCondaForge(const QString& targetDir, const std::function<void(int percent, const QString& status)>& progress,
-                                      QString* errorMessage);
+                                      QString* errorMessage, const std::function<bool()>& cancelled = {});
 
     // État et chemins
     bool isAvailable() const;
@@ -101,9 +104,15 @@ public:
     OpenSeesCheckResult lastCheck() const;
 
     // Téléchargement et installation automatique
+    /// Appelable depuis un thread de travail (OpenSeesEngine::provision, exécuté hors de l'interface) : téléchargement,
+    /// extraction et premier lancement y sont faits ; caches, vérification et signaux sont appliqués dans le thread du
+    /// gestionnaire (attente bloquante de sa boucle d'événements). Une seule installation à la fois.
     bool downloadAndInstall(std::function<void(int percent, const QString& status)> progressCallback = nullptr,
-                            QString* errorMessage = nullptr);
+                            QString* errorMessage = nullptr, std::function<bool()> cancelled = nullptr);
     void downloadAndInstallAsync();
+    /// Exécute fn dans le thread du gestionnaire (directement si on y est déjà ; sinon attente bloquante : la boucle
+    /// d'événements de ce thread doit tourner, ce que fait TSA::UI::runTaskInWorker).
+    void runInOwnThread(const std::function<void()>& fn);
 
     // Vérifie la disponibilité (détection seule, jamais de téléchargement implicite) ; sinon, cause dans errorMessage
     bool ensureAvailable(QString* errorMessage = nullptr);
@@ -126,7 +135,7 @@ private:
     mutable OpenSeesVersionInfo m_cachedVersion;
     mutable bool m_isVerified = false;
     mutable OpenSeesCheckResult m_lastCheck;
-    bool m_isDownloading = false;
+    std::atomic<bool> m_isDownloading { false };   ///< lu et écrit depuis le thread de travail de l'installation
 };
 
 } // namespace TSA::Analysis

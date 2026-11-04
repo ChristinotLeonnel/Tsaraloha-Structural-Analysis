@@ -20520,7 +20520,7 @@ Unchecked: waits for a click on 'Apply'.</translation>
     </message>
 </context>
 <context>
-    <name>TSA::UI::IfcProgressDialog</name>
+    <name>TSA::UI::TaskProgressDialog</name>
     <message>
         <source>Annuler</source>
         <translation>Cancel</translation>

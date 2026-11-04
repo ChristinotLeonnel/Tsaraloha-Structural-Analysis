@@ -22,7 +22,7 @@
 #include "Analysis/Engine/AnalysisContext.h"
 #include "Model/Load/LoadManager.h"
 
-#include <AIS_ListOfInteractive.hxx>
+#include <NCollection_List.hxx>
 #include <MeshVS_Mesh.hxx>
 #include <MeshVS_MeshEntityOwner.hxx>
 #include <NCollection_HArray1.hxx>
@@ -157,7 +157,7 @@ bool pickAny(const Handle(AIS_InteractiveContext)& ctx, TSA::Viewer::MeshVisual&
 
 int displayedCount(const Handle(AIS_InteractiveContext)& ctx)
 {
-    AIS_ListOfInteractive list;
+    NCollection_List<Handle(AIS_InteractiveObject)> list;
     ctx->DisplayedObjects(list);
     return list.Extent();
 }

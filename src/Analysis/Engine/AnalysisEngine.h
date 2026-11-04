@@ -126,8 +126,12 @@ public:
     virtual EngineAvailability availability() const = 0;
     /// Rend le moteur disponible si possible (téléchargement, installation). L'UI demande
     /// d'abord l'accord de l'utilisateur ; par défaut : impossible.
-    virtual bool provision(std::string* error)
+    /// Appelable depuis un thread de travail (l'UI l'y exécute : un téléchargement ne doit pas figer la fenêtre) :
+    /// aucun widget touché, l'état partagé du moteur mis à jour dans le thread de son objet. callbacks : avancement
+    /// et arrêt demandé (consulté entre deux étapes ; arrêt → faux, error vide).
+    virtual bool provision(std::string* error, const AnalysisRunCallbacks& callbacks = {})
     {
+        (void)callbacks;
         if (error)
             *error = QCoreApplication::translate("TSA::Analysis::AnalysisEngine",
                                                  "Ce moteur ne peut pas être installé automatiquement.").toStdString();

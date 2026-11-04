@@ -8,6 +8,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QProcess>
@@ -89,8 +90,10 @@ QString systemTool(const QString& name)
     return QDir(system32).filePath(name);
 }
 
-/// Lance un outil et attend sa fin ; faux (avec la sortie d'erreur) s'il ne démarre pas, dépasse le délai ou échoue.
-bool runTool(const QString& program, const QStringList& args, int timeoutMs, QString* output)
+/// Lance un outil et attend sa fin ; faux (avec la sortie d'erreur) s'il ne démarre pas, dépasse le délai, échoue ou si
+/// l'arrêt est demandé (cancelled, consulté toutes les 200 ms : l'outil est alors arrêté).
+bool runTool(const QString& program, const QStringList& args, int timeoutMs, QString* output,
+             const std::function<bool()>& cancelled = {})
 {
     QProcess p;
     p.setProcessChannelMode(QProcess::MergedChannels);
@@ -100,11 +103,17 @@ bool runTool(const QString& program, const QStringList& args, int timeoutMs, QSt
         if (output) *output = QCoreApplication::translate("TSA::Analysis::OpenSeesManager", "%1 n'a pas pu être lancé.").arg(QFileInfo(program).fileName());
         return false;
     }
-    if (!p.waitForFinished(timeoutMs))
+    QElapsedTimer clock;
+    clock.start();
+    while (!p.waitForFinished(200) && p.state() != QProcess::NotRunning)
     {
+        const bool stop = cancelled && cancelled();
+        if (!stop && clock.elapsed() < timeoutMs) continue;
         p.kill();
         p.waitForFinished(3000);
-        if (output) *output = QCoreApplication::translate("TSA::Analysis::OpenSeesManager", "%1 : délai dépassé.").arg(QFileInfo(program).fileName());
+        if (output)
+            *output = stop ? QCoreApplication::translate("TSA::Analysis::OpenSeesManager", "%1 : arrêt demandé.").arg(QFileInfo(program).fileName())
+                           : QCoreApplication::translate("TSA::Analysis::OpenSeesManager", "%1 : délai dépassé.").arg(QFileInfo(program).fileName());
         return false;
     }
     if (output) *output = QString::fromLocal8Bit(p.readAll()).trimmed();
@@ -113,7 +122,7 @@ bool runTool(const QString& program, const QStringList& args, int timeoutMs, QSt
 } // namespace
 
 bool OpenSeesManager::installFromCondaForge(const QString& targetDir, const std::function<void(int, const QString&)>& progress,
-                                            QString* errorMessage)
+                                            QString* errorMessage, const std::function<bool()>& cancelled)
 {
     auto fail = [&](const QString& message) {
         if (errorMessage) *errorMessage = message;
@@ -122,9 +131,12 @@ bool OpenSeesManager::installFromCondaForge(const QString& targetDir, const std:
 #ifndef Q_OS_WIN
     Q_UNUSED(targetDir);
     Q_UNUSED(progress);
+    Q_UNUSED(cancelled);
     return fail(tr("Installation automatique d'OpenSees disponible sous Windows uniquement : python install_dependencies.py "
                    "--only opensees, ou OpenSees dans le PATH."));
 #else
+    const QString cancelledText = tr("Installation d'OpenSees annulée : rien n'a été modifié.");
+    if (cancelled && cancelled()) return fail(cancelledText);
     const auto packages = condaPackages();
     if (packages.empty()) return fail(tr("Liste des paquets OpenSees vide (cmake/dependencies.json)."));
     // Préparation à côté de la destination ; la destination n'est modifiée que si tout a réussi
@@ -141,6 +153,7 @@ bool OpenSeesManager::installFromCondaForge(const QString& targetDir, const std:
     const int count = static_cast<int>(packages.size());
     for (int i = 0; i < count; ++i)
     {
+        if (cancelled && cancelled()) return cleanFail(cancelledText);
         const CondaPackage& pkg = packages[static_cast<std::size_t>(i)];
         const QString url = condaChannelUrl() + QLatin1Char('/') + pkg.file + QStringLiteral(".conda");
         const QString archive = QDir(stage).filePath(pkg.file + QStringLiteral(".conda"));
@@ -149,8 +162,8 @@ bool OpenSeesManager::installFromCondaForge(const QString& targetDir, const std:
         // --fail : une page d'erreur HTTP n'est jamais enregistrée comme paquet
         if (!runTool(systemTool(QStringLiteral("curl.exe")), { QStringLiteral("-L"), QStringLiteral("--fail"), QStringLiteral("--silent"),
                                                                QStringLiteral("--show-error"), QStringLiteral("-o"), archive, url },
-                     300000, &out))
-            return cleanFail(tr("Téléchargement impossible : %1 (%2).").arg(url, out));
+                     300000, &out, cancelled))
+            return cleanFail(cancelled && cancelled() ? cancelledText : tr("Téléchargement impossible : %1 (%2).").arg(url, out));
         QString actual;
         if (!TSA::AI::ModelManager::verifySha256(archive, pkg.sha256, &actual))
             return cleanFail(tr("Paquet %1 rejeté : empreinte SHA-256 %2, attendue %3.").arg(pkg.file, actual, pkg.sha256));
@@ -158,10 +171,10 @@ bool OpenSeesManager::installFromCondaForge(const QString& targetDir, const std:
         const QString x = QDir(stage).filePath(pkg.file);
         QDir().mkpath(x);
         const QString tar = systemTool(QStringLiteral("tar.exe"));
-        if (!runTool(tar, { QStringLiteral("-xf"), archive, QStringLiteral("-C"), x }, 120000, &out) ||
+        if (!runTool(tar, { QStringLiteral("-xf"), archive, QStringLiteral("-C"), x }, 120000, &out, cancelled) ||
             !runTool(tar, { QStringLiteral("-xf"), QDir(x).filePath(QStringLiteral("pkg-%1.tar.zst").arg(pkg.file)), QStringLiteral("-C"), x },
-                     120000, &out))
-            return cleanFail(tr("Extraction de %1 impossible (%2). Le tar de Windows doit lire le format zstd (Windows 11, ou Windows 10 "
+                     120000, &out, cancelled))
+            return cleanFail(cancelled && cancelled() ? cancelledText : tr("Extraction de %1 impossible (%2). Le tar de Windows doit lire le format zstd (Windows 11, ou Windows 10 "
                                 "à jour) ; sinon : python install_dependencies.py --only opensees.").arg(pkg.file, out));
         for (const QString& f : pkg.files)
         {
@@ -197,6 +210,8 @@ bool OpenSeesManager::installFromCondaForge(const QString& targetDir, const std:
         source.write((lines.join(QLatin1Char('\n')) + QLatin1Char('\n')).toUtf8());
         source.close();
     }
+    // Dernier point d'arrêt : la copie dans la destination n'est jamais interrompue (installation partielle).
+    if (cancelled && cancelled()) return cleanFail(cancelledText);
     if (progress) progress(92, tr("Installation d'OpenSees…"));
     if (!copyTree(root, targetDir))
         return cleanFail(tr("Copie dans %1 impossible.").arg(QDir::toNativeSeparators(targetDir)));
@@ -444,63 +459,112 @@ OpenSeesVersionInfo OpenSeesManager::versionInfo() const
     return info;
 }
 
-bool OpenSeesManager::downloadAndInstall(std::function<void(int, const QString&)> progressCallback,
-                                        QString* errorMessage)
+void OpenSeesManager::runInOwnThread(const std::function<void()>& fn)
 {
-    // Paquets conda-forge épinglés (l'archive officielle d'opensees.berkeley.edu n'existe plus : 404, BUG-133)
-    const QString targetDir = defaultSearchDirectory();
-    emit downloadProgress(5, tr("Téléchargement d'OpenSees…"));
-    QString error;
-    const bool installed = installFromCondaForge(targetDir, [&](int percent, const QString& status) {
-        if (progressCallback) progressCallback(percent, status);
-        emit downloadProgress(percent, status);
-    }, &error);
-    if (!installed)
+    if (QThread::currentThread() == thread())
+        fn();
+    else   // thread de travail : attente de l'exécution par la boucle d'événements du gestionnaire (thread de l'interface)
+        QMetaObject::invokeMethod(this, [&fn] { fn(); }, Qt::BlockingQueuedConnection);
+}
+
+bool OpenSeesManager::downloadAndInstall(std::function<void(int, const QString&)> progressCallback,
+                                        QString* errorMessage, std::function<bool()> cancelled)
+{
+    if (m_isDownloading.exchange(true))
     {
-        if (errorMessage) *errorMessage = error + QLatin1Char(' ') + tr("Ou indiquer l'exécutable d'OpenSees dans les préférences.");
-        emit downloadCompleted(false, "", error);
+        if (errorMessage) *errorMessage = tr("Une installation d'OpenSees est déjà en cours.");
         return false;
     }
-
-    m_cachedPath.clear();
-    m_cachedVersion = {};
-    m_isVerified = false;
-
-    // Premier lancement de l'exécutable neuf (analyse antivirus possible) : délai long, puis vérification habituelle
-    if (progressCallback) progressCallback(95, tr("Vérification d'OpenSees (premier lancement)…"));
-    checkExecutable(QDir(targetDir).filePath(QStringLiteral("bin/OpenSees.exe")), 60000);
-    if (isAvailable())
+    struct DownloadFlag
     {
-        if (progressCallback) progressCallback(100, tr("OpenSees installé et vérifié avec succès."));
-        emit downloadCompleted(true, executablePath(), tr("Installation réussie."));
-        emit executableChanged(executablePath(), true);
-        return true;
+        std::atomic<bool>& flag;
+        ~DownloadFlag() { flag = false; }
+    } downloadFlag { m_isDownloading };
+
+    auto report = [&](int percent, const QString& status) {
+        if (progressCallback) progressCallback(percent, status);
+        emit downloadProgress(percent, status);
+    };
+
+    // 1. Travail long, sans état du gestionnaire (possible dans un thread de travail) : paquets conda-forge épinglés
+    //    (l'archive officielle d'opensees.berkeley.edu n'existe plus : 404, BUG-133), puis premier lancement de
+    //    l'exécutable neuf, avec un délai long (analyse antivirus possible).
+    const QString targetDir = defaultSearchDirectory();
+    const QString installedExe = QDir(targetDir).filePath(QStringLiteral("bin/OpenSees.exe"));
+    report(5, tr("Téléchargement d'OpenSees…"));
+    QString error;
+    const bool installed = installFromCondaForge(targetDir, report, &error, cancelled);
+    OpenSeesCheckResult firstCheck;
+    if (installed)
+    {
+        report(95, tr("Vérification d'OpenSees (premier lancement)…"));
+        firstCheck = checkExecutable(installedExe, 60000);
     }
 
-    if (errorMessage) *errorMessage = tr("OpenSees a été extrait mais n'a pas pu être validé.");
-    emit downloadCompleted(false, "", tr("Vérification échouée après extraction."));
+    // 2. Caches, vérification et signaux dans le thread du gestionnaire : l'interface lit cet état pendant le travail.
+    bool ok = false;
+    runInOwnThread([&] {
+        if (!installed)
+        {
+            emit downloadCompleted(false, QString(), error);
+            return;
+        }
+        m_cachedPath.clear();
+        m_cachedVersion = {};
+        m_isVerified = false;
+        if (QDir::fromNativeSeparators(executablePath()) == QDir::fromNativeSeparators(installedExe))
+        {
+            m_lastCheck = firstCheck;   // vérification déjà faite à l'étape 1 : aucun lancement dans ce thread
+            m_isVerified = firstCheck.ok();
+            ok = m_isVerified;
+        }
+        else
+        {
+            ok = isAvailable();   // autre exécutable retenu (chemin enregistré, PATH) : vérification habituelle
+        }
+        if (ok)
+        {
+            emit downloadCompleted(true, executablePath(), tr("Installation réussie."));
+            emit executableChanged(executablePath(), true);
+        }
+        else
+        {
+            emit downloadCompleted(false, QString(), tr("Vérification échouée après extraction."));
+        }
+    });
+
+    if (ok)
+    {
+        if (progressCallback) progressCallback(100, tr("OpenSees installé et vérifié avec succès."));
+        return true;
+    }
+    if (errorMessage)
+    {
+        if (!installed)
+            *errorMessage = cancelled && cancelled() ? error
+                                                     : error + QLatin1Char(' ') + tr("Ou indiquer l'exécutable d'OpenSees dans les préférences.");
+        else
+            *errorMessage = tr("OpenSees a été extrait mais n'a pas pu être validé.")
+                          + (firstCheck.message.isEmpty() ? QString() : QLatin1Char(' ') + firstCheck.message);
+    }
     return false;
 }
 
 void OpenSeesManager::downloadAndInstallAsync()
 {
     if (m_isDownloading) return;
-    m_isDownloading = true;
 
     QThread* thread = QThread::create([this]() {
         QString err;
         try
         {
-            downloadAndInstall([this](int pct, const QString& status) {
-                emit downloadProgress(pct, status);
-            }, &err);
+            downloadAndInstall(nullptr, &err);   // avancement : signal downloadProgress
         }
         catch (...)   // frontière du thread (BUG-155)
         {
             emit downloadCompleted(false, QString(), tr("Installation interrompue par une erreur interne (%1).")
                                                          .arg(QString::fromStdString(TSA::Core::currentExceptionText())));
         }
-        m_isDownloading = false;
     });
 
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);

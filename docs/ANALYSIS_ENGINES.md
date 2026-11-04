@@ -181,6 +181,10 @@ qualification, bibliographie, limites).
 3. Facultatif : un `AnalysisEngineOptionsWidget` + une ligne dans `registerBuiltInEngineOptions`.
 4. Recommandé : joindre le maillage réellement transmis au solveur (`results.setSolverMesh`, structure
    `SolverMesh`) ; le mode d'affichage « Modèle éléments finis » l'affiche (docs/DISPLAY_MODES.md).
+5. Facultatif : installation automatique (`canProvision` + `provision(error, callbacks)`). L'interface l'exécute dans
+   un thread de travail derrière une fenêtre de progression annulable (`TSA::UI::runTaskInWorker`) : aucun widget,
+   avancement par `callbacks.progress`, arrêt consulté par `callbacks.cancelRequested` (arrêt → faux, erreur vide),
+   état lu par l'interface mis à jour dans son thread (ex. `OpenSeesManager::runInOwnThread`).
 
 Aucune modification de la fenêtre Analysis, de MainWindow, de l'arbre, des propriétés, du ruban, des
 grilles, des WorkPlanes ni de la sélection.

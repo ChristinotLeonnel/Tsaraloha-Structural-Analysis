@@ -1,7 +1,6 @@
 #include "IfcDialogs.h"
 
 #include <QCheckBox>
-#include <QCloseEvent>
 #include <QDialogButtonBox>
 #include <QFile>
 #include <QFileDialog>
@@ -50,47 +49,6 @@ QString csvField(QString s)
     return '"' + s + '"';
 }
 } // namespace
-
-IfcProgressDialog::IfcProgressDialog(const QString& title, const QString& label, QWidget* parent)
-    : QProgressDialog(label, tr("Annuler"), 0, 100, parent)
-{
-    setWindowTitle(title);
-    setWindowModality(Qt::WindowModal);
-    setMinimumDuration(0);
-    setAutoClose(false);
-    setAutoReset(false);
-    // Liaison par défaut canceled() → cancel() : elle masque la fenêtre, remplacée par une simple demande d'arrêt.
-    // (nullptr : retire la liaison quelle que soit sa forme, chaîne SIGNAL/SLOT ou pointeur de fonction.)
-    disconnect(this, &QProgressDialog::canceled, this, nullptr);
-    connect(this, &QProgressDialog::canceled, this, &IfcProgressDialog::requestCancel);
-    setValue(0);
-}
-
-void IfcProgressDialog::setStage(int percent, const QString& stage)
-{
-    setValue(std::clamp(percent, 0, 99));   // 100 seulement à la fin effective
-    if (!m_cancelRequested && !stage.isEmpty()) setLabelText(stage);
-}
-
-void IfcProgressDialog::reject()
-{
-    emit canceled();   // Échap (QDialog::reject masquerait la fenêtre sans émettre canceled)
-}
-
-void IfcProgressDialog::closeEvent(QCloseEvent* event)
-{
-    event->ignore();
-    emit canceled();
-}
-
-void IfcProgressDialog::requestCancel()
-{
-    auto* button = findChild<QPushButton*>();
-    if (m_cancelRequested || !button) return;   // sans bouton (setCancelButton(nullptr)) : travail non interruptible
-    m_cancelRequested = true;
-    setLabelText(tr("Annulation en cours… (fin de l'étape en cours)"));
-    button->setEnabled(false);
-}
 
 IfcImportOptionsDialog::IfcImportOptionsDialog(const QString& path, QWidget* parent) : QDialog(parent)
 {

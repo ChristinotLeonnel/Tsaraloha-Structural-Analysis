@@ -334,7 +334,7 @@ bool runSuite_AI(int& passed)
             QTemporaryDir dir;
             auto write = [&](const QString& name, const QByteArray& text) {
                 QFile f(dir.filePath(name));
-                f.open(QIODevice::WriteOnly);
+                if (!f.open(QIODevice::WriteOnly)) return;   // le contrôle qui suit échoue alors
                 f.write(text);
             };
             const QByteArray a = "# Flèches\nLe critère de flèche d'un plancher courant est L/250, selon l'annexe nationale du projet.";

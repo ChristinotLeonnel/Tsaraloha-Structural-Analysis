@@ -51,6 +51,8 @@ void ViewportContainer::setupUi()
     grid->setSpacing(0);
 
     m_topBar = new QWidget(this);
+    m_topBar->setAttribute(Qt::WA_StyledBackground, true);
+    m_topBar->setProperty("toolStrip", true);   // barre d'outils du viewport (feuille de style de l'application)
     m_topBar->setFixedHeight(30);
 
     auto* topLayout = new QHBoxLayout(m_topBar);
@@ -129,15 +131,14 @@ void ViewportContainer::setupUi()
 
     // 5. Mode 2D
     m_chkMode2D = new QCheckBox(tr("2D"), m_topBar);
+    m_chkMode2D->setProperty("chip", true);   // bascule mise en avant (QCheckBox[chip="true"])
     m_chkMode2D->setToolTip(tr("Mode 2D CAO : Isoler automatiquement le plan actif et orienter la caméra perpendiculaire"));
     m_chkMode2D->setChecked(m_occView ? m_occView->isMode2D() : false);
     topLayout->addWidget(m_chkMode2D);
 
     // 6. Badge Mode 2D
     m_lblMode2DBadge = new QLabel(m_topBar);
-    m_lblMode2DBadge->setStyleSheet(
-        "background: #1F3A5A; color: #79C0FF; border: 1px solid #388BFD; border-radius: 3px; padding: 1px 8px; font-size: 11px; font-weight: 600;"
-    );
+    m_lblMode2DBadge->setProperty("badge", "accent");
     m_lblMode2DBadge->setVisible(false);
     topLayout->addWidget(m_lblMode2DBadge);
 
@@ -153,7 +154,7 @@ void ViewportContainer::setupUi()
     topLayout->addSpacing(8);
 
     m_lblHint = new QLabel(tr("Plan ou coupe active"), m_topBar);
-    m_lblHint->setStyleSheet("color: #8B949E; font-weight: normal; font-style: italic;");
+    m_lblHint->setProperty("hint", true);
     topLayout->addWidget(m_lblHint);
 
     topLayout->addStretch();
@@ -182,6 +183,8 @@ void ViewportContainer::setupUi()
     m_rightRuler = new VerticalRulerWidget(m_occView, VerticalRulerWidget::Position::Right, this);
 
     m_topCornerRight = new QWidget(this);
+    m_topCornerRight->setAttribute(Qt::WA_StyledBackground, true);
+    m_topCornerRight->setProperty("cornerPatch", true);
     m_topCornerRight->setFixedSize(34, 22);
 
     // Row 0: Barre supérieure de sélection d'étage / plan
@@ -250,33 +253,8 @@ void ViewportContainer::setupUi()
 
 void ViewportContainer::updateQuickButtonsState()
 {
-    auto applyBtnStyle = [this](QPushButton* btn, bool active) {
-        if (!btn) return;
-        if (m_isDarkMode)
-        {
-            if (active)
-            {
-                btn->setStyleSheet("QPushButton { background: #1F3A5A; border: 1px solid #58A6FF; border-radius: 2px; color: #79C0FF; font-weight: bold; }");
-            }
-            else
-            {
-                btn->setStyleSheet("QPushButton { background: #212830; border: 1px solid #444C56; border-radius: 2px; color: #8B949E; font-weight: bold; }"
-                                   "QPushButton:hover { background: #30363D; border-color: #58A6FF; color: #E6EDF3; }");
-            }
-        }
-        else
-        {
-            if (active)
-            {
-                btn->setStyleSheet("QPushButton { background: #DDF4FF; border: 1px solid #0969DA; border-radius: 2px; color: #0969DA; font-weight: bold; }");
-            }
-            else
-            {
-                btn->setStyleSheet("QPushButton { background: #FFFFFF; border: 1px solid #D0D7DE; border-radius: 2px; color: #57606A; font-weight: bold; }"
-                                   "QPushButton:hover { background: #EAEEF2; border-color: #0969DA; color: #24292F; }");
-            }
-        }
-    };
+    // Axe actif mis en avant (QPushButton[active="true"]), les autres atténués : suivent le thème sans style local.
+    const auto applyBtnStyle = [](QPushButton* btn, bool active) { setStyleProperty(btn, "active", active); };
 
     applyBtnStyle(m_btnQuickZ, m_currentAxis == TSA::Coordinate::WorkPlaneAxis::Z);
     applyBtnStyle(m_btnQuickX, m_currentAxis == TSA::Coordinate::WorkPlaneAxis::X);
@@ -681,54 +659,8 @@ void ViewportContainer::onCameraChanged()
 void ViewportContainer::updateTheme(bool isDark)
 {
     m_isDarkMode = isDark;
-
-    if (m_topBar)
-    {
-        if (isDark)
-        {
-            m_topBar->setStyleSheet(
-                "QWidget { background: #161B22; border-bottom: 1px solid #30363D; font-family: Segoe UI, sans-serif; font-size: 11px; }"
-                "QComboBox { background: #212830; border: 1px solid #444C56; border-radius: 2px; padding: 1px 6px; font-weight: 600; color: #E6EDF3; }"
-                "QComboBox:hover { border-color: #58A6FF; }"
-                "QPushButton { background: #212830; border: 1px solid #444C56; border-radius: 2px; padding: 2px 7px; color: #E6EDF3; font-weight: bold; }"
-                "QPushButton:hover { background: #30363D; border-color: #58A6FF; }"
-                "QPushButton:pressed { background: #1F3A5A; }"
-                "QLabel { color: #8B949E; font-weight: 600; padding: 0 2px; }"
-                "QCheckBox { color: #C9D1D9; font-weight: 600; spacing: 4px; }"
-            );
-        }
-        else
-        {
-            m_topBar->setStyleSheet(
-                "QWidget { background: #F6F8FA; border-bottom: 1px solid #D0D7DE; font-family: Segoe UI, sans-serif; font-size: 11px; }"
-                "QComboBox { background: #FFFFFF; border: 1px solid #D0D7DE; border-radius: 2px; padding: 1px 6px; font-weight: 600; color: #24292F; }"
-                "QComboBox:hover { border-color: #0969DA; }"
-                "QPushButton { background: #FFFFFF; border: 1px solid #D0D7DE; border-radius: 2px; padding: 2px 7px; color: #24292F; font-weight: bold; }"
-                "QPushButton:hover { background: #EAEEF2; border-color: #0969DA; }"
-                "QPushButton:pressed { background: #DDF4FF; }"
-                "QLabel { color: #57606A; font-weight: 600; padding: 0 2px; }"
-                "QCheckBox { color: #24292F; font-weight: 600; spacing: 4px; }"
-            );
-        }
-    }
-
-    if (m_chkMode2D)
-    {
-        m_chkMode2D->setStyleSheet(
-            "QCheckBox { font-weight: 700; color: #58A6FF; spacing: 4px; padding: 1px 6px; border: 1px solid #30363D; border-radius: 3px; background: #212830; }"
-            "QCheckBox:hover { border-color: #58A6FF; background: #262C36; }"
-            "QCheckBox:checked { background: #1F3A5A; border-color: #58A6FF; color: #79C0FF; }"
-        );
-    }
-
+    // Barre d'outils, bascule 2D et coin : propriétés toolStrip, chip, cornerPatch (feuille de style de l'application).
     updateQuickButtonsState();
-
-    if (m_topCornerRight)
-    {
-        m_topCornerRight->setStyleSheet(isDark
-            ? "background: #161B22; border-left: 1px solid #30363D; border-bottom: 1px solid #30363D;"
-            : "background: #F6F8FA; border-left: 1px solid #D0D7DE; border-bottom: 1px solid #D0D7DE;");
-    }
 
     updateRulers();
 }

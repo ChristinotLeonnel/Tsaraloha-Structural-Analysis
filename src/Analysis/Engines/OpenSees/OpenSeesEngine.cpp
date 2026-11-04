@@ -71,12 +71,19 @@ EngineAvailability OpenSeesEngine::availability() const
     return a;
 }
 
-bool OpenSeesEngine::provision(std::string* error)
+bool OpenSeesEngine::provision(std::string* error, const AnalysisRunCallbacks& callbacks)
 {
+    auto& manager = OpenSeesManager::instance();
     QString err;
-    const bool ok = OpenSeesManager::instance().downloadAndInstall(nullptr, &err);
-    if (!ok && error) *error = err.toStdString();
-    m_version.reset();
+    const bool ok = manager.downloadAndInstall(
+        [&callbacks](int percent, const QString& status) {
+            if (callbacks.progress) callbacks.progress(percent, status.toStdString());
+        },
+        &err, callbacks.cancelRequested);
+    const bool stopped = !ok && callbacks.cancelRequested && callbacks.cancelRequested();
+    if (!ok && error) *error = stopped ? std::string() : err.toStdString();   // arrêt demandé : pas une erreur
+    // Version en cache lue par info() depuis l'interface : remise à zéro dans le thread de l'interface.
+    manager.runInOwnThread([this] { m_version.reset(); });
     return ok;
 }
 

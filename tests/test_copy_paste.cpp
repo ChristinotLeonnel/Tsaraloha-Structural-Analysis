@@ -24,7 +24,7 @@
 #include "UndoRedo/EditTransaction.h"
 #include "Viewer/OccView.h"
 
-#include <AIS_ListOfInteractive.hxx>
+#include <NCollection_List.hxx>
 #include <QApplication>
 #include <QThread>
 
@@ -141,7 +141,7 @@ void pump(int n = 10)
 
 int displayedObjects(OccView& v)
 {
-    AIS_ListOfInteractive list;
+    NCollection_List<Handle(AIS_InteractiveObject)> list;
     v.context()->DisplayedObjects(list);
     return list.Extent();
 }

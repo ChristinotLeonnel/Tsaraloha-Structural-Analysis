@@ -108,15 +108,15 @@ NewProjectDialog::NewProjectDialog(QWidget* parent)
 
 void NewProjectDialog::updateTemplateInfo()
 {
-    const QVariant data = m_template->currentData();
-    if (data.typeId() == QMetaType::QString)
+    const QVariant choice = m_template->currentData();
+    if (choice.typeId() == QMetaType::QString)
     {
         const QString description = m_template->currentData(Qt::UserRole + 1).toString();
         m_templateInfo->setText(description.isEmpty() ? tr("Template enregistré (sans description).") : description);
     }
     else
     {
-        m_templateInfo->setText(data.toInt() == static_cast<int>(ProjectTemplate::Empty)
+        m_templateInfo->setText(choice.toInt() == static_cast<int>(ProjectTemplate::Empty)
                                     ? tr("Modèle vide, sans grille ni niveau.")
                                     : tr("Grille cartésienne par défaut et ses niveaux."));
     }
@@ -129,15 +129,15 @@ NewProjectSettings NewProjectDialog::settings() const
     if (s.name.endsWith(TSA::Product::projectExtension(), Qt::CaseInsensitive))
         s.name.chop(TSA::Product::projectExtension().size());
     s.directory = QDir::cleanPath(QDir::fromNativeSeparators(m_directory->text().trimmed()));
-    const QVariant data = m_template->currentData();
-    if (data.typeId() == QMetaType::QString)
+    const QVariant choice = m_template->currentData();
+    if (choice.typeId() == QMetaType::QString)
     {
-        s.userTemplatePath = data.toString();
+        s.userTemplatePath = choice.toString();
         s.userTemplateName = m_template->currentText();
     }
     else
     {
-        s.projectTemplate = static_cast<ProjectTemplate>(data.toInt());
+        s.projectTemplate = static_cast<ProjectTemplate>(choice.toInt());
     }
     return s;
 }

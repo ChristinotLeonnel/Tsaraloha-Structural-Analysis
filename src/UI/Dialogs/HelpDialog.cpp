@@ -93,7 +93,7 @@ void HelpDialog::setupUi()
     bottomLayout->setSpacing(8);
 
     auto* tipLabel = new QLabel(tr("Astuce : Vous pouvez aussi taper <b>HELP</b> ou <b>?</b> dans la console de commande."), this);
-    tipLabel->setStyleSheet("color: #8B949E; font-size: 11px;");
+    tipLabel->setProperty("hint", true);
     bottomLayout->addWidget(tipLabel);
 
     bottomLayout->addStretch();
@@ -146,98 +146,15 @@ void HelpDialog::onSearchChanged(const QString& filter)
 
 void HelpDialog::updateTheme()
 {
-    const bool dark = ThemeManager::instance().isDarkMode();
-
-    if (dark)
-    {
-        setStyleSheet(
-            "QDialog { background-color: #1E2328; color: #E6EDF3; font-family: 'Segoe UI', sans-serif; }"
-            "QListWidget {"
-            "   background-color: #161B22;"
-            "   color: #C9D1D9;"
-            "   border: 1px solid #30363D;"
-            "   border-radius: 4px;"
-            "   font-size: 11px;"
-            "}"
-            "QListWidget::item {"
-            "   padding: 4px 8px;"
-            "   border-bottom: 1px solid #212830;"
-            "}"
-            "QListWidget::item:selected {"
-            "   background-color: #1F3A5A;"
-            "   color: #58A6FF;"
-            "   font-weight: bold;"
-            "}"
-            "QTextBrowser {"
-            "   background-color: #161B22;"
-            "   color: #E6EDF3;"
-            "   border: 1px solid #30363D;"
-            "   border-radius: 4px;"
-            "   padding: 10px;"
-            "   font-family: 'Segoe UI', sans-serif;"
-            "}"
-            "QLineEdit {"
-            "   background-color: #161B22;"
-            "   color: #E6EDF3;"
-            "   border: 1px solid #30363D;"
-            "   border-radius: 3px;"
-            "   padding: 3px 6px;"
-            "}"
-            "QPushButton {"
-            "   background-color: #212830;"
-            "   color: #E6EDF3;"
-            "   border: 1px solid #30363D;"
-            "   border-radius: 3px;"
-            "   padding: 5px 12px;"
-            "}"
-            "QPushButton:hover { background-color: #30363D; border-color: #58A6FF; color: #58A6FF; }"
-        );
-    }
-    else
-    {
-        setStyleSheet(
-            "QDialog { background-color: #F6F8FA; color: #24292F; font-family: 'Segoe UI', sans-serif; }"
-            "QListWidget {"
-            "   background-color: #FFFFFF;"
-            "   color: #24292F;"
-            "   border: 1px solid #D0D7DE;"
-            "   border-radius: 4px;"
-            "   font-size: 11px;"
-            "}"
-            "QListWidget::item {"
-            "   padding: 4px 8px;"
-            "   border-bottom: 1px solid #F0F2F5;"
-            "}"
-            "QListWidget::item:selected {"
-            "   background-color: #DDF4FF;"
-            "   color: #0969DA;"
-            "   font-weight: bold;"
-            "}"
-            "QTextBrowser {"
-            "   background-color: #FFFFFF;"
-            "   color: #24292F;"
-            "   border: 1px solid #D0D7DE;"
-            "   border-radius: 4px;"
-            "   padding: 10px;"
-            "   font-family: 'Segoe UI', sans-serif;"
-            "}"
-            "QLineEdit {"
-            "   background-color: #FFFFFF;"
-            "   color: #24292F;"
-            "   border: 1px solid #D0D7DE;"
-            "   border-radius: 3px;"
-            "   padding: 3px 6px;"
-            "}"
-            "QPushButton {"
-            "   background-color: #FFFFFF;"
-            "   color: #24292F;"
-            "   border: 1px solid #D0D7DE;"
-            "   border-radius: 3px;"
-            "   padding: 5px 12px;"
-            "}"
-            "QPushButton:hover { background-color: #EAEEF2; border-color: #0969DA; color: #0969DA; }"
-        );
-    }
+    // Couleurs : jetons du thème actif (ThemeManager::resolve) ; seules la mise en page des listes et du texte d'aide
+    // restent propres à ce dialogue.
+    setStyleSheet(ThemeManager::instance().resolve(QStringLiteral(
+        "QListWidget { border-radius: 4px; font-size: 11px; }"
+        "QListWidget::item { padding: 4px 8px; border-bottom: 1px solid @borderSubtle; }"
+        "QListWidget::item:selected { background-color: @selection; color: @selectionText; font-weight: bold; }"
+        "QTextBrowser { background-color: @surface; color: @text; border: 1px solid @border; border-radius: 4px; padding: 10px;"
+        "   font-family: 'Segoe UI', sans-serif; }"
+        "QPushButton { padding: 5px 12px; }")));
 
     if (m_browser && m_topicsList)
     {
@@ -247,14 +164,10 @@ void HelpDialog::updateTheme()
 
 QString HelpDialog::getHelpContent(int topicIndex) const
 {
-    const bool dark = ThemeManager::instance().isDarkMode();
-    QString bodyColor = dark ? "#E6EDF3" : "#24292F";
-    QString headerColor = dark ? "#58A6FF" : "#0969DA";
-    QString codeBg = dark ? "#212830" : "#F6F8FA";
-    QString borderColor = dark ? "#30363D" : "#D0D7DE";
-    QString badgeBg = dark ? "#1F3A5A" : "#DDF4FF";
-    QString badgeFg = dark ? "#58A6FF" : "#0969DA";
-    QString cardBg = dark ? "#1E2328" : "#F6F8FA";
+    const ThemeTokens& t = ThemeManager::instance().tokens();
+    const QString bodyColor = t.text.name(), headerColor = t.accentText.name(), codeBg = t.surfaceAlt.name(),
+                  borderColor = t.border.name(), badgeBg = t.accentSubtle.name(), badgeFg = t.accentText.name(),
+                  cardBg = t.panel.name();
 
     QString style = QString(
         "<style>"

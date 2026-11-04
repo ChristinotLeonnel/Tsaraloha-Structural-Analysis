@@ -1,6 +1,28 @@
 # Tasks
 
-Last Updated: 2026-11-02 soir. Avant : 2026-11-01. Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-11-04. Avant : 2026-11-03. Uniquement des tâches réellement identifiées (voir known-issues.md).
+
+## Modernisation UI (2026-11-04, branche feature/ui-design-system, plan validé par l'utilisateur)
+- [x] Phase 1 : jetons sémantiques, feuille unique, états, standard UI réécrit et corrigé (test 611).
+- [x] Phase 2 (fichiers prioritaires) : GridDialog, LogConsoleDock, ViewportContainer, HelpDialog ; BlueprintScene = exception.
+- [ ] Phase 2 (suite) : ~40 fichiers restants, en tête ExtensionManagerDialog (31), ProjectStatusOverlay (27),
+      StructurePresetDialog (18), BarCreationDialog (14), TitleBar, MainWindow_Actions, GlobalSearchWidget, Properties/*, StartCenter.
+- [ ] Phase 3 : Propriétés (groupes, unités, multi-sélection, erreurs), Explorateur de projet, Ruban.
+- [ ] Phase 4 : fenêtres de modélisation (matrice § 6 du standard), accueil. Vu sur capture de GridDialog : cadre d'onglets vide
+      sous « X Y Z », bouton de pointage « 🎯 » affiché « ! » (police sans emoji) — existant, non dû au thème.
+- [ ] Phase 5 : viewport (fond et textes selon le thème, couleurs métier conservées) ; vérification visuelle de la vue OpenGL
+      (PrintWindow ne la capture pas : utiliser OccView::captureViewImage comme la suite display).
+- [ ] Capture du thème clair dans TSA.exe entier (non obtenue sur bureau masqué).
+
+## Installation d'un moteur hors interface (2026-11-03, branche fix/engine-download-thread)
+- [x] provision dans un thread de travail, progression et Annuler (test 610).
+- [x] Essai réel dans TSA.exe fait par l'utilisateur le 2026-11-03 (fenêtre réactive pendant l'installation).
+
+## Avertissements de compilation (2026-11-03, branche fix/build-warnings)
+- [x] Avertissements de Warning.txt supprimés (TSA et TSALab Release : 0 avertissement) ; test 594 réellement vérifiant.
+- [x] Sortie de `install_dependencies.py --build/--package` décodée (accents et « → » lisibles).
+- [ ] Vérifier l'affichage décodé dans une vraie console interactive (essai fait avec sortie redirigée vers un fichier).
+- [ ] BUG-181 : stabiliser la suite display (test 371).
 
 ## État du projet dans le .tsa (2026-11-01, branche fix/save-dirty-state, plan docs/PROJECT_STATE_PLAN.md validé)
 - [x] Étape 0 : BUG-074 (test 573). [x] Étape 1 : socle, blocs d'état, format 3.1 (test 574).

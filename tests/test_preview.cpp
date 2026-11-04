@@ -163,7 +163,7 @@ bool runSuite_Preview(int& passed)
         const auto b = readProjectFileSummary(locked);
         TEST_CHECK(b.valid && b.passwordProtected && b.projectName.isEmpty(), "Test 602: projet protégé — reconnu, aucun nom en clair");
         QFile f(junk);
-        f.open(QIODevice::WriteOnly);
+        TEST_CHECK(f.open(QIODevice::WriteOnly), "ouverture de " << f.fileName().toStdString());
         f.write("ceci n'est pas un projet");
         f.close();
         TEST_CHECK(!readProjectFileSummary(junk).valid && !readProjectFileSummary(dir.filePath("Absent.tsa")).valid,
@@ -204,7 +204,7 @@ bool runSuite_Preview(int& passed)
         for (const QString name : { QStringLiteral("Alpha.tsa"), QStringLiteral("Bravo.tsa"), QStringLiteral("Charlie.tsa") })
         {
             QFile f(dir.filePath(name));
-            f.open(QIODevice::WriteOnly);
+            TEST_CHECK(f.open(QIODevice::WriteOnly), "ouverture de " << f.fileName().toStdString());
             f.write("x");
             f.close();
             entries.push_back({ TSA::Project::RecentProjects::normalize(dir.filePath(name)), now.addSecs(-60 * age++) });

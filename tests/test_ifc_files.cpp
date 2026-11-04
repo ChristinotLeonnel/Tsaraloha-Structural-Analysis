@@ -14,7 +14,7 @@
 #include "Viewer/OccView.h"
 
 #include <AIS_InteractiveContext.hxx>
-#include <AIS_ListOfInteractive.hxx>
+#include <NCollection_List.hxx>
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QGuiApplication>
@@ -376,7 +376,7 @@ bool runSuite_IfcFiles(int& passed)
             }
         };
         auto displayed = [](OccView& v) {
-            AIS_ListOfInteractive list;
+            NCollection_List<Handle(AIS_InteractiveObject)> list;
             v.context()->DisplayedObjects(list);
             return list.Extent();
         };

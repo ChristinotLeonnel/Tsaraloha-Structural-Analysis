@@ -196,9 +196,10 @@ int OccView::detectedBimProduct()
     int product = 0;
     for (m_context->InitDetected(); m_context->MoreDetected(); m_context->NextDetected())
     {
-        const Handle(AIS_InteractiveObject) object = m_context->DetectedCurrentObject();
+        const Handle(SelectMgr_EntityOwner) owner = m_context->DetectedCurrentOwner();
+        const Handle(AIS_InteractiveObject) object = owner.IsNull() ? Handle(AIS_InteractiveObject)() : Handle(AIS_InteractiveObject)::DownCast(owner->Selectable());
         if (!object.IsNull() && m_selectionManager && m_selectionManager->isModelObject(object)) return 0;
-        if (product == 0) product = m_bimRenderer->productOf(m_context->DetectedCurrentOwner());
+        if (product == 0) product = m_bimRenderer->productOf(owner);
     }
     return product;
 }

@@ -658,12 +658,12 @@ bool runTorsionMechanics(int& passed)
         for (const auto& ref : kBritishSteel)
         {
             const double m = 1e-3; // mm → m
-            const double J = Section::rolledIShapeTorsionConstant(ref.h * m, ref.b * m, ref.tw * m, ref.tf * m, ref.r * m) * 1e8; // cm⁴
+            const double Jcalc = Section::rolledIShapeTorsionConstant(ref.h * m, ref.b * m, ref.tw * m, ref.tf * m, ref.r * m) * 1e8; // cm⁴
             Section s;
             s.shape = SectionShape::IShape;
             s.height = ref.h * m; s.width = ref.b * m; s.tw = ref.tw * m; s.tf = ref.tf * m;
             const double H = s.iw() * 1e6; // dm⁶
-            const double eJ = std::abs(J / ref.J - 1.0);
+            const double eJ = std::abs(Jcalc / ref.J - 1.0);
             // H imprimé à 3 chiffres significatifs et 4 décimales au plus (0,0004 dm⁶ pour l'IPE 100) : demi-unité du dernier chiffre tolérée.
             const double digit = std::max(1e-4, std::pow(10.0, std::floor(std::log10(ref.H)) - 2.0)); // 4 décimales au plus
             const double eH = std::max(0.0, std::abs(H - ref.H) - 0.5 * digit) / ref.H;

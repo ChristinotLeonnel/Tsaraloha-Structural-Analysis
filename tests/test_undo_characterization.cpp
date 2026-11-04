@@ -490,7 +490,7 @@ bool runSuite_UndoCharacterization(int& passed)
         m.clearUndoRedo();
 
         // Matrice commune aux 8 vues d'élément (clé de coalescence = libellé « Modification <Type> <id> »).
-        auto panel = [&](auto& view, int id, const std::string& modifiedKind, const std::string& name, double fieldValue,
+        auto panel = [&](auto& view, int id, const std::string& /*modifiedKind*/, const std::string& name, double fieldValue,
                          double newValue, const char* label, bool noopKeepsState = true) -> bool {
             view.setElementId(id);
             const std::string fp0 = fingerprint(m);
@@ -1546,8 +1546,8 @@ bool runSuite_UndoCharacterization(int& passed)
         // Charges surfaciques (BUG-130) : une dalle chargée supprimée notifie le retrait de ses charges.
         {
             Model ms;
-            const int a = ms.addNode(0, 0, 0), b = ms.addNode(4, 0, 0), c = ms.addNode(4, 3, 0), d = ms.addNode(0, 3, 0);
-            const int s = ms.addSlab({ a, b, c, d }, 0.2);
+            const int p1 = ms.addNode(0, 0, 0), p2 = ms.addNode(4, 0, 0), p3 = ms.addNode(4, 3, 0), p4 = ms.addNode(0, 3, 0);
+            const int s = ms.addSlab({ p1, p2, p3, p4 }, 0.2);
             TSA::Model::SurfaceLoad sl;
             sl.targetKind = TSA::Model::SurfaceTargetKind::Slab;
             sl.surfaceId = s;
@@ -1638,10 +1638,16 @@ bool runSuite_UndoCharacterization(int& passed)
         const auto base = m.createSnapshot("base");
         TEST_CHECK(TSA::UndoRedo::UndoManager::sameContent(base, m.createSnapshot("même")), "Test 594: état identique jugé identique");
 
+        // Chaque écart est signalé, puis le test échoue après la série (avant : le résultat de la lambda était ignoré).
+        bool allDiffer = true;
         auto differs = [&](const char* what, const std::function<void(Model::ModelStateSnapshot&)>& change) {
             auto other = base;
             change(other);
-            TEST_CHECK(!TSA::UndoRedo::UndoManager::sameContent(base, other), "Test 594: " << what << " → états différents");
+            if (TSA::UndoRedo::UndoManager::sameContent(base, other))
+            {
+                std::cerr << "[FAIL] Test 594: " << what << " → états jugés identiques" << std::endl;
+                allDiffer = false;
+            }
         };
         differs("valeur d'une charge surfacique", [&](auto& sn) { sn.loadSnapshot.surfaceLoads.at(lid).value = -3.0; });
         differs("ouverture de dalle", [&](auto& sn) {
@@ -1661,6 +1667,7 @@ bool runSuite_UndoCharacterization(int& passed)
             sec.filletRadius = sec.rootRadius() + 0.004;
             sn.beams.at(bid).setSection(sec);
         });
+        TEST_CHECK(allDiffer, "Test 594: chaque modification change le contenu comparé");
         std::cout << "[PASS] Test 594: Contenu comparé par Annuler complet (surfaces, ouvertures, appuis de bord, sections)" << std::endl;
         ++passed;
     }

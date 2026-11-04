@@ -20520,7 +20520,7 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
     </message>
 </context>
 <context>
-    <name>TSA::UI::IfcProgressDialog</name>
+    <name>TSA::UI::TaskProgressDialog</name>
     <message>
         <source>Annuler</source>
         <translation>Aoka ihany</translation>

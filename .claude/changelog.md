@@ -2,6 +2,62 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-04 — Système de conception UI, phases 1-2 (branche feature/ui-design-system)
+
+- `ThemeTokens` (52 jetons sémantiques, `src/UI/Theme/ThemeManager.h`) : jeux sombre (valeurs historiques) et clair
+  (redessiné : gris froids, fond de fenêtre plus soutenu que les panneaux, un seul accent) ; table unique nom → jeton.
+- Feuille de style de l'application : un seul modèle à jetons (`@panel`…) résolu par `ThemeManager::resolve()` au lieu de
+  deux copies de ~360 lignes ; états ajoutés : focus clavier (boutons, listes déroulantes, ruban, onglets), survol des
+  éléments d'arbre / liste / tableau, lecture seule, désactivé, `invalid`, `emphasis`, tableaux et listes, cases à cocher.
+  Palette Qt dérivée des jetons. Accesseurs historiques conservés (lisent les jetons). `setStyleProperty()` (repoli).
+- Propriétés dynamiques nouvelles : accentOutline, active, compact, invalid, emphasis, chip, hint, caption, badge,
+  toolStrip, cornerPatch, console, consolePrompt (docs/UI/TSA_UI_DESIGN_STANDARD.md § 5).
+- Migrés (0 couleur locale) : GridDialog (feuille copiée de la globale et figée au thème d'ouverture ; « Appliquer » gardait
+  les couleurs claires en sombre ; case Synchronisation bleu sombre en clair), LogConsoleDock (palette ardoise → jetons
+  console / log*, correspondance niveau → couleur dupliquée remplacée par `logLevelColor`, journal recoloré au changement de
+  thème), ViewportContainer, HelpDialog. BlueprintScene : exception documentée (code couleur métier).
+- Mesure : couleurs hexadécimales dans src/UI 972 → 406 (dont 102 = définitions des jetons), fichiers 48 → 44,
+  `setStyleSheet` 203 → 174.
+- Standard UI réécrit (§ 2 jetons, typographie, espacements, profondeur, états, accessibilité ; § 5 propriétés ; § 8
+  migration) et corrigé d'après le code : `StandardDialog` n'existe pas, noms réels des fonctions de DialogStandardHelper,
+  matrice § 6 mesurée (7 dialogues annoncés « purifiés » contenaient encore des couleurs).
+- Test 611 (suite appearance) : jetons, contrastes WCAG ≥ 4,5:1 (texte, atténué, accent, états, sélection, journaux), feuille
+  sans jeton non résolu, bascule de thème, surfaces migrées sans couleur hors jetons, journal recoloré ; captures
+  `TSA_TEST_CAPTURE` (planche du système, grille, console, aide, deux thèmes). TSA_TestSuite code 0 (603 comptés).
+- Captures avant / après de TSA.exe (thème sombre, bureau masqué, PrintWindow) : rendu inchangé sauf cases à cocher plus
+  denses (style Qt au lieu du style natif). Vue 3D OpenGL non capturée par PrintWindow ; thème clair de l'application entière
+  non capturé (raccourcis non transmis au bureau masqué). Réglages TSA du registre sauvegardés puis restaurés.
+
+## 2026-11-03 — Installation d'un moteur hors du thread de l'interface (branche fix/engine-download-thread)
+
+- Avant : « Voulez-vous l'installer automatiquement ? » appelait `engine->provision()` dans le thread de l'interface
+  (MainWindow_Tools) : téléchargement curl (jusqu'à 5 min par paquet), extraction et premier lancement (60 s) figeaient
+  TSA (« Ne répond pas »). Maintenant : thread de travail, fenêtre de progression modale avec avancement et Annuler.
+- Composant partagé `src/UI/Dialogs/TaskProgressDialog` (`TaskProgressDialog`, `TaskProgress`, `runTaskInWorker`),
+  extrait de MainWindow_Bim (ex-`IfcProgressDialog`, `WorkProgress`, `runInWorker`) ; IFC et moteur l'utilisent.
+  Contexte de traduction renommé dans les .ts.
+- `AnalysisEngine::provision(error, callbacks)` : `AnalysisRunCallbacks` (avancement, arrêt), appelable hors interface.
+- `OpenSeesManager::downloadAndInstall(…, cancelled)` : travail sans état dans le thread de travail ; caches, vérification
+  et signaux dans le thread du gestionnaire (`runInOwnThread`, attente bloquante) ; une seule installation à la fois
+  (`m_isDownloading` atomique) ; vérification du premier lancement réutilisée (plus de second lancement de 15 s).
+  `installFromCondaForge(…, cancelled)` : curl et tar arrêtés sur demande, destination intacte. `downloadAndInstallAsync`
+  n'émet plus l'avancement en double.
+- Test 610 (suite opensees). TSA_TestSuite code 0 (602 comptés), TSALab 27/27, check_layers 0 violation.
+  Essai réel dans TSA.exe fait par l'utilisateur (2026-11-03).
+
+## 2026-11-03 — Avertissements de compilation supprimés, sortie de compilation lisible (branche fix/build-warnings)
+
+- Compilation Release de TSA et de TSALab sans aucun avertissement (avant : une cinquantaine, Warning.txt). Dépréciations OCCT 8 :
+  `NCollection_List<Handle(AIS_InteractiveObject)>`, `NCollection_IndexedDataMap<TCollection_AsciiString, TCollection_AsciiString>`,
+  `DetectedCurrentOwner()->Selectable()` au lieu de `DetectedCurrentObject()`, `true` au lieu de `Standard_True`. Masquages (C4456,
+  C4458) renommés, paramètres inutilisés commentés, retours de `QFile::open` contrôlés dans les tests (C4834).
+- Test 594 : la lambda `differs` faisait `return false` sans que son résultat soit lu (C4715) ; un contenu jugé identique à tort ne
+  faisait donc jamais échouer le test. Les écarts sont maintenant relevés puis vérifiés par `TEST_CHECK(allDiffer, …)`.
+- `install_dependencies.py --build/--package` (Windows) : sortie de compilation réaffichée par Python, chaque ligne décodée en UTF-8
+  sinon dans la page de code de la console (`_decode_build_line`). Corrige « D├®ploiement », « ÔåÆ » : CMake écrit en UTF-8 dans un
+  tube (scripts `-P`, COMMENT de build.ninja) alors que MSVC écrit en CP850. La ligne d'avancement de Ninja reste réécrite sur place.
+- Vérifié : TSA_TestSuite code 0 (601 tests comptés), TSALab_TestSuite 27/27. Test 371 a échoué une fois (BUG-181).
+
 ## 2026-11-02 — Diagrammes rabattus dans le plan en vue 2D (branche feature/diagrams-folded-2d)
 
 - `DiagramGeometry::foldOffsetIntoPlane` : diagramme à plus de 60° du plan regardé rabattu perpendiculairement à la barre, sens
