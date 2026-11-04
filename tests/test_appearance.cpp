@@ -24,6 +24,9 @@
 #include "UI/Dialogs/LoadCaseDialog.h"
 #include "UI/Dialogs/LevelDialog.h"
 #include "UI/Properties/PropertyPanel.h"
+#include "UI/Dialogs/GridDialog.h"
+#include "UI/Dialogs/HelpDialog.h"
+#include "UI/Dock/LogConsoleDock.h"
 
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <Graphic3d_AspectFillArea3d.hxx>
@@ -36,6 +39,14 @@
 #include <QPushButton>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QGridLayout>
+#include <QCheckBox>
+#include <QDir>
+#include <QTreeWidget>
+#include <QRegularExpression>
+#include <QTextEdit>
+
+#include <cmath>
 
 namespace
 {
@@ -426,6 +437,193 @@ bool runSuite_Appearance(int& passed)
         TEST_CHECK(orphanLabels == 0, "Test 596: aucun libellé affiché sans son champ (" << orphanLabels << ")");
         view.hide();
         std::cout << "[PASS] Test 596: Poteau en tube creux (épaisseur), lignes masquées entières" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 611 : système de conception (docs/UI/TSA_UI_DESIGN_STANDARD.md § 2) — jetons des deux thèmes, contrastes
+    // WCAG, feuille unique sans jeton non résolu, bascule de thème sans redémarrage, surfaces migrées sans couleur locale
+    // -------------------------------------------------------------------------
+    {
+        using TSA::UI::ThemeManager;
+        using TSA::UI::ThemeTokens;
+        auto& tm = ThemeManager::instance();
+        const bool wasDark = tm.isDarkMode();
+        const QString previousStyleSheet = qApp->styleSheet();   // restaurés à la fin : les suites suivantes en dépendent
+        const QPalette previousPalette = qApp->palette();
+        const auto luminance = [](const QColor& col) {
+            const auto lin = [](double v) { return v <= 0.04045 ? v / 12.92 : std::pow((v + 0.055) / 1.055, 2.4); };
+            return 0.2126 * lin(col.redF()) + 0.7152 * lin(col.greenF()) + 0.0722 * lin(col.blueF());
+        };
+        const auto contrast = [&](const QColor& a, const QColor& b) {
+            const double la = luminance(a), lb = luminance(b);
+            return (std::max(la, lb) + 0.05) / (std::min(la, lb) + 0.05);
+        };
+        const QRegularExpression unresolved(QStringLiteral("@[A-Za-z]"));
+        for (const bool dark : { true, false })
+        {
+            const ThemeTokens& t = dark ? ThemeManager::darkTokens() : ThemeManager::lightTokens();
+            const char* themeName = dark ? "sombre" : "clair";
+            int invalid = 0;
+            for (const QString& name : ThemeManager::tokenNames())
+                if (!ThemeManager::tokenColor(t, name).isValid()) ++invalid;
+            TEST_CHECK(invalid == 0 && ThemeManager::tokenNames().size() >= 50, "Test 611: jetons du thème " << themeName << " tous définis (" << invalid << " invalides)");
+            // Texte lisible (≥ 4,5:1) sur les trois fonds où il apparaît
+            for (const auto& [fgName, fg] : { std::pair { "text", t.text }, std::pair { "textSecondary", t.textSecondary }, std::pair { "textMuted", t.textMuted },
+                                               std::pair { "accentText", t.accentText }, std::pair { "successText", t.successText },
+                                               std::pair { "warningText", t.warningText }, std::pair { "dangerText", t.dangerText } })
+                for (const auto& [bgName, bg] : { std::pair { "panel", t.panel }, std::pair { "surface", t.surface }, std::pair { "chrome", t.chrome } })
+                    TEST_CHECK(contrast(fg, bg) >= 4.5, "Test 611: thème " << themeName << " — " << fgName << " sur " << bgName << " : " << contrast(fg, bg) << ":1");
+            TEST_CHECK(contrast(t.selectionText, t.selection) >= 4.5 && contrast(t.textOnAccent, t.accent) >= 4.5,
+                       "Test 611: thème " << themeName << " — sélection et bouton principal lisibles");
+            for (const QColor& log : { t.logTime, t.logInfo, t.logCommand, t.logSystem, t.logWarning, t.logError, t.logDebug, t.consoleText })
+                TEST_CHECK(contrast(log, t.console) >= 4.5, "Test 611: thème " << themeName << " — couleur de journal " << log.name().toStdString() << " lisible sur la console");
+            const QString qss = ThemeManager::resolve(QStringLiteral("a { color: @text; b: @textMuted; c: @accentSubtle; }"), t);
+            TEST_CHECK(qss.contains(t.text.name()) && qss.contains(t.textMuted.name()) && qss.contains(t.accentSubtle.name()) && !qss.contains('@'),
+                       "Test 611: resolve() remplace chaque jeton par sa couleur (noms longs avant courts) : " << qss.toStdString());
+        }
+        // Bascule : la feuille et la palette de l'application suivent le thème, sans jeton non résolu
+        for (const bool dark : { false, true })
+        {
+            tm.setDarkMode(dark, true);
+            const ThemeTokens& t = tm.tokens();
+            TEST_CHECK(!qApp->styleSheet().contains(unresolved) && qApp->styleSheet().contains(t.canvas.name()) && qApp->palette().color(QPalette::Base) == t.surface,
+                       "Test 611: thème " << (dark ? "sombre" : "clair") << " appliqué à l'application (feuille résolue, palette)");
+        }
+        // Propriété dynamique : la valeur change et le widget est repoli
+        QPushButton probe;
+        TSA::UI::setStyleProperty(&probe, "active", true);
+        TEST_CHECK(probe.property("active").toBool(), "Test 611: setStyleProperty pose la propriété");
+        // Surfaces migrées : toute couleur d'une feuille de style locale est un jeton du thème actif (ThemeManager::resolve),
+        // jamais une valeur écrite en dur
+        const QRegularExpression hex(QStringLiteral("#[0-9A-Fa-f]{6}\\b"));
+        const auto localColors = [&](QWidget* root) {
+            std::set<QString> tokenHex;
+            for (const QString& name : ThemeManager::tokenNames()) tokenHex.insert(ThemeManager::tokenColor(tm.tokens(), name).name());
+            int n = 0;
+            auto count = [&](const QString& sheet) {
+                for (auto it = hex.globalMatch(sheet); it.hasNext();)
+                    if (!tokenHex.count(it.next().captured(0).toLower())) ++n;
+            };
+            count(root->styleSheet());
+            for (auto* w : root->findChildren<QWidget*>()) count(w->styleSheet());
+            return n;
+        };
+        TSA::UI::GridDialog grid;
+        TSA::UI::LogConsoleDock console;
+        TSA::UI::HelpDialog help;
+        TEST_CHECK(localColors(&grid) == 0 && localColors(&console) == 0 && localColors(&help) == 0,
+                   "Test 611: GridDialog, console et aide sans couleur locale (" << localColors(&grid) << ", " << localColors(&console) << ", " << localColors(&help) << ")");
+        console.appendLog(QStringLiteral("essai"), QStringLiteral("ERR"), QStringLiteral("Test"));
+        auto* output = console.findChild<QTextEdit*>();
+        tm.setDarkMode(false, true);
+        const bool lightLog = output && output->toHtml().contains(ThemeManager::lightTokens().logError.name(), Qt::CaseInsensitive);
+        tm.setDarkMode(true, true);
+        const bool darkLog = output && output->toHtml().contains(ThemeManager::darkTokens().logError.name(), Qt::CaseInsensitive);
+        TEST_CHECK(lightLog && darkLog, "Test 611: journal de la console recoloré au changement de thème (" << lightLog << ", " << darkLog << ")");
+        // Contrôle visuel : TSA_TEST_CAPTURE=<dossier> enregistre, pour chaque thème, une planche du système de conception
+        // (contrôles dans leurs états) et les surfaces migrées, rendues avec la vraie feuille de style de l'application.
+        if (const QString folder = qEnvironmentVariable("TSA_TEST_CAPTURE"); !folder.isEmpty())
+        {
+            QWidget board;
+            auto* boardLayout = new QGridLayout(&board);
+            boardLayout->setContentsMargins(16, 16, 16, 16);
+            boardLayout->setHorizontalSpacing(12);
+            boardLayout->setVerticalSpacing(10);
+            auto* header = new QLabel(QStringLiteral("Propriétés — Poutre B12"), &board);
+            header->setProperty("panelHeader", true);
+            boardLayout->addWidget(header, 0, 0, 1, 4);
+            auto button = [&](const QString& text, const char* prop, const QVariant& value, bool enabled = true) {
+                auto* b = new QPushButton(text, &board);
+                if (prop) b->setProperty(prop, value);
+                b->setEnabled(enabled);
+                return b;
+            };
+            boardLayout->addWidget(button(QStringLiteral("Créer"), "primary", true), 1, 0);
+            boardLayout->addWidget(button(QStringLiteral("Annuler"), nullptr, {}), 1, 1);
+            boardLayout->addWidget(button(QStringLiteral("Supprimer"), "destructive", true), 1, 2);
+            boardLayout->addWidget(button(QStringLiteral("Appliquer"), "accentOutline", true), 1, 3);
+            boardLayout->addWidget(button(QStringLiteral("Z actif"), "active", true), 2, 0);
+            boardLayout->addWidget(button(QStringLiteral("X"), "active", false), 2, 1);
+            boardLayout->addWidget(button(QStringLiteral("Valider EC3"), "success", true), 2, 2);
+            boardLayout->addWidget(button(QStringLiteral("Désactivé"), "primary", true, false), 2, 3);
+            auto edit = [&](const QString& text, const char* prop, bool readOnly = false, bool enabled = true) {
+                auto* e = new QLineEdit(text, &board);
+                if (prop) e->setProperty(prop, true);
+                e->setReadOnly(readOnly);
+                e->setEnabled(enabled);
+                return e;
+            };
+            boardLayout->addWidget(edit(QStringLiteral("6.000 m"), nullptr), 3, 0);
+            boardLayout->addWidget(edit(QStringLiteral("IPE 300 (lecture seule)"), nullptr, true), 3, 1);
+            boardLayout->addWidget(edit(QStringLiteral("-4,2 kN (invalide)"), "invalid"), 3, 2);
+            boardLayout->addWidget(edit(QStringLiteral("Désactivé"), nullptr, false, false), 3, 3);
+            auto* spin = new QDoubleSpinBox(&board);
+            spin->setSuffix(QStringLiteral(" kN/m"));
+            spin->setValue(12.5);
+            spin->setProperty("emphasis", true);
+            boardLayout->addWidget(spin, 4, 0);
+            auto* combo = new QComboBox(&board);
+            combo->addItems({ QStringLiteral("S235"), QStringLiteral("S355") });
+            boardLayout->addWidget(combo, 4, 1);
+            auto* check = new QCheckBox(QStringLiteral("Synchronisation"), &board);
+            check->setChecked(true);
+            check->setProperty("emphasis", true);
+            boardLayout->addWidget(check, 4, 2);
+            auto* chip = new QCheckBox(QStringLiteral("2D"), &board);
+            chip->setProperty("chip", true);
+            chip->setChecked(true);
+            boardLayout->addWidget(chip, 4, 3);
+            int col = 0;
+            for (const char* status : { "info", "success", "warning", "error" })
+            {
+                auto* l = new QLabel(QStringLiteral("État : %1").arg(QString::fromLatin1(status)), &board);
+                l->setProperty("status", status);
+                boardLayout->addWidget(l, 5, col++);
+            }
+            auto* hint = new QLabel(QStringLiteral("Aide : unités SI (m, kN)"), &board);
+            hint->setProperty("hint", true);
+            boardLayout->addWidget(hint, 6, 0, 1, 2);
+            auto* badge = new QLabel(QStringLiteral("Mode 2D : plan XZ"), &board);
+            badge->setProperty("badge", "accent");
+            boardLayout->addWidget(badge, 6, 2);
+            auto* table = new QTableWidget(4, 3, &board);
+            table->setHorizontalHeaderLabels({ QStringLiteral("Barre"), QStringLiteral("Section"), QStringLiteral("L (m)") });
+            table->setAlternatingRowColors(true);
+            for (int r = 0; r < 4; ++r)
+                for (int cIdx = 0; cIdx < 3; ++cIdx) table->setItem(r, cIdx, new QTableWidgetItem(QStringLiteral("B%1-%2").arg(r + 1).arg(cIdx)));
+            table->selectRow(1);
+            boardLayout->addWidget(table, 7, 0, 1, 2);
+            auto* tree = new QTreeWidget(&board);
+            tree->setHeaderLabel(QStringLiteral("Navigateur de projet"));
+            auto* beams = new QTreeWidgetItem(tree, { QStringLiteral("Poutres (12)") });
+            new QTreeWidgetItem(beams, { QStringLiteral("B1 — IPE 300") });
+            auto* selected = new QTreeWidgetItem(beams, { QStringLiteral("B2 — IPE 300") });
+            new QTreeWidgetItem(tree, { QStringLiteral("Poteaux (8)") });
+            tree->expandAll();
+            tree->setCurrentItem(selected);
+            boardLayout->addWidget(tree, 7, 2, 1, 2);
+            for (const bool dark : { true, false })
+            {
+                tm.setDarkMode(dark, true);
+                const QString suffix = dark ? QStringLiteral("_dark") : QStringLiteral("_light");
+                board.resize(760, 520);
+                board.ensurePolished();
+                board.grab().save(QDir(folder).filePath(QStringLiteral("design_system") + suffix + QStringLiteral(".png")));
+                grid.resize(480, 600);
+                grid.grab().save(QDir(folder).filePath(QStringLiteral("grid_dialog") + suffix + QStringLiteral(".png")));
+                console.resize(900, 175);
+                console.appendLog(QStringLiteral("Calcul OpenSees terminé"), QStringLiteral("SYS"), QStringLiteral("Analysis"));
+                console.appendLog(QStringLiteral("Barre B12 : élancement élevé"), QStringLiteral("WARN"), QStringLiteral("Standards"));
+                console.grab().save(QDir(folder).filePath(QStringLiteral("console") + suffix + QStringLiteral(".png")));
+                help.resize(900, 600);
+                help.grab().save(QDir(folder).filePath(QStringLiteral("help") + suffix + QStringLiteral(".png")));
+            }
+        }
+        tm.setDarkMode(wasDark, true);
+        qApp->setStyleSheet(previousStyleSheet);
+        qApp->setPalette(previousPalette);
+        std::cout << "[PASS] Test 611: Système de conception — jetons, contrastes WCAG, feuille unique, bascule de thème" << std::endl;
         ++passed;
     }
 

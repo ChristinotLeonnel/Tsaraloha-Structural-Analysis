@@ -2,6 +2,32 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-04 — Système de conception UI, phases 1-2 (branche feature/ui-design-system)
+
+- `ThemeTokens` (52 jetons sémantiques, `src/UI/Theme/ThemeManager.h`) : jeux sombre (valeurs historiques) et clair
+  (redessiné : gris froids, fond de fenêtre plus soutenu que les panneaux, un seul accent) ; table unique nom → jeton.
+- Feuille de style de l'application : un seul modèle à jetons (`@panel`…) résolu par `ThemeManager::resolve()` au lieu de
+  deux copies de ~360 lignes ; états ajoutés : focus clavier (boutons, listes déroulantes, ruban, onglets), survol des
+  éléments d'arbre / liste / tableau, lecture seule, désactivé, `invalid`, `emphasis`, tableaux et listes, cases à cocher.
+  Palette Qt dérivée des jetons. Accesseurs historiques conservés (lisent les jetons). `setStyleProperty()` (repoli).
+- Propriétés dynamiques nouvelles : accentOutline, active, compact, invalid, emphasis, chip, hint, caption, badge,
+  toolStrip, cornerPatch, console, consolePrompt (docs/UI/TSA_UI_DESIGN_STANDARD.md § 5).
+- Migrés (0 couleur locale) : GridDialog (feuille copiée de la globale et figée au thème d'ouverture ; « Appliquer » gardait
+  les couleurs claires en sombre ; case Synchronisation bleu sombre en clair), LogConsoleDock (palette ardoise → jetons
+  console / log*, correspondance niveau → couleur dupliquée remplacée par `logLevelColor`, journal recoloré au changement de
+  thème), ViewportContainer, HelpDialog. BlueprintScene : exception documentée (code couleur métier).
+- Mesure : couleurs hexadécimales dans src/UI 972 → 406 (dont 102 = définitions des jetons), fichiers 48 → 44,
+  `setStyleSheet` 203 → 174.
+- Standard UI réécrit (§ 2 jetons, typographie, espacements, profondeur, états, accessibilité ; § 5 propriétés ; § 8
+  migration) et corrigé d'après le code : `StandardDialog` n'existe pas, noms réels des fonctions de DialogStandardHelper,
+  matrice § 6 mesurée (7 dialogues annoncés « purifiés » contenaient encore des couleurs).
+- Test 611 (suite appearance) : jetons, contrastes WCAG ≥ 4,5:1 (texte, atténué, accent, états, sélection, journaux), feuille
+  sans jeton non résolu, bascule de thème, surfaces migrées sans couleur hors jetons, journal recoloré ; captures
+  `TSA_TEST_CAPTURE` (planche du système, grille, console, aide, deux thèmes). TSA_TestSuite code 0 (603 comptés).
+- Captures avant / après de TSA.exe (thème sombre, bureau masqué, PrintWindow) : rendu inchangé sauf cases à cocher plus
+  denses (style Qt au lieu du style natif). Vue 3D OpenGL non capturée par PrintWindow ; thème clair de l'application entière
+  non capturé (raccourcis non transmis au bureau masqué). Réglages TSA du registre sauvegardés puis restaurés.
+
 ## 2026-11-03 — Installation d'un moteur hors du thread de l'interface (branche fix/engine-download-thread)
 
 - Avant : « Voulez-vous l'installer automatiquement ? » appelait `engine->provision()` dans le thread de l'interface
