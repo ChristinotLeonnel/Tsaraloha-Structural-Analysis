@@ -670,5 +670,33 @@ bool runSuite_Appearance(int& passed)
         ++passed;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 613 : icône de l'exécutable (resources/icons/TSA.ico, tools/icons/make_app_ico.py) visible sur une barre des
+    // tâches claire comme sombre. Avant : glyphe gris clair sans fond, presque invisible sur fond clair.
+    // -------------------------------------------------------------------------
+    {
+        const QIcon appIcon(QString::fromLatin1(TSA::Product::kIconIco));
+        TEST_CHECK(!appIcon.isNull() && appIcon.availableSizes().size() >= 7, "Test 613: icône de l'exécutable chargée (" << appIcon.availableSizes().size() << " tailles)");
+        for (const int side : { 16, 32, 48 })
+        {
+            const QImage img = appIcon.pixmap(side, side).toImage().convertToFormat(QImage::Format_ARGB32);
+            int opaque = 0, light = 0, dark = 0;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x)
+                {
+                    const QColor px = QColor::fromRgba(img.pixel(x, y));
+                    if (px.alpha() < 250) continue;
+                    ++opaque;
+                    if (px.lightness() > 220) ++light;
+                    if (px.lightness() < 60) ++dark;
+                }
+            // Fond opaque sur presque toute la surface (carré arrondi) ; T blanc et fond sombre bien présents
+            TEST_CHECK(opaque >= side * side * 3 / 4 && dark >= side * side / 3 && light >= side * side / 20,
+                       "Test 613: icône " << side << " px — " << opaque << " opaques, " << dark << " sombres, " << light << " claires");
+        }
+        std::cout << "[PASS] Test 613: Icône de l'exécutable sur fond plein, lisible sur barre des tâches claire ou sombre" << std::endl;
+        ++passed;
+    }
+
     return true;
 }

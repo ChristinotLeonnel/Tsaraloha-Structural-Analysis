@@ -2,6 +2,18 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-04 — Icône de l'exécutable (branche fix/exe-icon)
+
+- Constat (rendu des 7 images de l'ancien TSA.ico) : glyphe gris clair `#D3D7DA` à contour noir, **sans fond** ; presque
+  invisible sur une barre des tâches ou un Bureau clair, flou aux petites tailles.
+- `tools/icons/make_app_ico.py` (nouveau, sans dépendance) : polygones de `TSA_glyph.svg` rastérisés (suréchantillonnage
+  4 × 4) en blanc plein sur carré arrondi uni `#1F2328`, glyphe légèrement agrandi à 16 et 24 px ; ICO à images PNG
+  16-256 px écrit dans `resources/icons/TSA.ico` et `resources/TSA.ico`. Vérifié : image 256 px présente dans TSA.exe
+  après recompilation (TSA.rc), icône de fenêtre (`kIconIco`) et installateur (SetupIcon) suivent le même fichier.
+- Test 613 : icône chargée (7 tailles), fond opaque, T clair et fond sombre présents à 16, 32 et 48 px. TSA_TestSuite code 0
+  (605 comptés) au second passage ; premier passage : test 435 (ViewCube) en échec, 5/5 réussis seul (BUG-182).
+- L'Explorateur Windows peut garder l'ancienne icône en cache jusqu'au rafraîchissement du cache d'icônes.
+
 ## 2026-11-04 — Logo lisible en thème clair (branche fix/light-theme-icon)
 
 - Signalé par l'utilisateur : logo bien visible en sombre, difficile à voir en clair. Cause (rendu vérifié) : la barre de

@@ -6,6 +6,13 @@ Last Updated: 2026-11-03 (BUG-181 ajouté : suite display intermittente). Avant 
 
 Audit technique du 2026-10-31 : détail, reproduction et correction de BUG-148 à BUG-168 dans docs/audit/2026-10-31/TSA_BUG_REGISTER.md.
 
+## BUG-182
+Status: OPEN (LOW, tests, constaté le 2026-11-04) — Test 435 (suite views, clic réel sur une arête du ViewCube) en échec une fois
+lors d'une suite complète Release (« orientation d'arête ou de coin exacte ») ; suite views seule 5/5, suite complète suivante
+réussie. Sans lien établi avec la modification du jour (icône de l'exécutable). Même famille que BUG-181 : interaction OCCT
+sensible au moment (rendu différé).
+Related files: tests/test_views.cpp
+
 ## BUG-181
 Status: OPEN (LOW, tests, constaté le 2026-11-03) — suite `display` encore intermittente malgré BUG-174/179 : Test 371 « 32 = 14 + 17 »
 (un objet de résultat affiché non compté par le gestionnaire) lors d'une suite complète Release ; le reste de la suite n'est alors pas
