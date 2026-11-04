@@ -1,6 +1,6 @@
 # Current State
 
-Last Updated: 2026-11-04 — logo lisible en thème clair (branche fix/light-theme-icon, non commitée). Avant : 2026-11-04 — système de conception UI, phases 1-2 (branche feature/ui-design-system, non commitée ;
+Last Updated: 2026-11-04 — icône de l'exécutable (branche fix/exe-icon, non commitée). Avant : 2026-11-04 — logo lisible en thème clair (branche fix/light-theme-icon, non commitée). Avant : 2026-11-04 — système de conception UI, phases 1-2 (branche feature/ui-design-system, non commitée ;
 changelog). Avant : 2026-11-03 — installation d'un moteur dans un thread de travail (branche fix/engine-download-thread,
 commitée et poussée ; changelog). Avant : 2026-11-03 — compilation sans avertissement et sortie de compilation décodée (branche fix/build-warnings, non
 commitée ; changelog). Avant : 2026-11-02 soir — corrections de known-issues (branche fix/autosave-recovery, non commitée). Avant : 2026-10-31 — repères locaux et axes des charges (branche refactor/load-axes-section-rotation) ; avant : analyse non linéaire retirée (ADR-025 ; commits a7b163e et c3cf5f6, fusion dans main demandée). Sections non

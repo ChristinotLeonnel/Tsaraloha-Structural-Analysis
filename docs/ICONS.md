@@ -8,6 +8,7 @@
 | `src/UI/Theme/ThemedIcon` | `TSA::UI::themedIcon(":/icons/…")` : toutes les icônes de l'interface passent par ce moteur. |
 | `resources/icons/palette.json` | Couleurs remplacées selon le thème, générées par `tools/icons/make_palette.py`. |
 | `tools/icons/generate_icons.py` | Icônes composées (glyphe + badge), générées et versionnées. |
+| `tools/icons/make_app_ico.py` | Icône de l'exécutable `resources/icons/TSA.ico` (et sa copie `resources/TSA.ico`) : glyphe officiel en blanc plein sur carré arrondi uni `#1F2328`, 7 tailles de 16 à 256 px, sans dépendance. Lisible sur une barre des tâches claire ou sombre (test 613). Relancer après une modification de `TSA_glyph.svg`. |
 
 ### Rôle du moteur
 
