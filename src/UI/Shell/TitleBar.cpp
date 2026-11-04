@@ -1,4 +1,5 @@
 #include "TitleBar.h"
+#include "../Theme/ThemedIcon.h"
 #include "App/ProductInfo.h"
 
 #include "../Theme/ThemeManager.h"
@@ -234,6 +235,7 @@ void TitleBar::mouseDoubleClickEvent(QMouseEvent* event)
 
 void TitleBar::applyTheme(bool dark)
 {
+    m_appButton->setIcon(productLogoIcon(dark));   // logo lisible sur la barre claire comme sur la sombre
     const QString bg = dark ? "#161B22" : "#F6F8FA";
     const QString border = dark ? "#30363D" : "#D0D7DE";
     const QString text = dark ? "#C9D1D9" : "#24292F";

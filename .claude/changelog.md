@@ -2,6 +2,17 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-11-04 — Logo lisible en thème clair (branche fix/light-theme-icon)
+
+- Signalé par l'utilisateur : logo bien visible en sombre, difficile à voir en clair. Cause (rendu vérifié) : la barre de
+  titre affiche `kIconSvg`, carré sombre et T gris fin `#D3D7DA` ; sur fond sombre le carré se fond et le T ressort, sur
+  fond clair on voit un bloc sombre où le T se perd (pire pour `TSA_light.svg` et `TSA_glyph.svg` : T gris clair sur blanc).
+- `productLogoSvg(dark)` / `productLogoIcon(dark)` (`UI/Theme/ThemedIcon`) : sombre = icône officielle inchangée ; clair =
+  glyphe du produit (`kGlyphSvg`) en aplat de `lightTokens().text`, sans fond. Générique (TSALab : son propre glyphe).
+  Utilisé par TitleBar, StartCenter (logo de l'accueil) et ProjectStatusOverlay ; suit le changement de thème.
+- Test 612 : sombre identique à l'icône officielle ; clair sans `#D3D7DA`, contraste minimal ≥ 7:1 à 16, 22 et 40 px.
+  TSA_TestSuite code 0 (604 comptés), check_layers 0 violation. Icône Windows (.ico, barre des tâches) inchangée.
+
 ## 2026-11-04 — Système de conception UI, phases 1-2 (branche feature/ui-design-system)
 
 - `ThemeTokens` (52 jetons sémantiques, `src/UI/Theme/ThemeManager.h`) : jeux sombre (valeurs historiques) et clair

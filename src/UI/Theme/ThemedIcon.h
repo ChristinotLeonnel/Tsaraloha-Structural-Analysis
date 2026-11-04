@@ -27,4 +27,10 @@ QImage renderThemedIcon(const QString& resourcePath, int size, bool dark, QIcon:
 /// Même rendu dans un rectangle : l'icône (carrée) est centrée, sans déformation.
 QImage renderThemedIcon(const QString& resourcePath, const QSize& size, bool dark, QIcon::Mode mode = QIcon::Normal);
 
+/// Logo du produit lisible sur le fond du thème (barre de titre, accueil, barre d'état). Thème sombre : icône officielle
+/// (Product::kIconSvg). Thème clair : glyphe du produit (Product::kGlyphSvg) en aplat de la couleur du texte, sans fond —
+/// le carré sombre et le T gris fin de l'icône officielle se lisaient mal sur un fond clair.
+QByteArray productLogoSvg(bool dark);
+QIcon productLogoIcon(bool dark);
+
 } // namespace TSA::UI
