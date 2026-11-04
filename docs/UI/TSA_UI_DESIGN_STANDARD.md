@@ -219,6 +219,9 @@ Fonctions libres (utilisées par 14 fichiers de `src/UI`) :
 
 ### 4.4. Thème (`src/UI/Theme/ThemeManager.h`)
 - `ThemeManager::tokens()`, `resolve()`, `logLevelColor()` (§ 2.0) ; `setStyleProperty()` (§ 5).
+- Logo du produit selon le fond : `productLogoIcon(dark)` / `productLogoSvg(dark)` (`src/UI/Theme/ThemedIcon.h`). Thème
+  sombre : icône officielle ; thème clair : glyphe du produit en aplat de la couleur `text` (contraste ≥ 7:1, test 612).
+  Barre de titre, accueil et badge de la barre d'état l'utilisent ; ne jamais y afficher `kIconSvg` directement.
 
 ---
 

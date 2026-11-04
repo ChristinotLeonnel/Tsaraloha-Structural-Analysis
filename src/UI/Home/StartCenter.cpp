@@ -138,7 +138,7 @@ QWidget* StartCenter::createSideBar()
     identity->setContentsMargins(4, 0, 0, 0);
     identity->setSpacing(10);
     m_logo = new QLabel(m_identity);
-    m_logo->setPixmap(QIcon(QString::fromLatin1(TSA::Product::kIconSvg)).pixmap(40, 40));
+    m_logo->setPixmap(productLogoIcon(ThemeManager::instance().isDarkMode()).pixmap(40, 40));
     identity->addWidget(m_logo);
     auto* names = new QVBoxLayout();
     names->setSpacing(0);
@@ -405,6 +405,7 @@ void StartCenter::openResource(const QString& id)
 
 void StartCenter::applyTheme(bool dark)
 {
+    if (m_logo) m_logo->setPixmap(productLogoIcon(dark).pixmap(40, 40));
     // Contrastes vérifiés sur les captures : texte secondaire lisible sur les deux thèmes (palette(mid) et le texte indicatif
     // de la palette sont trop proches du fond sombre)
     const QString accent = ThemeManager::instance().primaryColor().name();

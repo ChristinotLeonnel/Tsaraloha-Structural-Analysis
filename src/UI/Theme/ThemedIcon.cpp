@@ -2,6 +2,8 @@
 
 #include "ThemeManager.h"
 
+#include <ProductIdentity.h>
+
 #include <QFile>
 #include <QIconEngine>
 #include <QImage>
@@ -162,6 +164,37 @@ QIcon themedIcon(const QString& resourcePath)
 {
     if (!resourcePath.endsWith(QLatin1String(".svg"), Qt::CaseInsensitive)) return QIcon(resourcePath);
     return QIcon(new ThemedSvgIconEngine(resourcePath));
+}
+
+QByteArray productLogoSvg(bool dark)
+{
+    if (dark) return rawSvg(QString::fromLatin1(TSA::Product::kIconSvg));
+    // Thème clair : chaque remplissage et contour du glyphe prend la couleur du texte (aplat monochrome, contraste
+    // 15:1 sur le fond des barres) ; le contour garde son épaisseur et épaissit légèrement les traits fins.
+    QString svg = QString::fromUtf8(rawSvg(QString::fromLatin1(TSA::Product::kGlyphSvg)));
+    if (svg.isEmpty()) return rawSvg(QString::fromLatin1(TSA::Product::kIconSvg));
+    const QString ink = ThemeManager::lightTokens().text.name(QColor::HexRgb);
+    static const QRegularExpression paint(QStringLiteral("(fill|stroke)=\"#[0-9A-Fa-f]{3,8}\""));
+    svg.replace(paint, QStringLiteral("\\1=\"%1\"").arg(ink));
+    return svg.toUtf8();
+}
+
+QIcon productLogoIcon(bool dark)
+{
+    QSvgRenderer renderer(productLogoSvg(dark));
+    if (!renderer.isValid()) return QIcon(QString::fromLatin1(TSA::Product::kIconSvg));
+    QIcon icon;
+    for (const int side : { 16, 20, 22, 24, 32, 40, 44, 48, 64, 80, 96, 128 })
+    {
+        QImage img(side, side, QImage::Format_ARGB32_Premultiplied);
+        img.fill(Qt::transparent);
+        QPainter p(&img);
+        p.setRenderHint(QPainter::Antialiasing);
+        renderer.render(&p, QRectF(0, 0, side, side));
+        p.end();
+        icon.addPixmap(QPixmap::fromImage(img));
+    }
+    return icon;
 }
 
 } // namespace TSA::UI

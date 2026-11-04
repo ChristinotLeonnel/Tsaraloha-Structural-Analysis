@@ -17,6 +17,9 @@
 #include "Viewer/TextureManager.h"
 
 #include "UI/Theme/ThemeManager.h"
+#include "UI/Theme/ThemedIcon.h"
+#include <ProductIdentity.h>
+#include <QFile>
 #include "UI/Dialogs/DialogStandardHelper.h"
 #include "UI/Widgets/StandardDialogHeader.h"
 #include "UI/Dialogs/NewNodeDialog.h"
@@ -624,6 +627,46 @@ bool runSuite_Appearance(int& passed)
         qApp->setStyleSheet(previousStyleSheet);
         qApp->setPalette(previousPalette);
         std::cout << "[PASS] Test 611: Système de conception — jetons, contrastes WCAG, feuille unique, bascule de thème" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 612 : logo du produit lisible en thème clair (barre de titre, accueil, barre d'état). Avant : carré sombre et T gris
+    // fin (#D3D7DA) peu visibles sur fond clair ; le thème sombre garde l'icône officielle.
+    // -------------------------------------------------------------------------
+    {
+        using TSA::UI::ThemeManager;
+        QFile official(QString::fromLatin1(TSA::Product::kIconSvg));
+        TEST_CHECK(official.open(QIODevice::ReadOnly) && TSA::UI::productLogoSvg(true) == official.readAll(),
+                   "Test 612: thème sombre — icône officielle inchangée");
+        const QString light = QString::fromUtf8(TSA::UI::productLogoSvg(false));
+        const QString ink = ThemeManager::lightTokens().text.name();
+        TEST_CHECK(light.contains(ink, Qt::CaseInsensitive) && !light.contains(QStringLiteral("#D3D7DA"), Qt::CaseInsensitive),
+                   "Test 612: thème clair — glyphe en aplat de la couleur du texte (" << ink.toStdString() << ")");
+        // Rendu à la taille de la barre de titre, posé sur le fond des barres claires : traits opaques contrastés
+        for (const int side : { 16, 22, 40 })
+        {
+            const QImage img = TSA::UI::productLogoIcon(false).pixmap(side, side).toImage().convertToFormat(QImage::Format_ARGB32);
+            const QColor bg = ThemeManager::lightTokens().chrome;
+            int opaque = 0;
+            double minContrast = 100.0;
+            const auto lum = [](const QColor& col) {
+                const auto lin = [](double v) { return v <= 0.04045 ? v / 12.92 : std::pow((v + 0.055) / 1.055, 2.4); };
+                return 0.2126 * lin(col.redF()) + 0.7152 * lin(col.greenF()) + 0.0722 * lin(col.blueF());
+            };
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x)
+                {
+                    const QColor px = QColor::fromRgba(img.pixel(x, y));
+                    if (px.alpha() < 230) continue;
+                    ++opaque;
+                    const double a = lum(px), b = lum(bg);
+                    minContrast = std::min(minContrast, (std::max(a, b) + 0.05) / (std::min(a, b) + 0.05));
+                }
+            TEST_CHECK(opaque >= side * side / 20 && minContrast >= 7.0,
+                       "Test 612: logo clair " << side << " px — " << opaque << " pixels opaques, contraste minimal " << minContrast << ":1");
+        }
+        std::cout << "[PASS] Test 612: Logo du produit lisible en thème clair, icône officielle en thème sombre" << std::endl;
         ++passed;
     }
 

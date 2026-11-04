@@ -1,4 +1,5 @@
 #include "ProjectStatusOverlay.h"
+#include "../Theme/ThemedIcon.h"
 #include "App/ProductInfo.h"
 #include "../../Model/Model.h"
 #include "../../Grid/GridManager.h"
@@ -519,8 +520,7 @@ void TSALogoOverlay::paintEvent(QPaintEvent* /*event*/)
     painter.drawRoundedRect(QRectF(1, 1, width() - 2, height() - 2), 3, 3);
 
     // Rendu vectoriel du logo officiel du produit depuis resources.qrc
-    QString logoPath = QString::fromLatin1(m_isDarkMode ? TSA::Product::kIconSvgOnDark : TSA::Product::kIconSvg);
-    QSvgRenderer renderer(logoPath);
+    QSvgRenderer renderer(productLogoSvg(m_isDarkMode));
     if (renderer.isValid())
     {
         QRectF iconRect(4, 3, 16, 16);
